@@ -1,11 +1,11 @@
 # Sarkari Path - System Workflow Diagrams (ASCII)
 
-## 1. Overall System Architecture
+## 1. Overall System Architecture (Microservices)
 
 ```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                         SARKARI PATH SYSTEM                              │
-└─────────────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                     SARKARI PATH MICROSERVICES SYSTEM                        │
+└──────────────────────────────────────────────────────────────────────────────┘
 
                               ┌──────────────┐
                               │   Internet   │
@@ -20,24 +20,34 @@
                     └────────────────┼────────────────┘
                                      │
                          ┌───────────▼──────────┐
-                         │   Nginx Load         │
-                         │   Balancer           │
+                         │   Nginx Container    │
+                         │   - SSL/TLS          │
+                         │   - Load Balancer    │
+                         │   - Rate Limiting    │
                          └───────────┬──────────┘
                                      │
                     ┌────────────────┼────────────────┐
-                    │                │                │
-            ┌───────▼──────┐  ┌──────▼───────┐  ┌────▼────────┐
-            │ Flask App 1  │  │ Flask App 2  │  │ Flask App 3 │
-            └───────┬──────┘  └──────┬───────┘  └────┬────────┘
-                    │                │                │
-                    └────────────────┼────────────────┘
+                    │  /api/*        │  /*            │
+            ┌───────▼──────┐  ┌──────▼───────┐       │
+            │   Backend    │  │  Frontend    │       │
+            │  Container   │◄─│  Container   │       │
+            │ (Flask API)  │  │(Flask+Jinja2)│       │
+            │              │  │              │       │
+            │ - Port 5000  │  │ - Port 8080  │       │
+            │ - REST API   │  │ - UI Pages   │       │
+            │ - Auth       │  │ - Templates  │       │
+            │ - Logic      │  │ - Static     │       │
+            └───────┬──────┘  └──────────────┘       │
+                    │                                 │
+                    └────────────────┬────────────────┘
                                      │
                     ┌────────────────┼────────────────┐
                     │                │                │
             ┌───────▼──────┐  ┌──────▼───────┐  ┌────▼────────┐
             │   MongoDB    │  │    Redis     │  │   Celery    │
-            │   Cluster    │  │   (Cache &   │  │   Workers   │
-            │              │  │   Sessions)  │  │             │
+            │  Container   │  │  Container   │  │   Workers   │
+            │              │  │   (Cache &   │  │  Container  │
+            │ - Port 27017 │  │   Sessions)  │  │             │
             └──────────────┘  └──────────────┘  └─────┬───────┘
                                                        │
                                      ┌─────────────────┼──────────────┐
@@ -45,8 +55,11 @@
                               ┌──────▼──────┐   ┌──────▼─────┐  ┌────▼────┐
                               │   Email     │   │  Firebase  │  │  SMS    │
                               │   Service   │   │    FCM     │  │ Gateway │
-                              │  (SMTP)     │   │   (Push)   │  │         │
+                              │  (Flask-    │   │   (Push)   │  │         │
+                              │   Mail)     │   │            │  │         │
                               └─────────────┘   └────────────┘  └─────────┘
+
+        All containers connected via Docker bridge network (sarkari_network)
 ```
 
 ## 2. User Registration & Profile Setup Flow
