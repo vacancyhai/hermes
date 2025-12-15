@@ -72,8 +72,8 @@ This deployment uses **6 Docker containers** with separated Flask frontend and b
 │  │  │            │  │              │  │  Container  │  │ Cont. ││
 │  │  │ Port 27017 │  │  Port 6379   │  │             │  │       ││
 │  │  │ - Auth     │  │  - Cache     │  │ - Jobs      │  │-Cron  ││
-│  │  │ - Persist  │  │  - Sessions  │  │ - Emails    │  │-Tasks ││
-│  │  │            │  │  - Queue     │  │ - Notify    │  │       ││
+│  │  │ - 15 Cols  │  │  - Sessions  │  │ - Emails    │  │-Tasks ││
+│  │  │ - Persist  │  │  - Queue     │  │ - Notify    │  │       ││
 │  │  └────────────┘  └──────────────┘  └─────────────┘  └───────┘│
 │  │                                                            │ │
 │  │  Volumes (Persistent Storage):                            │ │

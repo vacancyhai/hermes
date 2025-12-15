@@ -36,8 +36,8 @@ This project contains comprehensive documentation across multiple files. Use thi
 - ✅ Project overview and key capabilities
 - ✅ Complete tech stack (Frontend, Backend, Infrastructure)
 - ✅ Microservices architecture diagram
-- ✅ Database schemas (6 MongoDB collections with full JSON structure)
-- ✅ API endpoints (40+ REST endpoints with descriptions)
+- ✅ Enhanced database schemas (15 MongoDB collections - expanded from 6 to support complete Sarkari Result portal)
+- ✅ API endpoints (60+ REST endpoints with descriptions)
 - ✅ Key features implementation (Job matching algorithm, Notification system)
 - ✅ Flask-Mail email service configuration
 - ✅ Deployment options (Docker vs Traditional)
@@ -51,7 +51,7 @@ This project contains comprehensive documentation across multiple files. Use thi
 **Sections:**
 1. Tech Stack → What technologies are used
 2. System Architecture → How components connect
-3. Database Schema → MongoDB collections structure
+3. Database Schema → 15 MongoDB collections (Jobs, Results, Admit Cards, Answer Keys, Admissions, Yojanas, Board Results, etc.)
 4. API Endpoints → All REST API routes
 5. Key Features → Job matching algorithm, notification triggers
 6. Deployment Options → Docker microservices (recommended)
@@ -106,7 +106,7 @@ This project contains comprehensive documentation across multiple files. Use thi
 - ✅ User job application tracking
 - ✅ Priority job update notifications
 - ✅ Admin dashboard layout
-- ✅ MongoDB collections with relationships and indexes
+- ✅ 15 MongoDB collections with relationships and indexes (Enhanced for complete portal)
 - ✅ Celery task scheduler (7 scheduled tasks with timing)
 - ✅ Complete user journey map (registration → result)
 
@@ -120,7 +120,7 @@ This project contains comprehensive documentation across multiple files. Use thi
 5. Application Tracking → User marks applied → Reminders set
 6. Priority Job Notifications → Update triggers immediate notification
 7. Admin Dashboard → Stats, recent activity, analytics
-8. Database Collections → All 6 collections with relationships
+8. Database Collections → All 15 collections (Jobs, Results, Admit Cards, Answer Keys, Admissions, Yojanas, Board Results, Analytics)
 9. Celery Scheduler → Daily tasks, weekly reports, cleanup jobs
 10. User Journey → Complete flow from signup to getting hired
 

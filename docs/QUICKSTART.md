@@ -104,13 +104,22 @@ After first run, create admin user through API or seed script.
 - Check [docs/PROJECT_SUMMARY.md](./PROJECT_SUMMARY.md) for detailed setup
 - Review [docs/WORKFLOW_DIAGRAMS.md](./WORKFLOW_DIAGRAMS.md) for system flows
 
+## 📊 Database Architecture
+
+**Enhanced MongoDB Schema**: 15 Collections
+- ✅ Core: Users, Profiles, Jobs, Applications, Notifications, Admin Logs
+- ✅ Portal: Results, Admit Cards, Answer Keys, Admissions, Yojanas, Board Results
+- ✅ System: Categories, Page Views, Search Logs
+
+> **Complete Schema**: See [README.md Database Section](../README.md#database-schema-mongodb-collections---enhanced)
+
 ## 🎯 Next Steps
 
-1. **Set up MongoDB**: Create collections and indexes
-2. **Configure Email**: Set up SMTP credentials
+1. **Set up MongoDB**: 15 collections auto-created on first use
+2. **Configure Email**: Set up SMTP credentials for notifications
 3. **Create Admin User**: Use seed script
-4. **Add Sample Jobs**: Test the system
-5. **Configure Notifications**: Set up Celery tasks
+4. **Add Sample Jobs**: Test the system with real data
+5. **Configure Notifications**: Set up Celery tasks for automated alerts
 
 ---
 

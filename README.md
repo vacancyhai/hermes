@@ -122,7 +122,9 @@ A comprehensive web application that provides users with personalized government
 5. **Profile Matching System** (Backend + Celery)
 6. **Application Tracking System** (Backend + Frontend)
 
-## Database Schema (MongoDB Collections)
+## Database Schema (MongoDB Collections - Enhanced)
+
+> **📊 Total Collections**: 15 (Enhanced from original 6 to support complete Sarkari Result portal features)
 
 ### 1. Users Collection
 ```json
@@ -135,11 +137,15 @@ A comprehensive web application that provides users with personalized government
   "created_at": "2025-12-07T10:00:00Z",
   "last_login": "2025-12-07T10:00:00Z",
   "is_verified": true,
-  "role": "user" // or "admin"
+  "is_email_verified": true,
+  "is_mobile_verified": false,
+  "role": "user", // user/admin/moderator
+  "avatar_url": "https://cdn.example.com/avatar.jpg",
+  "status": "active" // active/suspended/deleted
 }
 ```
 
-### 2. User Profiles Collection
+### 2. User Profiles Collection (Enhanced)
 ```json
 {
   "_id": "ObjectId",
@@ -147,16 +153,25 @@ A comprehensive web application that provides users with personalized government
   "personal_info": {
     "date_of_birth": "1995-01-15",
     "gender": "Male/Female/Other",
-    "category": "General/OBC/SC/ST/EWS",
+    "category": "General/OBC/SC/ST/EWS/EBC",
     "pwd": false,
+    "ex_serviceman": false,
     "state": "Delhi",
-    "city": "New Delhi"
+    "city": "New Delhi",
+    "pincode": "110001"
   },
   "education": {
     "highest_qualification": "12th/Graduation/Post-Graduation/PhD",
+    "10th": {
+      "completed": true,
+      "board": "CBSE",
+      "percentage": 88.0,
+      "year": 2011
+    },
     "12th": {
       "completed": true,
       "stream": "Science/Commerce/Arts",
+      "board": "CBSE",
       "percentage": 85.5,
       "year": 2013
     },
@@ -164,12 +179,28 @@ A comprehensive web application that provides users with personalized government
       "completed": true,
       "degree": "B.Tech",
       "specialization": "Computer Science",
+      "university": "Delhi University",
       "percentage": 75.0,
       "year": 2017
     },
     "post_graduation": {
       "completed": false
     }
+  },
+  "physical_details": {
+    "height_cm": 175,
+    "weight_kg": 65,
+    "chest_cm": 82,
+    "chest_expanded_cm": 87,
+    "vision": "6/6",
+    "is_color_blind": false
+  },
+  "quick_filters": {
+    "interested_organizations": ["Railway", "SSC", "UPSC", "Banking", "Defense", "Teaching", "Police"],
+    "interested_job_types": ["Technical", "Non-Technical", "Police", "Teaching", "Clerical"],
+    "preferred_locations": ["Delhi", "Mumbai", "Bangalore", "Any"],
+    "salary_expectation": {"min": 20000, "max": 50000},
+    "job_nature": ["Permanent", "Temporary", "Contract"]
   },
   "notification_preferences": {
     "organizations": ["Railway", "SSC", "UPSC", "Banking"],
@@ -178,77 +209,227 @@ A comprehensive web application that provides users with personalized government
     "email_enabled": true,
     "sms_enabled": false,
     "push_enabled": true,
-    "frequency": "instant" // instant/daily/weekly
+    "whatsapp_enabled": true,
+    "telegram_enabled": false,
+    "frequency": "instant", // instant/daily_digest/weekly_digest
+    "digest_time": "09:00",
+    "notification_types": ["new_jobs", "application_reminders", "admit_cards", "results", "answer_keys"]
   },
   "updated_at": "2025-12-07T10:00:00Z"
 }
 ```
 
-### 3. Job Vacancies Collection
+### 3. Job Vacancies Collection (Significantly Enhanced)
 ```json
 {
   "_id": "ObjectId",
-  "job_title": "Assistant Loco Pilot",
-  "organization": "Indian Railways",
-  "department": "Railway Recruitment Board (RRB)",
-  "post_code": "RRB-ALP-2025",
-  "total_vacancies": 5000,
-  "description": "Full job description...",
+  "job_title": "SSC GD Constable Recruitment 2025",
+  "slug": "ssc-gd-constable-recruitment-2025",
+  "organization": "Staff Selection Commission",
+  "department": "SSC",
+  "post_code": "SSC-GD-2025",
+  "job_type": "latest_job", // latest_job/result/admit_card/answer_key/admission/yojana
+  "employment_type": "permanent", // permanent/temporary/contract/apprentice
+  "qualification_level": "10th", // 10th/10+2/graduate/post-graduate/diploma/iti
+  
+  "total_vacancies": 25487,
+  "vacancy_breakdown": {
+    "by_category": {
+      "UR": 10195,
+      "OBC": 6872,
+      "EWS": 2549,
+      "SC": 3823,
+      "ST": 2048,
+      "EBC": 0,
+      "PWD": 100,
+      "Ex_Serviceman": 0
+    },
+    "by_post": [
+      {
+        "post_name": "Constable GD",
+        "post_code": "GD-01",
+        "total": 20000,
+        "qualification": "10th Pass",
+        "age_limit": "18-23",
+        "pay_scale": "₹21,700 - ₹69,100"
+      },
+      {
+        "post_name": "Head Constable",
+        "post_code": "HC-01",
+        "total": 5487,
+        "qualification": "12th Pass",
+        "age_limit": "21-27",
+        "pay_scale": "₹25,500 - ₹81,100"
+      }
+    ],
+    "by_state": [
+      {"state": "Delhi", "vacancies": {"UR": 500, "OBC": 300, "SC": 150, "ST": 50}},
+      {"state": "UP", "vacancies": {"UR": 2000, "OBC": 1200, "SC": 800, "ST": 400}},
+      {"state": "Bihar", "vacancies": {"UR": 1500, "OBC": 900, "SC": 600, "ST": 300}}
+    ],
+    "by_trade": [
+      {"trade": "Fitter", "total": 150},
+      {"trade": "Welder", "total": 180},
+      {"trade": "Electrician", "total": 70}
+    ]
+  },
+  
+  "description": "Full job description with HTML formatting...",
+  "short_description": "SSC has released 25487 GD Constable vacancies...",
+  
   "eligibility": {
-    "min_qualification": "12th",
-    "required_stream": ["Science"], // null for any stream
+    "min_qualification": "10th",
+    "required_stream": null,
+    "qualification_details": "10th Pass from recognized board",
     "age_limit": {
       "min": 18,
-      "max": 30,
+      "max": 23,
+      "cutoff_date": "2026-01-01",
       "relaxation": {
         "OBC": 3,
-        "SC/ST": 5,
-        "PWD": 10
+        "SC": 5,
+        "ST": 5,
+        "PWD": 10,
+        "Ex_Serviceman": 5,
+        "J&K_Domicile": 5
+      },
+      "is_post_wise": false
+    },
+    "physical_standards": {
+      "male": {
+        "general": {"height": 170, "chest": 80, "chest_expanded": 85},
+        "obc": {"height": 170, "chest": 80, "chest_expanded": 85},
+        "sc_st": {"height": 165, "chest": 78, "chest_expanded": 83}
+      },
+      "female": {
+        "all": {"height": 157, "weight": 48}
       }
     },
-    "category_wise_vacancies": {
-      "General": 2000,
-      "OBC": 1500,
-      "SC": 1000,
-      "ST": 500
+    "medical_standards": {
+      "vision": "6/6 in one eye, 6/9 in other",
+      "color_blindness": "No color blindness",
+      "other": "No flat foot, knock knee, squint eyes"
     }
   },
+  
   "application_details": {
-    "application_fee": {
-      "General": 500,
-      "SC/ST": 0,
-      "PWD": 0
-    },
     "application_mode": "Online",
-    "official_website": "https://rrbcdg.gov.in"
+    "application_link": "https://ssc.nic.in/apply",
+    "official_website": "https://ssc.nic.in",
+    "notification_pdf": "https://ssc.nic.in/notification.pdf",
+    "application_fee": {
+      "General": 100,
+      "OBC": 100,
+      "EWS": 100,
+      "SC": 0,
+      "ST": 0,
+      "Female": 0,
+      "PWD": 0,
+      "EBC": 0,
+      "Transgender": 0,
+      "Ex_Serviceman": 0
+    },
+    "fee_payment_mode": "Online (Credit/Debit Card, Net Banking, UPI)",
+    "important_links": [
+      {"type": "apply_online", "text": "Apply Online", "url": "https://ssc.nic.in/apply"},
+      {"type": "download_notification", "text": "Download Notification", "url": "https://ssc.nic.in/notification.pdf"},
+      {"type": "syllabus", "text": "Download Syllabus", "url": "https://ssc.nic.in/syllabus.pdf"},
+      {"type": "previous_papers", "text": "Previous Year Papers", "url": "https://ssc.nic.in/papers"}
+    ]
   },
+  
   "important_dates": {
     "notification_date": "2025-12-01",
     "application_start": "2025-12-10",
-    "application_end": "2025-12-31",
-    "exam_date": "2026-02-15",
-    "admit_card_date": "2026-02-01",
-    "result_date": "2026-03-15"
+    "application_end": "2026-01-10",
+    "last_date_fee_payment": "2026-01-12",
+    "correction_start": "2026-01-15",
+    "correction_end": "2026-01-20",
+    "admit_card_release": "2026-02-01",
+    "exam_city_release": "2026-02-05",
+    "exam_start": "2026-02-15",
+    "exam_end": "2026-03-15",
+    "answer_key_release": "2026-03-20",
+    "objection_start": "2026-03-20",
+    "objection_end": "2026-03-25",
+    "result_date": "2026-04-15"
   },
-  "documents_required": [
-    "10th Certificate",
-    "12th Certificate",
-    "Aadhar Card",
-    "Photograph",
-    "Signature"
-  ],
+  
+  "exam_details": {
+    "exam_pattern": [
+      {
+        "phase": "CBT",
+        "subjects": [
+          {"name": "General Intelligence", "questions": 40, "marks": 40},
+          {"name": "General Awareness", "questions": 40, "marks": 40},
+          {"name": "Mathematics", "questions": 40, "marks": 40},
+          {"name": "English", "questions": 40, "marks": 40}
+        ],
+        "total_marks": 160,
+        "duration_minutes": 120,
+        "negative_marking": 0.25,
+        "exam_mode": "Online"
+      },
+      {
+        "phase": "PET",
+        "tests": ["Race", "Long Jump", "High Jump"],
+        "qualifying": true
+      },
+      {
+        "phase": "PST",
+        "qualifying": true
+      }
+    ],
+    "syllabus_link": "https://ssc.nic.in/syllabus.pdf",
+    "exam_language": ["Hindi", "English"],
+    "total_phases": 3
+  },
+  
+  "salary": {
+    "pay_scale": "₹21,700 - ₹69,100",
+    "pay_level": "Level-3",
+    "grade_pay": "₹2,000",
+    "initial_salary": 21700,
+    "max_salary": 69100,
+    "allowances": ["DA", "HRA", "TA"],
+    "other_benefits": "Medical, Pension, PF"
+  },
+  
   "selection_process": [
-    "Computer Based Test (CBT)",
-    "Physical Efficiency Test (PET)",
-    "Document Verification",
-    "Medical Examination"
+    {"phase": 1, "name": "Computer Based Test (CBT)", "qualifying": false},
+    {"phase": 2, "name": "Physical Efficiency Test (PET)", "qualifying": true},
+    {"phase": 3, "name": "Physical Standard Test (PST)", "qualifying": true},
+    {"phase": 4, "name": "Medical Examination", "qualifying": true},
+    {"phase": 5, "name": "Document Verification", "qualifying": true}
   ],
-  "status": "active", // active/closed/cancelled
+  
+  "documents_required": [
+    {"name": "10th Certificate", "mandatory": true, "format": "PDF", "max_size_kb": 500},
+    {"name": "12th Certificate", "mandatory": false, "format": "PDF", "max_size_kb": 500},
+    {"name": "Aadhar Card", "mandatory": true, "format": "PDF", "max_size_kb": 300},
+    {"name": "Photo", "mandatory": true, "format": "JPG", "max_size_kb": 100},
+    {"name": "Signature", "mandatory": true, "format": "JPG", "max_size_kb": 50},
+    {"name": "Category Certificate", "mandatory": false, "format": "PDF", "max_size_kb": 300}
+  ],
+  
+  "status": "active", // active/expired/cancelled/upcoming
+  "is_featured": true,
+  "is_urgent": false,
+  "is_trending": true,
+  "priority": 5,
+  
+  "meta_title": "SSC GD Constable Recruitment 2025 - 25487 Posts Apply Online",
+  "meta_description": "SSC GD Constable Recruitment 2025: Apply online for 25487 posts...",
+  "meta_keywords": ["SSC GD", "Constable Recruitment", "Apply Online", "Government Jobs"],
+  
+  "views": 15000,
+  "applications_count": 2500,
+  "shares_count": 500,
+  
   "created_by": "ObjectId (ref: Users - admin)",
   "created_at": "2025-12-01T10:00:00Z",
   "updated_at": "2025-12-07T10:00:00Z",
-  "views": 15000,
-  "applications_count": 2500
+  "published_at": "2025-12-01T10:00:00Z"
 }
 ```
 
@@ -258,44 +439,48 @@ A comprehensive web application that provides users with personalized government
   "_id": "ObjectId",
   "user_id": "ObjectId (ref: Users)",
   "job_id": "ObjectId (ref: Job Vacancies)",
-  "application_number": "RRB2025123456",
+  "application_number": "SSC2025123456",
   "is_priority": true,
   "applied_on": "2025-12-15T10:00:00Z",
-  "status": "applied", // applied/admit-card-released/exam-completed/result-pending/selected/rejected
+  "exam_center": "Delhi - Rajendra Place",
+  "admit_card_downloaded": false,
+  "exam_appeared": false,
+  "status": "applied", // applied/admit_card_released/exam_completed/result_pending/selected/rejected/waiting_list
   "notes": "User's personal notes about this application",
   "reminders": [
-    {
-      "type": "application_deadline",
-      "date": "2025-12-31",
-      "notified": false
-    },
-    {
-      "type": "admit_card",
-      "date": "2026-02-01",
-      "notified": false
-    },
-    {
-      "type": "exam_date",
-      "date": "2026-02-15",
-      "notified": false
-    }
-  ]
+    {"type": "application_deadline", "date": "2026-01-10", "notified": false},
+    {"type": "correction_window", "date": "2026-01-15", "notified": false},
+    {"type": "admit_card", "date": "2026-02-01", "notified": false},
+    {"type": "exam_date", "date": "2026-02-15", "notified": false},
+    {"type": "answer_key", "date": "2026-03-20", "notified": false},
+    {"type": "result", "date": "2026-04-15", "notified": false}
+  ],
+  "result_info": {
+    "marks_obtained": null,
+    "total_marks": null,
+    "rank": null,
+    "cutoff_marks": null,
+    "status": null
+  }
 }
 ```
 
-### 5. Notifications Collection
+### 5. Notifications Collection (Enhanced)
 ```json
 {
   "_id": "ObjectId",
   "user_id": "ObjectId (ref: Users)",
-  "job_id": "ObjectId (ref: Job Vacancies)",
-  "type": "new_vacancy/application_reminder/admit_card/exam_date/result",
-  "title": "New Railway Vacancy Alert!",
-  "message": "RRB has released 5000 ALP vacancies...",
+  "entity_type": "job", // job/result/admit_card/answer_key/admission/yojana
+  "entity_id": "ObjectId",
+  "type": "new_vacancy", // new_vacancy/application_reminder/admit_card/exam_date/result/answer_key/correction_window
+  "title": "New SSC GD Constable Vacancy Alert!",
+  "message": "SSC has released 25487 GD Constable vacancies...",
+  "action_url": "/jobs/ssc-gd-constable-recruitment-2025",
   "is_read": false,
-  "sent_via": ["email", "push", "in-app"],
+  "sent_via": ["email", "push", "in-app", "whatsapp"],
+  "priority": "high", // low/medium/high
   "created_at": "2025-12-07T10:00:00Z",
-  "priority": "high" // low/medium/high
+  "read_at": null
 }
 ```
 
@@ -304,12 +489,300 @@ A comprehensive web application that provides users with personalized government
 {
   "_id": "ObjectId",
   "admin_id": "ObjectId (ref: Users)",
-  "action": "create_job/update_job/delete_job/approve_user",
-  "resource_type": "job_vacancy",
+  "action": "create_job", // create_job/update_job/delete_job/create_result/approve_user
+  "resource_type": "job_vacancy", // job_vacancy/result/admit_card/answer_key/user
   "resource_id": "ObjectId",
-  "details": "Created new job vacancy for RRB ALP",
+  "details": "Created new job vacancy for SSC GD Constable",
+  "changes": {"field": "status", "old_value": "draft", "new_value": "active"},
   "timestamp": "2025-12-07T10:00:00Z",
-  "ip_address": "192.168.1.1"
+  "ip_address": "192.168.1.1",
+  "user_agent": "Mozilla/5.0..."
+}
+```
+
+### 7. Results Collection (NEW)
+```json
+{
+  "_id": "ObjectId",
+  "job_id": "ObjectId (ref: Job Vacancies)",
+  "result_type": "written", // written/prelims/mains/interview/final/cutoff/merit_list/psl_list/dv_list/waiting_list
+  "result_phase": "Tier-1",
+  "result_title": "SSC GD Constable CBT Result 2025",
+  "result_date": "2026-04-15",
+  "result_links": {
+    "result_pdf": "https://ssc.nic.in/result.pdf",
+    "scorecard_link": "https://ssc.nic.in/scorecard",
+    "marks_link": "https://ssc.nic.in/marks",
+    "merit_list_link": "https://ssc.nic.in/merit-list"
+  },
+  "cut_off_marks": {
+    "general": {"male": 145.5, "female": 140.0},
+    "obc": {"male": 140.5, "female": 135.0},
+    "sc": {"male": 135.0, "female": 130.0},
+    "st": {"male": 130.0, "female": 125.0},
+    "ews": {"male": 143.0, "female": 138.0},
+    "pwd": {"male": 125.0, "female": 120.0}
+  },
+  "statistics": {
+    "total_appeared": 500000,
+    "total_qualified": 100000,
+    "total_selected": 25487,
+    "highest_marks": 198.5,
+    "lowest_marks": 125.0
+  },
+  "is_final": false,
+  "status": "active", // active/revised/cancelled
+  "created_at": "2026-04-15T10:00:00Z",
+  "updated_at": "2026-04-15T10:00:00Z"
+}
+```
+
+### 8. Admit Cards Collection (NEW)
+```json
+{
+  "_id": "ObjectId",
+  "job_id": "ObjectId (ref: Job Vacancies)",
+  "exam_name": "SSC GD Constable CBT 2025",
+  "exam_phase": "Tier-1",
+  "release_date": "2026-02-01",
+  "exam_date_start": "2026-02-15",
+  "exam_date_end": "2026-03-15",
+  "exam_mode": "Online",
+  "download_link": "https://ssc.nic.in/admit-card",
+  "exam_city_link": "https://ssc.nic.in/exam-city",
+  "mock_test_link": "https://ssc.nic.in/mock-test",
+  "self_slot_selection_link": null,
+  "instructions": "Bring Original Photo ID proof, Admit Card printout...",
+  "reporting_time": "08:00 AM",
+  "exam_timing": "10:00 AM to 12:00 PM",
+  "important_documents": ["Admit Card", "Photo ID", "Passport Size Photo"],
+  "exam_centers": ["Delhi", "Mumbai", "Bangalore", "Kolkata", "Chennai"],
+  "status": "active", // active/expired
+  "created_at": "2026-02-01T10:00:00Z",
+  "updated_at": "2026-02-01T10:00:00Z"
+}
+```
+
+### 9. Answer Keys Collection (NEW)
+```json
+{
+  "_id": "ObjectId",
+  "job_id": "ObjectId (ref: Job Vacancies)",
+  "exam_name": "SSC GD Constable CBT 2025",
+  "exam_phase": "Tier-1",
+  "paper_name": "All Sets",
+  "release_date": "2026-03-20",
+  "answer_key_links": [
+    {"set": "Set A", "url": "https://ssc.nic.in/answer-key-a.pdf"},
+    {"set": "Set B", "url": "https://ssc.nic.in/answer-key-b.pdf"},
+    {"set": "Set C", "url": "https://ssc.nic.in/answer-key-c.pdf"},
+    {"set": "Set D", "url": "https://ssc.nic.in/answer-key-d.pdf"}
+  ],
+  "subject_wise_links": [
+    {"subject": "General Intelligence", "url": "https://ssc.nic.in/gi-key.pdf"},
+    {"subject": "General Awareness", "url": "https://ssc.nic.in/ga-key.pdf"}
+  ],
+  "objection_start": "2026-03-20",
+  "objection_end": "2026-03-25",
+  "objection_fee": 100,
+  "objection_link": "https://ssc.nic.in/objection",
+  "response_sheet_link": "https://ssc.nic.in/response-sheet",
+  "question_paper_link": "https://ssc.nic.in/question-paper",
+  "total_questions": 160,
+  "status": "active", // active/expired/final_published
+  "created_at": "2026-03-20T10:00:00Z",
+  "updated_at": "2026-03-20T10:00:00Z"
+}
+```
+
+### 10. Admissions Collection (NEW)
+```json
+{
+  "_id": "ObjectId",
+  "title": "JEE Main 2026 Application Form",
+  "slug": "jee-main-2026-application-form",
+  "admission_type": "entrance_exam", // ug/pg/diploma/certificate/school/entrance_exam
+  "course_name": "B.Tech/B.E.",
+  "conducting_body": "National Testing Agency (NTA)",
+  "total_seats": 100000,
+  "description": "Complete admission details...",
+  "eligibility": {
+    "qualification": "12th Pass with PCM",
+    "min_percentage": 75.0,
+    "age_limit": "No age limit",
+    "nationality": "Indian/Foreign",
+    "required_subjects": ["Physics", "Chemistry", "Mathematics"]
+  },
+  "application_dates": {
+    "notification_date": "2025-12-01",
+    "start": "2025-12-15",
+    "end": "2026-01-15",
+    "correction_start": "2026-01-20",
+    "correction_end": "2026-01-25",
+    "admit_card_date": "2026-03-20",
+    "exam_date": "2026-04-01",
+    "result_date": "2026-05-01",
+    "counseling_date": "2026-06-01"
+  },
+  "application_fee": {
+    "general": 1000,
+    "sc_st": 500,
+    "obc": 1000,
+    "ews": 1000,
+    "female": 1000,
+    "pwd": 500
+  },
+  "application_link": "https://jeemain.nta.nic.in",
+  "notification_pdf": "https://jeemain.nta.nic.in/notification.pdf",
+  "syllabus_link": "https://jeemain.nta.nic.in/syllabus.pdf",
+  "exam_pattern": {
+    "papers": ["Paper 1 - B.Tech", "Paper 2 - B.Arch"],
+    "mode": "Online",
+    "duration": "180 minutes",
+    "total_marks": 300
+  },
+  "selection_process": "Merit based on JEE Main score + JoSAA counseling",
+  "status": "active", // active/expired/upcoming
+  "is_featured": true,
+  "views": 50000,
+  "created_at": "2025-12-01T10:00:00Z",
+  "updated_at": "2025-12-07T10:00:00Z"
+}
+```
+
+### 11. Yojanas (Government Schemes) Collection (NEW)
+```json
+{
+  "_id": "ObjectId",
+  "title": "PM Kisan Samman Nidhi Yojana",
+  "slug": "pm-kisan-samman-nidhi-yojana",
+  "yojana_type": "central", // central/state/scholarship/pension/subsidy/insurance/loan
+  "state": null,
+  "department": "Ministry of Agriculture",
+  "short_description": "₹6000 per year to small and marginal farmers...",
+  "full_description": "Complete scheme details with HTML formatting...",
+  "eligibility": "Small and marginal farmers with cultivable land...",
+  "benefits": "₹6000 per year in 3 equal installments of ₹2000 each",
+  "benefit_amount": "₹6000/year",
+  "installment_details": "3 installments of ₹2000 (Apr-Jul, Aug-Nov, Dec-Mar)",
+  "how_to_apply": "Visit pmkisan.gov.in and register...",
+  "required_documents": ["Aadhar Card", "Bank Account", "Land Documents"],
+  "application_link": "https://pmkisan.gov.in/",
+  "official_website": "https://pmkisan.gov.in",
+  "guidelines_pdf": "https://pmkisan.gov.in/guidelines.pdf",
+  "helpline": "011-23381092",
+  "email": "pmkisan-ict@gov.in",
+  "start_date": "2019-02-01",
+  "last_date": null,
+  "is_active": true,
+  "status": "active", // active/expired/upcoming
+  "is_featured": true,
+  "views": 100000,
+  "applicants_count": 110000000,
+  "created_at": "2019-02-01T10:00:00Z",
+  "updated_at": "2025-12-07T10:00:00Z"
+}
+```
+
+### 12. Board Results Collection (NEW)
+```json
+{
+  "_id": "ObjectId",
+  "board_name": "CBSE", // CBSE/UP Board/Bihar Board/RBSE/etc
+  "class": "12th", // 10th/12th/5th/8th
+  "stream": "Science", // Arts/Commerce/Science/All
+  "exam_year": 2025,
+  "result_type": "regular", // regular/supplementary/compartment/improvement
+  "exam_dates": {
+    "start": "2025-02-15",
+    "end": "2025-04-04"
+  },
+  "result_date": "2025-05-13",
+  "result_time": "12:00 PM",
+  "result_link": "https://cbseresults.nic.in",
+  "marksheet_download_link": "https://digilocker.gov.in",
+  "topper_list_link": "https://cbse.gov.in/toppers",
+  "date_sheet_link": "https://cbse.gov.in/datesheet",
+  "statistics": {
+    "total_students": 1500000,
+    "passed_students": 1425000,
+    "pass_percentage": 95.0,
+    "girls_pass_percentage": 96.5,
+    "boys_pass_percentage": 93.8,
+    "distinction_count": 50000,
+    "first_division_count": 500000
+  },
+  "how_to_check": "Visit cbseresults.nic.in, enter roll number and DOB...",
+  "alternative_links": [
+    "https://results.gov.in",
+    "https://cbse.nic.in"
+  ],
+  "status": "active", // active/expired
+  "views": 5000000,
+  "created_at": "2025-05-13T10:00:00Z",
+  "updated_at": "2025-05-13T10:00:00Z"
+}
+```
+
+### 13. Categories/Organizations Collection (NEW)
+```json
+{
+  "_id": "ObjectId",
+  "name": "Railway Jobs",
+  "slug": "railway-jobs",
+  "parent_id": null,
+  "type": "organization", // organization/job_type/department/board
+  "icon": "train.svg",
+  "description": "All Indian Railway job vacancies including RRB, RRC, Metro",
+  "display_order": 1,
+  "is_active": true,
+  "job_count": 150,
+  "meta_title": "Railway Jobs 2025 - Latest Railway Recruitment",
+  "meta_description": "Find latest Railway job vacancies...",
+  "created_at": "2025-01-01T10:00:00Z",
+  "updated_at": "2025-12-07T10:00:00Z"
+}
+```
+
+### 14. Page Views Collection (Analytics - NEW)
+```json
+{
+  "_id": "ObjectId",
+  "entity_type": "job", // job/result/admit_card/admission/yojana/page
+  "entity_id": "ObjectId",
+  "user_id": "ObjectId", // null for anonymous
+  "session_id": "session_uuid",
+  "ip_address": "192.168.1.1",
+  "user_agent": "Mozilla/5.0...",
+  "device_type": "desktop", // desktop/mobile/tablet
+  "browser": "Chrome",
+  "os": "Windows",
+  "referrer": "https://google.com/search?q=ssc+jobs",
+  "page_url": "/jobs/ssc-gd-constable-recruitment-2025",
+  "time_spent_seconds": 120,
+  "viewed_at": "2025-12-15T10:00:00Z"
+}
+```
+
+### 15. Search Logs Collection (Analytics - NEW)
+```json
+{
+  "_id": "ObjectId",
+  "user_id": "ObjectId", // null for anonymous
+  "session_id": "session_uuid",
+  "search_query": "railway jobs 2025",
+  "filters_applied": {
+    "organization": ["Railway"],
+    "qualification": ["12th"],
+    "state": ["Delhi", "UP"],
+    "job_type": ["Technical"]
+  },
+  "results_count": 25,
+  "clicked_results": ["ObjectId1", "ObjectId2"],
+  "first_click_position": 3,
+  "time_to_first_click_seconds": 15,
+  "no_results": false,
+  "searched_at": "2025-12-15T10:00:00Z"
 }
 ```
 
