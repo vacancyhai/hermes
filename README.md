@@ -179,7 +179,7 @@ docker compose exec backend curl http://localhost:5000/api/v1/health
   "is_verified": true,
   "is_email_verified": true,
   "is_mobile_verified": false,
-  "role": "user", // user/admin/moderator
+  "role": "user", // user/admin/operator
   "avatar_url": "https://cdn.example.com/avatar.jpg",
   "status": "active" // active/suspended/deleted
 }
@@ -1684,6 +1684,755 @@ def send_reminder_email(user, application, reminder_type):
 - Notification templates
 - Banner/Advertisement management
 
+## 👥 User & Role Management
+
+### Three-Role System
+
+| Role | Type | Can Create Jobs | Can Review Jobs | Can Access Admin |
+|------|------|-----------------|-----------------|------------------|
+| **User** | Job Seeker | ❌ | ❌ | ❌ |
+| **Operator** | Content Reviewer | ❌ | ✅ | ❌ |
+| **Admin** | Full Control | ✅ | ✅ | ✅ |
+
+### Creating Admin (First Time Bootstrap)
+
+**Option A: MongoDB Direct Insert (Recommended)**
+
+```bash
+# Connect to MongoDB
+docker compose exec mongodb mongosh -u admin -p admin
+
+# Switch to sarkari_path database
+use sarkari_path
+
+# Create admin user directly
+db.users.insertOne({
+  email: "admin@example.com",
+  password: "$2b$12$HASHED_PASSWORD_HERE", // Use bcrypt hash
+  full_name: "Admin User",
+  role: "admin",
+  is_verified: true,
+  is_email_verified: true,
+  status: "active",
+  created_at: new Date(),
+  last_login: new Date()
+})
+
+exit
+```
+
+**Option B: Register Then Promote**
+
+```bash
+# 1. Register via API (creates user with role='user')
+curl -X POST http://localhost:5000/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "admin@example.com",
+    "password": "SecurePassword123!",
+    "name": "Admin User"
+  }'
+
+# 2. Promote to admin (via MongoDB)
+docker compose exec mongodb mongosh
+use sarkari_path
+db.users.updateOne(
+  {email: "admin@example.com"},
+  {$set: {role: "admin"}}
+)
+```
+
+### Creating Operators (Admin-Only)
+
+**API Endpoint:** `PUT /api/v1/admin/users/<user_id>/role`
+
+```bash
+# Promotion request (from admin account)
+curl -X PUT http://localhost:5000/api/v1/admin/users/USER_ID/role \
+  -H "Authorization: Bearer ADMIN_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"new_role": "operator"}'
+```
+
+**Response:**
+```json
+{
+  "user_id": "507f1f77bcf86cd799439011",
+  "email": "operator@example.com",
+  "role": "operator",
+  "updated_at": "2026-03-03T10:30:00Z"
+}
+```
+
+### Permission Matrix by Endpoint
+
+| Endpoint | User | Operator | Admin |
+|----------|------|----------|-------|
+| `GET /api/v1/jobs` | ✅ | ✅ | ✅ |
+| `POST /api/v1/jobs` | ❌ | ❌ | ✅ |
+| `PUT /api/v1/jobs/<id>` | ❌ | ✅ (limited) | ✅ |
+| `DELETE /api/v1/jobs/<id>` | ❌ | ❌ | ✅ |
+| `GET /api/v1/admin/users` | ❌ | ❌ | ✅ |
+| `PUT /api/v1/admin/users/<id>/role` | ❌ | ❌ | ✅ |
+| `GET /api/v1/admin/analytics` | ❌ | ❌ | ✅ |
+
+**Note:** Operators have restricted field updates - they can modify `status` and `description` but NOT `salary` or `vacancy_count`.
+
+---
+
+## 🔐 Dynamic Access Management System
+
+### Overview
+
+Admins can **dynamically enable/disable access** for roles without restarting the app. Permissions are stored in MongoDB and checked on every API request.
+
+**Example Use Cases:**
+- Temporarily disable "Operator" access to sensitive endpoints during maintenance
+- Grant "User" role temporary access to download job list (CSV export)
+- Restrict "Admin" delete operations for audit compliance
+- Enable/disable entire feature sets (like notifications) per role
+
+### Access Control Database Schema
+
+**Collections Created:**
+
+#### 1. `role_permissions` Collection
+
+Stores which actions each role can perform:
+
+```json
+{
+  "_id": "507f1f77bcf86cd799439012",
+  "role": "operator",
+  "resource": "jobs",
+  "actions": {
+    "GET": true,
+    "POST": false,
+    "PUT": true,
+    "DELETE": false
+  },
+  "field_restrictions": [
+    "salary_min",
+    "salary_max",
+    "vacancy_count"
+  ],
+  "is_enabled": true,
+  "is_restricted": false,
+  "created_at": "2026-01-01T00:00:00Z",
+  "updated_at": "2026-03-03T10:30:00Z"
+}
+```
+
+#### 2. `access_audit_logs` Collection
+
+Log every permission change for compliance:
+
+```json
+{
+  "_id": "507f1f77bcf86cd799439013",
+  "admin_id": "507f1f77bcf86cd799439001",
+  "action": "permission_changed",
+  "role": "operator",
+  "resource": "jobs",
+  "changes": {
+    "DELETE": {"from": true, "to": false}
+  },
+  "reason": "Security audit - restrict delete operations",
+  "ip_address": "192.168.1.1",
+  "timestamp": "2026-03-03T10:30:00Z"
+}
+```
+
+### Admin API Endpoints for Access Management
+
+#### 1. Get Current Permissions for a Role
+
+**Endpoint:** `GET /api/v1/admin/permissions?role=operator`
+
+**Request:**
+```bash
+curl -X GET "http://localhost:5000/api/v1/admin/permissions?role=operator" \
+  -H "Authorization: Bearer ADMIN_TOKEN"
+```
+
+**Response:**
+```json
+{
+  "role": "operator",
+  "permissions": [
+    {
+      "resource": "jobs",
+      "actions": {"GET": true, "POST": false, "PUT": true, "DELETE": false},
+      "field_restrictions": ["salary_min", "salary_max"]
+    },
+    {
+      "resource": "users",
+      "actions": {"GET": true, "POST": false, "PUT": false, "DELETE": false},
+      "field_restrictions": ["password", "email"]
+    },
+    {
+      "resource": "admin",
+      "actions": {"GET": false, "POST": false, "PUT": false, "DELETE": false}
+    }
+  ]
+}
+```
+
+#### 2. Update Permissions for a Role
+
+**Endpoint:** `PUT /api/v1/admin/permissions`
+
+**Request:**
+```bash
+curl -X PUT http://localhost:5000/api/v1/admin/permissions \
+  -H "Authorization: Bearer ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "role": "operator",
+    "resource": "jobs",
+    "actions": {
+      "GET": true,
+      "POST": false,
+      "PUT": true,
+      "DELETE": false
+    },
+    "field_restrictions": ["salary_min", "salary_max", "vacancy_count"],
+    "reason": "Restrict delete operations for compliance"
+  }'
+```
+
+**Response:**
+```json
+{
+  "status": "success",
+  "message": "Permissions updated for operator role",
+  "permission_id": "507f1f77bcf86cd799439012",
+  "updated_at": "2026-03-03T10:30:00Z"
+}
+```
+
+#### 3. Disable All Access for a Role (Emergency)
+
+**Endpoint:** `POST /api/v1/admin/permissions/disable-role`
+
+**Request:**
+```bash
+curl -X POST http://localhost:5000/api/v1/admin/permissions/disable-role \
+  -H "Authorization: Bearer ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "role": "operator",
+    "reason": "Security breach detected - disabling until investigation complete"
+  }'
+```
+
+**Response:**
+```json
+{
+  "status": "success",
+  "message": "All permissions disabled for operator role",
+  "reason": "Security breach detected - disabling until investigation complete",
+  "timestamp": "2026-03-03T10:30:00Z"
+}
+```
+
+#### 4. View Permission Change History
+
+**Endpoint:** `GET /api/v1/admin/permissions/audit-log?role=operator&limit=50`
+
+**Request:**
+```bash
+curl -X GET "http://localhost:5000/api/v1/admin/permissions/audit-log?role=operator" \
+  -H "Authorization: Bearer ADMIN_TOKEN"
+```
+
+**Response:**
+```json
+{
+  "audit_logs": [
+    {
+      "timestamp": "2026-03-03T10:30:00Z",
+      "admin_email": "admin@example.com",
+      "action": "permission_changed",
+      "role": "operator",
+      "resource": "jobs",
+      "changes": {
+        "DELETE": {"from": true, "to": false}
+      },
+      "reason": "Restrict delete operations for compliance"
+    },
+    {
+      "timestamp": "2026-03-02T15:20:00Z",
+      "admin_email": "admin@example.com",
+      "action": "role_disabled",
+      "role": "operator",
+      "reason": "Temporary disable during maintenance"
+    }
+  ],
+  "total": 45,
+  "limit": 50
+}
+```
+
+### Implementation Code
+
+#### 1. Database Model for Permissions
+
+**backend/app/models/permissions.py:**
+
+```python
+from mongoengine import Document, StringField, DictField, ListField, BooleanField, DateTimeField
+from datetime import datetime
+
+class RolePermission(Document):
+    """Store role-based permissions in MongoDB"""
+    
+    role = StringField(required=True, choices=['user', 'operator', 'admin'])
+    resource = StringField(required=True)  # 'jobs', 'users', 'admin', 'notifications'
+    
+    actions = DictField(required=True)  # {'GET': True, 'POST': False, 'PUT': True, 'DELETE': False}
+    
+    field_restrictions = ListField(StringField())  # Fields this role cannot see/edit
+    is_enabled = BooleanField(default=True)
+    is_restricted = BooleanField(default=False)
+    
+    created_at = DateTimeField(default=datetime.utcnow)
+    updated_at = DateTimeField(default=datetime.utcnow)
+    
+    class Meta:
+        collection = 'role_permissions'
+        indexes = [
+            ('role', 'resource')  # Unique compound index
+        ]
+
+class AccessAuditLog(Document):
+    """Log all permission changes for compliance"""
+    
+    admin_id = StringField(required=True)
+    action = StringField(required=True)  # 'permission_changed', 'role_disabled'
+    role = StringField(required=True)
+    resource = StringField()
+    changes = DictField()  # What changed: {'DELETE': {'from': True, 'to': False}}
+    reason = StringField()
+    ip_address = StringField()
+    timestamp = DateTimeField(default=datetime.utcnow)
+    
+    class Meta:
+        collection = 'access_audit_logs'
+        indexes = [
+            ('role', '-timestamp'),
+            ('admin_id', '-timestamp')
+        ]
+```
+
+#### 2. Permission Checking Middleware
+
+**backend/app/middleware/permission_middleware.py:**
+
+```python
+from flask import request, abort, g
+from functools import wraps
+from flask_jwt_extended import get_jwt
+from app.models import RolePermission
+import logging
+
+logger = logging.getLogger(__name__)
+
+def check_access(resource, required_action='GET'):
+    """
+    Decorator to check if role has permission for resource/action
+    
+    Usage:
+        @bp.route('/api/v1/jobs', methods=['GET'])
+        @check_access('jobs', 'GET')
+        def list_jobs():
+            pass
+    """
+    def decorator(fn):
+        @wraps(fn)
+        def wrapped(*args, **kwargs):
+            claims = get_jwt()
+            user_role = claims.get('role', 'user')
+            
+            # Get permission from cache or database
+            permission = get_permission(user_role, resource)
+            
+            if not permission:
+                logger.warning(f"Permission not found: role={user_role}, resource={resource}")
+                return {'error': 'FORBIDDEN_NO_PERMISSION'}, 403
+            
+            # Check if role is disabled
+            if not permission.is_enabled:
+                logger.warning(f"Role {user_role} is disabled")
+                return {'error': 'FORBIDDEN_ROLE_DISABLED'}, 403
+            
+            # Check if action is allowed
+            actions = permission.actions
+            if not actions.get(required_action, False):
+                logger.warning(f"Action not allowed: {user_role} cannot {required_action} {resource}")
+                return {'error': 'FORBIDDEN_ACTION_NOT_ALLOWED'}, 403
+            
+            # Check field restrictions
+            g.field_restrictions = permission.field_restrictions
+            
+            return fn(*args, **kwargs)
+        
+        return wrapped
+    return decorator
+
+def get_permission(role, resource):
+    """Get permission from Redis cache or MongoDB"""
+    from app import cache
+    
+    cache_key = f"perm:{role}:{resource}"
+    
+    # Try cache first
+    cached = cache.get(cache_key)
+    if cached:
+        return cached
+    
+    # Fetch from database
+    perm = RolePermission.objects(role=role, resource=resource).first()
+    
+    if perm:
+        # Cache for 1 hour
+        cache.set(cache_key, perm, 3600)
+    
+    return perm
+
+def invalidate_permission_cache(role, resource):
+    """Clear cache when permissions change"""
+    from app import cache
+    cache.delete(f"perm:{role}:{resource}")
+```
+
+#### 3. Admin Routes for Permission Management
+
+**backend/app/routes/permissions.py:**
+
+```python
+from flask import Blueprint, request, jsonify
+from flask_jwt_extended import jwt_required, get_jwt
+from bson import ObjectId
+from datetime import datetime
+from functools import wraps
+from app.models import RolePermission, AccessAuditLog
+from app.middleware import invalidate_permission_cache
+import logging
+
+logger = logging.getLogger(__name__)
+bp = Blueprint('permissions', __name__, url_prefix='/api/v1/admin/permissions')
+
+def require_admin(fn):
+    @wraps(fn)
+    def wrapped(*args, **kwargs):
+        claims = get_jwt()
+        if claims.get('role') != 'admin':
+            return {'error': 'FORBIDDEN_ADMIN_ONLY'}, 403
+        return fn(*args, **kwargs)
+    return wrapped
+
+@bp.route('', methods=['GET'])
+@jwt_required()
+@require_admin
+def get_permissions():
+    """Get all permissions or permissions for specific role"""
+    role = request.args.get('role')
+    resource = request.args.get('resource')
+    
+    query = RolePermission.objects()
+    
+    if role:
+        query = query(role=role)
+    if resource:
+        query = query(resource=resource)
+    
+    permissions = [
+        {
+            'id': str(p.id),
+            'role': p.role,
+            'resource': p.resource,
+            'actions': p.actions,
+            'field_restrictions': p.field_restrictions,
+            'is_enabled': p.is_enabled,
+            'updated_at': p.updated_at.isoformat()
+        }
+        for p in query
+    ]
+    
+    return jsonify({'permissions': permissions}), 200
+
+@bp.route('', methods=['PUT'])
+@jwt_required()
+@require_admin
+def update_permissions():
+    """Update permissions for a role"""
+    data = request.json
+    role = data.get('role')
+    resource = data.get('resource')
+    actions = data.get('actions', {})
+    field_restrictions = data.get('field_restrictions', [])
+    reason = data.get('reason', 'No reason provided')
+    
+    # Validate
+    if not role or not resource:
+        return {'error': 'VALIDATION_MISSING_FIELD'}, 400
+    
+    if role not in ['user', 'operator', 'admin']:
+        return {'error': 'VALIDATION_INVALID_ROLE'}, 400
+    
+    # Get or create permission
+    perm = RolePermission.objects(role=role, resource=resource).first()
+    
+    if perm:
+        old_actions = perm.actions
+        perm.actions = actions
+        perm.field_restrictions = field_restrictions
+        perm.updated_at = datetime.utcnow()
+        perm.save()
+        
+        # Log change
+        AccessAuditLog.objects.create(
+            admin_id=get_jwt()['sub'],
+            action='permission_changed',
+            role=role,
+            resource=resource,
+            changes={'actions': {'from': old_actions, 'to': actions}},
+            reason=reason,
+            ip_address=request.remote_addr,
+            timestamp=datetime.utcnow()
+        )
+    else:
+        perm = RolePermission(
+            role=role,
+            resource=resource,
+            actions=actions,
+            field_restrictions=field_restrictions
+        )
+        perm.save()
+        
+        # Log creation
+        AccessAuditLog.objects.create(
+            admin_id=get_jwt()['sub'],
+            action='permission_created',
+            role=role,
+            resource=resource,
+            reason=reason,
+            ip_address=request.remote_addr
+        )
+    
+    # Invalidate cache
+    invalidate_permission_cache(role, resource)
+    
+    return {
+        'status': 'success',
+        'permission_id': str(perm.id),
+        'updated_at': perm.updated_at.isoformat()
+    }, 200
+
+@bp.route('/disable-role', methods=['POST'])
+@jwt_required()
+@require_admin
+def disable_role():
+    """Disable all access for a role (emergency)"""
+    data = request.json
+    role = data.get('role')
+    reason = data.get('reason', 'Emergency disable')
+    
+    if not role:
+        return {'error': 'VALIDATION_MISSING_FIELD'}, 400
+    
+    # Disable all permissions for this role
+    RolePermission.objects(role=role).update(set__is_enabled=False)
+    
+    # Log action
+    AccessAuditLog.objects.create(
+        admin_id=get_jwt()['sub'],
+        action='role_disabled',
+        role=role,
+        reason=reason,
+        ip_address=request.remote_addr
+    )
+    
+    # Clear all caches for this role
+    from app import cache
+    for resource in ['jobs', 'users', 'applications', 'admin', 'notifications']:
+        cache.delete(f"perm:{role}:{resource}")
+    
+    logger.critical(f"Role {role} disabled by admin {get_jwt()['sub']}: {reason}")
+    
+    return {
+        'status': 'success',
+        'message': f'All permissions disabled for {role} role'
+    }, 200
+
+@bp.route('/enable-role', methods=['POST'])
+@jwt_required()
+@require_admin
+def enable_role():
+    """Re-enable access for a disabled role"""
+    data = request.json
+    role = data.get('role')
+    reason = data.get('reason', 'Re-enabling role')
+    
+    if not role:
+        return {'error': 'VALIDATION_MISSING_FIELD'}, 400
+    
+    # Enable all permissions for this role
+    RolePermission.objects(role=role).update(set__is_enabled=True)
+    
+    # Log action
+    AccessAuditLog.objects.create(
+        admin_id=get_jwt()['sub'],
+        action='role_enabled',
+        role=role,
+        reason=reason,
+        ip_address=request.remote_addr
+    )
+    
+    logger.info(f"Role {role} re-enabled by admin {get_jwt()['sub']}")
+    
+    return {
+        'status': 'success',
+        'message': f'All permissions enabled for {role} role'
+    }, 200
+
+@bp.route('/audit-log', methods=['GET'])
+@jwt_required()
+@require_admin
+def get_audit_log():
+    """Get permission change history"""
+    role = request.args.get('role')
+    limit = int(request.args.get('limit', 50))
+    offset = int(request.args.get('offset', 0))
+    
+    query = AccessAuditLog.objects()
+    
+    if role:
+        query = query(role=role)
+    
+    total = query.count()
+    logs = query.order_by('-timestamp').skip(offset).limit(limit)
+    
+    return jsonify({
+        'audit_logs': [
+            {
+                'timestamp': log.timestamp.isoformat(),
+                'admin_id': log.admin_id,
+                'action': log.action,
+                'role': log.role,
+                'resource': log.resource,
+                'changes': log.changes,
+                'reason': log.reason
+            }
+            for log in logs
+        ],
+        'total': total,
+        'limit': limit,
+        'offset': offset
+    }), 200
+```
+
+#### 4. Using the Permission Decorator in Routes
+
+**backend/app/routes/jobs.py:**
+
+```python
+from flask import Blueprint
+from flask_jwt_extended import jwt_required
+from app.middleware import check_access
+
+bp = Blueprint('jobs', __name__, url_prefix='/api/v1/jobs')
+
+@bp.route('', methods=['GET'])
+@jwt_required()
+@check_access('jobs', 'GET')
+def list_jobs():
+    """List all jobs - permission checked"""
+    # Only reaches here if user has GET access to jobs
+    return {'jobs': []}, 200
+
+@bp.route('', methods=['POST'])
+@jwt_required()
+@check_access('jobs', 'POST')
+def create_job():
+    """Create job - permission checked"""
+    # Only admins reach here
+    return {'status': 'created'}, 201
+
+@bp.route('/<job_id>', methods=['PUT'])
+@jwt_required()
+@check_access('jobs', 'PUT')
+def update_job(job_id):
+    """Update job - permission checked"""
+    # Admin or operator with PUT permission reaches here
+    return {'status': 'updated'}, 200
+
+@bp.route('/<job_id>', methods=['DELETE'])
+@jwt_required()
+@check_access('jobs', 'DELETE')
+def delete_job(job_id):
+    """Delete job - permission checked"""
+    # Only admin with DELETE permission
+    return {'status': 'deleted'}, 204
+```
+
+### Real-World Scenarios
+
+#### Scenario 1: Maintenance Mode
+
+Temporarily disable user access:
+
+```bash
+curl -X POST http://localhost:5000/api/v1/admin/permissions/disable-role \
+  -H "Authorization: Bearer ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "role": "user",
+    "reason": "System maintenance - disabling user access for 2 hours"
+  }'
+
+# After maintenance, re-enable:
+curl -X POST http://localhost:5000/api/v1/admin/permissions/enable-role \
+  -H "Authorization: Bearer ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"role": "user"}'
+```
+
+#### Scenario 2: Restrict Delete Operations
+
+Remove delete access from operators:
+
+```bash
+curl -X PUT http://localhost:5000/api/v1/admin/permissions \
+  -H "Authorization: Bearer ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "role": "operator",
+    "resource": "jobs",
+    "actions": {
+      "GET": true,
+      "POST": false,
+      "PUT": true,
+      "DELETE": false
+    },
+    "reason": "Compliance requirement - operators cannot delete jobs"
+  }'
+```
+
+#### Scenario 3: Audit Permission Changes
+
+```bash
+curl -X GET "http://localhost:5000/api/v1/admin/permissions/audit-log?role=operator&limit=100" \
+  -H "Authorization: Bearer ADMIN_TOKEN"
+
+# Response shows who changed what and when:
+# [
+#   {"timestamp": "...", "admin_email": "...", "action":  "permission_changed", "changes": {...}},
+#   {"timestamp": "...", "admin_email": "...", "action":  "role_disabled", "reason": "..."}
+# ]
+```
+
 ## Security Features
 
 ### 🔐 Authentication & Authorization
@@ -1692,10 +2441,10 @@ def send_reminder_email(user, application, reminder_type):
 3. **Token Rotation**: Access tokens expire in 15 minutes, refresh tokens in 7 days
    - Compromised tokens only valid for ~15 minutes max
    - Frontend auto-refreshes without user logout
-4. **Role-Based Access Control (RBAC)**: User/Admin/Moderator roles
+4. **Role-Based Access Control (RBAC)**: User/Admin/Operator roles
    - Admin only: Create/delete jobs, view all users, analytics
    - User only: View own profile, apply for jobs
-   - Moderator: Update job details, moderate content
+   - Operator: Update job details, review content
 5. **Session Management**: Redis-backed sessions with timeout
 
 ### 🌐 API Security

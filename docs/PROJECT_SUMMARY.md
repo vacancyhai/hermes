@@ -295,7 +295,7 @@ def get_jobs():
 - ✅ **Password Hashing**: bcrypt (salted)
 - ✅ **JWT Authentication**: Short-lived access tokens (15 min) + long-lived refresh tokens (7 days)
 - ✅ **Token Rotation**: Auto-refresh prevents compromise exposure
-- ✅ **Role-Based Access Control**: Admin, User, Moderator roles with permission matrix
+- ✅ **Role-Based Access Control**: Admin, User, Operator roles with permission matrix
 - ✅ **Rate Limiting**: IP-level (100 req/min) + User-level (1000 req/min) + Login (5 attempts/min)
 - ✅ **CORS**: Only whitelisted origins allowed, credentials protected
 - ✅ **HTTPS/SSL**: Let's Encrypt with HSTS headers
@@ -498,15 +498,272 @@ docker compose exec backend python seed_data.py
 
 ---
 
+## 👥 User & Role Management
+
+### Role Types
+
+The system has **3 user roles** with different permissions:
+
+| Role | Purpose | Can Create Jobs | Can Review Jobs | Can Access Admin Panel |
+|------|---------|-----------------|-----------------|------------------------|
+| **User** 👤 | Job seeker | ❌ | ❌ | ❌ |
+| **Operator** 🔧 | Content reviewer | ❌ | ✅ | ❌ |
+| **Admin** 👨‍💼 | Full control | ✅ | ✅ | ✅ |
+
+### Step 1: Create First Admin (Bootstrap)
+
+**New users always register with "user" role by default.** To create the first admin:
+
+**Option A: MongoDB Direct Insert** (Quickest for first admin)
+```bash
+# Connect to MongoDB
+docker compose exec mongodb mongosh -u admin -p admin
+
+# Switch to sarkari_path database
+use sarkari_path
+
+# Create admin user directly
+db.users.insertOne({
+  email: "admin@example.com",
+  password: "$2b$12$HASHED_PASSWORD_HERE", // Use bcrypt hash
+  full_name: "Admin User",
+  role: "admin", // Directly set admin role
+  is_verified: true,
+  is_email_verified: true,
+  status: "active",
+  created_at: new Date(),
+  last_login: new Date()
+})
+
+exit
+```
+
+**Option B: Register + Manual Update** (If app is running)
+```bash
+# 1. Register via API
+curl -X POST http://localhost:5000/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "admin@example.com",
+    "password": "SecurePassword123!",
+    "name": "Admin User"
+  }'
+
+# 2. Update role in MongoDB
+docker compose exec mongodb mongosh -u admin -p admin
+use sarkari_path
+db.users.updateOne(
+  {email: "admin@example.com"},
+  {$set: {role: "admin"}}
+)
+```
+
+### Step 2: Create Operators (Admin-Only)
+
+Only **Admin** users can create operators. Use this API endpoint:
+
+**Endpoint:** `PUT /api/v1/admin/users/<user_id>/role`
+
+**Request** (from admin account):
+```json
+{
+  "new_role": "operator"
+}
+```
+
+**cURL Example:**
+```bash
+# First register a user normally
+curl -X POST http://localhost:5000/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "operator@example.com",
+    "password": "SecurePassword123!",
+    "name": "Operator User"
+  }'
+
+# Get the user_id from response, then promote to operator
+curl -X PUT http://localhost:5000/api/v1/admin/users/USER_ID/role \
+  -H "Authorization: Bearer ADMIN_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"new_role": "operator"}'
+```
+
+**Response:**
+```json
+{
+  "user_id": "507f1f77bcf86cd799439011",
+  "email": "operator@example.com",
+  "role": "operator",
+  "updated_at": "2026-03-03T10:30:00Z"
+}
+```
+
+### Step 3: Create Another Admin (Admin-Only)
+
+Same endpoint as operators, but use `"new_role": "admin"`:
+
+```bash
+curl -X PUT http://localhost:5000/api/v1/admin/users/USER_ID/role \
+  -H "Authorization: Bearer ADMIN_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"new_role": "admin"}'
+```
+
+### Permission Matrix by Endpoint
+
+| Endpoint | User | Operator | Admin |
+|----------|------|----------|-------|
+| `GET /api/v1/jobs` | ✅ | ✅ | ✅ |
+| `GET /api/v1/jobs/<id>` | ✅ | ✅ | ✅ |
+| `POST /api/v1/jobs` | ❌ | ❌ | ✅ |
+| `PUT /api/v1/jobs/<id>` | ❌ | ✅ (limited) | ✅ |
+| `DELETE /api/v1/jobs/<id>` | ❌ | ❌ | ✅ |
+| `GET /api/v1/admin/users` | ❌ | ❌ | ✅ |
+| `PUT /api/v1/admin/users/<id>/role` | ❌ | ❌ | ✅ |
+| `GET /api/v1/admin/analytics` | ❌ | ❌ | ✅ |
+
+**Operator Restrictions:** Operators can update job status and description, but NOT salary ranges or vacancy counts.
+
+### Code Example: Promoting User to Operator
+
+```python
+# backend/app/routes/admin.py
+
+from flask import request, jsonify, Blueprint
+from flask_jwt_extended import jwt_required, get_jwt
+from functools import wraps
+from bson import ObjectId
+
+bp = Blueprint('admin', __name__, url_prefix='/api/v1/admin')
+
+def require_role(*allowed_roles):
+    """Decorator to check user role"""
+    def decorator(fn):
+        @wraps(fn)
+        def wrapped(*args, **kwargs):
+            claims = get_jwt()
+            user_role = claims.get('role')
+            
+            if user_role not in allowed_roles:
+                return {"error": "FORBIDDEN_PERMISSION_DENIED"}, 403
+            
+            return fn(*args, **kwargs)
+        return wrapped
+    return decorator
+
+@bp.route('/users/<user_id>/role', methods=['PUT'])
+@jwt_required()
+@require_role('admin')  # ⭐ Only admins can change roles
+def change_user_role(user_id):
+    """Change a user's role (admin only)"""
+    data = request.json
+    new_role = data.get('new_role')
+    
+    # Validate role
+    if new_role not in ['user', 'operator', 'admin']:
+        return {"error": "VALIDATION_INVALID_ROLE"}, 400
+    
+    # Find and update user
+    from app.models import db
+    user = db.users.find_one_and_update(
+        {'_id': ObjectId(user_id)},
+        {'$set': {'role': new_role, 'updated_at': datetime.utcnow()}},
+        return_document=True
+    )
+    
+    if not user:
+        return {"error": "NOT_FOUND_USER"}, 404
+    
+    # Log audit trail
+    admin_id = get_jwt()['sub']
+    db.audit_trail.insert_one({
+        'action': 'role_changed',
+        'admin_id': ObjectId(admin_id),
+        'user_id': ObjectId(user_id),
+        'new_role': new_role,
+        'old_role': user.get('role', 'user'),
+        'timestamp': datetime.utcnow()
+    })
+    
+    return {
+        'user_id': str(user['_id']),
+        'email': user['email'],
+        'role': user['role'],
+        'updated_at': user['updated_at'].isoformat()
+    }, 200
+```
+
+---
+
+## 🔐 Dynamic Access Management
+
+### Enable/Disable Access per Role
+
+While the static **RBAC matrix** defines base permissions, sometimes you need **runtime control** - enable/disable access without code changes.
+
+**Example:** Disable all user access during maintenance, or restrict delete operations for compliance.
+
+### Three-Level Permission System
+
+| Level | Example | Scope |
+|-------|---------|-------|
+| **Role-Based** | User can see jobs | All users with that role |
+| **Resource-Based** | Can access /jobs but not /admin | Specific API resource |
+| **Action-Based** | Can GET and PUT but not DELETE | HTTP method (GET/POST/PUT/DELETE) |
+| **Field-Based** | Operator can't modify salary_max | Restrict sensitive fields per role |
+
+### Quick Commands
+
+**View current permissions:**
+```bash
+curl -X GET "http://localhost:5000/api/v1/admin/permissions?role=operator" \
+  -H "Authorization: Bearer ADMIN_TOKEN"
+```
+
+**Restrict delete operations:**
+```bash
+curl -X PUT http://localhost:5000/api/v1/admin/permissions \
+  -H "Authorization: Bearer ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "role": "operator",
+    "resource": "jobs",
+    "actions": {"GET": true, "POST": false, "PUT": true, "DELETE": false},
+    "reason": "Compliance requirement"
+  }'
+```
+
+**Emergency: Disable entire role:**
+```bash
+curl -X POST http://localhost:5000/api/v1/admin/permissions/disable-role \
+  -H "Authorization: Bearer ADMIN_TOKEN" \
+  -d '{"role": "user", "reason": "Maintenance mode"}'
+```
+
+**View permission change history:**
+```bash
+curl -X GET "http://localhost:5000/api/v1/admin/permissions/audit-log?role=operator" \
+  -H "Authorization: Bearer ADMIN_TOKEN"
+```
+
+**See [README.md - Dynamic Access Management](../README.md#-dynamic-access-management-system)** for complete API documentation and code examples.
+
+---
+
 ## 🎯 Next Steps
 
 After deployment:
 
 1. **Create Admin User**
-   - Register via `/auth/register`
-   - Manually update role in MongoDB: `db.users.updateOne({email: "admin@example.com"}, {$set: {role: "admin"}})`
+   - Follow the bootstrap instructions in [👥 User & Role Management](#-user--role-management) section
+   - Use MongoDB direct insert or register + manual update methods
 
-2. **Post Test Job**
+2. **Create Operators** (Optional)
+   - Use the `PUT /api/v1/admin/users/<id>/role` endpoint from admin account
+   - See code examples in role management section
+
+3. **Post Test Job**
    - Login to admin panel: `/admin`
    - Create a test job vacancy
 

@@ -82,14 +82,14 @@ def create_app():
 
 - [ ] `rbac_service.py` - Role-based access control
   - Check user permissions
-  - Verify admin/user/moderator roles
+  - Verify admin/user/operator roles
   - Grant resource access based on role
 
 ### 3b. ⚡ Role-Based Access Control (RBAC) Matrix
 
 **Who can access what?**
 
-| Resource | Create | Read | Update | Delete | User | Admin | Moderator |
+| Resource | Create | Read | Update | Delete | User | Admin | Operator |
 |----------|--------|------|--------|--------|------|-------|---------- |
 | Own Profile | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ |
 | Other Profiles | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |

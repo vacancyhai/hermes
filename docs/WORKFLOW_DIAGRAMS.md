@@ -176,12 +176,22 @@
      ▼
 ┌──────────────────────┐
 │ Admin logs in        │
+│ (role: "admin")      │
 └────┬─────────────────┘
      │
      ▼
+┌────────────────────────┐
+│ 🔒 PERMISSION CHECK    │
+│ Is user.role = admin?  │
+└────┬───────────────────┘
+     │
+     ├─ NO → 403 Forbidden
+     │
+     ▼ YES
 ┌──────────────────────┐
 │ Navigate to          │
 │ Admin Dashboard      │
+│ (/api/v1/admin)      │
 └────┬─────────────────┘
      │
      ▼
@@ -227,6 +237,21 @@
 └────┬───────────────────────────────────┘
      │
      ▼
+┌──────────────────────────────────┐
+│ Submit form                      │
+│ POST /api/v1/admin/jobs          │
+└────┬───────────────────────────────┘
+     │
+     ▼
+┌──────────────────────────────────┐
+│ 🔒 PERMISSION CHECK              │
+│ @require_role('admin')           │
+│ Is user.role == 'admin'?         │
+└────┬───────────────────────────────┘
+     │
+     ├─ NO (403 Forbidden) → Return error
+     │
+     ▼ YES (admin verified)
 ┌──────────────────────┐
 │ Submit form          │
 └────┬─────────────────┘
@@ -1059,6 +1084,212 @@ Receive Result Notification → Check Result → Update Status:
                                                   ▼
                                           Share Feedback (Optional)
                                           Continue Job Search
+```
+
+---
+
+## 11. Role-Based Access Control (RBAC) Permission Enforcement
+
+```
+┌────────────────────────────────────────────────────────────────────┐
+│           PERMISSION CHECK MIDDLEWARE (Every API Request)          │
+└────────────────────────────────────────────────────────────────────┘
+
+REQUEST FLOW with PERMISSION CHECKS:
+════════════════════════════════════
+
+    ┌─────────────────┐
+    │ API Request     │
+    │ (with JWT token)│
+    └────────┬────────┘
+             │
+             ▼
+    ┌──────────────────────┐
+    │ Extract JWT token    │
+    │ from header:         │
+    │ Authorization:       │
+    │   Bearer <token>     │
+    └────────┬─────────────┘
+             │
+             ▼
+    ┌──────────────────────┐
+    │ Decode JWT           │
+    │ Extract claims:      │
+    │ - user_id            │
+    │ - email              │
+    │ - role ⭐            │
+    │ - exp                │
+    └────────┬─────────────┘
+             │
+             ▼
+    ┌──────────────────────┐
+    │ 🔒 Check endpoint    │
+    │ Is this protected?   │
+    └────────┬─────────────┘
+             │
+    ┌────────┴────────┐
+    │                 │
+    ▼ NO              ▼ YES
+ PUBLIC            PROTECTED
+    │                 │
+    │                 ▼
+    │         ┌──────────────────────┐
+    │         │ @require_role(...)   │
+    │         │ Check allowed roles  │
+    │         └────────┬─────────────┘
+    │                  │
+    │         ┌────────┴─────────┐
+    │         │                  │
+    │         ▼ ALLOWED          ▼ DENIED
+    │      CONTINUE          (403 FORBIDDEN)
+    │         │                  │
+    └─────────┼──────────────────┘
+              │
+              ▼
+    ┌──────────────────────┐
+    │ Execute endpoint     │
+    │ Return response      │
+    └──────────────────────┘
+
+ROLE-BASED ENDPOINT MATRIX:
+═══════════════════════════
+
+USER ROLE (👤) - Regular Job Seeker
+────────────────────────────────────
+✅ GET    /api/v1/jobs                    View all jobs
+✅ GET    /api/v1/jobs/<id>               View job details
+✅ GET    /api/v1/users/profile           View own profile
+✅ PUT    /api/v1/users/profile           Update own profile
+✅ GET    /api/v1/notifications           View own notifications
+✅ GET    /api/v1/applications            View own applications
+✅ POST   /api/v1/applications            Add to tracker
+
+❌ POST   /api/v1/admin/jobs              (Admin only) 403
+❌ PUT    /api/v1/admin/jobs/<id>         (Admin only) 403
+❌ DELETE /api/v1/admin/jobs/<id>         (Admin only) 403
+❌ GET    /api/v1/admin/users             (Admin only) 403
+❌ GET    /api/v1/admin/analytics         (Admin only) 403
+
+OPERATOR ROLE (🔧) - Content Reviewer
+──────────────────────────────────────
+✅ GET    /api/v1/jobs                    View all jobs
+✅ GET    /api/v1/jobs/<id>               View job details
+✅ PUT    /api/v1/jobs/<id>               Update job (review/approve)
+  └─→ Can modify: status, important_dates, requirements
+
+✅ GET    /api/v1/users/profile           View own profile
+✅ PUT    /api/v1/users/profile           Update own profile
+✅ GET    /api/v1/notifications           View own notifications
+✅ GET    /api/v1/applications            View own applications
+
+❌ POST   /api/v1/jobs                    (Admin only) 403
+❌ DELETE /api/v1/jobs/<id>               (Admin only) 403
+❌ GET    /api/v1/admin/users             (Admin only) 403
+❌ GET    /api/v1/admin/analytics         (Admin only) 403
+❌ POST   /api/v1/admin/jobs/<id>/toggle  (Admin only) 403
+
+ADMIN ROLE (👨‍💼) - Full Control
+──────────────────────────────────
+✅ GET    /api/v1/jobs                    View all jobs
+✅ GET    /api/v1/jobs/<id>               View job details
+✅ POST   /api/v1/jobs                    Create job
+✅ PUT    /api/v1/jobs/<id>               Update job (all fields)
+✅ DELETE /api/v1/jobs/<id>               Delete job
+
+✅ GET    /api/v1/users/profile           View own profile
+✅ PUT    /api/v1/users/profile           Update own profile
+✅ GET    /api/v1/admin/users             List all users
+✅ GET    /api/v1/admin/users/<id>        View user details
+✅ PUT    /api/v1/admin/users/<id>/role   Change user role
+✅ PUT    /api/v1/admin/users/<id>/status Suspend/activate user
+
+✅ GET    /api/v1/admin/analytics         View analytics
+✅ GET    /api/v1/admin/logs              View activity logs
+✅ GET    /api/v1/admin/jobs              List all jobs (admin panel)
+
+EXAMPLE PERMISSION CHECK IN CODE:
+═════════════════════════════════
+
+# backend/app/routes/jobs.py
+
+@bp.route('/<job_id>', methods=['PUT'])
+@jwt_required()
+@require_role('admin', 'operator')  # ⭐ Permission check
+def update_job(job_id):
+    claims = get_jwt()
+    user_role = claims['role']
+    
+    # Get the job
+    job = Job.objects(id=job_id).first()
+    if not job:
+        return {"error": "NOT_FOUND_JOB"}, 404
+    
+    # Get request data
+    data = request.json
+    
+    # If operator, restrict what fields can be updated
+    if user_role == 'operator':
+        # Operator can only update: status, description, important_dates
+        allowed_fields = ['status', 'description', 'important_dates']
+        for key in data:
+            if key not in allowed_fields:
+                return {
+                    "error": "FORBIDDEN_PERMISSION_DENIED",
+                    "message": f"Operators cannot modify '{key}'"
+                }, 403
+    
+    # Update the job
+    job.update(**data)
+    
+    return jsonify(job.to_dict()), 200
+
+
+@bp.route('/<job_id>', methods=['DELETE'])
+@jwt_required()
+@require_role('admin')  # ⭐ Only admin can delete
+def delete_job(job_id):
+    job = Job.objects(id=job_id).first()
+    if not job:
+        return {"error": "NOT_FOUND_JOB"}, 404
+    
+    job.delete()
+    return '', 204
+
+PERMISSION CHECK FLOW EXAMPLE:
+══════════════════════════════
+
+Request: PUT /api/v1/jobs/123
+Header: Authorization: Bearer eyJhbGc...[JWT]...
+Body: {"status": "APPROVED", "salary_max": 50000}
+
+Step 1: Extract JWT
+  user_id = "456"
+  email = "operator@example.com"
+  role = "operator"
+
+Step 2: Check Endpoint Protection
+  PUT /api/v1/jobs/<id> requires @require_role('admin', 'operator')
+
+Step 3: Check Permission
+  Is role='operator' in ['admin', 'operator']?
+  ✅ YES → Continue
+
+Step 4: Execute Business Logic
+  Check operator restrictions:
+  data = {"status": "APPROVED", "salary_max": 50000}
+  
+  allowed_fields = ['status', 'description', 'important_dates']
+  
+  "status" in allowed_fields? ✅ YES → Allow
+  "salary_max" in allowed_fields? ❌ NO → Reject
+  
+  Return: 403 Forbidden
+  "Operators cannot modify 'salary_max'"
+
+Step 5: Log the attempt
+  action = "UPDATE_JOB_ATTEMPTED"
+  result = "FORBIDDEN - unauthorized field"
+  stored in audit_trail collection
 ```
 
 ---
