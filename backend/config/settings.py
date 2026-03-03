@@ -19,10 +19,10 @@ class Config:
     # Redis
     REDIS_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
     
-    # JWT
+    # JWT (⚡ SECURITY: Short-lived access + long-lived refresh)
     JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY', 'jwt-secret-change-in-production')
-    JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=1)
-    JWT_REFRESH_TOKEN_EXPIRES = timedelta(days=30)
+    JWT_ACCESS_TOKEN_EXPIRES = timedelta(minutes=15)  # Short-lived: auto-refresh
+    JWT_REFRESH_TOKEN_EXPIRES = timedelta(days=7)     # Long-lived: user stays logged in
     
     # Email (Flask-Mail)
     MAIL_SERVER = os.getenv('MAIL_SERVER', 'smtp.gmail.com')
@@ -35,6 +35,41 @@ class Config:
     # Celery
     CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', 'redis://localhost:6379/0')
     CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', 'redis://localhost:6379/0')
+    CELERY_TASK_TRACK_STARTED = True
+    CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutes
+    CELERY_TASK_SOFT_TIME_LIMIT = 25 * 60  # 25 minutes
+    
+    # API Request Handling
+    REQUEST_TIMEOUT = 10  # seconds per API request
+    REQUEST_MAX_RETRIES = 3
+    REQUEST_RETRY_BACKOFF = [2, 4, 8]  # exponential backoff in seconds
+    
+    # Rate Limiting (⚡ Per-user + IP-based)
+    RATE_LIMIT_ENABLED = True
+    RATE_LIMIT_IP_PER_MINUTE = 100  # 100 requests per minute per IP
+    RATE_LIMIT_USER_PER_MINUTE = 1000  # 1000 requests per minute per authenticated user
+    RATE_LIMIT_LOGIN_ATTEMPTS = 5  # max 5 failed attempts before lockout
+    RATE_LIMIT_LOGIN_DURATION = 300  # 5 minutes lockout
+    
+    # MongoDB Connection Pooling
+    MONGO_MAX_POOL_SIZE = 50
+    MONGO_MIN_POOL_SIZE = 10
+    MONGO_WAIT_QUEUE_TIMEOUT = 10000  # milliseconds
+    MONGO_SOCKET_TIMEOUT = 5000  # milliseconds
+    MONGO_CONNECT_TIMEOUT = 10000  # milliseconds
+    
+    # Redis Connection
+    REDIS_SOCKET_CONNECT_TIMEOUT = 5  # seconds
+    REDIS_SOCKET_KEEPALIVE = True
+    REDIS_SOCKET_KEEPALIVE_OPTIONS = {'TCP_KEEPIDLE': 60}
+    REDIS_CONNECTION_POOL_MAX_CONNECTIONS = 50
+    
+    # Data Retention Policies (MongoDB TTL Indexes)
+    NOTIFICATION_RETENTION_DAYS = 90  # auto-delete old notifications
+    LOG_RETENTION_DAYS = 30  # auto-delete old application logs
+    EMAIL_EVENT_RETENTION_DAYS = 60  # keep email delivery logs
+    AUDIT_TRAIL_RETENTION_DAYS = 365  # compliance requirement
+    SEARCH_HISTORY_RETENTION_DAYS = 180  # 6 months
 
 def get_config():
     """Get configuration object"""

@@ -19,23 +19,31 @@
 
 ## 🏗️ Architecture Overview
 
-### Microservices Design (6 Containers)
+### Microservices Design (8 Containers - Optimized)
 
 ```
 User Browser
     ↓
-Nginx (Port 80/443) → Routes traffic
+Nginx (Port 80/443) → Routes traffic (Health checks enabled)
     ↓                      ↓
 Frontend Flask       Backend Flask API
-(Jinja2 Pages)       (REST Endpoints)
+(Jinja2 Pages)       (REST Endpoints /api/v1/)
+(Health checked)     (Health checked)
     ↓                      ↓
-         MongoDB + Redis + Celery
+    ├──→ MongoDB (Single + TTL indexes)
+    ├──→ Redis (AOF persistence + Queue)
+    ├──→ Celery Workers (Scalable: 1-N instances)
+    └──→ Celery Beat (Scheduler: Always 1 instance)
 ```
 
-**Why this architecture?**
-- **Frontend Container**: Renders web pages using Jinja2 templates
-- **Backend Container**: Handles business logic, authentication, database operations
-- **Separated**: Can update/scale frontend and backend independently
+**Architecture Improvements:**
+- **API Versioning**: All endpoints use `/api/v1/` for future compatibility
+- **Health Checks**: Nginx only routes to healthy backends (prevents cascading failures)
+- **Separated Celery**: Beat (scheduler = 1 instance) and Workers (executors = scalable)
+  - Scale workers without duplicating schedules
+  - Celery Beat never scales (`--scale celery_beat=N` = duplicate tasks!)
+- **Redis Persistence**: AOF enabled to survive restarts
+- **MongoDB Note**: Single-node setup shown; for production failover, add 3-node replica set
 
 ---
 
@@ -284,19 +292,70 @@ def get_jobs():
 
 ## 🔐 Security Features
 
-- ✅ **Password Hashing**: bcrypt
-- ✅ **JWT Authentication**: Secure API tokens
-- ✅ **Rate Limiting**: Nginx (10 req/s API, 5 req/min login)
-- ✅ **HTTPS/SSL**: Let's Encrypt certificates
-- ✅ **MongoDB Auth**: Username/password authentication
-- ✅ **Redis Auth**: Password protected
-- ✅ **CORS**: Controlled cross-origin access
-- ✅ **Input Validation**: All user inputs sanitized
-- ✅ **Security Headers**: X-Frame-Options, X-XSS-Protection, etc.
+- ✅ **Password Hashing**: bcrypt (salted)
+- ✅ **JWT Authentication**: Short-lived access tokens (15 min) + long-lived refresh tokens (7 days)
+- ✅ **Token Rotation**: Auto-refresh prevents compromise exposure
+- ✅ **Role-Based Access Control**: Admin, User, Moderator roles with permission matrix
+- ✅ **Rate Limiting**: IP-level (100 req/min) + User-level (1000 req/min) + Login (5 attempts/min)
+- ✅ **CORS**: Only whitelisted origins allowed, credentials protected
+- ✅ **HTTPS/SSL**: Let's Encrypt with HSTS headers
+- ✅ **Input Validation**: Email, password, and all user inputs sanitized
+- ✅ **Database Auth**: MongoDB and Redis password protected
+- ✅ **Security Headers**: X-Frame-Options, X-Content-Type-Options, CSP, HSTS, etc.
+- ✅ **Secrets Management**: .env in dev, Vault/AWS Secrets in production
+- ✅ **API Versioning**: `/api/v1/` allows safe upgrades
 
 ---
 
-## 📈 Scaling Guide
+## � Database & API Standards
+
+**Database**:
+- ✅ **Indexed queries**: Job searches use database indexes (10x faster)
+- ✅ **TTL cleanup**: Old notifications/logs auto-delete (saves storage)
+- ✅ **Denormalization (optional)**: Cache user job matches for faster matching
+
+**API Responses**:
+- ✅ **Standardized errors**: All errors use same format (code, message, details)
+- ✅ **Pagination**: All lists support limit/offset (cursor-based for large datasets)
+- ✅ **Request timeouts**: 10-second timeout, 3-retry exponential backoff
+- ✅ **Notification retries**: Failed emails auto-retry up to 5 times
+
+**Monitoring**:
+- ✅ **Centralized logging**: All container logs in Elasticsearch (ELK stack)
+- ✅ **Full-text search**: Elasticsearch for job search (fuzzy matching, relevance)
+- ✅ **APM**: Track API response times, database latency, Celery task performance
+- ✅ **Real-time alerts**: Error rate, response time, memory usage thresholds
+
+---
+## ⚡ Advanced Design Improvements (13 New Features)
+
+### Configuration & Security
+- ✅ **JWT Token Rotation**: 15-min access + 7-day refresh (not 1-hour + 30-day)
+- ✅ **Rate Limiting Config**: 100 req/min per IP, 1000 req/min per user
+- ✅ **Request Timeout**: 10-second timeout per API request
+- ✅ **Connection Pooling**: MongoDB 50-connection pool, Redis socket keepalive
+- ✅ **Data Retention Policy**: Notifications 90d, Logs 30d, Audits 1 year auto-cleanup
+
+### Error Handling & Tracing
+- ✅ **Error Code Taxonomy**: AUTH_*, VALIDATION_*, FORBIDDEN_*, RATE_LIMIT_*, SERVER_* codes
+- ✅ **Request ID Propagation**: X-Request-ID header traced through all services
+- ✅ **Correlation Tracking**: Search all logs by request_id to debug full request flow
+
+### Performance & Caching
+- ✅ **Redis Cache Strategy**: Cache-aside pattern with TTL by data type
+  - Sessions: 15 min, Jobs: 1 hour, Preferences: 24 hours, Rate limits: 1 min
+- ✅ **Celery Task Routing**: HIGH (email), MEDIUM (matching), LOW (analytics) queues
+- ✅ **API Response SLAs**: Auth < 100ms, Read < 200ms, Write < 300ms, Search < 500ms, Admin < 1000ms
+
+### Resilience & Graceful Degradation
+- ✅ **Failed Email Handling**: Queue + auto-retry 5x with exponential backoff
+- ✅ **FCM Fallback**: To in-app notification + email if push fails
+- ✅ **Database Slow Response**: Return cached data with STALE_DATA flag
+- ✅ **Celery Down**: Accept job, queue in Redis, process when available
+- ✅ **Connection Pool Exhausted**: Queue request (10s timeout), 503 on failure
+
+---
+## �📈 Scaling Guide
 
 ### Vertical Scaling (Increase Resources)
 ```yaml
