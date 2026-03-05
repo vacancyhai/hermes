@@ -27,6 +27,13 @@ This project contains comprehensive documentation across multiple files. Use thi
 - Directory explanations
 - Best for: Understanding project organization
 
+**👉 [SERVER_REQUIREMENTS.md](./SERVER_REQUIREMENTS.md)** ⚡ NEW!
+- Server specifications by scale (Dev, Small, Medium, Large)
+- Container resource allocation
+- Storage and bandwidth calculations
+- Cloud provider comparison
+- Best for: Infrastructure planning and deployment
+
 ---
 
 ## 📖 Main Documentation
@@ -96,7 +103,39 @@ This project contains comprehensive documentation across multiple files. Use thi
 
 ---
 
-### 3. **[WORKFLOW_DIAGRAMS.md](./WORKFLOW_DIAGRAMS.md)** - Visual Flows
+### 3. **[SERVER_REQUIREMENTS.md](./SERVER_REQUIREMENTS.md)** - Infrastructure Planning
+**What's inside:**
+- ✅ Server specifications by environment (Dev, Small, Medium, Large, Enterprise)
+- ✅ Container resource allocation (8 Docker containers breakdown)
+- ✅ CPU, RAM, Storage, and Bandwidth requirements
+- ✅ Database growth estimates (15 MongoDB collections)
+- ✅ Redis memory management strategy
+- ✅ Celery worker scaling guidelines
+- ✅ Cloud provider comparison (Hostinger, DigitalOcean, AWS, Hetzner, etc.)
+- ✅ Cost estimates by scale ($40-$1000+/month)
+- ✅ Performance benchmarks and load testing
+- ✅ Backup strategy and storage requirements
+- ✅ Monitoring and alerting thresholds
+- ✅ Security requirements (firewall, SSL, hardening)
+- ✅ Deployment strategy (3-phase scaling plan)
+
+**Best for:** Infrastructure planning, server sizing, cost estimation, scaling decisions
+
+**Sections:**
+1. Quick Reference Table → Specs by environment
+2. Container Resource Breakdown → 8 containers detailed
+3. Environment Requirements → Dev to Enterprise specs
+4. Storage Requirements → Database growth and backups
+5. Network Bandwidth → Usage calculations
+6. Cloud Provider Comparison → Hostinger, DO, AWS, etc.
+7. Performance Optimization → MongoDB, Redis, Celery
+8. Monitoring Setup → Metrics and alerts
+9. Security Hardening → Firewall, SSL, best practices
+10. Recommended Deployment Strategy → 3-phase scaling
+
+---
+
+### 4. **[WORKFLOW_DIAGRAMS.md](./WORKFLOW_DIAGRAMS.md)** - Visual Flows
 **What's inside:**
 - ✅ 10 detailed ASCII workflow diagrams
 - ✅ Overall system architecture (microservices with all containers)
@@ -126,7 +165,7 @@ This project contains comprehensive documentation across multiple files. Use thi
 
 ---
 
-### 4. **[JINJA2_TEMPLATES_GUIDE.md](./JINJA2_TEMPLATES_GUIDE.md)** - Frontend Guide
+### 5. **[JINJA2_TEMPLATES_GUIDE.md](./JINJA2_TEMPLATES_GUIDE.md)** - Frontend Guide
 **What's inside:**
 - ✅ Complete Flask Jinja2 template architecture
 - ✅ Base template (base.html) with block structure
@@ -160,10 +199,16 @@ This project contains comprehensive documentation across multiple files. Use thi
 
 ### "I want to..."
 
+#### Plan infrastructure and choose a server
+1. Start → [SERVER_REQUIREMENTS.md](./SERVER_REQUIREMENTS.md) (Specs by scale)
+2. Compare → [SERVER_REQUIREMENTS.md](./SERVER_REQUIREMENTS.md) (Cloud provider comparison)
+3. Calculate → [SERVER_REQUIREMENTS.md](./SERVER_REQUIREMENTS.md) (Storage and bandwidth needs)
+
 #### Deploy the application
-1. Start → [PROJECT_SUMMARY.md](./PROJECT_SUMMARY.md) (Quick start)
-2. Then → [DOCKER_DEPLOYMENT.md](./DOCKER_DEPLOYMENT.md) (Complete setup)
-3. Reference → [README.md](./README.md) (Environment variables)
+1. Plan → [SERVER_REQUIREMENTS.md](./SERVER_REQUIREMENTS.md) (Server requirements)
+2. Start → [PROJECT_SUMMARY.md](./PROJECT_SUMMARY.md) (Quick start)
+3. Then → [DOCKER_DEPLOYMENT.md](./DOCKER_DEPLOYMENT.md) (Complete setup)
+4. Reference → [README.md](./README.md) (Environment variables)
 
 #### Understand the system design
 1. Start → [WORKFLOW_DIAGRAMS.md](./WORKFLOW_DIAGRAMS.md) (Visual overview)
@@ -196,13 +241,14 @@ This project contains comprehensive documentation across multiple files. Use thi
 
 | File | Length | Depth | Best For |
 |------|--------|-------|----------|
+| **QUICKSTART.md** | Short | Practical | 5-minute setup |
 | **PROJECT_SUMMARY.md** | Short | Overview | Quick start, first-time users |
+| **SERVER_REQUIREMENTS.md** | Long | Technical | Infrastructure planning, server sizing |
 | **README.md** | Long | Complete | Reference, API docs, deployment |
 | **PROJECT_STRUCTURE.md** | Long | Complete | Folder structure, architecture |
 | **DOCKER_DEPLOYMENT.md** | Medium | Technical | DevOps, containerization |
 | **WORKFLOW_DIAGRAMS.md** | Medium | Visual | Understanding flows, design |
 | **JINJA2_TEMPLATES_GUIDE.md** | Medium | Frontend | UI development, templates |
-| **QUICKSTART.md** | Short | Practical | 5-minute setup |
 
 ---
 
