@@ -2,7 +2,17 @@
 
 ## Microservices Architecture with Separated Containers
 
-This deployment uses **6 Docker containers** with separated Flask frontend and backend for better scalability and maintenance.
+This deployment uses **8 Docker containers (Optimized)** with separated Flask frontend and backend for better scalability and maintenance.
+
+**Container Breakdown:**
+1. **Nginx** - Reverse proxy with health checks
+2. **Frontend** - Flask + Jinja2 UI
+3. **Backend** - Flask REST API (/api/v1/)
+4. **MongoDB** - Database with TTL indexes
+5. **Redis** - Cache + Queue (AOF persistence)
+6. **Celery Worker** - Background task executor (scalable: 1-N)
+7. **Celery Beat** - Task scheduler (always 1 instance)
+8. **Monitoring** - Health checks & logging (optional)
 
 ## Why Docker + Microservices for This Project?
 
@@ -88,11 +98,11 @@ This deployment uses **6 Docker containers** with separated Flask frontend and b
 ### Container Communication Flow
 
 1. **User Request** → Nginx (Port 80/443)
-2. **Nginx Routes**:
-   - `/api/*` → Backend Container (Port 5000)
-   - `/*` (pages) → Frontend Container (Port 8080)
+2. **Nginx Routes** (with health checks):
+   - `/api/v1/*` → Backend Container (Port 5000) - Only if healthy
+   - `/*` (pages) → Frontend Container (Port 8080) - Only if healthy
    - `/static/*` → Frontend Container static files
-3. **Frontend** → Calls Backend API via internal network: `http://backend:5000/api`
+3. **Frontend** → Calls Backend API via internal network: `http://backend:5000/api/v1`
 4. **Backend** → Accesses MongoDB and Redis
 5. **Celery Worker** → Processes background tasks from Redis queue (separate worker containers)
 6. **Celery Beat** → Triggers scheduled tasks (separate Beat container, scales independently)
@@ -209,9 +219,11 @@ services:
       timeout: 5s
       retries: 5
 
-  # Redis Cache & Broker
+  # Redis Cache & Broker with AOF Persistence
+  # ⚡ AOF (Append-Only File) ensures data survives Redis restarts
   redis:
     image: redis:7-alpine
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
     container_name: sarkari_redis
     restart: unless-stopped
     # ⚡ PERSISTENCE: Redis needs AOF persistence for task queue reliability
@@ -379,6 +391,7 @@ With 90-day TTL:  Only 300,000 notifications at any time
       test: ["CMD", "curl", "-f", "http://localhost:5000/api/v1/health"]
       interval: 30s
       timeout: 10s
+      start_period: 40s
       retries: 3
     
     # ⚡ SECRETS MANAGEMENT - Store sensitive data securely
@@ -399,7 +412,7 @@ With 90-day TTL:  Only 300,000 notifications at any time
     environment:
       - FLASK_ENV=production
       - SECRET_KEY=${SECRET_KEY}
-      - BACKEND_API_URL=http://backend:5000/api
+      - BACKEND_API_URL=http://backend:5000/api/v1  # ⚡ API v1
     volumes:
       - ./frontend:/app
     depends_on:
@@ -410,9 +423,10 @@ With 90-day TTL:  Only 300,000 notifications at any time
       - sarkari_network
     # ⚡ Health check for frontend container
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 30s
       timeout: 10s
+      start_period: 40s
       retries: 3
 
   # ⚡ CELERY WORKER - SEPARATES task execution from scheduling
@@ -428,10 +442,11 @@ With 90-day TTL:  Only 300,000 notifications at any time
     command: celery -A celery_worker.celery worker --loglevel=info --concurrency=2
     environment:
       - FLASK_ENV=production
-      - MONGO_URI=mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongodb:27017/sarkari_path?authSource=sarkari_path
+      - MONGO_URI=mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongodb:27017/sarkari_path?authSource=sarkari_path&maxPoolSize=50
       - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/1
+      - CELERY_TASK_ROUTES={"high":"email","medium":"matching","low":"analytics"}  # ⚡ Task routing
       - MAIL_SERVER=${MAIL_SERVER}
       - MAIL_PORT=${MAIL_PORT}
       - MAIL_USERNAME=${MAIL_USERNAME}
@@ -632,6 +647,223 @@ MONGO_URI=mongodb://user:pass@mongodb1:27017,mongodb2:27017,mongodb3:27017/sarka
 
 **Current Development Setup**: Single-node is fine, but add this before going to production.
 
+---
+
+### 4b. ⚡ MongoDB Connection Pooling Configuration
+
+**Why Connection Pooling?** Creating new database connections is expensive (100-500ms). Connection pools reuse existing connections.
+
+**Configuration in Environment Variables:**
+```bash
+# Development (low traffic)
+MONGO_URI=mongodb://user:pass@mongodb:27017/sarkari_path?authSource=sarkari_path&maxPoolSize=10&minPoolSize=2
+
+# Production (high traffic)
+MONGO_URI=mongodb://user:pass@mongodb:27017/sarkari_path?authSource=sarkari_path&maxPoolSize=50&minPoolSize=10&maxIdleTimeMS=60000
+```
+
+**Connection Pool Parameters:**
+- `maxPoolSize=50` - Maximum 50 concurrent connections
+- `minPoolSize=10` - Always keep 10 connections ready
+- `maxIdleTimeMS=60000` - Close idle connections after 60 seconds
+- `waitQueueTimeoutMS=5000` - Wait max 5 seconds for available connection
+
+**Benefits:**
+- ✅ Faster query execution (no connection overhead)
+- ✅ Prevents connection exhaustion
+- ✅ Automatic connection recovery
+- ✅ Better resource utilization
+
+**Monitoring Connection Pool:**
+```python
+# backend/app/utils/db_monitor.py
+from pymongo import monitoring
+
+class ConnectionPoolLogger(monitoring.ConnectionPoolListener):
+    def pool_created(self, event):
+        print(f"Connection pool created: {event.address}")
+    
+    def connection_checked_out(self, event):
+        print(f"Connection checked out: Pool size: {event.connection_id}")
+    
+    def connection_checked_in(self, event):
+        print(f"Connection returned to pool")
+
+# Register monitor
+monitoring.register(ConnectionPoolLogger())
+```
+
+---
+
+### 4c. ⚡ API Response Standards & Error Handling
+
+**Standardized Error Response Format:**
+All API errors follow this structure for consistent frontend handling:
+
+```json
+{
+  "error": {
+    "code": "AUTH_INVALID_TOKEN",
+    "message": "Authentication token has expired",
+    "details": {
+      "expired_at": "2026-03-05T10:30:00Z",
+      "token_type": "access_token"
+    },
+    "request_id": "abc123-def456-ghi789",
+    "timestamp": "2026-03-05T10:35:00Z"
+  }
+}
+```
+
+**Error Code Taxonomy:**
+```
+AUTH_*         - Authentication errors (invalid token, expired session)
+VALIDATION_*   - Input validation errors (invalid email, missing field)
+FORBIDDEN_*    - Authorization errors (insufficient permissions)
+NOT_FOUND_*    - Resource not found (user, job, notification)
+RATE_LIMIT_*   - Rate limiting errors (too many requests)
+SERVER_*       - Internal server errors (database down, service unavailable)
+```
+
+**API Response SLAs (Service Level Agreements):**
+```
+Auth endpoints (login/register):     < 100ms (p95)
+Read endpoints (GET /jobs):          < 200ms (p95)
+Write endpoints (POST /jobs):        < 300ms (p95)
+Search endpoints (search with filters): < 500ms (p95)
+Admin endpoints (analytics):         < 1000ms (p95)
+```
+
+**Request ID Propagation:**
+Every request gets a unique ID for distributed tracing:
+
+```python
+# backend/app/middleware/request_id.py
+import uuid
+from flask import request, g
+
+@app.before_request
+def assign_request_id():
+    # Use client-provided ID or generate new one
+    g.request_id = request.headers.get('X-Request-ID', str(uuid.uuid4()))
+    g.start_time = time.time()
+
+@app.after_request
+def add_request_id_header(response):
+    # Add request ID to response for correlation
+    response.headers['X-Request-ID'] = g.request_id
+    response.headers['X-Response-Time'] = f"{(time.time() - g.start_time) * 1000:.2f}ms"
+    return response
+```
+
+**Graceful Degradation Patterns:**
+```python
+# backend/app/services/job_service.py
+def get_jobs(limit=20):
+    try:
+        # Try Redis cache first
+        cached = redis.get(f"jobs:limit_{limit}")
+        if cached:
+            return json.loads(cached)
+    except redis.ConnectionError:
+        # Cache unavailable, continue to database
+        logger.warning("Redis unavailable, falling back to database")
+    
+    try:
+        # Load from MongoDB
+        jobs = db.jobs.find().limit(limit)
+        
+        # Try to cache for next time
+        try:
+            redis.setex(f"jobs:limit_{limit}", 3600, json.dumps(jobs))
+        except redis.ConnectionError:
+            pass  # Cache write failed, but we have the data
+        
+        return jobs
+    except pymongo.errors.ServerSelectionTimeoutError:
+        # Database is down - return stale cache if available
+        stale_cache = redis.get(f"jobs:limit_{limit}:backup")
+        if stale_cache:
+            return {
+                "data": json.loads(stale_cache),
+                "warning": "Using cached data (database temporarily unavailable)"
+            }
+        raise ServiceUnavailable("Database connection failed")
+```
+
+**Connection Pool Exhausted Handling:**
+```python
+# backend/app/utils/db_handler.py
+from pymongo.errors import ServerSelectionTimeoutError
+import time
+
+def execute_with_retry(operation, max_retries=3):
+    for attempt in range(max_retries):
+        try:
+            return operation()
+        except ServerSelectionTimeoutError:
+            if attempt == max_retries - 1:
+                raise ServiceUnavailable("Database connection pool exhausted")
+            # Exponential backoff: 100ms, 200ms, 400ms
+            time.sleep(0.1 * (2 ** attempt))
+            continue
+```
+
+---
+
+### 4d. ⚡ Redis Socket Keepalive & Connection Management
+
+**Redis Configuration for Production:**
+```yaml
+# In docker-compose.yml redis service
+redis:
+  image: redis:7-alpine
+  command: >
+    redis-server
+    --appendonly yes
+    --requirepass ${REDIS_PASSWORD}
+    --maxmemory 512mb
+    --maxmemory-policy allkeys-lru
+    --tcp-keepalive 60
+    --timeout 300
+```
+
+**Backend Redis Client Configuration:**
+```python
+# backend/config/redis_config.py
+import redis
+from redis.connection import ConnectionPool
+
+# Production-grade connection pool
+redis_pool = ConnectionPool(
+    host='redis',
+    port=6379,
+    password=os.getenv('REDIS_PASSWORD'),
+    db=0,
+    max_connections=50,
+    socket_keepalive=True,
+    socket_keepalive_options={
+        socket.TCP_KEEPIDLE: 60,    # Start keepalive after 60s idle
+        socket.TCP_KEEPINTVL: 10,   # Send keepalive every 10s
+        socket.TCP_KEEPCNT: 3        # Close after 3 failed keepalives
+    },
+    socket_connect_timeout=5,
+    socket_timeout=5,
+    retry_on_timeout=True,
+    health_check_interval=30  # Check connection health every 30s
+)
+
+redis_client = redis.Redis(connection_pool=redis_pool)
+```
+
+**Benefits:**
+- ✅ Prevents "connection reset by peer" errors
+- ✅ Detects dead connections before use
+- ✅ Automatic connection recovery
+- ✅ Reduces Redis memory usage (closes idle connections)
+
+---
+
 ### 5. nginx/nginx.conf (Nginx Reverse Proxy)
 
 ```nginx
@@ -695,8 +927,9 @@ http {
         add_header X-XSS-Protection "1; mode=block" always;
         add_header Referrer-Policy "no-referrer-when-downgrade" always;
 
-        # API requests → Backend container
-        location /api/ {
+        # API v1 requests → Backend container
+        # ⚡ Request ID propagation for correlation tracking
+        location /api/v1/ {
             limit_req zone=api_limit burst=20 nodelay;
             
             proxy_pass http://backend_api;
@@ -704,12 +937,14 @@ http {
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto $scheme;
+            # ⚡ Request ID for distributed tracing
+            proxy_set_header X-Request-ID $request_id;
             proxy_redirect off;
             
-            # Timeouts
-            proxy_connect_timeout 60s;
-            proxy_send_timeout 60s;
-            proxy_read_timeout 60s;
+            # Timeouts (⚡ 10-second timeout per API request for SLA compliance)
+            proxy_connect_timeout 10s;
+            proxy_send_timeout 10s;
+            proxy_read_timeout 10s;
         }
 
         # Static files from frontend
@@ -848,13 +1083,21 @@ FLASK_APP=run.py
 FLASK_ENV=production
 SECRET_KEY=your-secret-key-min-32-chars-change-this
 
-# MongoDB Configuration
+# API Configuration
+API_VERSION=v1
+
+# MongoDB Configuration with Connection Pooling
 MONGO_ROOT_PASSWORD=strong_root_password_change_this
 MONGO_USER=sarkaripath_user
 MONGO_PASSWORD=strong_db_password_change_this
+# ⚡ Connection pool settings for production
+MONGO_MAX_POOL_SIZE=50
+MONGO_MIN_POOL_SIZE=10
 
-# Redis Configuration
+# Redis Configuration with Socket Keepalive
 REDIS_PASSWORD=strong_redis_password_change_this
+REDIS_MAX_CONNECTIONS=50
+REDIS_SOCKET_KEEPALIVE=true
 
 # Flask-Mail Configuration
 MAIL_SERVER=smtp.gmail.com
@@ -864,18 +1107,47 @@ MAIL_USERNAME=your-email@gmail.com
 MAIL_PASSWORD=your-app-specific-password
 MAIL_DEFAULT_SENDER=noreply@yourdomain.com
 
-# Firebase Configuration (Optional)
+# Firebase Configuration (Optional - for push notifications)
 FIREBASE_CREDENTIALS_PATH=/app/firebase-credentials.json
 
-# JWT Configuration
+# JWT Configuration (⚡ Updated for security)
 JWT_SECRET_KEY=jwt-secret-key-different-from-secret-key
-JWT_ACCESS_TOKEN_EXPIRES=3600
+JWT_ACCESS_TOKEN_EXPIRES=900  # 15 minutes (not 3600 = 1 hour)
+JWT_REFRESH_TOKEN_EXPIRES=604800  # 7 days (not 2592000 = 30 days)
+
+# Rate Limiting Configuration
+RATE_LIMIT_PER_IP=100  # requests per minute per IP
+RATE_LIMIT_PER_USER=1000  # requests per minute per authenticated user
+RATE_LIMIT_LOGIN=5  # login attempts per minute
+
+# Timeout Configuration
+API_REQUEST_TIMEOUT=10  # seconds per API request
+DB_CONNECTION_TIMEOUT=5  # seconds for database connection
+REDIS_SOCKET_TIMEOUT=5  # seconds for Redis operations
+
+# Data Retention Policy (in seconds)
+NOTIFICATION_TTL=7776000  # 90 days
+LOG_TTL=2592000  # 30 days
+AUDIT_TTL=31536000  # 1 year
+
+# Celery Configuration
+CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
+CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/1
+CELERY_TASK_SERIALIZER=json
+CELERY_RESULT_SERIALIZER=json
+CELERY_ACCEPT_CONTENT=json
+CELERY_TIMEZONE=Asia/Kolkata
 
 # Admin Configuration
 ADMIN_EMAIL=admin@yourdomain.com
 
 # Application URL
 APP_URL=https://yourdomain.com
+
+# Monitoring & Logging
+LOG_LEVEL=INFO
+ENABLE_REQUEST_LOGGING=true
+ENABLE_PERFORMANCE_MONITORING=true
 ```
 
 ---
@@ -1223,6 +1495,360 @@ services:
     volumes:
       - .:/app
 ```
+
+---
+
+---
+
+## 🔐 Security Features Implementation
+
+This section details all security measures implemented in the Docker deployment as per PROJECT_SUMMARY.md.
+
+### 1. Password Hashing & Authentication
+
+**bcrypt with Salt:**
+```python
+# backend/app/utils/auth.py
+from werkzeug.security import generate_password_hash, check_password_hash
+
+def hash_password(password):
+    # bcrypt automatically adds random salt
+    return generate_password_hash(password, method='bcrypt')
+
+def verify_password(password, password_hash):
+    return check_password_hash(password_hash, password)
+```
+
+### 2. JWT Token Rotation Strategy
+
+**Short-lived Access Tokens + Long-lived Refresh Tokens:**
+
+```python
+# backend/app/routes/auth.py
+from flask_jwt_extended import create_access_token, create_refresh_token
+
+@bp.route('/api/v1/auth/login', methods=['POST'])
+def login():
+    user = authenticate_user(request.json)
+    
+    # ⚡ Access token: 15 minutes (not 1 hour)
+    access_token = create_access_token(
+        identity=str(user['_id']),
+        expires_delta=timedelta(minutes=15)
+    )
+    
+    # ⚡ Refresh token: 7 days (not 30 days)
+    refresh_token = create_refresh_token(
+        identity=str(user['_id']),
+        expires_delta=timedelta(days=7)
+    )
+    
+    return {
+        'access_token': access_token,
+        'refresh_token': refresh_token,
+        'expires_in': 900  # 15 minutes in seconds
+    }
+
+@bp.route('/api/v1/auth/refresh', methods=['POST'])
+@jwt_required(refresh=True)
+def refresh():
+    current_user = get_jwt_identity()
+    
+    # Issue new access token
+    new_access_token = create_access_token(identity=current_user)
+    
+    return {'access_token': new_access_token}
+```
+
+**Token Rotation Benefits:**
+- ✅ Reduces exposure window (compromised token invalid in 15 min)
+- ✅ Prevents long-term token theft
+- ✅ Automatic refresh for active users
+- ✅ Forces re-authentication after 7 days
+
+### 3. Role-Based Access Control (RBAC)
+
+**Permission Decorator:**
+```python
+# backend/app/middleware/rbac.py
+from functools import wraps
+from flask_jwt_extended import get_jwt
+
+def require_role(*allowed_roles):
+    def decorator(fn):
+        @wraps(fn)
+        def wrapper(*args, **kwargs):
+            claims = get_jwt()
+            user_role = claims.get('role', 'user')
+            
+            if user_role not in allowed_roles:
+                return {'error': 'FORBIDDEN_INSUFFICIENT_PERMISSIONS'}, 403
+            
+            return fn(*args, **kwargs)
+        return wrapper
+    return decorator
+
+# Usage:
+@bp.route('/api/v1/admin/users', methods=['GET'])
+@jwt_required()
+@require_role('admin')
+def list_users():
+    # Only admins can access
+    pass
+```
+
+**Permission Matrix:**
+| Endpoint | User | Operator | Admin |
+|----------|------|----------|-------|
+| GET /api/v1/jobs | ✅ | ✅ | ✅ |
+| POST /api/v1/jobs | ❌ | ❌ | ✅ |
+| PUT /api/v1/jobs/:id | ❌ | ✅ (limited) | ✅ |
+| DELETE /api/v1/jobs/:id | ❌ | ❌ | ✅ |
+| GET /api/v1/admin/* | ❌ | ❌ | ✅ |
+
+### 4. Rate Limiting (Multi-Layer)
+
+**Nginx Layer (IP-based):**
+```nginx
+# In nginx.conf
+http {
+    # ⚡ 100 requests per minute per IP
+    limit_req_zone $binary_remote_addr zone=ip_limit:10m rate=100r/m;
+    
+    # ⚡ 1000 requests per minute per authenticated user
+    limit_req_zone $http_x_user_id zone=user_limit:10m rate=1000r/m;
+    
+    # ⚡ 5 login attempts per minute
+    limit_req_zone $binary_remote_addr zone=login_limit:10m rate=5r/m;
+    
+    server {
+        location /api/v1/ {
+            limit_req zone=ip_limit burst=20 nodelay;
+            limit_req zone=user_limit burst=50 nodelay;
+        }
+        
+        location /api/v1/auth/login {
+            limit_req zone=login_limit burst=2 nodelay;
+        }
+    }
+}
+```
+
+**Application Layer (Flask-Limiter):**
+```python
+# backend/app/__init__.py
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+
+limiter = Limiter(
+    app=app,
+    key_func=get_remote_address,
+    storage_uri=f"redis://:{os.getenv('REDIS_PASSWORD')}@redis:6379/2",
+    default_limits=["1000 per hour"]
+)
+
+# Per-endpoint limits
+@bp.route('/api/v1/auth/login', methods=['POST'])
+@limiter.limit("5 per minute")
+def login():
+    pass
+
+@bp.route('/api/v1/jobs/search', methods=['GET'])
+@limiter.limit("30 per minute")
+def search_jobs():
+    pass
+```
+
+### 5. CORS (Cross-Origin Resource Sharing)
+
+```python
+# backend/app/__init__.py
+from flask_cors import CORS
+
+CORS(app, resources={
+    r"/api/*": {
+        "origins": [
+            "https://yourdomain.com",
+            "https://www.yourdomain.com"
+        ],
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization", "X-Request-ID"],
+        "expose_headers": ["X-Request-ID", "X-Response-Time"],
+        "supports_credentials": True,
+        "max_age": 3600
+    }
+})
+```
+
+### 6. Security Headers (Nginx)
+
+```nginx
+# In nginx.conf - HTTPS server block
+add_header X-Frame-Options "SAMEORIGIN" always;
+add_header X-Content-Type-Options "nosniff" always;
+add_header X-XSS-Protection "1; mode=block" always;
+add_header Referrer-Policy "no-referrer-when-downgrade" always;
+add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';" always;
+add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
+add_header Permissions-Policy "geolocation=(), microphone=(), camera=()" always;
+```
+
+### 7. Input Validation & Sanitization
+
+```python
+# backend/app/validators/job_validator.py
+from marshmallow import Schema, fields, validate, validates, ValidationError
+
+class JobCreateSchema(Schema):
+    title = fields.Str(required=True, validate=validate.Length(min=5, max=200))
+    organization = fields.Str(required=True, validate=validate.Length(min=2, max=100))
+    vacancies = fields.Int(required=True, validate=validate.Range(min=1, max=100000))
+    salary_min = fields.Int(validate=validate.Range(min=0))
+    salary_max = fields.Int(validate=validate.Range(min=0))
+    
+    @validates('salary_max')
+    def validate_salary_range(self, value):
+        if self.salary_min and value < self.salary_min:
+            raise ValidationError("salary_max must be >= salary_min")
+
+# Usage:
+@bp.route('/api/v1/jobs', methods=['POST'])
+@jwt_required()
+@require_role('admin')
+def create_job():
+    schema = JobCreateSchema()
+    try:
+        validated_data = schema.load(request.json)
+    except ValidationError as err:
+        return {'error': 'VALIDATION_FAILED', 'details': err.messages}, 400
+    
+    job = Job.create(validated_data)
+    return job, 201
+```
+
+### 8. Database Security
+
+**MongoDB Authentication:**
+```yaml
+# In docker-compose.yml
+mongodb:
+  environment:
+    MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER}
+    MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
+```
+
+**Redis Authentication:**
+```yaml
+# In docker-compose.yml
+redis:
+  command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+```
+
+**Connection String Security:**
+```python
+# Never log connection strings
+import logging
+logging.getLogger('pymongo').setLevel(logging.WARNING)
+
+# Use environment variables, never hardcode
+MONGO_URI = os.getenv('MONGO_URI')  # ✅
+# MONGO_URI = "mongodb://user:pass@host"  # ❌ NEVER DO THIS
+```
+
+### 9. Secrets Management
+
+**Development: .env file**
+```bash
+# .env (added to .gitignore)
+SECRET_KEY=development-secret-key
+JWT_SECRET_KEY=jwt-secret-key
+# NEVER commit this file to git
+```
+
+**Production: HashiCorp Vault (Recommended)**
+```python
+# backend/app/utils/vault.py
+import hvac
+
+client = hvac.Client(url='http://vault:8200', token=os.getenv('VAULT_TOKEN'))
+
+# Read secrets from Vault
+secret = client.secrets.kv.v2.read_secret_version(path='sarkari_path/prod')
+MONGO_PASSWORD = secret['data']['data']['mongo_password']
+```
+
+**Alternative: AWS Secrets Manager**
+```python
+import boto3
+
+client = boto3.client('secretsmanager', region_name='us-east-1')
+response = client.get_secret_value(SecretId='sarkari_path/mongo_password')
+MONGO_PASSWORD = response['SecretString']
+```
+
+### 10. Audit Logging
+
+```python
+# backend/app/middleware/audit.py
+from functools import wraps
+from flask_jwt_extended import get_jwt_identity
+
+def audit_log(action):
+    def decorator(fn):
+        @wraps(fn)
+        def wrapper(*args, **kwargs):
+            user_id = get_jwt_identity()
+            request_id = g.get('request_id')
+            
+            # Log before action
+            db.audit_trail.insert_one({
+                'user_id': user_id,
+                'action': action,
+                'request_id': request_id,
+                'ip_address': request.remote_addr,
+                'user_agent': request.headers.get('User-Agent'),
+                'timestamp': datetime.utcnow(),
+                'status': 'initiated'
+            })
+            
+            # Execute action
+            result = fn(*args, **kwargs)
+            
+            # Log after action
+            db.audit_trail.update_one(
+                {'request_id': request_id},
+                {'$set': {'status': 'completed'}}
+            )
+            
+            return result
+        return wrapper
+    return decorator
+
+# Usage:
+@bp.route('/api/v1/admin/users/<user_id>/role', methods=['PUT'])
+@jwt_required()
+@require_role('admin')
+@audit_log('change_user_role')
+def change_user_role(user_id):
+    pass
+```
+
+### Security Checklist
+
+Before deploying to production, verify:
+
+- [ ] All secrets moved to environment variables (no hardcoded passwords)
+- [ ] HTTPS/SSL enabled with valid certificate
+- [ ] MongoDB and Redis password-protected
+- [ ] JWT tokens use short expiration (15 min access, 7 day refresh)
+- [ ] Rate limiting enabled at nginx and application layers
+- [ ] CORS configured with specific allowed origins
+- [ ] Security headers added to all responses
+- [ ] Input validation on all user inputs
+- [ ] Audit logging for sensitive operations
+- [ ] Database backups configured with encryption
+- [ ] Secrets stored in Vault/AWS Secrets Manager (not .env)
+- [ ] Regular security updates applied to Docker images
 
 ---
 

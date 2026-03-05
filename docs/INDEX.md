@@ -9,19 +9,13 @@ This project contains comprehensive documentation across multiple files. Use thi
 ## 🎯 Start Here
 
 ### For First-Time Users
-**👉 [QUICKSTART.md](./QUICKSTART.md)** ⚡ NEW!
-- 5-minute setup guide
-- Essential commands
-- Quick navigation
-- Best for: Getting started immediately
-
 **👉 [PROJECT_SUMMARY.md](./PROJECT_SUMMARY.md)**
 - 10-minute deployment guide
 - Architecture overview in simple terms
 - Common commands and troubleshooting
-- Best for: Understanding the system
+- Best for: Getting started immediately
 
-**👉 [PROJECT_STRUCTURE.md](./PROJECT_STRUCTURE.md)** ⚡ NEW!
+**👉 [PROJECT_STRUCTURE.md](./PROJECT_STRUCTURE.md)**
 - Complete folder structure
 - Design principles (KISS, DRY, YAGNI)
 - Directory explanations
@@ -126,34 +120,6 @@ This project contains comprehensive documentation across multiple files. Use thi
 
 ---
 
-### 4. **[JINJA2_TEMPLATES_GUIDE.md](./JINJA2_TEMPLATES_GUIDE.md)** - Frontend Guide
-**What's inside:**
-- ✅ Complete Flask Jinja2 template architecture
-- ✅ Base template (base.html) with block structure
-- ✅ Reusable components (navbar, footer, job_card, pagination)
-- ✅ Page templates (job_list, job_detail, profile, applications)
-- ✅ Admin templates (dashboard, job_form, user_list, analytics)
-- ✅ Custom template filters (date_format, time_ago, truncate, currency)
-- ✅ Context processors (global variables, current_user, flash messages)
-- ✅ Email templates (job_notification, reminder, welcome) with HTML styling
-- ✅ Frontend-Backend communication (api_client.py examples)
-- ✅ Form handling with validation
-- ✅ Static file organization
-
-**Best for:** Frontend development, UI design, template creation
-
-**Sections:**
-1. Template Architecture → Base, components, pages
-2. Base Template → Shared layout with blocks
-3. Components → Reusable UI pieces
-4. Page Templates → Full page examples
-5. Admin Templates → Dashboard and management
-6. Custom Filters → Jinja2 custom functions
-7. Context Processors → Global template variables
-8. Email Templates → HTML email designs
-9. API Client → Frontend calls backend
-10. Form Handling → User input and validation
-
 ---
 
 ## 🗺️ Navigation Guide
@@ -164,26 +130,37 @@ This project contains comprehensive documentation across multiple files. Use thi
 1. Start → [PROJECT_SUMMARY.md](./PROJECT_SUMMARY.md) (Quick start)
 2. Then → [DOCKER_DEPLOYMENT.md](./DOCKER_DEPLOYMENT.md) (Complete setup)
 3. Reference → [README.md](./README.md) (Environment variables)
+4. Epic plan → [EPIC_01_DOCKER_INFRASTRUCTURE.md](../epic/EPIC_01_DOCKER_INFRASTRUCTURE.md) (Detailed tasks)
 
 #### Understand the system design
 1. Start → [WORKFLOW_DIAGRAMS.md](./WORKFLOW_DIAGRAMS.md) (Visual overview)
 2. Then → [README.md](./README.md) (Architecture section)
 3. Deep dive → [README.md](./README.md) (Database schemas, API endpoints)
+4. Planning → [Epic folder](../epic/) (Feature breakdowns)
 
 #### Develop the frontend
-1. Start → [JINJA2_TEMPLATES_GUIDE.md](./JINJA2_TEMPLATES_GUIDE.md) (Template structure)
+1. Start → [PROJECT_STRUCTURE.md](./PROJECT_STRUCTURE.md) (Frontend folder structure)
 2. Reference → [README.md](./README.md) (API endpoints to call)
 3. Architecture → [DOCKER_DEPLOYMENT.md](./DOCKER_DEPLOYMENT.md) (Frontend container setup)
+4. Epic plan → [EPIC_10_FRONTEND_UI.md](../epic/EPIC_10_FRONTEND_UI.md) (Implementation tasks)
 
 #### Develop the backend
 1. Start → [README.md](./README.md) (Database schemas, API endpoints)
 2. Flow → [WORKFLOW_DIAGRAMS.md](./WORKFLOW_DIAGRAMS.md) (Business logic flows)
 3. Deploy → [DOCKER_DEPLOYMENT.md](./DOCKER_DEPLOYMENT.md) (Backend container setup)
+4. Epic plan → [EPIC_02_BACKEND_API_FOUNDATION.md](../epic/EPIC_02_BACKEND_API_FOUNDATION.md) (Detailed tasks)
+
+#### Plan a sprint/feature
+1. Start → [Epic folder](../epic/) (Choose feature area - 12 epics available)
+2. Review epic → Read epic overview, stories, and acceptance criteria
+3. Break down → Epic stories into tasks with story points
+4. Track → Epic progress tracking sections (Weekly goals and metrics)
 
 #### Set up notifications
 1. Logic → [README.md](./README.md) (Notification Trigger System section)
 2. Implementation → [README.md](./README.md) (Flask-Mail Email Service section)
 3. Flow → [WORKFLOW_DIAGRAMS.md](./WORKFLOW_DIAGRAMS.md) (Celery Task Scheduler diagram)
+4. Epic plan → [EPIC_08_NOTIFICATION_SYSTEM.md](../epic/EPIC_08_NOTIFICATION_SYSTEM.md) (Implementation tasks)
 
 #### Troubleshoot issues
 1. Quick fixes → [PROJECT_SUMMARY.md](./PROJECT_SUMMARY.md) (Troubleshooting section)
@@ -197,41 +174,126 @@ This project contains comprehensive documentation across multiple files. Use thi
 | File | Length | Depth | Best For |
 |------|--------|-------|----------|
 | **PROJECT_SUMMARY.md** | Short | Overview | Quick start, first-time users |
-| **README.md** | Long | Complete | Reference, API docs, deployment |
 | **PROJECT_STRUCTURE.md** | Long | Complete | Folder structure, architecture |
+| **README.md** | Long | Complete | Reference, API docs, deployment |
 | **DOCKER_DEPLOYMENT.md** | Medium | Technical | DevOps, containerization |
 | **WORKFLOW_DIAGRAMS.md** | Medium | Visual | Understanding flows, design |
-| **JINJA2_TEMPLATES_GUIDE.md** | Medium | Frontend | UI development, templates |
-| **QUICKSTART.md** | Short | Practical | 5-minute setup |
+| **EPIC_01-12** | Long | Detailed | Sprint planning, task tracking |
 
 ---
 
 ## 🚀 Project Setup Files
 
 ### Configuration & Setup (In Project Root)
-**👉 [SETUP_COMPLETE.md](../SETUP_COMPLETE.md)** ⚡ NEW!
-- Complete setup summary
-- What was created
-- File counts and structure
-- Next steps guide
-
-**👉 [DEVELOPMENT_ROADMAP.md](../DEVELOPMENT_ROADMAP.md)** ⚡ NEW!
-- Detailed implementation roadmap
-- Priority-based task list
-- Week-by-week development plan
-- Code templates for each component
-- Checklist for tracking progress
-
-**👉 [Makefile](../Makefile)** ⚡ NEW!
+**👉 [Makefile](../Makefile)**
 - Common project commands
-- Docker shortcuts
+- Docker shortcuts (build, up, down, logs)
 - Testing commands
 - Cleanup utilities
 
-**👉 [.env.example](../.env.example)** ⚡ NEW!
+**👉 [.env.example](../.env.example)**
 - Environment variable template
 - All required configurations
-- MongoDB, Redis, Email setup
+- MongoDB, Redis, Email, JWT setup
+
+**👉 [docker-compose.yml](../docker-compose.yml)**
+- Complete service orchestration
+- 6 containers (MongoDB, Redis, Backend, Frontend, Celery Worker, Celery Beat, Nginx)
+- Network and volume configuration
+
+---
+
+## 📋 Epic Planning Documents
+
+### Agile Sprint Planning (12 Epics, 4-Month Roadmap)
+
+The `/epic` folder contains detailed implementation plans organized as epics with user stories, tasks, and acceptance criteria. Each epic covers a major feature area with technical specifications, testing strategies, and progress tracking.
+
+**👉 [EPIC_01_DOCKER_INFRASTRUCTURE.md](../epic/EPIC_01_DOCKER_INFRASTRUCTURE.md)** 🔥 CRITICAL
+- 6 stories, 34 story points, Week 1-4
+- Docker base infrastructure & container orchestration
+- Nginx reverse proxy, MongoDB, Redis setup
+- Health monitoring, environment configuration
+- **Current Status**: Story 1.1 (70% complete - needs health checks, mongo-init.js, Redis AOF)
+
+**👉 [EPIC_02_BACKEND_API_FOUNDATION.md](../epic/EPIC_02_BACKEND_API_FOUNDATION.md)**
+- Backend Flask API foundation
+- REST endpoints structure
+- Database models and services
+- Middleware and error handling
+
+**👉 [EPIC_03_USER_AUTHENTICATION.md](../epic/EPIC_03_USER_AUTHENTICATION.md)**
+- JWT authentication system
+- Login, registration, password reset
+- Email verification
+- Session management
+
+**👉 [EPIC_04_RBAC_SYSTEM.md](../epic/EPIC_04_RBAC_SYSTEM.md)**
+- Role-Based Access Control
+- User roles (Admin, Operator, User)
+- Permission management
+- Access control middleware
+
+**👉 [EPIC_05_JOB_MANAGEMENT.md](../epic/EPIC_05_JOB_MANAGEMENT.md)**
+- Job CRUD operations
+- Admin job creation/editing
+- Job categories and filtering
+- Application deadline tracking
+
+**👉 [EPIC_06_JOB_MATCHING_SYSTEM.md](../epic/EPIC_06_JOB_MATCHING_SYSTEM.md)**
+- Intelligent job matching algorithm
+- Eligibility checking (education, age, category)
+- Personalized job recommendations
+- Celery background processing
+
+**👉 [EPIC_07_USER_PROFILES.md](../epic/EPIC_07_USER_PROFILES.md)**
+- User profile management
+- Qualification tracking (10th, 12th, Graduation)
+- Physical standards preferences
+- Application history
+
+**👉 [EPIC_08_NOTIFICATION_SYSTEM.md](../epic/EPIC_08_NOTIFICATION_SYSTEM.md)**
+- Multi-channel notifications (Email, Push, SMS)
+- Notification triggers and scheduling
+- Priority job alerts
+- Deadline reminders
+
+**👉 [EPIC_09_ADMIN_PANEL.md](../epic/EPIC_09_ADMIN_PANEL.md)**
+- Admin dashboard with analytics
+- User management interface
+- Job management tools
+- System monitoring
+
+**👉 [EPIC_10_FRONTEND_UI.md](../epic/EPIC_10_FRONTEND_UI.md)**
+- Jinja2 template implementation
+- Responsive UI design
+- Component library
+- User experience flows
+
+**👉 [EPIC_11_SARKARI_RESULTS.md](../epic/EPIC_11_SARKARI_RESULTS.md)**
+- Board results integration
+- Admit card notifications
+- Answer key publishing
+- Result announcements
+
+**👉 [EPIC_12_ADVANCED_FEATURES.md](../epic/EPIC_12_ADVANCED_FEATURES.md)**
+- Analytics and reporting
+- Advanced search
+- Export functionality
+- Performance optimizations
+
+### Epic Structure
+Each epic document contains:
+- 📋 Epic Overview (ID, description, business value, timeline)
+- 📊 Epic Metrics (story count, story points, dependencies)
+- 📝 User Stories (with acceptance criteria and technical tasks)
+- 🔄 Epic Dependencies
+- 📈 Progress Tracking (weekly goals)
+- 🧪 Testing Strategy
+- 📚 Documentation Requirements
+- ⚠️ Risks & Mitigation
+
+**Best for:** Sprint planning, task breakdown, implementation tracking, Agile development
 
 ---
 
@@ -247,7 +309,7 @@ This project contains comprehensive documentation across multiple files. Use thi
 1. Read [README.md](./README.md) → Understand architecture and API
 2. Study [DOCKER_DEPLOYMENT.md](./DOCKER_DEPLOYMENT.md) → Learn containerization
 3. Check [WORKFLOW_DIAGRAMS.md](./WORKFLOW_DIAGRAMS.md) → Understand system flows
-4. Develop using [JINJA2_TEMPLATES_GUIDE.md](./JINJA2_TEMPLATES_GUIDE.md) → Build frontend
+4. Review [PROJECT_STRUCTURE.md](./PROJECT_STRUCTURE.md) → Learn folder organization
 
 ### Advanced (Ready to deploy to production)
 1. Study [DOCKER_DEPLOYMENT.md](./DOCKER_DEPLOYMENT.md) → Master container orchestration
@@ -255,19 +317,26 @@ This project contains comprehensive documentation across multiple files. Use thi
 3. Implement from [WORKFLOW_DIAGRAMS.md](./WORKFLOW_DIAGRAMS.md) → Build all features
 4. Deploy using [README.md](./README.md) → Hostinger VPS section
 
+### Project Manager/Team Lead
+1. Study [Epic folder](../epic/) → Understand all 12 epics (4-month plan)
+2. Review [EPIC_01_DOCKER_INFRASTRUCTURE.md](../epic/EPIC_01_DOCKER_INFRASTRUCTURE.md) → Start with foundation
+3. Plan sprints → Use epic stories and story points for estimation
+4. Track progress → Use epic weekly goals and metrics
+5. Reference [README.md](./README.md) → Technical requirements
+
 ---
 
 ## 🔍 Quick Reference
 
 ### Database Collections
-→ [README.md](./README.md#database-schema-mongodb-collections)
-- 6 collections with full JSON structure
+→ [README.md](../README.md) (Database Schema section)
+- 15 MongoDB collections with full JSON structure
 - Indexes explained
 - Relationships documented
 
 ### API Endpoints
-→ [README.md](./README.md#api-endpoints)
-- 40+ endpoints organized by category
+→ [README.md](../README.md) (API Endpoints section)
+- 60+ endpoints organized by category
 - Authentication, Profile, Jobs, Applications, Notifications, Admin
 - HTTP methods and access levels
 
@@ -277,16 +346,18 @@ This project contains comprehensive documentation across multiple files. Use thi
 - Logs, scaling, updates
 - Backup and restore
 
-### Template Examples
-→ [JINJA2_TEMPLATES_GUIDE.md](./JINJA2_TEMPLATES_GUIDE.md)
-- Base template structure
-- Component examples
-- Email templates
+### Frontend Structure
+→ [PROJECT_STRUCTURE.md](./PROJECT_STRUCTURE.md) (Frontend section)
+→ [DOCKER_DEPLOYMENT.md](./DOCKER_DEPLOYMENT.md) (Frontend container)
+- Template organization (layouts, components, pages)
+- Static file structure (CSS, JS, images)
+- Frontend routes and middleware
 
 ### Notification System
-→ [README.md](./README.md#2-notification-trigger-system)
+→ [README.md](../README.md) (Notification Trigger System section)
+→ [WORKFLOW_DIAGRAMS.md](./WORKFLOW_DIAGRAMS.md) (Celery scheduler)
 - 6 notification triggers
-- Multi-channel delivery
+- Multi-channel delivery (Email, Push, SMS)
 - Celery task implementation
 
 ---
@@ -294,10 +365,12 @@ This project contains comprehensive documentation across multiple files. Use thi
 ## 💡 Tips
 
 1. **Always start with PROJECT_SUMMARY.md** if you're new
-2. **Use README.md as reference** when coding
+2. **Use README.md as reference** when coding (database schemas, API endpoints)
 3. **Check WORKFLOW_DIAGRAMS.md** when confused about flow
 4. **Use DOCKER_DEPLOYMENT.md** for production deployment
-5. **Refer to JINJA2_TEMPLATES_GUIDE.md** when building UI
+5. **Refer to PROJECT_STRUCTURE.md** to understand folder organization
+6. **Use Epic documents for sprint planning** and task breakdown
+7. **Track progress using epic weekly goals** to stay on schedule
 
 ---
 
@@ -311,5 +384,5 @@ If any documentation is confusing:
 ---
 
 **Documentation Version**: 2.0 (Microservices Architecture)  
-**Last Updated**: December 2025  
+**Last Updated**: March 5, 2026  
 **Project Repository**: https://github.com/SumanKr7/sarkari_path_2.0
