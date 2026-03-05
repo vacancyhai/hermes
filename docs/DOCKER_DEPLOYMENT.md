@@ -1,4 +1,4 @@
-# Docker Deployment Guide - Sarkari Path
+# Docker Deployment Guide - Hermes
 
 ## Separated Microservices Architecture (INDEPENDENT Backend + Frontend)
 
@@ -236,12 +236,12 @@ services:
   # MongoDB Database
   mongodb:
     image: mongo:7.0
-    container_name: sarkari_backend_mongodb
+    container_name: hermes_backend_mongodb
     restart: unless-stopped
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
-      MONGO_INITDB_DATABASE: sarkari_path
+      MONGO_INITDB_DATABASE: hermes
     volumes:
       - mongodb_data:/data/db
       - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
@@ -258,7 +258,7 @@ services:
   # Redis Cache & Broker
   redis:
     image: redis:7-alpine
-    container_name: sarkari_backend_redis
+    container_name: hermes_backend_redis
     restart: unless-stopped
     command: redis-server --requirepass ${REDIS_PASSWORD} --appendonly yes --appendfsync everysec
     volumes:
@@ -278,7 +278,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: sarkari_backend_api
+    container_name: hermes_backend_api
     restart: unless-stopped
     environment:
       - FLASK_ENV=production
@@ -319,7 +319,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: sarkari_backend_celery_worker
+    container_name: hermes_backend_celery_worker
     restart: unless-stopped
     command: celery -A app.tasks.celery_app worker --loglevel=info --concurrency=4
     environment:
@@ -349,7 +349,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: sarkari_backend_celery_beat
+    container_name: hermes_backend_celery_beat
     restart: unless-stopped
     command: celery -A app.tasks.celery_app beat --loglevel=info
     environment:
@@ -532,7 +532,7 @@ services:
   # Current setup: Suitable for development/staging with single-node persistence
   mongodb:
     image: mongo:7.0
-    container_name: sarkari_mongodb
+    container_name: hermes_mongodb
     restart: unless-stopped
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER}
@@ -554,7 +554,7 @@ services:
   redis:
     image: redis:7-alpine
     command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
-    container_name: sarkari_redis
+    container_name: hermes_redis
     restart: unless-stopped
     # ⚡ PERSISTENCE: Redis needs AOF persistence for task queue reliability
     # Without this, queued tasks die on restart
@@ -730,7 +730,7 @@ With 90-day TTL:  Only 300,000 notifications at any time
     # Option 2 (Prod): HashiCorp Vault
     # Option 3 (Cloud): AWS Secrets Manager / Google Cloud Secrets
     # Current setup uses .env, but for production upgrade to Vault: 
-    # vault kv get secret/sarkari_path/db_password
+    # vault kv get secret/hermes/db_password
 
   # Frontend UI Container
   frontend:
@@ -766,7 +766,7 @@ With 90-day TTL:  Only 300,000 notifications at any time
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: sarkari_celery_worker
+    container_name: hermes_celery_worker
     restart: unless-stopped
     # ⚡ Only runs workers, NOT scheduler
     command: celery -A celery_worker.celery worker --loglevel=info --concurrency=2
@@ -801,7 +801,7 @@ With 90-day TTL:  Only 300,000 notifications at any time
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: sarkari_celery_beat
+    container_name: hermes_celery_beat
     restart: unless-stopped
     # ⚡ Only runs scheduler (Beat), NOT workers
     command: celery -A celery_worker.celery beat --loglevel=info
@@ -825,7 +825,7 @@ With 90-day TTL:  Only 300,000 notifications at any time
   # ⚡ Health checks ensure only healthy upstreams receive traffic
   nginx:
     image: nginx:alpine
-    container_name: sarkari_nginx
+    container_name: hermes_nginx
     restart: unless-stopped
     ports:
       - "80:80"
@@ -892,7 +892,7 @@ node_modules/
 
 ```javascript
 // mongo-init.js
-db = db.getSiblingDB('sarkari_path');
+db = db.getSiblingDB('hermes');
 
 db.createUser({
   user: process.env.MONGO_USER,
@@ -900,7 +900,7 @@ db.createUser({
   roles: [
     {
       role: 'readWrite',
-      db: 'sarkari_path'
+      db: 'hermes'
     }
   ]
 });
@@ -966,7 +966,7 @@ rs.status()  # Primary shows as "PRIMARY", others as "SECONDARY"
 MONGO_URI=mongodb://user:pass@mongodb:27017/sarkari_path
 
 # After (replica set):
-MONGO_URI=mongodb://user:pass@mongodb1:27017,mongodb2:27017,mongodb3:27017/sarkari_path?replicaSet=rs0&authSource=admin
+MONGO_URI=mongodb://user:pass@mongodb1:27017,mongodb2:27017,mongodb3:27017/hermes?replicaSet=rs0&authSource=admin
 ```
 
 **Benefits**:
@@ -986,10 +986,10 @@ MONGO_URI=mongodb://user:pass@mongodb1:27017,mongodb2:27017,mongodb3:27017/sarka
 **Configuration in Environment Variables:**
 ```bash
 # Development (low traffic)
-MONGO_URI=mongodb://user:pass@mongodb:27017/sarkari_path?authSource=sarkari_path&maxPoolSize=10&minPoolSize=2
+MONGO_URI=mongodb://user:pass@mongodb:27017/hermes?authSource=hermes&maxPoolSize=10&minPoolSize=2
 
 # Production (high traffic)
-MONGO_URI=mongodb://user:pass@mongodb:27017/sarkari_path?authSource=sarkari_path&maxPoolSize=50&minPoolSize=10&maxIdleTimeMS=60000
+MONGO_URI=mongodb://user:pass@mongodb:27017/hermes?authSource=hermes&maxPoolSize=50&minPoolSize=10&maxIdleTimeMS=60000
 ```
 
 **Connection Pool Parameters:**
@@ -1418,7 +1418,7 @@ API_VERSION=v1
 
 # MongoDB Configuration with Connection Pooling
 MONGO_ROOT_PASSWORD=strong_root_password_change_this
-MONGO_USER=sarkaripath_user
+MONGO_USER=hermes_user
 MONGO_PASSWORD=strong_db_password_change_this
 # ⚡ Connection pool settings for production
 MONGO_MAX_POOL_SIZE=50
@@ -1510,8 +1510,8 @@ docker compose version
 ```bash
 # 1. Clone repository
 cd /home/sarkaripath
-git clone https://github.com/SumanKr7/sarkari_path_2.0.git
-cd sarkari_path_2.0
+git clone https://github.com/SumanKr7/hermes.git
+cd hermes
 
 # 2. Create .env file
 cp .env.example .env
@@ -1547,7 +1547,7 @@ Add this service to your docker-compose.yml for SSL:
 ```yaml
   certbot:
     image: certbot/certbot
-    container_name: sarkaripath_certbot
+    container_name: hermes_certbot
     volumes:
       - ./nginx/ssl:/etc/letsencrypt
       - ./certbot-webroot:/var/www/certbot
@@ -1676,7 +1676,7 @@ docker compose exec app bash
 docker compose exec mongodb mongosh
 
 # Update application (pull latest code)
-cd /home/sarkaripath/sarkari_path_2.0
+cd /home/hermes/hermes
 git pull origin main
 docker compose up -d --build app celery_worker celery_beat
 ```
@@ -1702,7 +1702,7 @@ docker compose logs -f celery_worker
 ### Database Operations
 ```bash
 # MongoDB shell access
-docker compose exec mongodb mongosh -u sarkaripath_user -p
+docker compose exec mongodb mongosh -u hermes_user -p
 
 # Backup MongoDB
 docker compose exec mongodb mongodump --out=/data/backup
@@ -1742,16 +1742,16 @@ Create `backup.sh`:
 #!/bin/bash
 # backup.sh - Docker MongoDB Backup Script
 
-BACKUP_DIR="/home/sarkaripath/backups/mongodb"
+BACKUP_DIR="/home/hermes/backups/mongodb"
 DATE=$(date +"%Y%m%d_%H%M%S")
-BACKUP_NAME="sarkaripath_backup_$DATE"
+BACKUP_NAME="hermes_backup_$DATE"
 
 # Create backup directory
 mkdir -p $BACKUP_DIR
 
 # Backup MongoDB from Docker container
 docker compose exec -T mongodb mongodump \
-  --uri="mongodb://sarkaripath_user:${MONGO_PASSWORD}@localhost:27017/sarkari_path?authSource=sarkari_path" \
+  --uri="mongodb://hermes_user:${MONGO_PASSWORD}@localhost:27017/hermes?authSource=hermes" \
   --out=/tmp/$BACKUP_NAME
 
 # Copy backup from container
@@ -1774,7 +1774,7 @@ chmod +x backup.sh
 
 # Add to crontab
 crontab -e
-# Add: 0 2 * * * /home/sarkaripath/sarkari_path_2.0/backup.sh >> /home/sarkaripath/logs/backup.log 2>&1
+# Add: 0 2 * * * /home/hermes/hermes/backup.sh >> /home/hermes/logs/backup.log 2>&1
 ```
 
 ---
@@ -2103,7 +2103,7 @@ import hvac
 client = hvac.Client(url='http://vault:8200', token=os.getenv('VAULT_TOKEN'))
 
 # Read secrets from Vault
-secret = client.secrets.kv.v2.read_secret_version(path='sarkari_path/prod')
+secret = client.secrets.kv.v2.read_secret_version(path='hermes/prod')
 MONGO_PASSWORD = secret['data']['data']['mongo_password']
 ```
 
@@ -2112,7 +2112,7 @@ MONGO_PASSWORD = secret['data']['data']['mongo_password']
 import boto3
 
 client = boto3.client('secretsmanager', region_name='us-east-1')
-response = client.get_secret_value(SecretId='sarkari_path/mongo_password')
+response = client.get_secret_value(SecretId='hermes/mongo_password')
 MONGO_PASSWORD = response['SecretString']
 ```
 

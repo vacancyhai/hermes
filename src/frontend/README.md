@@ -1,8 +1,8 @@
-# Sarkari Path - Frontend Service
+# Hermes - Frontend Service
 
 ## Overview
 
-This is the **Frontend Service** for Sarkari Path - a completely independent UI service that calls the backend REST API.
+This is the **Frontend Service** for Hermes - a completely independent UI service that calls the backend REST API.
 
 **Current Technology:** Flask + Jinja2 (Server-Side Rendering)
 

@@ -1,4 +1,4 @@
-# Sarkari Path - Documentation Index
+# Hermes - Documentation Index
 
 ## 📚 Complete Documentation Guide
 
@@ -489,4 +489,4 @@ If any documentation is confusing:
 
 **Documentation Version**: 2.0 (Microservices Architecture)  
 **Last Updated**: March 5, 2026  
-**Project Repository**: https://github.com/SumanKr7/sarkari_path_2.0
+**Project Repository**: https://github.com/SumanKr7/hermes

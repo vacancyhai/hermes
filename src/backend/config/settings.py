@@ -14,7 +14,7 @@ class Config:
     PORT = int(os.getenv('PORT', 5000))
     
     # MongoDB
-    MONGO_URI = os.getenv('MONGO_URI', 'mongodb://localhost:27017/sarkari_path')
+    MONGO_URI = os.getenv('MONGO_URI', 'mongodb://localhost:27017/hermes')
     
     # Redis
     REDIS_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')

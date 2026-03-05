@@ -1,4 +1,4 @@
-# Sarkari Path - Government Job Vacancy Portal
+# Hermes - Government Job Vacancy Portal
 
 > **🚀 Quick Start**: New to this project? Read [docs/PROJECT_SUMMARY.md](./docs/PROJECT_SUMMARY.md) for a 10-minute deployment guide.
 
@@ -2583,7 +2583,7 @@ class JobService:
 # backend/app/__init__.py
 from elasticapm.contrib.flask import ElasticAPM
 
-apm = ElasticAPM(app, service_name='sarkari-path-backend')
+apm = ElasticAPM(app, service_name='hermes-backend')
 
 # Now all requests auto-tracked:
 # - Response time
@@ -2703,7 +2703,7 @@ See "Hostinger VPS Deployment Guide" below for full instructions.
 │  │    │- Persist │  │- Queue   │  │- Match   │  │      ││ │
 │  │    └──────────┘  └──────────┘  └──────────┘  └──────┘│ │
 │  │                                                       │ │
-│  │        Docker Bridge Network (sarkari_network)       │ │
+│  │        Docker Bridge Network (hermes_network)        │ │
 │  └───────────────────────────────────────────────────────┘ │
 │                                                             │
 │  Volumes: mongodb_data, redis_data, backend_logs          │
@@ -2759,7 +2759,7 @@ See "Hostinger VPS Deployment Guide" below for full instructions.
 ## Project Structure (Microservices)
 
 ```
-sarkari-path/
+hermes/
 ├── backend/                           # Backend API Container
 │   ├── app/
 │   │   ├── __init__.py
@@ -2951,7 +2951,7 @@ FLASK_ENV=development
 SECRET_KEY=your-secret-key-here
 
 # MongoDB Configuration
-MONGO_URI=mongodb://localhost:27017/sarkari_path
+MONGO_URI=mongodb://localhost:27017/hermes
 
 # Redis Configuration
 REDIS_URL=redis://localhost:6379/0
@@ -2967,7 +2967,7 @@ MAIL_USE_TLS=True
 MAIL_USE_SSL=False
 MAIL_USERNAME=your-email@gmail.com
 MAIL_PASSWORD=your-app-password
-MAIL_DEFAULT_SENDER=noreply@sarkaripath.com
+MAIL_DEFAULT_SENDER=noreply@hermes.com
 MAIL_MAX_EMAILS=100
 MAIL_ASCII_ATTACHMENTS=False
 
@@ -2979,7 +2979,7 @@ JWT_SECRET_KEY=your-jwt-secret-key
 JWT_ACCESS_TOKEN_EXPIRES=3600
 
 # Admin Configuration
-ADMIN_EMAIL=admin@sarkaripath.com
+ADMIN_EMAIL=admin@hermes.com
 ```
 
 ## Development Workflow
@@ -3055,8 +3055,8 @@ ssh root@your-vps-ip
 sudo apt update && sudo apt upgrade -y
 
 # Create application user
-sudo adduser sarkaripath
-sudo usermod -aG sudo sarkaripath
+sudo adduser hermes
+sudo usermod -aG sudo hermes
 
 # Setup firewall
 sudo ufw allow OpenSSH
@@ -3096,10 +3096,10 @@ sudo apt install supervisor -y
 
 ```bash
 # Switch to application user
-su - sarkaripath
+su - hermes
 
 # Clone repository
-cd /home/sarkaripath
+cd /home/hermes
 git clone https://github.com/SumanKr7/sarkari_path_2.0.git
 cd sarkari_path_2.0
 
@@ -3120,7 +3120,7 @@ nano .env
 
 ```bash
 # Create gunicorn configuration
-nano /home/sarkaripath/sarkari_path_2.0/gunicorn_config.py
+nano /home/hermes/hermes/gunicorn_config.py
 ```
 
 ```python
@@ -3133,28 +3133,28 @@ timeout = 30
 keepalive = 2
 max_requests = 1000
 max_requests_jitter = 100
-accesslog = "/home/sarkaripath/sarkari_path_2.0/logs/gunicorn_access.log"
-errorlog = "/home/sarkaripath/sarkari_path_2.0/logs/gunicorn_error.log"
+accesslog = "/home/hermes/hermes/logs/gunicorn_access.log"
+errorlog = "/home/hermes/hermes/logs/gunicorn_error.log"
 loglevel = "info"
 ```
 
 ### Step 5: Configure Supervisor for Flask App
 
 ```bash
-sudo nano /etc/supervisor/conf.d/sarkaripath.conf
+sudo nano /etc/supervisor/conf.d/hermes.conf
 ```
 
 ```ini
-[program:sarkaripath]
-command=/home/sarkaripath/sarkari_path_2.0/venv/bin/gunicorn -c /home/sarkaripath/sarkari_path_2.0/gunicorn_config.py run:app
-directory=/home/sarkaripath/sarkari_path_2.0
-user=sarkaripath
+[program:hermes]
+command=/home/hermes/hermes/venv/bin/gunicorn -c /home/hermes/hermes/gunicorn_config.py run:app
+directory=/home/hermes/hermes
+user=hermes
 autostart=true
 autorestart=true
 stopasgroup=true
 killasgroup=true
-stderr_logfile=/home/sarkaripath/sarkari_path_2.0/logs/supervisor_error.log
-stdout_logfile=/home/sarkaripath/sarkari_path_2.0/logs/supervisor_out.log
+stderr_logfile=/home/hermes/hermes/logs/supervisor_error.log
+stdout_logfile=/home/hermes/hermes/logs/supervisor_out.log
 ```
 
 ### Step 6: Configure Supervisor for Celery Workers
@@ -3165,26 +3165,26 @@ sudo nano /etc/supervisor/conf.d/celery_worker.conf
 
 ```ini
 [program:celery_worker]
-command=/home/sarkaripath/sarkari_path_2.0/venv/bin/celery -A celery_worker.celery worker --loglevel=info
-directory=/home/sarkaripath/sarkari_path_2.0
-user=sarkaripath
+command=/home/hermes/hermes/venv/bin/celery -A celery_worker.celery worker --loglevel=info
+directory=/home/hermes/hermes
+user=hermes
 autostart=true
 autorestart=true
 stopasgroup=true
 killasgroup=true
-stderr_logfile=/home/sarkaripath/sarkari_path_2.0/logs/celery_worker_error.log
-stdout_logfile=/home/sarkaripath/sarkari_path_2.0/logs/celery_worker.log
+stderr_logfile=/home/hermes/hermes/logs/celery_worker_error.log
+stdout_logfile=/home/hermes/hermes/logs/celery_worker.log
 
 [program:celery_beat]
-command=/home/sarkaripath/sarkari_path_2.0/venv/bin/celery -A celery_worker.celery beat --loglevel=info
-directory=/home/sarkaripath/sarkari_path_2.0
-user=sarkaripath
+command=/home/hermes/hermes/venv/bin/celery -A celery_worker.celery beat --loglevel=info
+directory=/home/hermes/hermes
+user=hermes
 autostart=true
 autorestart=true
 stopasgroup=true
 killasgroup=true
-stderr_logfile=/home/sarkaripath/sarkari_path_2.0/logs/celery_beat_error.log
-stdout_logfile=/home/sarkaripath/sarkari_path_2.0/logs/celery_beat.log
+stderr_logfile=/home/hermes/hermes/logs/celery_beat_error.log
+stdout_logfile=/home/hermes/hermes/logs/celery_beat.log
 ```
 
 ```bash
@@ -3198,7 +3198,7 @@ sudo supervisorctl status
 ### Step 7: Configure Nginx
 
 ```bash
-sudo nano /etc/nginx/sites-available/sarkaripath
+sudo nano /etc/nginx/sites-available/hermes
 ```
 
 ```nginx
@@ -3216,7 +3216,7 @@ server {
 
     # Serve static files directly
     location /static {
-        alias /home/sarkaripath/sarkari_path_2.0/static;
+        alias /home/hermes/hermes/static;
         expires 30d;
         add_header Cache-Control "public, immutable";
     }
@@ -3233,14 +3233,14 @@ server {
     }
 
     # Access and error logs
-    access_log /var/log/nginx/sarkaripath_access.log;
-    error_log /var/log/nginx/sarkaripath_error.log;
+    access_log /var/log/nginx/hermes_access.log;
+    error_log /var/log/nginx/hermes_error.log;
 }
 ```
 
 ```bash
 # Enable site
-sudo ln -s /etc/nginx/sites-available/sarkaripath /etc/nginx/sites-enabled/
+sudo ln -s /etc/nginx/sites-available/hermes /etc/nginx/sites-enabled/
 sudo nginx -t
 sudo systemctl restart nginx
 ```
@@ -3291,11 +3291,11 @@ db.createUser({
   roles: [ { role: "userAdminAnyDatabase", db: "admin" }, "readWriteAnyDatabase" ]
 })
 
-use sarkari_path
+use hermes
 db.createUser({
-  user: "sarkaripath_user",
+  user: "hermes_user",
   pwd: "your_db_password",
-  roles: [ { role: "readWrite", db: "sarkari_path" } ]
+  roles: [ { role: "readWrite", db: "hermes" } ]
 })
 
 exit
@@ -3307,7 +3307,7 @@ sudo systemctl restart mongod
 ### Step 10: Environment Variables for Production
 
 ```bash
-nano /home/sarkaripath/sarkari_path_2.0/.env
+nano /home/hermes/hermes/.env
 ```
 
 ```env
@@ -3317,7 +3317,7 @@ FLASK_ENV=production
 SECRET_KEY=your-production-secret-key-min-32-chars
 
 # MongoDB Configuration
-MONGO_URI=mongodb://sarkaripath_user:your_db_password@localhost:27017/sarkari_path?authSource=sarkari_path
+MONGO_URI=mongodb://hermes_user:your_db_password@localhost:27017/hermes?authSource=hermes
 
 # Redis Configuration
 REDIS_URL=redis://localhost:6379/0
@@ -3335,7 +3335,7 @@ MAIL_PASSWORD=your-app-specific-password
 MAIL_DEFAULT_SENDER=noreply@yourdomain.com
 
 # Firebase Configuration
-FIREBASE_CREDENTIALS_PATH=/home/sarkaripath/sarkari_path_2.0/firebase-credentials.json
+FIREBASE_CREDENTIALS_PATH=/home/hermes/hermes/firebase-credentials.json
 
 # JWT Configuration
 JWT_SECRET_KEY=your-jwt-secret-key-different-from-secret-key
@@ -3352,22 +3352,22 @@ APP_URL=https://yourdomain.com
 
 ```bash
 # Create backup script
-nano /home/sarkaripath/backup_mongodb.sh
+nano /home/hermes/backup_mongodb.sh
 ```
 
 ```bash
 #!/bin/bash
 # MongoDB Backup Script
 
-BACKUP_DIR="/home/sarkaripath/backups/mongodb"
+BACKUP_DIR="/home/hermes/backups/mongodb"
 DATE=$(date +"%Y%m%d_%H%M%S")
-BACKUP_NAME="sarkaripath_backup_$DATE"
+BACKUP_NAME="hermes_backup_$DATE"
 
 # Create backup directory
 mkdir -p $BACKUP_DIR
 
 # Dump MongoDB
-mongodump --uri="mongodb://sarkaripath_user:your_db_password@localhost:27017/sarkari_path?authSource=sarkari_path" --out="$BACKUP_DIR/$BACKUP_NAME"
+mongodump --uri="mongodb://hermes_user:your_db_password@localhost:27017/hermes?authSource=hermes" --out="$BACKUP_DIR/$BACKUP_NAME"
 
 # Compress backup
 cd $BACKUP_DIR
@@ -3382,32 +3382,32 @@ echo "Backup completed: $BACKUP_NAME.tar.gz"
 
 ```bash
 # Make script executable
-chmod +x /home/sarkaripath/backup_mongodb.sh
+chmod +x /home/hermes/backup_mongodb.sh
 
 # Add to crontab (daily at 2 AM)
 crontab -e
 # Add this line:
-0 2 * * * /home/sarkaripath/backup_mongodb.sh >> /home/sarkaripath/logs/backup.log 2>&1
+0 2 * * * /home/hermes/backup_mongodb.sh >> /home/hermes/logs/backup.log 2>&1
 ```
 
 ### Step 12: Setup Log Rotation
 
 ```bash
-sudo nano /etc/logrotate.d/sarkaripath
+sudo nano /etc/logrotate.d/hermes
 ```
 
 ```
-/home/sarkaripath/sarkari_path_2.0/logs/*.log {
+/home/hermes/hermes/logs/*.log {
     daily
     missingok
     rotate 14
     compress
     delaycompress
     notifempty
-    create 0640 sarkaripath sarkaripath
+    create 0640 hermes hermes
     sharedscripts
     postrotate
-        supervisorctl restart sarkaripath celery_worker celery_beat
+        supervisorctl restart hermes celery_worker celery_beat
     endscript
 }
 ```
@@ -3416,15 +3416,15 @@ sudo nano /etc/logrotate.d/sarkaripath
 
 ```bash
 # Update application
-cd /home/sarkaripath/sarkari_path_2.0
+cd /home/hermes/hermes
 git pull origin main
 source venv/bin/activate
 pip install -r requirements.txt
 sudo supervisorctl restart all
 
 # View logs
-sudo tail -f /home/sarkaripath/sarkari_path_2.0/logs/gunicorn_error.log
-sudo supervisorctl tail -f sarkaripath stderr
+sudo tail -f /home/hermes/hermes/logs/gunicorn_error.log
+sudo supervisorctl tail -f hermes stderr
 
 # Check status
 sudo supervisorctl status
@@ -3476,13 +3476,13 @@ sudo systemctl restart nginx
 ### Application won't start
 ```bash
 # Check supervisor logs
-sudo supervisorctl tail -f sarkaripath stderr
+sudo supervisorctl tail -f hermes stderr
 
 # Check if port is in use
 sudo lsof -i :8000
 
 # Restart application
-sudo supervisorctl restart sarkaripath
+sudo supervisorctl restart hermes
 ```
 
 ### High Memory Usage
@@ -3507,7 +3507,7 @@ sudo systemctl status mongod
 sudo tail -f /var/log/mongodb/mongod.log
 
 # Test connection
-mongosh "mongodb://sarkaripath_user:password@localhost:27017/sarkari_path"
+mongosh "mongodb://hermes_user:password@localhost:27017/hermes"
 ```
 
 ### Celery Tasks Not Running
@@ -3534,17 +3534,17 @@ sudo certbot certificates
 ### 502 Bad Gateway Error
 ```bash
 # Check if Gunicorn is running
-sudo supervisorctl status sarkaripath
+sudo supervisorctl status hermes
 
 # Check Nginx error logs
-sudo tail -f /var/log/nginx/sarkaripath_error.log
+sudo tail -f /var/log/nginx/hermes_error.log
 
 # Restart services
-sudo supervisorctl restart sarkaripath
+sudo supervisorctl restart hermes
 sudo systemctl restart nginx
 ```
 
 ---
 
-**Project Repository**: https://github.com/SumanKr7/sarkari_path_2.0
+**Project Repository**: https://github.com/SumanKr7/hermes
 **License**: MIT License

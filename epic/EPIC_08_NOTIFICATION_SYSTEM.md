@@ -66,7 +66,7 @@ backend/app/services/smtp_manager.py    # SMTP connection management
 #### Email Template Categories:
 ```python
 EMAIL_TEMPLATES = {
-    'welcome': 'Welcome to Sarkari Path',
+    'welcome': 'Welcome to Hermes',
     'job_alert': 'New Job Match Found',
     'deadline_reminder': 'Application Deadline Reminder',
     'result_notification': 'Exam Result Available',

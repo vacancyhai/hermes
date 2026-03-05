@@ -4,12 +4,12 @@ services:
   # MongoDB Database
   mongodb:
     image: mongo:7.0
-    container_name: sarkari_backend_mongodb
+    container_name: hermes_backend_mongodb
     restart: unless-stopped
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
-      MONGO_INITDB_DATABASE: sarkari_path
+      MONGO_INITDB_DATABASE: hermes
     volumes:
       - mongodb_data:/data/db
       - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
@@ -18,7 +18,7 @@ services:
     networks:
       - backend_network
     healthcheck:
-      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/sarkari_path --quiet
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/hermes --quiet
       interval: 10s
       timeout: 5s
       retries: 5
@@ -26,7 +26,7 @@ services:
   # Redis Cache & Task Queue
   redis:
     image: redis:7-alpine
-    container_name: sarkari_backend_redis
+    container_name: hermes_backend_redis
     restart: unless-stopped
     command: redis-server --requirepass ${REDIS_PASSWORD} --appendonly yes --appendfsync everysec
     volumes:
@@ -46,13 +46,13 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: sarkari_backend_api
+    container_name: hermes_backend_api
     restart: unless-stopped
     environment:
       - FLASK_ENV=production
       - SECRET_KEY=${SECRET_KEY}
       - JWT_SECRET_KEY=${JWT_SECRET_KEY}
-      - MONGO_URI=mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongodb:27017/sarkari_path?authSource=sarkari_path
+      - MONGO_URI=mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongodb:27017/hermes?authSource=hermes
       - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/1
@@ -86,11 +86,11 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: sarkari_backend_celery_worker
+    container_name: hermes_backend_celery_worker
     restart: unless-stopped
     command: celery -A app.tasks.celery_app worker --loglevel=info --concurrency=4
     environment:
-      - MONGO_URI=mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongodb:27017/sarkari_path?authSource=sarkari_path
+      - MONGO_URI=mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongodb:27017/hermes?authSource=hermes
       - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/1
@@ -116,11 +116,11 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: sarkari_backend_celery_beat
+    container_name: hermes_backend_celery_beat
     restart: unless-stopped
     command: celery -A app.tasks.celery_app beat --loglevel=info
     environment:
-      - MONGO_URI=mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongodb:27017/sarkari_path?authSource=sarkari_path
+      - MONGO_URI=mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongodb:27017/hermes?authSource=hermes
       - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/1

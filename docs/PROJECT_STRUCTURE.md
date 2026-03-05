@@ -1,4 +1,4 @@
-# Sarkari Path - Project Structure
+# Hermes - Project Structure
 
 ## 📁 Complete Folder Structure
 
@@ -7,7 +7,7 @@ This project follows a **fully decoupled microservices architecture** with **com
 **🎯 KEY ARCHITECTURE DECISION**: Backend and Frontend are **COMPLETELY INDEPENDENT** services living in separate folders under `src/`. Each can be developed, deployed, and scaled independently. This allows changing the frontend technology stack (Flask → React → iOS → Android) without touching the backend code.
 
 ```
-sarkari_path_2.0/
+hermes/
 │
 ├── README.md                          # Main project documentation
 │

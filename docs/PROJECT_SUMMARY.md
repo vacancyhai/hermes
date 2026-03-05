@@ -1,8 +1,8 @@
-# Sarkari Path - Quick Start Guide
+# Hermes - Quick Start Guide
 
 ## 📋 What This Project Does
 
-**Sarkari Path** is a comprehensive government job notification portal that:
+**Hermes** is a comprehensive government job notification portal that:
 - ✅ Shows latest government job vacancies (Railway, SSC, UPSC, Banking, Police, Defense, Teaching)
 - ✅ Sends personalized notifications based on user qualifications (10th, 12th, Graduation) and physical standards
 - ✅ Tracks application deadlines with automatic reminders
@@ -143,8 +143,8 @@ sarkari_path_2.0/
 
 **1. Clone Repository**
 ```bash
-git clone https://github.com/SumanKr7/sarkari_path_2.0.git
-cd sarkari_path_2.0
+git clone https://github.com/SumanKr7/hermes.git
+cd hermes
 ```
 
 **2. Deploy Backend First**
@@ -161,7 +161,7 @@ Required backend environment variables:
 # MongoDB
 MONGO_ROOT_USER=admin
 MONGO_ROOT_PASSWORD=your_secure_password
-MONGO_USER=sarkaripath_user
+MONGO_USER=hermes_user
 MONGO_PASSWORD=your_db_password
 
 # Redis
@@ -268,7 +268,7 @@ curl http://localhost:8080
 **Backend Server (e.g., 192.168.1.10)**
 ```bash
 # On backend server
-cd sarkari_path_2.0/src/backend
+cd hermes/src/backend
 cp .env.example .env
 # Edit .env with production values
 docker-compose up -d --build
@@ -280,7 +280,7 @@ docker-compose up -d --build
 **Frontend Server (e.g., 192.168.1.20)**
 ```bash
 # On frontend server
-cd sarkari_path_2.0/src/frontend
+cd hermes/src/frontend
 cp .env.example .env
 
 # Set BACKEND_API_URL to backend server
@@ -316,7 +316,7 @@ docker-compose up -d --build
 sudo apt install nginx
 
 # Create Nginx config
-sudo nano /etc/nginx/sites-available/sarkaripath
+sudo nano /etc/nginx/sites-available/hermes
 ```
 
 ```nginx
@@ -342,7 +342,7 @@ server {
 
 ```bash
 # Enable site
-sudo ln -s /etc/nginx/sites-available/sarkaripath /etc/nginx/sites-enabled/
+sudo ln -s /etc/nginx/sites-available/hermes /etc/nginx/sites-enabled/
 sudo nginx -t
 sudo systemctl restart nginx
 
@@ -407,10 +407,10 @@ docker-compose up -d --no-deps --build backend
 cd src/backend
 
 # Access MongoDB shell
-docker-compose exec mongodb mongosh -u sarkaripath_user -p your_db_password --authenticationDatabase sarkari_path
+docker-compose exec mongodb mongosh -u hermes_user -p your_db_password --authenticationDatabase hermes
 
 # Backup database
-docker-compose exec mongodb mongodump --uri="mongodb://sarkaripath_user:your_db_password@localhost:27017/sarkari_path?authSource=sarkari_path" --out=/backup
+docker-compose exec mongodb mongodump --uri="mongodb://hermes_user:your_db_password@localhost:27017/hermes?authSource=hermes" --out=/backup
 
 # View Redis keys
 docker-compose exec redis redis-cli -a your_redis_password

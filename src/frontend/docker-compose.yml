@@ -6,7 +6,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: sarkari_frontend
+    container_name: hermes_frontend
     restart: unless-stopped
     environment:
       - FLASK_ENV=production

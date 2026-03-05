@@ -1,8 +1,8 @@
 .PHONY: help install dev-install test clean docker-build docker-up docker-down docker-logs backend-run frontend-run
 
 help:
-	@echo "Sarkari Path - Available Commands"
-	@echo "=================================="
+	@echo "Hermes - Available Commands"
+	@echo "===================================="
 	@echo "make install        - Install all dependencies"
 	@echo "make dev-install    - Install development dependencies"
 	@echo "make test           - Run all tests"

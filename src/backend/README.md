@@ -1,8 +1,8 @@
-# Sarkari Path - Backend Service
+# Hermes - Backend Service
 
 ## Overview
 
-This is the **Backend Service** for Sarkari Path - a completely independent REST API service that can serve multiple frontend clients (Web, Mobile, Desktop).
+This is the **Backend Service** for Hermes - a completely independent REST API service that can serve multiple frontend clients (Web, Mobile, Desktop).
 
 **Technology Stack:**
 - Flask (Python web framework)
@@ -141,7 +141,7 @@ CORS_ORIGINS=http://localhost:8080,https://yourdomain.com,https://app.yourdomain
 
 ```bash
 docker-compose exec mongodb mongodump \
-  --uri="mongodb://sarkaripath_user:password@localhost:27017/sarkari_path?authSource=sarkari_path" \
+  --uri="mongodb://hermes_user:password@localhost:27017/hermes?authSource=hermes" \
   --out=/backup
 ```
 

@@ -1,4 +1,4 @@
-# Sarkari Path - System Workflow Diagrams (ASCII)
+# Hermes - System Workflow Diagrams (ASCII)
 
 ## 1. Overall System Architecture (SEPARATED MICROSERVICES)
 
@@ -6,7 +6,7 @@
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│        SARKARI PATH - SEPARATED MICROSERVICES (6 Containers, 2 Services)     │
+│        HERMES - SEPARATED MICROSERVICES (6 Containers, 2 Services)           │
 └──────────────────────────────────────────────────────────────────────────────┘
 
                               ┌──────────────┐
@@ -2390,4 +2390,4 @@ job = get_job_by_id('507f1f77bcf86cd799439011')
 
 **End of Workflow Diagrams**
 
-*These ASCII diagrams provide a comprehensive visual representation of all major flows in the Sarkari Path application system, including the 8-container microservices architecture, JWT token rotation with 15-minute access tokens and 7-day refresh tokens, RBAC enforcement with three roles (User, Operator, Admin), request ID tracing for distributed debugging, API v1 versioning, health checks, connection pooling, error handling with graceful degradation (5x retry with exponential backoff), Redis cache-aside pattern with TTL strategy, and production-ready resilience features.*
+*These ASCII diagrams provide a comprehensive visual representation of all major flows in the Hermes application system, including the 8-container microservices architecture, JWT token rotation with 15-minute access tokens and 7-day refresh tokens, RBAC enforcement with three roles (User, Operator, Admin), request ID tracing for distributed debugging, API v1 versioning, health checks, connection pooling, error handling with graceful degradation (5x retry with exponential backoff), Redis cache-aside pattern with TTL strategy, and production-ready resilience features.*

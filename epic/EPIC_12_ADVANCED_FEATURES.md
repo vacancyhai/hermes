@@ -616,7 +616,7 @@ class SarkariWebSocket {
     }
     
     connect(token) {
-        this.socket = io('wss://api.sarkaripath.com', {
+        this.socket = io('wss://api.hermes.com', {
             auth: { token: token },
             transports: ['websocket'],
             reconnection: true,
@@ -801,7 +801,7 @@ from elasticapm.contrib.flask import ElasticAPM
 from elasticapm import Client
 
 apm_config = {
-    'SERVICE_NAME': 'sarkari-path-backend',
+    'SERVICE_NAME': 'hermes-backend',
     'SERVER_URL': 'http://apm-server:8200',
     'ENVIRONMENT': os.getenv('ENVIRONMENT', 'production'),
     'SECRET_TOKEN': os.getenv('APM_SECRET_TOKEN'),
@@ -1062,7 +1062,7 @@ class AlertManager:
                     {'title': k, 'value': v, 'short': True}
                     for k, v in alert_data['metrics'].items()
                 ],
-                'footer': 'Sarkari Path Monitoring',
+                'footer': 'Hermes Monitoring',
                 'ts': int(time.time())
             }]
         }
