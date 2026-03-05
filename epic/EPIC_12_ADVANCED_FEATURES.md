@@ -608,7 +608,7 @@ def broadcast_job_update(job_id, updates):
 #### Client-side Implementation:
 ```javascript
 // frontend/static/js/websocket_client.js
-class SarkariWebSocket {
+class HermesWebSocket {
     constructor() {
         this.socket = null;
         this.reconnectAttempts = 0;
@@ -713,7 +713,7 @@ class SarkariWebSocket {
 }
 
 // Initialize WebSocket connection
-const wsClient = new SarkariWebSocket();
+const wsClient = new HermesWebSocket();
 const token = localStorage.getItem('auth_token');
 if (token) {
     wsClient.connect(token);

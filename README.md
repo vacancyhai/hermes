@@ -164,7 +164,7 @@ docker compose exec backend curl http://localhost:5000/api/v1/health
 
 ## Database Schema (MongoDB Collections - Enhanced)
 
-> **📊 Total Collections**: 15 (Enhanced from original 6 to support complete Sarkari Result portal features)
+> **📊 Total Collections**: 15 (Enhanced from original 6 to support complete Hermes job notification portal features)
 
 ### 1. Users Collection
 ```json
@@ -1469,7 +1469,7 @@ GET /jobs_index/_search
 from elastic_apm import Client
 
 apm_client = Client(
-    service_name='sarkari-backend',
+    service_name='hermes-backend',
     server_url='http://apm-server:8200'
 )
 
@@ -1702,8 +1702,8 @@ def send_reminder_email(user, application, reminder_type):
 # Connect to MongoDB
 docker compose exec mongodb mongosh -u admin -p admin
 
-# Switch to sarkari_path database
-use sarkari_path
+# Switch to hermes_db database
+use hermes_db
 
 # Create admin user directly
 db.users.insertOne({
@@ -1735,7 +1735,7 @@ curl -X POST http://localhost:5000/api/v1/auth/register \
 
 # 2. Promote to admin (via MongoDB)
 docker compose exec mongodb mongosh
-use sarkari_path
+use hermes_db
 db.users.updateOne(
   {email: "admin@example.com"},
   {$set: {role: "admin"}}
@@ -2463,7 +2463,7 @@ curl -X GET "http://localhost:5000/api/v1/admin/permissions/audit-log?role=opera
 9. **API Versioning**: `/api/v1/` allows v2 without breaking v1 clients
 
 ### 🔒 Data Protection
-10. **MongoDB Auth**: Username/password authentication (authSource=sarkari_path)
+10. **MongoDB Auth**: Username/password authentication (authSource=hermes_db)
 11. **Redis Auth**: Password protected (requirepass enforced)
 12. **HTTPS/SSL**: Let's Encrypt certificates (TLSv1.2+)
     - Automatic renewal (certbot)
@@ -2630,8 +2630,8 @@ Memory usage: Should be < 500MB per container
 
 **Quick Start:**
 ```bash
-git clone https://github.com/SumanKr7/sarkari_path_2.0.git
-cd sarkari_path_2.0
+git clone https://github.com/SumanKr7/hermes.git
+cd hermes
 
 # Configure environment
 cp .env.example .env
@@ -3100,8 +3100,8 @@ su - hermes
 
 # Clone repository
 cd /home/hermes
-git clone https://github.com/SumanKr7/sarkari_path_2.0.git
-cd sarkari_path_2.0
+git clone https://github.com/SumanKr7/hermes.git
+cd hermes
 
 # Create virtual environment
 python3.11 -m venv venv

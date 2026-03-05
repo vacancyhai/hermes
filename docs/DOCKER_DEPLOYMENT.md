@@ -250,7 +250,7 @@ services:
     networks:
       - backend_network
     healthcheck:
-      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/sarkari_path --quiet
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/hermes_db --quiet
       interval: 10s
       timeout: 5s
       retries: 5
@@ -284,7 +284,7 @@ services:
       - FLASK_ENV=production
       - SECRET_KEY=${SECRET_KEY}
       - JWT_SECRET_KEY=${JWT_SECRET_KEY}
-      - MONGO_URI=mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongodb:27017/sarkari_path?authSource=sarkari_path
+      - MONGO_URI=mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongodb:27017/hermes_db?authSource=hermes_db
       - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/1
@@ -323,7 +323,7 @@ services:
     restart: unless-stopped
     command: celery -A app.tasks.celery_app worker --loglevel=info --concurrency=4
     environment:
-      - MONGO_URI=mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongodb:27017/sarkari_path?authSource=sarkari_path
+      - MONGO_URI=mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongodb:27017/hermes_db?authSource=hermes_db
       - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/1
@@ -353,7 +353,7 @@ services:
     restart: unless-stopped
     command: celery -A app.tasks.celery_app beat --loglevel=info
     environment:
-      - MONGO_URI=mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongodb:27017/sarkari_path?authSource=sarkari_path
+      - MONGO_URI=mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongodb:27017/hermes_db?authSource=hermes_db
       - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/1
@@ -400,7 +400,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: sarkari_frontend
+    container_name: hermes_frontend
     restart: unless-stopped
     environment:
       - FLASK_ENV=production
@@ -537,14 +537,14 @@ services:
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
-      MONGO_INITDB_DATABASE: sarkari_path
+      MONGO_INITDB_DATABASE: hermes_db
     volumes:
       - mongodb_data:/data/db
       - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
     networks:
-      - sarkari_network
+      - hermes_network
     healthcheck:
-      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/sarkari_path --quiet
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/hermes_db --quiet
       interval: 10s
       timeout: 5s
       retries: 5
@@ -562,7 +562,7 @@ services:
     volumes:
       - redis_data:/data
     networks:
-      - sarkari_network
+      - hermes_network
     healthcheck:
       test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
       interval: 10s
@@ -690,13 +690,13 @@ With 90-day TTL:  Only 300,000 notifications at any time
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: sarkari_backend
+    container_name: hermes_backend
     restart: unless-stopped
     environment:
       - FLASK_ENV=production
       - SECRET_KEY=${SECRET_KEY}
       - JWT_SECRET_KEY=${JWT_SECRET_KEY}
-      - MONGO_URI=mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongodb:27017/sarkari_path?authSource=sarkari_path
+      - MONGO_URI=mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongodb:27017/hermes_db?authSource=hermes_db
       - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/1
@@ -715,7 +715,7 @@ With 90-day TTL:  Only 300,000 notifications at any time
       redis:
         condition: service_healthy
     networks:
-      - sarkari_network
+      - hermes_network
     # ⚡ Health check for backend - Nginx won't route to unhealthy backend
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/api/v1/health"]
@@ -737,7 +737,7 @@ With 90-day TTL:  Only 300,000 notifications at any time
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: sarkari_frontend
+    container_name: hermes_frontend
     restart: unless-stopped
     environment:
       - FLASK_ENV=production
@@ -750,7 +750,7 @@ With 90-day TTL:  Only 300,000 notifications at any time
       backend:
         condition: service_healthy
     networks:
-      - sarkari_network
+      - hermes_network
     # ⚡ Health check for frontend container
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
@@ -772,7 +772,7 @@ With 90-day TTL:  Only 300,000 notifications at any time
     command: celery -A celery_worker.celery worker --loglevel=info --concurrency=2
     environment:
       - FLASK_ENV=production
-      - MONGO_URI=mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongodb:27017/sarkari_path?authSource=sarkari_path&maxPoolSize=50
+      - MONGO_URI=mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongodb:27017/hermes_db?authSource=hermes_db&maxPoolSize=50
       - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/1
@@ -790,7 +790,7 @@ With 90-day TTL:  Only 300,000 notifications at any time
       redis:
         condition: service_healthy
     networks:
-      - sarkari_network
+      - hermes_network
     # ⚡ Can scale: docker compose up -d --scale celery_worker=3
 
   # ⚡ CELERY BEAT - ONLY controls scheduling, separate from workers
@@ -807,7 +807,7 @@ With 90-day TTL:  Only 300,000 notifications at any time
     command: celery -A celery_worker.celery beat --loglevel=info
     environment:
       - FLASK_ENV=production
-      - MONGO_URI=mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongodb:27017/sarkari_path?authSource=sarkari_path
+      - MONGO_URI=mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongodb:27017/hermes_db?authSource=hermes_db
       - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
     volumes:
@@ -816,7 +816,7 @@ With 90-day TTL:  Only 300,000 notifications at any time
       # ⚡ Beat waits for queue to be ready
       - redis
     networks:
-      - sarkari_network
+      - hermes_network
     # ⚡ IMPORTANT: Keep only 1 Beat (never scale with --scale)
     # Multiple Beats = duplicate scheduled tasks
     # For HA, use Celery Flower or external beat scheduler (Celery on Kubernetes)
@@ -840,7 +840,7 @@ With 90-day TTL:  Only 300,000 notifications at any time
       backend:
         condition: service_healthy
     networks:
-      - sarkari_network
+      - hermes_network
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
       interval: 30s
@@ -848,7 +848,7 @@ With 90-day TTL:  Only 300,000 notifications at any time
       retries: 3
 
 networks:
-  sarkari_network:
+  hermes_network:
     driver: bridge
 
 volumes:
@@ -963,7 +963,7 @@ rs.status()  # Primary shows as "PRIMARY", others as "SECONDARY"
 **Update Connection String for Replica Set**:
 ```bash
 # Before (single node):
-MONGO_URI=mongodb://user:pass@mongodb:27017/sarkari_path
+MONGO_URI=mongodb://user:pass@mongodb:27017/hermes_db
 
 # After (replica set):
 MONGO_URI=mongodb://user:pass@mongodb1:27017,mongodb2:27017,mongodb3:27017/hermes?replicaSet=rs0&authSource=admin
@@ -1509,7 +1509,7 @@ docker compose version
 
 ```bash
 # 1. Clone repository
-cd /home/sarkaripath
+cd /home/hermes
 git clone https://github.com/SumanKr7/hermes.git
 cd hermes
 
@@ -1553,7 +1553,7 @@ Add this service to your docker-compose.yml for SSL:
       - ./certbot-webroot:/var/www/certbot
     entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
     networks:
-      - sarkaripath_network
+      - hermes_network
 ```
 
 ---
@@ -1568,7 +1568,7 @@ Add to docker-compose.yml for production log aggregation:
 services:
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.0.0
-    container_name: sarkari_elasticsearch
+    container_name: hermes_elasticsearch
     restart: unless-stopped
     environment:
       - discovery.type=single-node
@@ -1578,11 +1578,11 @@ services:
     volumes:
       - elasticsearch_data:/usr/share/elasticsearch/data
     networks:
-      - sarkaripath_network
+      - hermes_network
 
   kibana:
     image: docker.elastic.co/kibana/kibana:8.0.0
-    container_name: sarkari_kibana
+    container_name: hermes_kibana
     restart: unless-stopped
     ports:
       - "5601:5601"
@@ -1591,7 +1591,7 @@ services:
     depends_on:
       - elasticsearch
     networks:
-      - sarkaripath_network
+      - hermes_network
 ```
 
 **Enable JSON logging in all services**:
@@ -1616,18 +1616,18 @@ Search: `service:backend AND level:ERROR`
 services:
   prometheus:
     image: prom/prometheus:latest
-    container_name: sarkari_prometheus
+    container_name: hermes_prometheus
     ports:
       - "9090:9090"
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus_data:/prometheus
     networks:
-      - sarkaripath_network
+      - hermes_network
 
   grafana:
     image: grafana/grafana:latest
-    container_name: sarkari_grafana
+    container_name: hermes_grafana
     ports:
       - "3000:3000"
     environment:
@@ -1637,7 +1637,7 @@ services:
     depends_on:
       - prometheus
     networks:
-      - sarkaripath_network
+      - hermes_network
 ```
 
 **Metrics to Monitor**:

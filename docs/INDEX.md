@@ -35,7 +35,7 @@ This project contains comprehensive documentation across multiple files. Use thi
 - ✅ Project overview and key capabilities
 - ✅ Complete tech stack (Frontend, Backend, Infrastructure)
 - ✅ Microservices architecture diagram
-- ✅ Enhanced database schemas (15 MongoDB collections - expanded from 6 to support complete Sarkari Result portal)
+- ✅ Enhanced database schemas (15 MongoDB collections - expanded from 6 to support complete Hermes job notification portal)
 - ✅ API endpoints (60+ REST endpoints with descriptions)
 - ✅ Key features implementation (Job matching algorithm, Notification system)
 - ✅ Flask-Mail email service configuration

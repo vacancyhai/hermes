@@ -13,7 +13,7 @@
 - ✅ Admin panel for complete content management
 - ✅ Advanced analytics and search tracking
 
-> **🗄️ Database**: Enhanced 15-collection MongoDB schema (expanded from 6 to support complete Sarkari Result portal features)
+> **🗄️ Database**: Enhanced 15-collection MongoDB schema (expanded from 6 to support complete Hermes job notification portal features)
 
 ---
 
@@ -71,7 +71,7 @@
 ## 📁 Project Structure (NEW: src/ Separation)
 
 ```
-sarkari_path_2.0/
+hermes/
 ├── src/                              # 🚀 All source code
 │   │
 │   ├── backend/                      # 🔧 BACKEND SERVICE (INDEPENDENT)
@@ -182,6 +182,9 @@ FIREBASE_CREDENTIALS_PATH=/app/firebase-credentials.json
 
 # Backend API Port
 BACKEND_PORT=5000
+
+# MongoDB Database Name (hermes_db instead of sarkari_path)
+MONGO_DB_NAME=hermes_db
 ```
 
 **3. Start Backend Services**
@@ -260,6 +263,8 @@ curl http://localhost:8080
 - Backend API: `http://localhost:5000/api/v1/`
 - Frontend Website: `http://localhost:8080`
 - Admin panel: `http://localhost:8080/admin`
+
+**Note:** Database name is `hermes_db` (changed from `sarkari_path`)
 
 ---
 
@@ -370,7 +375,7 @@ docker-compose logs -f
 
 # Specific service
 docker-compose logs -f backend
-docker-compose logs -f mongodb
+docker-compose logs -f mongodb        # Database: hermes_db
 docker-compose logs -f redis
 docker-compose logs -f celery_worker
 docker-compose logs -f celery_beat
@@ -592,7 +597,7 @@ User sees job listings page
 Backend (.env in src/backend/):
 ```env
 BACKEND_PORT=5000
-MONGO_URI=mongodb://user:pass@mongodb:27017/sarkari_path
+MONGO_URI=mongodb://user:pass@mongodb:27017/hermes_db
 REDIS_URL=redis://:password@redis:6379/0
 ```
 
@@ -776,10 +781,10 @@ sudo lsof -i :6379
 ### Issue: Frontend can't connect to backend
 ```bash
 # Check if backend is healthy
-curl http://localhost/api/health
+curl http://localhost:5000/api/v1/health
 
 # Check docker network
-docker network inspect sarkari_network
+docker network inspect hermes_network
 
 # Restart backend
 docker compose restart backend
@@ -885,8 +890,8 @@ The system has **3 user roles** with different permissions:
 # Connect to MongoDB
 docker compose exec mongodb mongosh -u admin -p admin
 
-# Switch to sarkari_path database
-use sarkari_path
+# Switch to hermes_db database
+use hermes_db
 
 # Create admin user directly
 db.users.insertOne({
@@ -917,7 +922,7 @@ curl -X POST http://localhost:5000/api/v1/auth/register \
 
 # 2. Update role in MongoDB
 docker compose exec mongodb mongosh -u admin -p admin
-use sarkari_path
+use hermes_db
 db.users.updateOne(
   {email: "admin@example.com"},
   {$set: {role: "admin"}}
