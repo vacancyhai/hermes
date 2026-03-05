@@ -1,134 +1,162 @@
 # Docker Deployment Guide - Sarkari Path
 
-## Microservices Architecture with Separated Containers
+## Separated Microservices Architecture (INDEPENDENT Backend + Frontend)
 
-This deployment uses **8 Docker containers (Optimized)** with separated Flask frontend and backend for better scalability and maintenance.
+**🎯 MAJOR CHANGE**: Backend and Frontend are now **COMPLETELY SEPARATED** into different folders under `src/`. Each service has its own Docker Compose file and can be deployed independently.
 
 **Container Breakdown:**
-1. **Nginx** - Reverse proxy with health checks
-2. **Frontend** - Flask + Jinja2 UI
-3. **Backend** - Flask REST API (/api/v1/)
-4. **MongoDB** - Database with TTL indexes
-5. **Redis** - Cache + Queue (AOF persistence)
-6. **Celery Worker** - Background task executor (scalable: 1-N)
-7. **Celery Beat** - Task scheduler (always 1 instance)
-8. **Monitoring** - Health checks & logging (optional)
 
-## Why Docker + Microservices for This Project?
+### Backend Service (`src/backend/docker-compose.yml`):
+1. **MongoDB** - Database with TTL indexes
+2. **Redis** - Cache + Queue (AOF persistence)
+3. **Backend API** - Flask REST API (/api/v1/*)
+4. **Celery Worker** - Background task executor (scalable: 1-N)
+5. **Celery Beat** - Task scheduler (always 1 instance)
+
+### Frontend Service (`src/frontend/docker-compose.yml`):
+6. **Frontend** - Flask + Jinja2 UI (or React/Mobile in future)
+
+**Total**: 6 containers across 2 services (vs 8 in previous monolithic setup)
+
+## Why Separated Services Architecture?
 
 ### ✅ Advantages
-1. **Service Isolation**: Frontend and backend run independently
-2. **Independent Scaling**: Scale frontend and backend separately based on load
-3. **Zero-Downtime Updates**: Update frontend without restarting backend (and vice versa)
-4. **Consistency**: Same environment across development, staging, and production
-5. **Easy Deployment**: Single command deployment on any server
-6. **Portability**: Works on any platform (Hostinger VPS, AWS, DigitalOcean, etc.)
-7. **Quick Setup**: No manual installation of dependencies
-8. **Version Control**: Docker images are versioned
-9. **Resource Management**: Better control over CPU/RAM allocation per service
-10. **Easy Rollback**: Quickly revert individual services to previous versions
+1. **Complete Independence**: Backend and frontend can be developed without interfering
+2. **Independent Deployment**: Update frontend without restarting backend (zero downtime)
+3. **Independent Scaling**: Scale backend and frontend separately based on actual load
+4. **Technology Flexibility**: Replace frontend (Flask → React → iOS → Android) WITHOUT touching backend
+5. **Multiple Frontends**: Run Flask web + React admin + Mobile apps ALL calling same backend API
+6. **Different Servers**: Deploy backend on powerful server, frontend on edge servers
+7. **Cleaner Git History**: Can have separate repositories for backend and frontend
+8. **Team Separation**: Backend team and frontend team don't conflict
+9. **Easier Testing**: Test backend API independently without frontend
+10. **API-First Design**: Backend is pure REST API, can serve any client
 
-### ⚠️ Considerations
-- **Learning Curve**: Need to understand Docker and microservices basics
-- **Overhead**: Slight memory overhead (~100-200MB per container)
-- **Disk Space**: Docker images take more space
-- **Complexity**: More containers to manage (6 instead of 1)
+### 🔄 Migration Path
+**Current**: Flask SSR (Server-Side Rendered HTML)
+**Future Options** (NO backend changes needed):
+- React SPA (Single Page Application)
+- React Native (iOS + Android)
+- Native iOS (Swift)
+- Native Android (Kotlin)
+- Flutter
+- Any client that can make HTTP calls!
+
+### ⚠️ Considerations Compared to Monolithic Docker Compose
+- **Network Configuration**: Frontend must know backend URL (environment variable)
+- **CORS Setup**: Backend must allow requests from frontend origin
+- **Authentication**: Frontend must handle JWT tokens and pass to backend
+- **Error Handling**: Frontend must handle backend API errors gracefully
 
 ### 📊 Recommendation
-**YES, use Docker microservices for production!** The benefits far outweigh the drawbacks, especially for a multi-service application like Sarkari Path.
+**YES, use separated services!** The flexibility and scalability benefits far outweigh the small additional complexity.
 
 ---
 
-## Docker Microservices Architecture
+## Architecture Diagrams
+
+### Overall System (Separated Services)
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                    Hostinger VPS Server                         │
-│                                                                 │
-│  ┌───────────────────────────────────────────────────────────┐ │
-│  │              Docker Compose Network                        │ │
-│  │                  (sarkari_network)                         │ │
-│  │                                                            │ │
-│  │  ┌──────────────────────────────────────────────────┐     │ │
-│  │  │         Nginx Container                          │     │ │
-│  │  │  - Port 80:80, 443:443                           │     │ │
-│  │  │  - SSL Termination (Let's Encrypt)               │     │ │
-│  │  │  - Reverse Proxy                                 │     │ │
-│  │  │  - Static File Serving                           │     │ │
-│  │  │  - Rate Limiting                                 │     │ │
-│  │  └─────────┬──────────────────────┬─────────────────┘     │ │
-│  │            │                      │                       │ │
-│  │      /api/*│                      │/*                     │ │
-│  │            ↓                      ↓                       │ │
-│  │  ┌──────────────────┐   ┌────────────────────────┐       │ │
-│  │  │  Backend         │   │  Frontend              │       │ │
-│  │  │  Container       │   │  Container             │       │ │
-│  │  │  (Flask API)     │←──│  (Flask + Jinja2)      │       │ │
-│  │  │                  │   │                        │       │ │
-│  │  │  - Port 5000     │   │  - Port 8080           │       │ │
-│  │  │  - Gunicorn 3w   │   │  - Gunicorn 2w         │       │ │
-│  │  │  - REST API      │   │  - UI Rendering        │       │ │
-│  │  │  - Auth & Logic  │   │  - Templates           │       │ │
-│  │  └────────┬─────────┘   │  - Static Assets       │       │ │
-│  │           │              │  - API Client          │       │ │
-│  │           │              └────────────────────────┘       │ │
-│  │           │                                               │ │
-│  │      ┌────┼────────────────────┬──────────────┐          │ │
-│  │      │    │                    │              │          │ │
-│  │      ↓    ↓                    ↓              ↓          │ │
-│  │  ┌────────────┐  ┌──────────────┐  ┌─────────────┐  ┌───────┐│
-│  │  │  MongoDB   │  │   Redis      │  │  Celery     │  │Celery ││
-│  │  │  Container │  │  Container   │  │  Worker     │  │ Beat  ││
-│  │  │            │  │              │  │  Container  │  │ Cont. ││
-│  │  │ Port 27017 │  │  Port 6379   │  │             │  │       ││
-│  │  │ - Auth     │  │  - Cache     │  │ - Jobs      │  │-Cron  ││
-│  │  │ - 15 Cols  │  │  - Sessions  │  │ - Emails    │  │-Tasks ││
-│  │  │ - Persist  │  │  - Queue     │  │ - Notify    │  │       ││
-│  │  └────────────┘  └──────────────┘  └─────────────┘  └───────┘│
-│  │                                                            │ │
-│  │  Volumes (Persistent Storage):                            │ │
-│  │  - mongodb_data    - redis_data                           │ │
-│  │  - backend_logs    - nginx_ssl                            │ │
-│  └────────────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────┐
+│              SEPARATED MICROSERVICES ARCHITECTURE                 │
+└──────────────────────────────────────────────────────────────────┘
 
-        Internet ↕️ HTTPS (Port 443)
+┌─────────────────────────────┐      ┌──────────────────────────────┐
+│  BACKEND SERVICE            │      │  FRONTEND SERVICE            │
+│  (src/backend/)             │◄─────│  (src/frontend/)             │
+│                             │ HTTP │                              │
+│  Port: 5000                 │ REST │  Port: 8080                  │
+│                             │ API  │                              │
+│  docker-compose.yml         │      │  docker-compose.yml          │
+│  ┌─────────────────┐        │      │  ┌──────────────────┐       │
+│  │ 1. MongoDB      │        │      │  │ Frontend         │       │
+│  │    - Database   │        │      │  │ - Flask/Jinja2   │       │
+│  │    - Port 27017 │        │      │  │ - Calls Backend  │       │
+│  │    - Persistent │        │      │  │   via HTTP       │       │
+│  └─────────────────┘        │      │  │ - Renders HTML   │       │
+│                             │      │  └──────────────────┘       │
+│  ┌─────────────────┐        │      │                              │
+│  │ 2. Redis        │        │      │  Environment:                │
+│  │    - Cache      │        │      │  BACKEND_API_URL=            │
+│  │    - Task Queue │        │      │  http://backend:5000/api/v1  │
+│  │    - Port 6379  │        │      │                              │
+│  │    - AOF Persist│        │      │  Can be replaced with:       │
+│  └─────────────────┘        │      │  - React SPA                 │
+│            ↓                │      │  - React Native              │
+│  ┌─────────────────┐        │      │  - iOS app                   │
+│  │ 3. Backend API  │        │      │  - Android app               │
+│  │    - Flask REST │        │      │  WITHOUT changing backend!   │
+│  │    - /api/v1/*  │        │      │                              │
+│  │    - JWT Auth   │        │      └──────────────────────────────┘
+│  │    - CORS enabled│       │
+│  └─────────────────┘        │             User Browser
+│            ↓                │                  ↓
+│  ┌─────────────────┐        │                  │
+│  │ 4. Celery Worker│        │      ┌───────────┴───────────┐
+│  │    - (1-N)      │        │      │                       │
+│  │    - Tasks      │        │      ↓                       ↓
+│  └─────────────────┘        │   Frontend              Direct API
+│                             │   (HTML Pages)          (Mobile/SPA)
+│  ┌─────────────────┐        │      ↓                       ↓
+│  │ 5. Celery Beat  │        │      └───────── HTTP ────────┘
+│  │    - (Always 1) │        │              ↓
+│  │    - Scheduler  │        │      Backend REST API
+│  └─────────────────┘        │      /api/v1/*
+│                             │
+│  Exposes: /api/v1/*         │
+│  on localhost:5000          │
+└─────────────────────────────┘
+
+  Deploy on Server 1           Deploy on Server 2
+  (or same server)             (or same server)
+  Can scale separately!        Can scale separately!
 ```
 
 ### Container Communication Flow
 
-1. **User Request** → Nginx (Port 80/443)
-2. **Nginx Routes** (with health checks):
-   - `/api/v1/*` → Backend Container (Port 5000) - Only if healthy
-   - `/*` (pages) → Frontend Container (Port 8080) - Only if healthy
-   - `/static/*` → Frontend Container static files
-3. **Frontend** → Calls Backend API via internal network: `http://backend:5000/api/v1`
-4. **Backend** → Accesses MongoDB and Redis
-5. **Celery Worker** → Processes background tasks from Redis queue (separate worker containers)
-6. **Celery Beat** → Triggers scheduled tasks (separate Beat container, scales independently)
-
-### ⚡ Important: Celery Separation
-**Celery Beat and Celery Worker are SEPARATE containers** (not 1 process doing both):
-
-**Why Separate?**
-- **Scaling**: Scale workers without re-triggering schedules
-- **Failures**: If a worker crashes, Beat keeps scheduling
-- **Monitoring**: Track task execution separately from scheduling
-- **Scalability**: Run 5 workers + 1 Beat = better throughput
-
-**In docker-compose.yml**:
-- `celery_worker`: Services = scales from 1 to N
-- `celery_beat`: Services = always 1 (only one schedule master)
-
-Do NOT use: `celery -A celery_app worker --beat` (this couples them together)
+```
+User Request (Mobile/Web/Desktop)
+    ↓
+Frontend Service (src/frontend/ - Port 8080)
+    ├─ Renders UI (HTML/React/Mobile)
+    └─ Makes HTTP request to backend
+    ↓
+HTTP: http://BACKEND_URL:5000/api/v1/jobs
+    ├─ Headers: Authorization: Bearer <JWT>
+    ├─ Headers: X-Request-ID: <uuid>
+    ├─ Headers: Origin: http://frontend-url
+    └─ Body: JSON data
+    ↓
+Backend Service (src/backend/ - Port 5000)
+    ├─ CORS check (allow frontend origin)
+    ├─ JWT verification
+    ├─ Rate limiting
+    ├─ Route → Service → Model
+    ↓
+MongoDB / Redis
+    ↓
+Response: JSON
+    ├─ Status: 200/400/401/500
+    ├─ Headers: Access-Control-Allow-Origin
+    ├─ Headers: X-Request-ID
+    └─ Body: {data, error}
+    ↓
+Frontend receives JSON
+    ├─ Parse data
+    ├─ Update UI
+    └─ Handle errors
+    ↓
+User sees result
+```
 
 ---
 
 ## Docker Files
 
-### 1. Backend Dockerfile (Flask API)
+### 1. Backend Dockerfile (Flask REST API)
 
-**backend/Dockerfile:**
+**src/backend/Dockerfile:**
 ```dockerfile
 FROM python:3.11-slim
 
@@ -158,7 +186,7 @@ EXPOSE 5000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import requests; requests.get('http://localhost:5000/api/health')"
+    CMD python -c "import requests; requests.get('http://localhost:5000/api/v1/health')"
 
 # Run with gunicorn
 CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "3", "--timeout", "60", "run:app"]
@@ -166,7 +194,7 @@ CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "3", "--timeout", "60", 
 
 ### 2. Frontend Dockerfile (Flask + Jinja2)
 
-**frontend/Dockerfile:**
+**src/frontend/Dockerfile:**
 ```dockerfile
 FROM python:3.11-slim
 
@@ -185,11 +213,313 @@ USER appuser
 
 EXPOSE 8080
 
+# Health check (optional)
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD python -c "import requests; requests.get('http://localhost:8080/health')"
+
 # Run with gunicorn
 CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--workers", "2", "--timeout", "30", "run:app"]
 ```
 
-### 3. docker-compose.yml (Complete Orchestration)
+---
+
+## Docker Compose Files (SEPARATED SERVICES)
+
+### Backend Service: docker-compose.yml
+
+**src/backend/docker-compose.yml** (Complete backend ecosystem):
+
+```yaml
+version: '3.8'
+
+services:
+  # MongoDB Database
+  mongodb:
+    image: mongo:7.0
+    container_name: sarkari_backend_mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
+      MONGO_INITDB_DATABASE: sarkari_path
+    volumes:
+      - mongodb_data:/data/db
+      - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    ports:
+      - "27017:27017"  # Expose to host (optional for external access)
+    networks:
+      - backend_network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/sarkari_path --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache & Broker
+  redis:
+    image: redis:7-alpine
+    container_name: sarkari_backend_redis
+    restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_PASSWORD} --appendonly yes --appendfsync everysec
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"  # Expose to host (optional for external access)
+    networks:
+      - backend_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # Backend API
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sarkari_backend_api
+    restart: unless-stopped
+    environment:
+      - FLASK_ENV=production
+      - SECRET_KEY=${SECRET_KEY}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - MONGO_URI=mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongodb:27017/sarkari_path?authSource=sarkari_path
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
+      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/1
+      - MAIL_SERVER=${MAIL_SERVER}
+      - MAIL_PORT=${MAIL_PORT}
+      - MAIL_USERNAME=${MAIL_USERNAME}
+      - MAIL_PASSWORD=${MAIL_PASSWORD}
+      - FIREBASE_CREDENTIALS_PATH=/app/firebase-credentials.json
+      # CORS: Allow frontend origin
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:8080,http://frontend:8080}
+    volumes:
+      - ./app:/app/app
+      - backend_logs:/app/logs
+    ports:
+      - "${BACKEND_PORT:-5000}:5000"  # Expose backend API to host
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - backend_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 40s
+      retries: 3
+
+  # Celery Worker (Background Tasks)
+  celery_worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sarkari_backend_celery_worker
+    restart: unless-stopped
+    command: celery -A app.tasks.celery_app worker --loglevel=info --concurrency=4
+    environment:
+      - MONGO_URI=mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongodb:27017/sarkari_path?authSource=sarkari_path
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
+      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/1
+      - MAIL_SERVER=${MAIL_SERVER}
+      - MAIL_PORT=${MAIL_PORT}
+      - MAIL_USERNAME=${MAIL_USERNAME}
+      - MAIL_PASSWORD=${MAIL_PASSWORD}
+      - FIREBASE_CREDENTIALS_PATH=/app/firebase-credentials.json
+    volumes:
+      - ./app:/app/app
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    networks:
+      - backend_network
+
+  # Celery Beat (Task Scheduler)
+  celery_beat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sarkari_backend_celery_beat
+    restart: unless-stopped
+    command: celery -A app.tasks.celery_app beat --loglevel=info
+    environment:
+      - MONGO_URI=mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongodb:27017/sarkari_path?authSource=sarkari_path
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
+      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/1
+    volumes:
+      - ./app:/app/app
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    networks:
+      - backend_network
+
+volumes:
+  mongodb_data:
+  redis_data:
+  backend_logs:
+
+networks:
+  backend_network:
+    driver: bridge
+```
+
+**Key Points:**
+- ✅ Backend runs on port 5000 (exposed to host)
+- ✅ All backend services (MongoDB, Redis, Celery) in one compose file
+- ✅ Self-contained: Can run completely independently
+- ✅ CORS enabled to allow frontend requests
+
+---
+
+### Frontend Service: docker-compose.yml
+
+**src/frontend/docker-compose.yml** (Frontend only):
+
+```yaml
+version: '3.8'
+
+services:
+  # Frontend Application
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sarkari_frontend
+    restart: unless-stopped
+    environment:
+      - FLASK_ENV=production
+      - SECRET_KEY=${SECRET_KEY}
+      # Backend API URL - CRITICAL CONFIGURATION
+      - BACKEND_API_URL=${BACKEND_API_URL:-http://localhost:5000/api/v1}
+      # Session configuration
+      - SESSION_TIMEOUT=${SESSION_TIMEOUT:-3600}
+    volumes:
+      - ./app:/app/app
+      - ./templates:/app/templates
+      - ./static:/app/static
+    ports:
+      - "${FRONTEND_PORT:-8080}:8080"  # Expose frontend to host
+    networks:
+      - frontend_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 20s
+      retries: 3
+
+networks:
+  frontend_network:
+    driver: bridge
+```
+
+**Key Points:**
+- ✅ Frontend runs on port 8080 (exposed to host)
+- ✅ Minimal: Only frontend service (no database)
+- ✅ `BACKEND_API_URL` environment variable points to backend
+- ✅ Can be replaced with React app docker-compose in future
+
+**Environment Configuration for Frontend:**
+
+```bash
+# src/frontend/.env
+FRONTEND_PORT=8080
+SECRET_KEY=your-frontend-secret-key
+SESSION_TIMEOUT=3600
+
+# Backend API URL - Change based on deployment
+# Development (same machine):
+BACKEND_API_URL=http://localhost:5000/api/v1
+
+# Production (different server):
+# BACKEND_API_URL=http://192.168.1.10:5000/api/v1
+# BACKEND_API_URL=https://api.yourdomain.com/api/v1
+```
+
+---
+
+## Deployment Procedures
+
+### Development: Both Services on Same Machine
+
+**Step 1: Start Backend**
+```bash
+cd src/backend
+cp .env.example .env
+# Edit .env with your values
+nano .env
+docker-compose up -d --build
+docker-compose logs -f
+```
+
+**Step 2: Start Frontend**
+```bash
+cd src/frontend
+cp .env.example .env
+# Set BACKEND_API_URL=http://localhost:5000/api/v1
+nano .env
+docker-compose up -d --build
+docker-compose logs -f
+```
+
+**Step 3: Access**
+- Backend API: http://localhost:5000/api/v1/
+- Frontend: http://localhost:8080
+
+---
+
+### Production: Services on Different Servers
+
+**Backend Server (e.g., 192.168.1.10)**
+```bash
+cd src/backend
+docker-compose up -d --build
+# Backend API available at: http://192.168.1.10:5000/api/v1/
+```
+
+**Frontend Server (e.g., 192.168.1.20)**
+```bash
+cd src/frontend
+# Edit .env
+nano .env
+# Set: BACKEND_API_URL=http://192.168.1.10:5000/api/v1
+docker-compose up -d --build
+# Frontend available at: http://192.168.1.20:8080
+```
+
+**Setup Nginx on Frontend Server (Optional - for SSL)**
+```nginx
+server {
+    listen 80;
+    server_name yourdomain.com;
+    
+    location / {
+        proxy_pass http://localhost:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
+```
+
+---
+
+### 3. docker-compose.yml (OLD - Monolithic, for Reference Only)
 
 ```yaml
 version: '3.8'

@@ -19,64 +19,116 @@
 
 ## 🏗️ Architecture Overview
 
-### Microservices Design (8 Containers - Optimized)
+### Fully Decoupled Services Design (INDEPENDENT Backend + Frontend)
+
+**🎯 KEY CHANGE**: Backend and Frontend are **COMPLETELY SEPARATED** into different folders under `src/`. Each service runs independently with its own Docker Compose file. This allows replacing the frontend technology (Flask → React → iOS → Android) without touching the backend.
 
 ```
-User Browser
-    ↓
-Nginx (Port 80/443) → Routes traffic (Health checks enabled)
-    ↓                      ↓
-Frontend Flask       Backend Flask API
-(Jinja2 Pages)       (REST Endpoints /api/v1/)
-(Health checked)     (Health checked)
-    ↓                      ↓
-    ├──→ MongoDB (Single + TTL indexes)
-    ├──→ Redis (AOF persistence + Queue)
-    ├──→ Celery Workers (Scalable: 1-N instances)
-    └──→ Celery Beat (Scheduler: Always 1 instance)
+┌────────────────────────────────────────────────────────────┐
+│                  SEPARATED SERVICES                         │
+└────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────┐      ┌─────────────────────────────┐
+│   BACKEND SERVICE           │      │   FRONTEND SERVICE          │
+│   (src/backend/)            │◄─────│   (src/frontend/)           │
+│                             │ HTTP │                             │
+│   Port: 5000                │ REST │   Port: 8080 (or any)       │
+│                             │ API  │                             │
+│   docker-compose.yml:       │      │   docker-compose.yml:       │
+│   - MongoDB                 │      │   - Frontend only           │
+│   - Redis                   │      │                             │
+│   - Backend API             │      │   API calls via HTTP:       │
+│   - Celery Worker           │      │   http://backend:5000       │
+│   - Celery Beat             │      │   /api/v1/*                 │
+│                             │      │                             │
+│   Exposes: /api/v1/*        │      │   Serves: HTML/SPA          │
+│                             │      │                             │
+│   Can deploy independently! │      │   Can deploy independently! │
+│   Can scale independently!  │      │   Can scale independently!  │
+│   Technology: Flask         │      │   Technology: Flask/React/  │
+│   (Won't change)            │      │   Native iOS/Android        │
+│                             │      │   (Can change anytime!)     │
+└─────────────────────────────┘      └─────────────────────────────┘
+
+          ↑                                      ↑
+          │                                      │
+    Deploy on Server 1                     Deploy on Server 2
+    (or same server)                       (or same server)
 ```
 
-**Architecture Improvements:**
-- **API Versioning**: All endpoints use `/api/v1/` for future compatibility
-- **Health Checks**: Nginx only routes to healthy backends (prevents cascading failures)
-- **Separated Celery**: Beat (scheduler = 1 instance) and Workers (executors = scalable)
-  - Scale workers without duplicating schedules
-  - Celery Beat never scales (`--scale celery_beat=N` = duplicate tasks!)
-- **Redis Persistence**: AOF enabled to survive restarts
-- **MongoDB Note**: Single-node setup shown; for production failover, add 3-node replica set
+**Architecture Benefits:**
+- ✅ **Complete Separation**: Backend and frontend live in separate folders (`src/backend/`, `src/frontend/`)
+- ✅ **Independent Deployment**: Deploy backend without restarting frontend (and vice versa)
+- ✅ **Independent Scaling**: Scale backend and frontend separately based on load
+- ✅ **Tech Stack Flexibility**: Replace frontend (Flask → React → Mobile) WITHOUT touching backend
+- ✅ **API Versioning**: All endpoints use `/api/v1/` for future compatibility
+- ✅ **Multiple Frontends**: Run Flask web + React Admin + iOS app ALL calling same backend API
+- ✅ **Separated Celery**: Beat (scheduler = 1 instance) and Workers (executors = scalable)
+- ✅ **Different Servers**: Deploy backend on powerful server, frontend on edge servers closer to users
 
 ---
 
-## 📁 Project Structure
+## 📁 Project Structure (NEW: src/ Separation)
 
 ```
-sarkari-path/
-├── backend/              # Flask REST API
-│   ├── app/
-│   │   ├── routes/      # API endpoints (/api/auth, /api/jobs, etc.)
-│   │   ├── models/      # MongoDB models
-│   │   ├── services/    # Business logic (job matching, notifications)
-│   │   └── tasks/       # Celery background tasks
-│   ├── Dockerfile
-│   └── requirements.txt
+sarkari_path_2.0/
+├── src/                              # 🚀 All source code
+│   │
+│   ├── backend/                      # 🔧 BACKEND SERVICE (INDEPENDENT)
+│   │   ├── docker-compose.yml        # Backend: MongoDB, Redis, API, Celery
+│   │   ├── Dockerfile
+│   │   ├── requirements.txt
+│   │   ├── .env.example              # Backend environment variables
+│   │   ├── run.py
+│   │   ├── app/
+│   │   │   ├── routes/               # API endpoints (/api/v1/*)
+│   │   │   ├── models/               # MongoDB models
+│   │   │   ├── services/             # Business logic
+│   │   │   └── tasks/                # Celery background tasks
+│   │   ├── config/
+│   │   ├── tests/
+│   │   └── logs/
+│   │
+│   └── frontend/                     # 🎨 FRONTEND SERVICE (INDEPENDENT)
+│       ├── docker-compose.yml        # Frontend only
+│       ├── Dockerfile
+│       ├── requirements.txt          # Flask deps (or package.json for React)
+│       ├── .env.example              # Frontend environment variables
+│       ├── run.py
+│       ├── app/
+│       │   ├── routes/               # Page routes (/, /jobs, /profile)
+│       │   ├── templates/            # Jinja2 HTML (Flask only)
+│       │   ├── static/               # CSS, JS, images (Flask only)
+│       │   └── utils/
+│       │       └── api_client.py     # Calls backend: http://backend:5000/api/v1/*
+│       ├── config/
+│       └── tests/
 │
-├── frontend/             # Flask + Jinja2 UI
-│   ├── app/
-│   │   ├── routes/      # Page routes (/, /jobs, /profile, etc.)
-│   │   ├── templates/   # Jinja2 HTML templates
-│   │   ├── static/      # CSS, JS, images
-│   │   └── utils/
-│   │       └── api_client.py  # Calls backend API
-│   ├── Dockerfile
-│   └── requirements.txt
-│
-├── nginx/                # Reverse proxy
-│   └── nginx.conf
-│
-├── docker-compose.yml    # All services orchestration
-├── .env                  # Configuration
-└── mongo-init.js         # Database initialization
+├── docs/                             # Documentation
+├── epic/                             # Feature planning
+├── config/                           # Environment configs (reference)
+│   ├── development/
+│   │   ├── .env.backend.dev
+│   │   └── .env.frontend.dev
+│   ├── staging/
+│   └── production/
+├── scripts/
+│   └── deployment/
+│       ├── deploy_backend.sh
+│       ├── deploy_frontend.sh
+│       └── deploy_all.sh
+└── README.md
 ```
+
+**Key Points:**
+- ✅ Backend lives in `src/backend/` with its own docker-compose.yml
+- ✅ Frontend lives in `src/frontend/` with its own docker-compose.yml
+- ✅ Each service has its own .env file
+- ✅ Each service can be git repository on its own
+- ✅ Frontend calls backend via HTTP REST API
+- ✅ Can run backend only: `cd src/backend && docker-compose up`
+- ✅ Can run frontend only: `cd src/frontend && docker-compose up`
+- ✅ Can replace frontend entirely without touching backend code!
 
 ---
 
@@ -84,10 +136,10 @@ sarkari-path/
 
 ### Prerequisites
 - Docker & Docker Compose installed
-- Domain name (optional, for SSL)
+- Domain name (optional, for production SSL)
 - SMTP email credentials (Gmail/Outlook)
 
-### Steps
+### Option 1: Deploy Both Services Together (Development)
 
 **1. Clone Repository**
 ```bash
@@ -95,13 +147,16 @@ git clone https://github.com/SumanKr7/sarkari_path_2.0.git
 cd sarkari_path_2.0
 ```
 
-**2. Configure Environment**
+**2. Deploy Backend First**
 ```bash
+cd src/backend
+
+# Configure backend environment
 cp .env.example .env
 nano .env
 ```
 
-Required environment variables:
+Required backend environment variables:
 ```env
 # MongoDB
 MONGO_ROOT_USER=admin
@@ -124,97 +179,326 @@ MAIL_PASSWORD=your-app-password
 
 # Firebase (for push notifications)
 FIREBASE_CREDENTIALS_PATH=/app/firebase-credentials.json
+
+# Backend API Port
+BACKEND_PORT=5000
 ```
 
-**3. Start All Services**
+**3. Start Backend Services**
 ```bash
-docker compose up -d --build
+# From src/backend/
+docker-compose up -d --build
 ```
 
 This starts:
 - ✅ MongoDB (database)
 - ✅ Redis (cache & queue)
-- ✅ Backend API (Flask)
-- ✅ Frontend UI (Flask + Jinja2)
+- ✅ Backend API (Flask REST API on port 5000)
 - ✅ Celery Worker (background tasks)
 - ✅ Celery Beat (scheduler)
-- ✅ Nginx (reverse proxy)
 
-**4. Verify Deployment**
+**4. Verify Backend**
 ```bash
-# Check all containers are running
-docker compose ps
+# Check backend containers
+docker-compose ps
 
-# View logs
-docker compose logs -f frontend backend
+# View backend logs
+docker-compose logs -f backend
 
-# Test endpoints
-curl http://localhost/health        # Should return "OK"
-curl http://localhost/api/health    # Should return {"status":"healthy"}
+# Test backend API
+curl http://localhost:5000/api/v1/health
+# Should return: {"status":"healthy"}
 ```
 
-**5. Access Application**
-- Website: `http://localhost` or `http://your-domain.com`
-- Admin panel: `http://localhost/admin`
+**5. Deploy Frontend**
+```bash
+cd ../frontend
+
+# Configure frontend environment
+cp .env.example .env
+nano .env
+```
+
+Required frontend environment variables:
+```env
+# Backend API URL (where frontend calls backend)
+BACKEND_API_URL=http://localhost:5000/api/v1
+
+# Frontend Port
+FRONTEND_PORT=8080
+
+# Flask Secret
+SECRET_KEY=your-frontend-secret-key
+
+# Session Configuration
+SESSION_TIMEOUT=3600
+```
+
+**6. Start Frontend Service**
+```bash
+# From src/frontend/
+docker-compose up -d --build
+```
+
+This starts:
+- ✅ Frontend UI (Flask + Jinja2 on port 8080)
+
+**7. Verify Frontend**
+```bash
+# Check frontend container
+docker-compose ps
+
+# View frontend logs
+docker-compose logs -f frontend
+
+# Test frontend
+curl http://localhost:8080
+# Should return HTML homepage
+```
+
+**8. Access Application**
+- Backend API: `http://localhost:5000/api/v1/`
+- Frontend Website: `http://localhost:8080`
+- Admin panel: `http://localhost:8080/admin`
+
+---
+
+### Option 2: Deploy on Separate Servers (Production)
+
+**Backend Server (e.g., 192.168.1.10)**
+```bash
+# On backend server
+cd sarkari_path_2.0/src/backend
+cp .env.example .env
+# Edit .env with production values
+docker-compose up -d --build
+
+# Expose port 5000 to network (or use internal IP)
+# Backend API: http://192.168.1.10:5000/api/v1/
+```
+
+**Frontend Server (e.g., 192.168.1.20)**
+```bash
+# On frontend server
+cd sarkari_path_2.0/src/frontend
+cp .env.example .env
+
+# Set BACKEND_API_URL to backend server
+nano .env
+# BACKEND_API_URL=http://192.168.1.10:5000/api/v1
+
+docker-compose up -d --build
+
+# Frontend: http://192.168.1.20:8080
+```
+
+---
+
+### Option 3: Deploy with Nginx (Production with SSL)
+
+**Deploy Backend**
+```bash
+cd src/backend
+docker-compose up -d --build
+# Backend running on port 5000
+```
+
+**Deploy Frontend**
+```bash
+cd src/frontend
+docker-compose up -d --build
+# Frontend running on port 8080
+```
+
+**Setup Nginx Reverse Proxy**
+```bash
+# Install Nginx on host machine (not in container)
+sudo apt install nginx
+
+# Create Nginx config
+sudo nano /etc/nginx/sites-available/sarkaripath
+```
+
+```nginx
+server {
+    listen 80;
+    server_name yourdomain.com;
+    
+    # Frontend
+    location / {
+        proxy_pass http://localhost:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+    
+    # Backend API
+    location /api/ {
+        proxy_pass http://localhost:5000/api/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
+```
+
+```bash
+# Enable site
+sudo ln -s /etc/nginx/sites-available/sarkaripath /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl restart nginx
+
+# Setup SSL with Let's Encrypt
+sudo apt install certbot python3-certbot-nginx
+sudo certbot --nginx -d yourdomain.com
+```
+
+**Access Application**
+- Website: `https://yourdomain.com`
+- Backend API: `https://yourdomain.com/api/v1/`
 
 ---
 
 ## 🔧 Management Commands
 
-### View Logs
+### Backend Management (src/backend/)
+
+**View Logs**
 ```bash
-# All services
-docker compose logs -f
+cd src/backend
+
+# All backend services
+docker-compose logs -f
 
 # Specific service
-docker compose logs -f frontend
-docker compose logs -f backend
-docker compose logs -f celery_worker
+docker-compose logs -f backend
+docker-compose logs -f mongodb
+docker-compose logs -f redis
+docker-compose logs -f celery_worker
+docker-compose logs -f celery_beat
 ```
 
-### Restart Services
+**Restart Services**
 ```bash
-# All services
-docker compose restart
+cd src/backend
+
+# All backend services
+docker-compose restart
 
 # Specific service
-docker compose restart frontend
-docker compose restart backend
+docker-compose restart backend
+docker-compose restart celery_worker
 ```
 
-### Update Code
+**Update Backend Code**
 ```bash
+cd src/backend
+
 # Pull latest code
 git pull origin main
 
-# Rebuild and restart only changed services
-docker compose up -d --build
+# Rebuild and restart
+docker-compose up -d --build
 
 # Or update specific service
-docker compose up -d --no-deps --build frontend
+docker-compose up -d --no-deps --build backend
 ```
 
-### Database Operations
+**Database Operations**
 ```bash
+cd src/backend
+
 # Access MongoDB shell
-docker compose exec mongodb mongosh -u sarkaripath_user -p your_db_password --authenticationDatabase sarkari_path
+docker-compose exec mongodb mongosh -u sarkaripath_user -p your_db_password --authenticationDatabase sarkari_path
 
 # Backup database
-docker compose exec mongodb mongodump --uri="mongodb://sarkaripath_user:your_db_password@localhost:27017/sarkari_path?authSource=sarkari_path" --out=/backup
+docker-compose exec mongodb mongodump --uri="mongodb://sarkaripath_user:your_db_password@localhost:27017/sarkari_path?authSource=sarkari_path" --out=/backup
 
 # View Redis keys
-docker compose exec redis redis-cli -a your_redis_password
+docker-compose exec redis redis-cli -a your_redis_password
 ```
 
-### Stop & Clean Up
+**Stop & Clean Up Backend**
 ```bash
-# Stop all containers
-docker compose down
+cd src/backend
+
+# Stop all backend containers
+docker-compose down
 
 # Stop and remove volumes (fresh start)
-docker compose down -v
+docker-compose down -v
+```
 
-# Remove unused images
+---
+
+### Frontend Management (src/frontend/)
+
+**View Logs**
+```bash
+cd src/frontend
+
+# Frontend logs
+docker-compose logs -f
+
+# Specific service
+docker-compose logs -f frontend
+```
+
+**Restart Frontend**
+```bash
+cd src/frontend
+
+# Restart frontend
+docker-compose restart
+
+# Or just restart specific service
+docker-compose restart frontend
+```
+
+**Update Frontend Code**
+```bash
+cd src/frontend
+
+# Pull latest code
+git pull origin main
+
+# Rebuild and restart
+docker-compose up -d --build
+```
+
+**Stop & Clean Up Frontend**
+```bash
+cd src/frontend
+
+# Stop frontend container
+docker-compose down
+```
+
+---
+
+### Both Services Management
+
+**Update Both**
+```bash
+# Backend
+cd src/backend && git pull && docker-compose up -d --build && cd ../..
+
+# Frontend
+cd src/frontend && git pull && docker-compose up -d --build && cd ../..
+```
+
+**Stop Both**
+```bash
+# Backend
+cd src/backend && docker-compose down && cd ../..
+
+# Frontend
+cd src/frontend && docker-compose down && cd ../..
+```
+
+**Clean Everything**
+```bash
+# Remove all containers, volumes, images
+cd src/backend && docker-compose down -v && cd ../..
+cd src/frontend && docker-compose down -v && cd ../..
 docker system prune -a
 ```
 
@@ -237,17 +521,24 @@ User receives notification → Views job → Applies
 Celery sends deadline reminders (7d, 3d, 1d before)
 ```
 
-### 2. Frontend-Backend Communication
+### 2. Frontend-Backend Communication (SEPARATED SERVICES)
+
+**🎯 KEY**: Frontend and Backend are SEPARATE services calling each other via HTTP.
 
 **Frontend (Flask + Jinja2):**
 ```python
-# frontend/app/routes/jobs.py
+# src/frontend/app/routes/jobs.py
 from app.utils.api_client import APIClient
+import os
+
+# Backend URL from environment variable
+BACKEND_API_URL = os.getenv('BACKEND_API_URL', 'http://localhost:5000/api/v1')
 
 @bp.route('/jobs')
 def job_list():
-    # Frontend calls backend API
-    jobs_data, status = APIClient.get('/jobs', params={'limit': 20})
+    # Frontend calls backend API via HTTP
+    # No internal Docker network - uses external HTTP call
+    jobs_data, status = APIClient.get(f'{BACKEND_API_URL}/jobs', params={'limit': 20})
     
     # Render template with data
     return render_template('jobs/job_list.html', jobs=jobs_data)
@@ -255,13 +546,88 @@ def job_list():
 
 **Backend (Flask API):**
 ```python
-# backend/app/routes/jobs.py
-@bp.route('/api/jobs', methods=['GET'])
+# src/backend/app/routes/jobs.py
+@bp.route('/api/v1/jobs', methods=['GET'])
 def get_jobs():
     limit = request.args.get('limit', 20)
     jobs = Job.find_all(limit=limit)
     return jsonify({'jobs': jobs}), 200
 ```
+
+**Communication Flow:**
+```
+User Browser
+    ↓
+Frontend Service (src/frontend/) - Port 8080
+    ├─ User requests: http://yoursite.com/jobs
+    ├─ Frontend route handler receives request
+    ├─ Frontend makes HTTP call to backend
+    ↓
+HTTP Request: http://backend-url:5000/api/v1/jobs
+    ├─ Headers: Authorization: Bearer <JWT>
+    ├─ Headers: X-Request-ID: <uuid>
+    └─ Params: ?limit=20
+    ↓
+Backend Service (src/backend/) - Port 5000
+    ├─ Receives HTTP request on /api/v1/jobs
+    ├─ Validates JWT token
+    ├─ Fetches data from MongoDB
+    └─ Returns JSON response
+    ↓
+HTTP Response: JSON
+    ├─ Status: 200
+    ├─ Headers: X-Request-ID
+    └─ Body: {jobs: [...]}
+    ↓
+Frontend Service
+    ├─ Receives JSON data
+    ├─ Renders HTML template with data
+    └─ Sends HTML to user browser
+    ↓
+User sees job listings page
+```
+
+**Environment Configuration:**
+
+Backend (.env in src/backend/):
+```env
+BACKEND_PORT=5000
+MONGO_URI=mongodb://user:pass@mongodb:27017/sarkari_path
+REDIS_URL=redis://:password@redis:6379/0
+```
+
+Frontend (.env in src/frontend/):
+```env
+FRONTEND_PORT=8080
+BACKEND_API_URL=http://localhost:5000/api/v1  # Dev
+# BACKEND_API_URL=http://backend-server-ip:5000/api/v1  # Production
+# BACKEND_API_URL=https://api.yoursite.com/api/v1  # Production with domain
+```
+
+**🔄 Future: Replace Frontend with React**
+
+When migrating to React, you only need to:
+1. Replace `src/frontend/` folder with React app
+2. Update React API calls to same `BACKEND_API_URL`
+3. **ZERO CHANGES to backend!** 🎉
+
+React API call example:
+```javascript
+// src/frontend/src/services/api.js
+const BACKEND_API_URL = process.env.REACT_APP_BACKEND_API_URL;
+
+export const getJobs = async (limit = 20) => {
+  const response = await fetch(`${BACKEND_API_URL}/jobs?limit=${limit}`, {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'X-Request-ID': generateUUID()
+    }
+  });
+  return await response.json();
+};
+```
+
+Same backend, different frontend technology! ✨
 
 ### 3. Notification System
 

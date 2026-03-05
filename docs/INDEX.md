@@ -2,6 +2,8 @@
 
 ## 📚 Complete Documentation Guide
 
+**🎯 MAJOR ARCHITECTURE CHANGE**: Backend and Frontend are now **COMPLETELY SEPARATED** into different folders under `src/`. Each service has its own Docker Compose file and can be deployed independently. This allows changing the frontend technology (Flask → React → iOS → Android) without touching the backend.
+
 This project contains comprehensive documentation across multiple files. Use this index to navigate:
 
 ---
@@ -10,16 +12,19 @@ This project contains comprehensive documentation across multiple files. Use thi
 
 ### For First-Time Users
 **👉 [PROJECT_SUMMARY.md](./PROJECT_SUMMARY.md)**
-- 10-minute deployment guide
-- Architecture overview in simple terms
+- 10-minute deployment guide for **SEPARATED** backend and frontend services
+- Architecture overview with independent services
+- Deployment options (same server vs separate servers)
 - Common commands and troubleshooting
-- Best for: Getting started immediately
+- Best for: Getting started with the new separated architecture
 
 **👉 [PROJECT_STRUCTURE.md](./PROJECT_STRUCTURE.md)**
-- Complete folder structure
+- Complete folder structure with **src/** separation
+- Backend folder (`src/backend/`) - Independent service
+- Frontend folder (`src/frontend/`) - Independent service (replaceable!)
 - Design principles (KISS, DRY, YAGNI)
 - Directory explanations
-- Best for: Understanding project organization
+- Best for: Understanding the new project organization
 
 ---
 
@@ -58,64 +63,70 @@ This project contains comprehensive documentation across multiple files. Use thi
 
 ---
 
-### 2. **[DOCKER_DEPLOYMENT.md](./DOCKER_DEPLOYMENT.md)** - Container Setup
+### 2. **[DOCKER_DEPLOYMENT.md](./DOCKER_DEPLOYMENT.md)** - Separated Services Setup
 **What's inside:**
-- ✅ Why Docker microservices? (Advantages explained)
-- ✅ Complete architecture diagram (6 containers with communication flow)
-- ✅ Backend Dockerfile (Flask API)
-- ✅ Frontend Dockerfile (Flask + Jinja2)
-- ✅ Complete docker-compose.yml (6 services: nginx, frontend, backend, mongodb, redis, celery)
-- ✅ Nginx reverse proxy configuration (routes /api/* to backend, /* to frontend)
-- ✅ MongoDB initialization script (mongo-init.js)
-- ✅ .env.example with all required variables
-- ✅ Deployment steps (build, start, verify)
+- ✅ Why separated services? (Advantages explained)
+- ✅ Complete architecture diagram (6 containers across 2 services)
+- ✅ Backend Dockerfile (Flask REST API)
+- ✅ Frontend Dockerfile (Flask + Jinja2, replaceable with React/Mobile)
+- ✅ Backend docker-compose.yml (MongoDB, Redis, Backend API, Celery Worker, Celery Beat)
+- ✅ Frontend docker-compose.yml (Frontend only)
+- ✅ .env.example for both backend and frontend
+- ✅ Deployment steps (backend first, then frontend)
 - ✅ Management commands (logs, restart, update, scale)
-- ✅ Backup scripts (automated MongoDB backups)
+- ✅ Deployment options:
+  - Same server (development)
+  - Different servers (production)
+  - With Nginx reverse proxy (production with SSL)
+- ✅ Communication flow (Frontend → HTTP → Backend API)
+- ✅ CORS configuration
 - ✅ SSL setup with Let's Encrypt
-- ✅ Comparison: Docker (10min) vs Traditional (2hr)
 
-**Best for:** Production deployment, DevOps, containerization
+**Best for:** Production deployment, DevOps, understanding separated services
 
 **Sections:**
-1. Why Docker + Microservices → Benefits explanation
-2. Architecture Diagram → Visual container layout
+1. Why Separated Services → Benefits explanation
+2. Architecture Diagrams → Visual container layout for both services
 3. Dockerfiles → Backend and Frontend containers
-4. docker-compose.yml → Complete orchestration
-5. Nginx Configuration → Routing and SSL
-6. Environment Variables → .env setup
-7. Deployment Steps → From clone to running
-8. Management Commands → Daily operations
-9. Scaling → Horizontal and vertical scaling
-10. Troubleshooting → Container-specific issues
+4. Backend docker-compose.yml → Complete backend ecosystem
+5. Frontend docker-compose.yml → Frontend only
+6. Deployment Procedures → Step-by-step for different scenarios
+7. Environment Variables → .env setup for both services
+8. Management Commands → Daily operations for each service
+9. Scaling → Independent scaling of backend and frontend
+10. Troubleshooting → Service-specific issues
 
 ---
 
 ### 3. **[WORKFLOW_DIAGRAMS.md](./WORKFLOW_DIAGRAMS.md)** - Visual Flows
 **What's inside:**
-- ✅ 10 detailed ASCII workflow diagrams
-- ✅ Overall system architecture (microservices with all containers)
+- ✅ 10 detailed ASCII workflow diagrams (updated for separated architecture)
+- ✅ Overall system architecture (separated microservices)
+- ✅ Backend service components (MongoDB, Redis, API, Celery)
+- ✅ Frontend service components (UI, API client)
+- ✅ Communication flow (Frontend HTTP → Backend REST API)
 - ✅ User registration & profile setup flow
 - ✅ Admin job creation & publishing flow
 - ✅ Job matching algorithm (step-by-step eligibility checks)
 - ✅ User job application tracking
 - ✅ Priority job update notifications
 - ✅ Admin dashboard layout
-- ✅ 15 MongoDB collections with relationships and indexes (Enhanced for complete portal)
+- ✅ 15 MongoDB collections with relationships and indexes
 - ✅ Celery task scheduler (7 scheduled tasks with timing)
 - ✅ Complete user journey map (registration → result)
 
-**Best for:** Understanding workflows, visual learners, system design
+**Best for:** Understanding workflows, visual learners, system design, separated services communication
 
 **Diagrams:**
-1. Overall System Architecture → Nginx, Frontend, Backend, Celery, MongoDB, Redis
+1. Overall System Architecture → Separated Backend & Frontend Services
 2. User Registration Flow → From form to email verification
 3. Job Creation Flow → Admin creates job → Celery triggers matching
-4. Job Matching Algorithm → Education check → Age check → Category check → Preferences
+4. Job Matching Algorithm → Education check → Age check → Category check
 5. Application Tracking → User marks applied → Reminders set
 6. Priority Job Notifications → Update triggers immediate notification
 7. Admin Dashboard → Stats, recent activity, analytics
-8. Database Collections → All 15 collections (Jobs, Results, Admit Cards, Answer Keys, Admissions, Yojanas, Board Results, Analytics)
-9. Celery Scheduler → Daily tasks, weekly reports, cleanup jobs
+8. Database Collections → All 15 collections (in Backend service)
+9. Celery Scheduler → Daily tasks, weekly reports, cleanup jobs (in Backend service)
 10. User Journey → Complete flow from signup to getting hired
 
 ---
@@ -127,28 +138,52 @@ This project contains comprehensive documentation across multiple files. Use thi
 ### "I want to..."
 
 #### Deploy the application
-1. Start → [PROJECT_SUMMARY.md](./PROJECT_SUMMARY.md) (Quick start)
-2. Then → [DOCKER_DEPLOYMENT.md](./DOCKER_DEPLOYMENT.md) (Complete setup)
-3. Reference → [README.md](./README.md) (Environment variables)
-4. Epic plan → [EPIC_01_DOCKER_INFRASTRUCTURE.md](../epic/EPIC_01_DOCKER_INFRASTRUCTURE.md) (Detailed tasks)
+1. Start → [PROJECT_SUMMARY.md](./PROJECT_SUMMARY.md) (Quick start with separated services)
+2. Then → [DOCKER_DEPLOYMENT.md](./DOCKER_DEPLOYMENT.md) (Complete setup for backend and frontend)
+3. Backend → Deploy `src/backend/docker-compose.yml`
+4. Frontend → Deploy `src/frontend/docker-compose.yml`
+5. Reference → Environment variables for both services
+6. Epic plan → [EPIC_01_DOCKER_INFRASTRUCTURE.md](../epic/EPIC_01_DOCKER_INFRASTRUCTURE.md) (Detailed tasks)
 
-#### Understand the system design
-1. Start → [WORKFLOW_DIAGRAMS.md](./WORKFLOW_DIAGRAMS.md) (Visual overview)
-2. Then → [README.md](./README.md) (Architecture section)
-3. Deep dive → [README.md](./README.md) (Database schemas, API endpoints)
+#### Understand the new separated architecture
+1. Start → [WORKFLOW_DIAGRAMS.md](./WORKFLOW_DIAGRAMS.md) (Visual overview of separated services)
+2. Then → [PROJECT_STRUCTURE.md](./PROJECT_STRUCTURE.md) (src/ folder structure)
+3. Deep dive → [DOCKER_DEPLOYMENT.md](./DOCKER_DEPLOYMENT.md) (Communication between services)
 4. Planning → [Epic folder](../epic/) (Feature breakdowns)
 
 #### Develop the frontend
-1. Start → [PROJECT_STRUCTURE.md](./PROJECT_STRUCTURE.md) (Frontend folder structure)
-2. Reference → [README.md](./README.md) (API endpoints to call)
-3. Architecture → [DOCKER_DEPLOYMENT.md](./DOCKER_DEPLOYMENT.md) (Frontend container setup)
-4. Epic plan → [EPIC_10_FRONTEND_UI.md](../epic/EPIC_10_FRONTEND_UI.md) (Implementation tasks)
+1. Start → [PROJECT_STRUCTURE.md](./PROJECT_STRUCTURE.md) (Frontend folder: `src/frontend/`)
+2. Environment → Set `BACKEND_API_URL` in frontend/.env
+3. Architecture → Frontend calls Backend via HTTP REST API
+4. Reference → Backend API endpoints to call
+5. Deploy → `cd src/frontend && docker-compose up`
+6. Epic plan → [EPIC_10_FRONTEND_UI.md](../epic/EPIC_10_FRONTEND_UI.md) (Implementation tasks)
+7. **Migration** → Can replace entire `src/frontend/` with React, mobile apps, etc.
 
 #### Develop the backend
-1. Start → [README.md](./README.md) (Database schemas, API endpoints)
-2. Flow → [WORKFLOW_DIAGRAMS.md](./WORKFLOW_DIAGRAMS.md) (Business logic flows)
-3. Deploy → [DOCKER_DEPLOYMENT.md](./DOCKER_DEPLOYMENT.md) (Backend container setup)
-4. Epic plan → [EPIC_02_BACKEND_API_FOUNDATION.md](../epic/EPIC_02_BACKEND_API_FOUNDATION.md) (Detailed tasks)
+1. Start → [PROJECT_STRUCTURE.md](./PROJECT_STRUCTURE.md) (Backend folder: `src/backend/`)
+2. Environment → Configure backend/.env (MongoDB, Redis, SMTP)
+3. Architecture → Backend exposes `/api/v1/*` REST endpoints
+4. CORS → Configure allowed frontend origins
+5. Flow → [WORKFLOW_DIAGRAMS.md](./WORKFLOW_DIAGRAMS.md) (Business logic flows)
+6. Deploy → `cd src/backend && docker-compose up`
+7. Epic plan → [EPIC_02_BACKEND_API_FOUNDATION.md](../epic/EPIC_02_BACKEND_API_FOUNDATION.md) (Detailed tasks)
+8. **Important** → Backend technology is stable, won't change!
+
+#### Deploy on production (different servers)
+1. **Backend Server** → Deploy `src/backend/` on powerful server
+2. **Frontend Server** → Deploy `src/frontend/` on edge server (or same)
+3. **Configuration** → Set `BACKEND_API_URL` in frontend to backend server IP/domain
+4. **CORS** → Configure backend to allow frontend origin
+5. **Nginx** → Optional reverse proxy for SSL on frontend server
+6. **Scaling** → Scale backend and frontend independently
+
+#### Replace frontend with React/Mobile
+1. **Current** → Flask + Jinja2 in `src/frontend/`
+2. **Future** → Delete `src/frontend/`, create new React/React Native/iOS/Android app
+3. **API Calls** → New frontend calls same `http://backend:5000/api/v1/*` endpoints
+4. **Backend Changes** → **ZERO!** Backend code remains unchanged 🎉
+5. **Example** → React component calls `fetch('http://api.domain.com/api/v1/jobs')`
 
 #### Plan a sprint/feature
 1. Start → [Epic folder](../epic/) (Choose feature area - 12 epics available)
@@ -157,47 +192,116 @@ This project contains comprehensive documentation across multiple files. Use thi
 4. Track → Epic progress tracking sections (Weekly goals and metrics)
 
 #### Set up notifications
-1. Logic → [README.md](./README.md) (Notification Trigger System section)
-2. Implementation → [README.md](./README.md) (Flask-Mail Email Service section)
-3. Flow → [WORKFLOW_DIAGRAMS.md](./WORKFLOW_DIAGRAMS.md) (Celery Task Scheduler diagram)
-4. Epic plan → [EPIC_08_NOTIFICATION_SYSTEM.md](../epic/EPIC_08_NOTIFICATION_SYSTEM.md) (Implementation tasks)
+1. Logic → Backend service handles all notifications
+2. Implementation → `src/backend/app/services/notification_service.py`
+3. Configuration → Email/Firebase credentials in `src/backend/.env`
+4. Flow → [WORKFLOW_DIAGRAMS.md](./WORKFLOW_DIAGRAMS.md) (Celery Task Scheduler)
+5. Epic plan → [EPIC_08_NOTIFICATION_SYSTEM.md](../epic/EPIC_08_NOTIFICATION_SYSTEM.md) (Tasks)
 
 #### Troubleshoot issues
-1. Quick fixes → [PROJECT_SUMMARY.md](./PROJECT_SUMMARY.md) (Troubleshooting section)
-2. Docker issues → [DOCKER_DEPLOYMENT.md](./DOCKER_DEPLOYMENT.md) (Docker troubleshooting)
-3. VPS issues → [README.md](./README.md) (Troubleshooting section at end)
+1. **Backend Issues** → `cd src/backend && docker-compose logs -f`
+2. **Frontend Issues** → `cd src/frontend && docker-compose logs -f`
+3. **Communication Issues** → Check `BACKEND_API_URL` in frontend .env
+4. **CORS Issues** → Check `CORS_ORIGINS` in backend .env
+5. Quick fixes → [PROJECT_SUMMARY.md](./PROJECT_SUMMARY.md) (Troubleshooting section)
+6. Docker issues → [DOCKER_DEPLOYMENT.md](./DOCKER_DEPLOYMENT.md) (Docker troubleshooting)
 
 ---
 
 ## 📊 Documentation Comparison
 
-| File | Length | Depth | Best For |
-|------|--------|-------|----------|
-| **PROJECT_SUMMARY.md** | Short | Overview | Quick start, first-time users |
-| **PROJECT_STRUCTURE.md** | Long | Complete | Folder structure, architecture |
-| **README.md** | Long | Complete | Reference, API docs, deployment |
-| **DOCKER_DEPLOYMENT.md** | Medium | Technical | DevOps, containerization |
-| **WORKFLOW_DIAGRAMS.md** | Medium | Visual | Understanding flows, design |
-| **EPIC_01-12** | Long | Detailed | Sprint planning, task tracking |
+| File | Length | Depth | Best For | Updated |
+|------|--------|-------|----------|---------|
+| **PROJECT_SUMMARY.md** | Short | Overview | Quick start with separated services | ✅ NEW |
+| **PROJECT_STRUCTURE.md** | Long | Complete | src/ folder structure (backend/frontend) | ✅ NEW |
+| **DOCKER_DEPLOYMENT.md** | Medium | Technical | Separated docker-compose files | ✅ NEW |
+| **WORKFLOW_DIAGRAMS.md** | Medium | Visual | Understanding separated services flow | ✅ NEW |
+| **INDEX.md** | Short | Nav | This file - navigation updated | ✅ NEW |
+| **README.md** | Long | Complete | Reference, API docs (needs update) | ⚠️ OLD |
+| **EPIC_01-12** | Long | Detailed | Sprint planning, task tracking | ℹ️ Legacy |
+
+**Key Changes:**
+- ✅ All docs updated to reflect **src/** structure
+- ✅ Backend and Frontend **completely separated**
+- ✅ Each service has own docker-compose.yml
+- ✅ Frontend can be replaced (Flask → React → Mobile)
+- ✅ Independent deployment explained
 
 ---
 
 ## 🚀 Project Setup Files
 
-### Configuration & Setup (In Project Root)
-**👉 [Makefile](../Makefile)**
-- Common project commands
-- Docker shortcuts (build, up, down, logs)
-- Testing commands
-- Cleanup utilities
+### Configuration & Setup (NEW Structure)
 
-**👉 [.env.example](../.env.example)**
-- Environment variable template
-- All required configurations
-- MongoDB, Redis, Email, JWT setup
+**Backend Configuration (`src/backend/`)**
+- **docker-compose.yml** - Backend services (MongoDB, Redis, API, Celery)
+- **.env.example** - Backend environment variables
+- **requirements.txt** - Python dependencies
+- **Dockerfile** - Backend container definition
+- **mongo-init.js** - MongoDB initialization
 
-**👉 [docker-compose.yml](../docker-compose.yml)**
-- Complete service orchestration
+**Frontend Configuration (`src/frontend/`)**
+- **docker-compose.yml** - Frontend service only
+- **.env.example** - Frontend environment variables (includes BACKEND_API_URL)
+- **requirements.txt** - Python dependencies (Flask version)
+- **Dockerfile** - Frontend container definition
+
+**Shared Configuration (`config/`)**
+- **production/** - Production .env templates (backend + frontend)
+- **staging/** - Staging .env templates
+- **development/** - Development .env templates
+
+**Deployment Scripts (`scripts/`)**
+- **deployment/deploy_backend.sh** - Deploy backend service
+- **deployment/deploy_frontend.sh** - Deploy frontend service
+- **deployment/deploy_all.sh** - Deploy both services
+- **backup/backup_db.sh** - Backup MongoDB (backend)
+
+**Root Files**
+- **Makefile** - Common commands for both services
+- **.gitignore** - Git ignore rules
+
+---
+
+## 🔧 Quick Commands
+
+### Start Backend
+```bash
+cd src/backend
+cp .env.example .env
+# Edit .env
+docker-compose up -d --build
+docker-compose logs -f
+```
+
+### Start Frontend
+```bash
+cd src/frontend
+cp .env.example .env
+# Set BACKEND_API_URL=http://localhost:5000/api/v1
+docker-compose up -d --build
+docker-compose logs -f
+```
+
+### Stop Services
+```bash
+# Backend
+cd src/backend && docker-compose down
+
+# Frontend
+cd src/frontend && docker-compose down
+```
+
+### Update Code
+```bash
+# Backend
+cd src/backend && git pull && docker-compose up -d --build
+
+# Frontend
+cd src/frontend && git pull && docker-compose up -d --build
+```
+
+---
 - 6 containers (MongoDB, Redis, Backend, Frontend, Celery Worker, Celery Beat, Nginx)
 - Network and volume configuration
 

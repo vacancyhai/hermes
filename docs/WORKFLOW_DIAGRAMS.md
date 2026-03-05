@@ -1,10 +1,12 @@
 # Sarkari Path - System Workflow Diagrams (ASCII)
 
-## 1. Overall System Architecture (Microservices)
+## 1. Overall System Architecture (SEPARATED MICROSERVICES)
+
+**🎯 MAJOR CHANGE**: Backend and Frontend are now **COMPLETELY SEPARATED** services with their own Docker Compose files. They communicate via HTTP REST API.
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│              SARKARI PATH MICROSERVICES SYSTEM (8 Containers)                │
+│        SARKARI PATH - SEPARATED MICROSERVICES (6 Containers, 2 Services)     │
 └──────────────────────────────────────────────────────────────────────────────┘
 
                               ┌──────────────┐
@@ -20,72 +22,98 @@
                     │                │                │
                     └────────────────┼────────────────┘
                                      │
-                         ┌───────────▼──────────────────┐
-                         │   1. Nginx Container         │
-                         │   - SSL/TLS (Let's Encrypt)  │
-                         │   - Health Check Routing     │
-                         │   - Rate Limiting (100/min)  │
-                         │   - Request ID Propagation   │
-                         │   - Security Headers         │
-                         └───────────┬──────────────────┘
-                                     │
-                    ┌────────────────┼────────────────┐
-                    │  /api/v1/*     │  /*            │
-                    │  + X-Request-ID│                │
-            ┌───────▼──────┐  ┌──────▼───────────┐   │
-            │ 2. Backend   │  │ 3. Frontend      │   │
-            │  Container   │◄─│  Container       │   │
-            │ (Flask API)  │  │ (Flask+Jinja2)   │   │
-            │              │  │                  │   │
-            │ - Port 5000  │  │ - Port 8080      │   │
-            │ - REST v1    │  │ - UI Pages       │   │
-            │ - JWT Auth   │  │ - Templates      │   │
-            │ - RBAC       │  │ - Static Assets  │   │
-            │ - Validation │  │ - API Client     │   │
-            └───────┬──────┘  └──────────────────┘   │
-                    │                                 │
-                    └────────────────┬────────────────┘
-                                     │
-                    ┌────────────────┼────────────────┐
-                    │                │                │
-            ┌───────▼──────────┐  ┌─▼────────────┐  │
-            │ 4. MongoDB       │  │ 5. Redis     │  │
-            │  Container       │  │  Container   │  │
-            │                  │  │              │  │
-            │ - Port 27017     │  │ - Port 6379  │  │
-            │ - Pool: 50 max   │  │ - AOF Persist│  │
-            │ - TTL Indexes    │  │ - Keepalive  │  │
-            │ - Replica Ready  │  │ - Cache+Queue│  │
-            └──────────────────┘  └──────┬───────┘  │
-                                          │          │
-                                          ▼          │
-                    ┌────────────────────────────┐  │
-                    │  6. Celery Worker (1-N)    │  │
-                    │  7. Celery Beat (1 only)   │  │
-                    │  - Task Routing:           │  │
-                    │    HIGH (email)            │  │
-                    │    MEDIUM (matching)       │  │
-                    │    LOW (analytics)         │  │
-                    └─────────┬──────────────────┘  │
-                              │                     │
-                              ▼                     │
-                    ┌─────────────────┐            │
-                    │ 8. Monitoring   │◄───────────┘
-                    │  - Health Checks│
-                    │  - Logs         │
-                    │  - Metrics      │
-                    └─────────┬───────┘
-                              │
-                ┌─────────────┼──────────────┐
-                │             │              │
-         ┌──────▼──────┐ ┌───▼──────┐  ┌───▼────┐
-         │   Email     │ │ Firebase │  │  SMS   │
-         │   Service   │ │   FCM    │  │ Gateway│
-         │  (5x retry) │ │  (Push)  │  │        │
-         └─────────────┘ └──────────┘  └────────┘
+         ┌───────────────────────────┼───────────────────────────┐
+         │                           │                           │
+         │  Option 1: Same Server    │   Option 2: Different     │
+         │  (Development)            │   Servers (Production)    │
+         │                           │                           │
+         ↓                           ↓                           ↓
+┌────────────────────────┐   ┌──────────────────────┐   ┌───────────────────────┐
+│  FRONTEND SERVICE      │   │  Nginx Reverse Proxy │   │  BACKEND SERVICE      │
+│  (src/frontend/)       │   │  (Optional)          │   │  (src/backend/)       │
+│                        │   │                      │   │                       │
+│  docker-compose.yml    │   │  Routes:             │   │  docker-compose.yml   │
+│  ┌──────────────────┐  │   │  /api/* → Backend   │   │  ┌─────────────────┐  │
+│  │  Frontend        │  │   │  /*     → Frontend  │   │  │  1. MongoDB     │  │
+│  │  - Flask/Jinja2  │  │   └──────────────────────┘   │  │  Database       │  │
+│  │  - Port 8080     │  │            │                 │  │  Port 27017     │  │
+│  │  - Renders HTML  │  │            │                 │  │  Persistent     │  │
+│  │                  │  │            │                 │  │                 │  │
+│  │  Calls Backend:  │──┼────────────┘                 │  └────────┬────────┘  │
+│  │  HTTP API        │  │         HTTP REST API        │           │           │
+│  │  http://backend  │  │         /api/v1/*            │  ┌────────▼────────┐  │
+│  │  :5000/api/v1/*  │  │                              │  │  2. Redis       │  │
+│  │                  │  │    ┌─────────────────────┐   │  │  Cache + Queue  │  │
+│  │  Future: Replace │  │    │  Can deploy on      │   │  │  Port 6379      │  │
+│  │  with React/iOS/ │  │    │  different servers: │   │  │  AOF Persist    │  │
+│  │  Android WITHOUT │  │    │                     │   │  │                 │  │
+│  │  touching backend│  │    │  Frontend: Server 1 │   │  └────────┬────────┘  │
+│  │                  │  │    │  Backend:  Server 2 │   │           │           │
+│  └──────────────────┘  │    │                     │   │  ┌────────▼────────┐  │
+│                        │    └─────────────────────┘   │  │  3. Backend API │  │
+│  Environment:          │                              │  │  Flask REST     │  │
+│  BACKEND_API_URL=      │                              │  │  Port 5000      │  │
+│  http://backend:5000   │                              │  │  /api/v1/*      │  │
+│  /api/v1/              │                              │  │  JWT Auth       │  │
+│                        │                              │  │  CORS Enabled   │  │
+└────────────────────────┘                              │  │  RBAC           │  │
+                                                        │  └────────┬────────┘  │
+         Deploy Separately!                             │           │           │
+         Can scale independently!                       │  ┌────────▼────────┐  │
+         Can change tech stack anytime!                 │  │ 4. Celery Worker│  │
+                                                        │  │  Background     │  │
+                                                        │  │  Tasks (1-N)    │  │
+                                                        │  │  - Emails       │  │
+                                                        │  │  - Notifications│  │
+                                                        │  │  - Matching     │  │
+                                                        │  └─────────────────┘  │
+                                                        │                       │
+                                                        │  ┌─────────────────┐  │
+                                                        │  │ 5. Celery Beat  │  │
+                                                        │  │  Task Scheduler │  │
+                                                        │  │  (Always 1)     │  │
+                                                        │  │  - Daily tasks  │  │
+                                                        │  │  - Reminders    │  │
+                                                        │  │  - Cleanup      │  │
+                                                        │  └─────────────────┘  │
+                                                        │                       │
+                                                        │  Exposes: /api/v1/*   │
+                                                        │  on port 5000         │
+                                                        │                       │
+                                                        └───────────────────────┘
+                                                                 │
+                                                        Deploy Separately!
+                                                        Can scale independently!
+                                                        Technology won't change!
+                                                                 │
+                                                                 ↓
+                                              ┌──────────────────────────────┐
+                                              │  External Services           │
+                                              │  ┌────────────┐             │
+                                              │  │  Email     │             │
+                                              │  │  (SMTP)    │             │
+                                              │  └────────────┘             │
+                                              │  ┌────────────┐             │
+                                              │  │  Firebase  │             │
+                                              │  │  FCM (Push)│             │
+                                              │  └────────────┘             │
+                                              └──────────────────────────────┘
 
-        All containers connected via Docker bridge network (sarkari_network)
-        Health checks ensure only healthy backends receive traffic
+**Key Architecture Changes**:
+✅ Backend and Frontend in separate folders (src/backend/, src/frontend/)
+✅ Each has its own docker-compose.yml
+✅ Frontend calls Backend via HTTP (not internal Docker network)
+✅ Can deploy on same server OR different servers
+✅ Can replace Frontend (Flask → React → Mobile) WITHOUT touching Backend
+✅ Backend technology is stable and won't change
+✅ Frontend technology can evolve based on requirements
+
+**Communication Flow**:
+User → Frontend (HTML/SPA/Mobile)  
+     → HTTP Request to Backend API (http://backend:5000/api/v1/*)
+     → Backend processes request
+     → Returns JSON response
+     → Frontend renders result to user
 ```
 
 ## 2. User Registration & Profile Setup Flow
