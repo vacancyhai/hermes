@@ -26,7 +26,7 @@ already decoded and available via get_jwt().
 from datetime import datetime, timezone
 from functools import wraps
 
-from flask import current_app, jsonify, request
+from flask import jsonify, request
 from flask_jwt_extended import (
     create_access_token,
     decode_token,
@@ -77,10 +77,11 @@ def get_current_user():
 
     Requires an active app + request context with a verified JWT.
     """
+    from app.extensions import db
     from app.models.user import User
 
     user_id = get_jwt_identity()
-    user = current_app.extensions['sqlalchemy'].session.get(User, user_id)
+    user = db.session.get(User, user_id)
 
     if not user or user.status in ('suspended', 'deleted'):
         return _unauthorized('AUTH_UNAUTHORIZED', 'User account is inactive or does not exist.')
@@ -101,6 +102,10 @@ def register_token_rotation(app):
     """
     @app.after_request
     def _rotate_if_near_expiry(response):
+        # Only rotate on successful responses — never on 4xx/5xx
+        if response.status_code >= 400:
+            return response
+
         # Only act on requests that carried a non-refresh access token
         try:
             auth_header = request.headers.get('Authorization', '')

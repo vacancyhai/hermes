@@ -64,6 +64,8 @@ def create_app():
 
     # Register blueprints
     from app.routes import auth, jobs, users, notifications, admin, health
+    from app.routes.auth import limiter as auth_limiter
+    auth_limiter.init_app(app)
     app.register_blueprint(auth.bp)
     app.register_blueprint(jobs.bp)
     app.register_blueprint(users.bp)

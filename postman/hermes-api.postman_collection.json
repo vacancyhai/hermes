@@ -38,6 +38,12 @@
       "type": "string"
     },
     {
+      "key": "application_id",
+      "value": "",
+      "type": "string",
+      "description": "Job application ID — set after calling POST /users/me/applications"
+    },
+    {
       "key": "notification_id",
       "value": "",
       "type": "string"
