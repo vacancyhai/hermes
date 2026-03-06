@@ -5,7 +5,7 @@
 **Epic ID**: EPIC-009  
 **Epic Title**: Admin Panel & Management Interface  
 **Epic Description**: Comprehensive administration interface for managing all aspects of the platform including users, jobs, content, and system configuration.  
-**Business Value**: Provides administrators with powerful tools to manage the platform effectively and monitor system performance.  
+**Business Value**: Provides administrators with powerful tools to manage the platform effectively.  
 **Priority**: MEDIUM  
 **Estimated Timeline**: 4 weeks (Phase 5: Weeks 16-19)
 
@@ -42,7 +42,7 @@
 
 **As an** admin  
 **I want** a comprehensive dashboard  
-**So that** I can monitor platform performance
+**So that** I can manage platform operations
 
 #### Acceptance Criteria:
 - [ ] Key metrics widgets (users, jobs, applications)
@@ -94,7 +94,6 @@ DASHBOARD_WIDGETS = {
 - [ ] Dashboard displays key metrics accurately
 - [ ] Real-time updates working via WebSockets
 - [ ] Charts and graphs rendering correctly
-- [ ] System health monitoring active
 - [ ] Quick actions functional
 - [ ] Layout customization working
 

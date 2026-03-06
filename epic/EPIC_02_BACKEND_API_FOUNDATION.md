@@ -19,10 +19,12 @@
 
 ## 📊 Epic Metrics
 
-- **Story Count**: 5 stories
-- **Story Points**: 30 (estimated)
+- **Story Count**: 6 stories (added health check endpoint - START HERE!)
+- **Story Points**: 35 (estimated, was 30)
 - **Dependencies**: Epic 1 (Docker Infrastructure)
+- **⚠️ FIRST STORY**: Story 2.0 - Health Check Endpoint (simplest, 2 points)
 - **Success Metrics**:
+  - Health check endpoint responding
   - API responds to health checks
   - Database connections stable
   - Request/response middleware working
@@ -114,43 +116,43 @@ backend/app/decorators/version.py   # Version decorators
 
 ---
 
-### Story 2.3: Database Connection & ODM Setup
+### Story 2.3: Database Connection & ORM Setup
 
 **Story ID**: EPIC-002-STORY-003  
-**Story Title**: Database Connection & ODM Setup  
+**Story Title**: Database Connection & ORM Setup  
 **Priority**: HIGH  
 **Story Points**: 8  
 **Sprint**: Week 2
 
 **As a** backend developer  
-**I want** reliable database connectivity  
+**I want** reliable PostgreSQL connectivity  
 **So that** data operations are consistent and performant
 
 #### Acceptance Criteria:
-- [ ] MongoDB connection with PyMongo/MongoEngine
+- [ ] PostgreSQL connection with SQLAlchemy (Flask-SQLAlchemy)
 - [ ] Connection pooling configuration
 - [ ] Database health checks
 - [ ] Automatic reconnection handling
-- [ ] Query logging and monitoring
+- [ ] Query logging
+- [ ] Migration system with Alembic
 - [ ] Index creation and management
 
 #### Technical Implementation Tasks:
 ```python
 # Files to implement:
 backend/config/database.py          # Database configuration
-backend/app/database.py             # Database initialization
+backend/app/extensions.py           # SQLAlchemy initialization
 backend/app/models/__init__.py      # Model registry
-backend/scripts/create-indexes.py  # Index creation
-backend/app/utils/db_utils.py      # Database utilities
-backend/app/monitoring/db_monitor.py # DB performance monitoring
+backend/alembic/                    # Database migrations
+backend/scripts/create-indexes.py   # Index creation
+backend/app/utils/db_utils.py       # Database utilities
 ```
 
 #### Definition of Done:
-- [ ] Database connects successfully
+- [ ] PostgreSQL connects successfully
 - [ ] Connection pooling active
 - [ ] Health checks implemented
 - [ ] Reconnection works automatically
-- [ ] Query performance monitored
 - [ ] Indexes created properly
 
 ---
@@ -314,7 +316,7 @@ backend/app/middleware/rate_limit.py # Rate limiting
 
 ### High Risk:
 - **Database connection failures**: Mitigation - Implement retry logic and connection pooling
-- **Performance bottlenecks**: Mitigation - Implement monitoring and profiling
+- **Performance bottlenecks**: Mitigation - Implement profiling
 
 ### Medium Risk:
 - **Validation bypass**: Mitigation - Comprehensive test coverage

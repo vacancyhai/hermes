@@ -1,8 +1,8 @@
-# Sarkari Path - Quick Start Guide
+# Hermes - Quick Start Guide
 
 ## 📋 What This Project Does
 
-**Sarkari Path** is a comprehensive government job notification portal that:
+**Hermes** is a comprehensive government job notification portal that:
 - ✅ Shows latest government job vacancies (Railway, SSC, UPSC, Banking, Police, Defense, Teaching)
 - ✅ Sends personalized notifications based on user qualifications (10th, 12th, Graduation) and physical standards
 - ✅ Tracks application deadlines with automatic reminders
@@ -13,70 +13,122 @@
 - ✅ Admin panel for complete content management
 - ✅ Advanced analytics and search tracking
 
-> **🗄️ Database**: Enhanced 15-collection MongoDB schema (expanded from 6 to support complete Sarkari Result portal features)
+> **🗄️ Database**: Enhanced 15-table PostgreSQL 16 schema (expanded from 6 to support complete Hermes job notification portal features)
 
 ---
 
 ## 🏗️ Architecture Overview
 
-### Microservices Design (8 Containers - Optimized)
+### Fully Decoupled Services Design (INDEPENDENT Backend + Frontend)
+
+**🎯 KEY CHANGE**: Backend and Frontend are **COMPLETELY SEPARATED** into different folders under `src/`. Each service runs independently with its own Docker Compose file. This allows replacing the frontend technology (Flask → React → iOS → Android) without touching the backend.
 
 ```
-User Browser
-    ↓
-Nginx (Port 80/443) → Routes traffic (Health checks enabled)
-    ↓                      ↓
-Frontend Flask       Backend Flask API
-(Jinja2 Pages)       (REST Endpoints /api/v1/)
-(Health checked)     (Health checked)
-    ↓                      ↓
-    ├──→ MongoDB (Single + TTL indexes)
-    ├──→ Redis (AOF persistence + Queue)
-    ├──→ Celery Workers (Scalable: 1-N instances)
-    └──→ Celery Beat (Scheduler: Always 1 instance)
+┌────────────────────────────────────────────────────────────┐
+│                  SEPARATED SERVICES                         │
+└────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────┐      ┌─────────────────────────────┐
+│   BACKEND SERVICE           │      │   FRONTEND SERVICE          │
+│   (src/backend/)            │◄─────│   (src/frontend/)           │
+│                             │ HTTP │                             │
+│   Port: 5000                │ REST │   Port: 8080 (or any)       │
+│                             │ API  │                             │
+│   docker-compose.yml:       │      │   docker-compose.yml:       │
+│   - PostgreSQL              │      │   - Frontend only           │
+│   - Redis                   │      │                             │
+│   - Backend API             │      │   API calls via HTTP:       │
+│   - Celery Worker           │      │   http://backend:5000       │
+│   - Celery Beat             │      │   /api/v1/*                 │
+│                             │      │                             │
+│   Exposes: /api/v1/*        │      │   Serves: HTML/SPA          │
+│                             │      │                             │
+│   Can deploy independently! │      │   Can deploy independently! │
+│   Can scale independently!  │      │   Can scale independently!  │
+│   Technology: Flask         │      │   Technology: Flask/React/  │
+│   (Won't change)            │      │   Native iOS/Android        │
+│                             │      │   (Can change anytime!)     │
+└─────────────────────────────┘      └─────────────────────────────┘
+
+          ↑                                      ↑
+          │                                      │
+    Deploy on Server 1                     Deploy on Server 2
+    (or same server)                       (or same server)
 ```
 
-**Architecture Improvements:**
-- **API Versioning**: All endpoints use `/api/v1/` for future compatibility
-- **Health Checks**: Nginx only routes to healthy backends (prevents cascading failures)
-- **Separated Celery**: Beat (scheduler = 1 instance) and Workers (executors = scalable)
-  - Scale workers without duplicating schedules
-  - Celery Beat never scales (`--scale celery_beat=N` = duplicate tasks!)
-- **Redis Persistence**: AOF enabled to survive restarts
-- **MongoDB Note**: Single-node setup shown; for production failover, add 3-node replica set
+**Architecture Benefits:**
+- ✅ **Complete Separation**: Backend and frontend live in separate folders (`src/backend/`, `src/frontend/`)
+- ✅ **Independent Deployment**: Deploy backend without restarting frontend (and vice versa)
+- ✅ **Independent Scaling**: Scale backend and frontend separately based on load
+- ✅ **Tech Stack Flexibility**: Replace frontend (Flask → React → Mobile) WITHOUT touching backend
+- ✅ **API Versioning**: All endpoints use `/api/v1/` for future compatibility
+- ✅ **Multiple Frontends**: Run Flask web + React Admin + iOS app ALL calling same backend API
+- ✅ **Separated Celery**: Beat (scheduler = 1 instance) and Workers (executors = scalable)
+- ✅ **Different Servers**: Deploy backend on powerful server, frontend on edge servers closer to users
 
 ---
 
-## 📁 Project Structure
+## 📁 Project Structure (NEW: src/ Separation)
 
 ```
-sarkari-path/
-├── backend/              # Flask REST API
-│   ├── app/
-│   │   ├── routes/      # API endpoints (/api/auth, /api/jobs, etc.)
-│   │   ├── models/      # MongoDB models
-│   │   ├── services/    # Business logic (job matching, notifications)
-│   │   └── tasks/       # Celery background tasks
-│   ├── Dockerfile
-│   └── requirements.txt
+hermes/
+├── src/                              # 🚀 All source code
+│   │
+│   ├── backend/                      # 🔧 BACKEND SERVICE (INDEPENDENT)
+│   │   ├── docker-compose.yml        # Backend: PostgreSQL, Redis, API, Celery
+│   │   ├── Dockerfile
+│   │   ├── requirements.txt
+│   │   ├── .env.example              # Backend environment variables
+│   │   ├── run.py
+│   │   ├── app/
+│   │   │   ├── routes/               # API endpoints (/api/v1/*)
+│   │   │   ├── models/               # SQLAlchemy ORM models (PostgreSQL)
+│   │   │   ├── services/             # Business logic
+│   │   │   └── tasks/                # Celery background tasks
+│   │   ├── config/
+│   │   ├── tests/
+│   │   └── logs/
+│   │
+│   └── frontend/                     # 🎨 FRONTEND SERVICE (INDEPENDENT)
+│       ├── docker-compose.yml        # Frontend only
+│       ├── Dockerfile
+│       ├── requirements.txt          # Flask deps (or package.json for React)
+│       ├── .env.example              # Frontend environment variables
+│       ├── run.py
+│       ├── app/
+│       │   ├── routes/               # Page routes (/, /jobs, /profile)
+│       │   ├── templates/            # Jinja2 HTML (Flask only)
+│       │   ├── static/               # CSS, JS, images (Flask only)
+│       │   └── utils/
+│       │       └── api_client.py     # Calls backend: http://backend:5000/api/v1/*
+│       ├── config/
+│       └── tests/
 │
-├── frontend/             # Flask + Jinja2 UI
-│   ├── app/
-│   │   ├── routes/      # Page routes (/, /jobs, /profile, etc.)
-│   │   ├── templates/   # Jinja2 HTML templates
-│   │   ├── static/      # CSS, JS, images
-│   │   └── utils/
-│   │       └── api_client.py  # Calls backend API
-│   ├── Dockerfile
-│   └── requirements.txt
-│
-├── nginx/                # Reverse proxy
-│   └── nginx.conf
-│
-├── docker-compose.yml    # All services orchestration
-├── .env                  # Configuration
-└── mongo-init.js         # Database initialization
+├── docs/                             # Documentation
+├── epic/                             # Feature planning
+├── config/                           # Environment configs (reference)
+│   ├── development/
+│   │   ├── .env.backend.dev
+│   │   └── .env.frontend.dev
+│   ├── staging/
+│   └── production/
+├── scripts/
+│   └── deployment/
+│       ├── deploy_backend.sh
+│       ├── deploy_frontend.sh
+│       └── deploy_all.sh
+└── README.md
 ```
+
+**Key Points:**
+- ✅ Backend lives in `src/backend/` with its own docker-compose.yml
+- ✅ Frontend lives in `src/frontend/` with its own docker-compose.yml
+- ✅ Each service has its own .env file
+- ✅ Each service can be git repository on its own
+- ✅ Frontend calls backend via HTTP REST API
+- ✅ Can run backend only: `cd src/backend && docker-compose up`
+- ✅ Can run frontend only: `cd src/frontend && docker-compose up`
+- ✅ Can replace frontend entirely without touching backend code!
 
 ---
 
@@ -84,30 +136,31 @@ sarkari-path/
 
 ### Prerequisites
 - Docker & Docker Compose installed
-- Domain name (optional, for SSL)
+- Domain name (optional, for production SSL)
 - SMTP email credentials (Gmail/Outlook)
 
-### Steps
+### Option 1: Deploy Both Services Together (Development)
 
 **1. Clone Repository**
 ```bash
-git clone https://github.com/SumanKr7/sarkari_path_2.0.git
-cd sarkari_path_2.0
+git clone https://github.com/SumanKr7/hermes.git
+cd hermes
 ```
 
-**2. Configure Environment**
+**2. Deploy Backend First**
 ```bash
+cd src/backend
+
+# Configure backend environment
 cp .env.example .env
 nano .env
 ```
 
-Required environment variables:
+Required backend environment variables:
 ```env
-# MongoDB
-MONGO_ROOT_USER=admin
-MONGO_ROOT_PASSWORD=your_secure_password
-MONGO_USER=sarkaripath_user
-MONGO_PASSWORD=your_db_password
+# PostgreSQL
+SQLALCHEMY_DATABASE_URI=postgresql://hermes_user:your_db_password@postgresql:5432/hermes_db
+DB_POOL_SIZE=20
 
 # Redis
 REDIS_PASSWORD=your_redis_password
@@ -124,97 +177,330 @@ MAIL_PASSWORD=your-app-password
 
 # Firebase (for push notifications)
 FIREBASE_CREDENTIALS_PATH=/app/firebase-credentials.json
+
+# Backend Port
+BACKEND_PORT=5000
+
+# Note: Database is hermes_db
 ```
 
-**3. Start All Services**
+**3. Start Backend Services**
 ```bash
-docker compose up -d --build
+# From src/backend/
+docker-compose up -d --build
 ```
 
 This starts:
-- ✅ MongoDB (database)
+- ✅ PostgreSQL 16 (database)
 - ✅ Redis (cache & queue)
-- ✅ Backend API (Flask)
-- ✅ Frontend UI (Flask + Jinja2)
+- ✅ Backend API (Flask REST API on port 5000)
 - ✅ Celery Worker (background tasks)
 - ✅ Celery Beat (scheduler)
-- ✅ Nginx (reverse proxy)
 
-**4. Verify Deployment**
+**4. Verify Backend**
 ```bash
-# Check all containers are running
-docker compose ps
+# Check backend containers
+docker-compose ps
 
-# View logs
-docker compose logs -f frontend backend
+# View backend logs
+docker-compose logs -f backend
 
-# Test endpoints
-curl http://localhost/health        # Should return "OK"
-curl http://localhost/api/health    # Should return {"status":"healthy"}
+# Test backend API
+curl http://localhost:5000/api/v1/health
+# Should return: {"status":"healthy"}
 ```
 
-**5. Access Application**
-- Website: `http://localhost` or `http://your-domain.com`
-- Admin panel: `http://localhost/admin`
+**5. Deploy Frontend**
+```bash
+cd ../frontend
+
+# Configure frontend environment
+cp .env.example .env
+nano .env
+```
+
+Required frontend environment variables:
+```env
+# Backend API URL (where frontend calls backend)
+BACKEND_API_URL=http://localhost:5000/api/v1
+
+# Frontend Port
+FRONTEND_PORT=8080
+
+# Flask Secret
+SECRET_KEY=your-frontend-secret-key
+
+# Session Configuration
+SESSION_TIMEOUT=3600
+```
+
+**6. Start Frontend Service**
+```bash
+# From src/frontend/
+docker-compose up -d --build
+```
+
+This starts:
+- ✅ Frontend UI (Flask + Jinja2 on port 8080)
+
+**7. Verify Frontend**
+```bash
+# Check frontend container
+docker-compose ps
+
+# View frontend logs
+docker-compose logs -f frontend
+
+# Test frontend
+curl http://localhost:8080
+# Should return HTML homepage
+```
+
+**8. Access Application**
+- Backend API: `http://localhost:5000/api/v1/`
+- Frontend Website: `http://localhost:8080`
+- Admin panel: `http://localhost:8080/admin`
+
+**Note:** Database name is `hermes_db` (changed from `sarkari_path`)
+
+---
+
+### Option 2: Deploy on Separate Servers (Production)
+
+**Backend Server (e.g., 192.168.1.10)**
+```bash
+# On backend server
+cd hermes/src/backend
+cp .env.example .env
+# Edit .env with production values
+docker-compose up -d --build
+
+# Expose port 5000 to network (or use internal IP)
+# Backend API: http://192.168.1.10:5000/api/v1/
+```
+
+**Frontend Server (e.g., 192.168.1.20)**
+```bash
+# On frontend server
+cd hermes/src/frontend
+cp .env.example .env
+
+# Set BACKEND_API_URL to backend server
+nano .env
+# BACKEND_API_URL=http://192.168.1.10:5000/api/v1
+
+docker-compose up -d --build
+
+# Frontend: http://192.168.1.20:8080
+```
+
+---
+
+### Option 3: Deploy with Nginx (Production with SSL)
+
+**Deploy Backend**
+```bash
+cd src/backend
+docker-compose up -d --build
+# Backend running on port 5000
+```
+
+**Deploy Frontend**
+```bash
+cd src/frontend
+docker-compose up -d --build
+# Frontend running on port 8080
+```
+
+**Setup Nginx Reverse Proxy**
+```bash
+# Install Nginx on host machine (not in container)
+sudo apt install nginx
+
+# Create Nginx config
+sudo nano /etc/nginx/sites-available/hermes
+```
+
+```nginx
+server {
+    listen 80;
+    server_name yourdomain.com;
+    
+    # Frontend
+    location / {
+        proxy_pass http://localhost:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+    
+    # Backend API
+    location /api/ {
+        proxy_pass http://localhost:5000/api/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
+```
+
+```bash
+# Enable site
+sudo ln -s /etc/nginx/sites-available/hermes /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl restart nginx
+
+# Setup SSL with Let's Encrypt
+sudo apt install certbot python3-certbot-nginx
+sudo certbot --nginx -d yourdomain.com
+```
+
+**Access Application**
+- Website: `https://yourdomain.com`
+- Backend API: `https://yourdomain.com/api/v1/`
 
 ---
 
 ## 🔧 Management Commands
 
-### View Logs
+### Backend Management (src/backend/)
+
+**View Logs**
 ```bash
-# All services
-docker compose logs -f
+cd src/backend
+
+# All backend services
+docker-compose logs -f
 
 # Specific service
-docker compose logs -f frontend
-docker compose logs -f backend
-docker compose logs -f celery_worker
+docker-compose logs -f backend
+docker-compose logs -f postgresql      # Database: hermes_db
+docker-compose logs -f redis
+docker-compose logs -f celery_worker
+docker-compose logs -f celery_beat
 ```
 
-### Restart Services
+**Restart Services**
 ```bash
-# All services
-docker compose restart
+cd src/backend
+
+# All backend services
+docker-compose restart
 
 # Specific service
-docker compose restart frontend
-docker compose restart backend
+docker-compose restart backend
+docker-compose restart celery_worker
 ```
 
-### Update Code
+**Update Backend Code**
 ```bash
+cd src/backend
+
 # Pull latest code
 git pull origin main
 
-# Rebuild and restart only changed services
-docker compose up -d --build
+# Rebuild and restart
+docker-compose up -d --build
 
 # Or update specific service
-docker compose up -d --no-deps --build frontend
+docker-compose up -d --no-deps --build backend
 ```
 
-### Database Operations
+**Database Operations**
 ```bash
-# Access MongoDB shell
-docker compose exec mongodb mongosh -u sarkaripath_user -p your_db_password --authenticationDatabase sarkari_path
+cd src/backend
+
+# Access PostgreSQL shell
+docker-compose exec postgresql psql -U hermes_user -d hermes_db
 
 # Backup database
-docker compose exec mongodb mongodump --uri="mongodb://sarkaripath_user:your_db_password@localhost:27017/sarkari_path?authSource=sarkari_path" --out=/backup
+docker-compose exec postgresql pg_dump -U hermes_user -d hermes_db -F c -f /backup/hermes_backup.dump
 
 # View Redis keys
-docker compose exec redis redis-cli -a your_redis_password
+docker-compose exec redis redis-cli -a your_redis_password
 ```
 
-### Stop & Clean Up
+**Stop & Clean Up Backend**
 ```bash
-# Stop all containers
-docker compose down
+cd src/backend
+
+# Stop all backend containers
+docker-compose down
 
 # Stop and remove volumes (fresh start)
-docker compose down -v
+docker-compose down -v
+```
 
-# Remove unused images
+---
+
+### Frontend Management (src/frontend/)
+
+**View Logs**
+```bash
+cd src/frontend
+
+# Frontend logs
+docker-compose logs -f
+
+# Specific service
+docker-compose logs -f frontend
+```
+
+**Restart Frontend**
+```bash
+cd src/frontend
+
+# Restart frontend
+docker-compose restart
+
+# Or just restart specific service
+docker-compose restart frontend
+```
+
+**Update Frontend Code**
+```bash
+cd src/frontend
+
+# Pull latest code
+git pull origin main
+
+# Rebuild and restart
+docker-compose up -d --build
+```
+
+**Stop & Clean Up Frontend**
+```bash
+cd src/frontend
+
+# Stop frontend container
+docker-compose down
+```
+
+---
+
+### Both Services Management
+
+**Update Both**
+```bash
+# Backend
+cd src/backend && git pull && docker-compose up -d --build && cd ../..
+
+# Frontend
+cd src/frontend && git pull && docker-compose up -d --build && cd ../..
+```
+
+**Stop Both**
+```bash
+# Backend
+cd src/backend && docker-compose down && cd ../..
+
+# Frontend
+cd src/frontend && docker-compose down && cd ../..
+```
+
+**Clean Everything**
+```bash
+# Remove all containers, volumes, images
+cd src/backend && docker-compose down -v && cd ../..
+cd src/frontend && docker-compose down -v && cd ../..
 docker system prune -a
 ```
 
@@ -237,17 +523,24 @@ User receives notification → Views job → Applies
 Celery sends deadline reminders (7d, 3d, 1d before)
 ```
 
-### 2. Frontend-Backend Communication
+### 2. Frontend-Backend Communication (SEPARATED SERVICES)
+
+**🎯 KEY**: Frontend and Backend are SEPARATE services calling each other via HTTP.
 
 **Frontend (Flask + Jinja2):**
 ```python
-# frontend/app/routes/jobs.py
+# src/frontend/app/routes/jobs.py
 from app.utils.api_client import APIClient
+import os
+
+# Backend URL from environment variable
+BACKEND_API_URL = os.getenv('BACKEND_API_URL', 'http://localhost:5000/api/v1')
 
 @bp.route('/jobs')
 def job_list():
-    # Frontend calls backend API
-    jobs_data, status = APIClient.get('/jobs', params={'limit': 20})
+    # Frontend calls backend API via HTTP
+    # No internal Docker network - uses external HTTP call
+    jobs_data, status = APIClient.get(f'{BACKEND_API_URL}/jobs', params={'limit': 20})
     
     # Render template with data
     return render_template('jobs/job_list.html', jobs=jobs_data)
@@ -255,13 +548,88 @@ def job_list():
 
 **Backend (Flask API):**
 ```python
-# backend/app/routes/jobs.py
-@bp.route('/api/jobs', methods=['GET'])
+# src/backend/app/routes/jobs.py
+@bp.route('/api/v1/jobs', methods=['GET'])
 def get_jobs():
     limit = request.args.get('limit', 20)
     jobs = Job.find_all(limit=limit)
     return jsonify({'jobs': jobs}), 200
 ```
+
+**Communication Flow:**
+```
+User Browser
+    ↓
+Frontend Service (src/frontend/) - Port 8080
+    ├─ User requests: http://yoursite.com/jobs
+    ├─ Frontend route handler receives request
+    ├─ Frontend makes HTTP call to backend
+    ↓
+HTTP Request: http://backend-url:5000/api/v1/jobs
+    ├─ Headers: Authorization: Bearer <JWT>
+    ├─ Headers: X-Request-ID: <uuid>
+    └─ Params: ?limit=20
+    ↓
+Backend Service (src/backend/) - Port 5000
+    ├─ Receives HTTP request on /api/v1/jobs
+    ├─ Validates JWT token
+    ├─ Fetches data from PostgreSQL via SQLAlchemy
+    └─ Returns JSON response
+    ↓
+HTTP Response: JSON
+    ├─ Status: 200
+    ├─ Headers: X-Request-ID
+    └─ Body: {jobs: [...]}
+    ↓
+Frontend Service
+    ├─ Receives JSON data
+    ├─ Renders HTML template with data
+    └─ Sends HTML to user browser
+    ↓
+User sees job listings page
+```
+
+**Environment Configuration:**
+
+Backend (.env in src/backend/):
+```env
+BACKEND_PORT=5000
+SQLALCHEMY_DATABASE_URI=postgresql://hermes_user:password@postgresql:5432/hermes_db
+REDIS_URL=redis://:password@redis:6379/0
+```
+
+Frontend (.env in src/frontend/):
+```env
+FRONTEND_PORT=8080
+BACKEND_API_URL=http://localhost:5000/api/v1  # Dev
+# BACKEND_API_URL=http://backend-server-ip:5000/api/v1  # Production
+# BACKEND_API_URL=https://api.yoursite.com/api/v1  # Production with domain
+```
+
+**🔄 Future: Replace Frontend with React**
+
+When migrating to React, you only need to:
+1. Replace `src/frontend/` folder with React app
+2. Update React API calls to same `BACKEND_API_URL`
+3. **ZERO CHANGES to backend!** 🎉
+
+React API call example:
+```javascript
+// src/frontend/src/services/api.js
+const BACKEND_API_URL = process.env.REACT_APP_BACKEND_API_URL;
+
+export const getJobs = async (limit = 20) => {
+  const response = await fetch(`${BACKEND_API_URL}/jobs?limit=${limit}`, {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'X-Request-ID': generateUUID()
+    }
+  });
+  return await response.json();
+};
+```
+
+Same backend, different frontend technology! ✨
 
 ### 3. Notification System
 
@@ -274,7 +642,7 @@ def get_jobs():
 **Channels:**
 - 📧 **Email**: Flask-Mail via SMTP (Gmail/Outlook)
 - 📱 **Push**: Firebase Cloud Messaging (web + mobile)
-- 🔔 **In-app**: Stored in MongoDB notifications collection
+- 🔔 **In-app**: Stored in PostgreSQL notifications table
 
 ---
 
@@ -300,7 +668,7 @@ def get_jobs():
 - ✅ **CORS**: Only whitelisted origins allowed, credentials protected
 - ✅ **HTTPS/SSL**: Let's Encrypt with HSTS headers
 - ✅ **Input Validation**: Email, password, and all user inputs sanitized
-- ✅ **Database Auth**: MongoDB and Redis password protected
+- ✅ **Database Auth**: PostgreSQL and Redis password protected
 - ✅ **Security Headers**: X-Frame-Options, X-Content-Type-Options, CSP, HSTS, etc.
 - ✅ **Secrets Management**: .env in dev, Vault/AWS Secrets in production
 - ✅ **API Versioning**: `/api/v1/` allows safe upgrades
@@ -320,11 +688,6 @@ def get_jobs():
 - ✅ **Request timeouts**: 10-second timeout, 3-retry exponential backoff
 - ✅ **Notification retries**: Failed emails auto-retry up to 5 times
 
-**Monitoring**:
-- ✅ **Centralized logging**: All container logs in Elasticsearch (ELK stack)
-- ✅ **Full-text search**: Elasticsearch for job search (fuzzy matching, relevance)
-- ✅ **APM**: Track API response times, database latency, Celery task performance
-- ✅ **Real-time alerts**: Error rate, response time, memory usage thresholds
 
 ---
 ## ⚡ Advanced Design Improvements (13 New Features)
@@ -333,7 +696,7 @@ def get_jobs():
 - ✅ **JWT Token Rotation**: 15-min access + 7-day refresh (not 1-hour + 30-day)
 - ✅ **Rate Limiting Config**: 100 req/min per IP, 1000 req/min per user
 - ✅ **Request Timeout**: 10-second timeout per API request
-- ✅ **Connection Pooling**: MongoDB 50-connection pool, Redis socket keepalive
+- ✅ **Connection Pooling**: PostgreSQL SQLAlchemy pool_size=20, Redis socket keepalive
 - ✅ **Data Retention Policy**: Notifications 90d, Logs 30d, Audits 1 year auto-cleanup
 
 ### Error Handling & Tracing
@@ -397,11 +760,11 @@ ab -n 1000 -c 10 http://localhost/
 ### Issue: Containers not starting
 ```bash
 # Check logs
-docker compose logs mongodb redis
+docker compose logs postgresql redis
 
 # Check if ports are in use
 sudo lsof -i :80
-sudo lsof -i :27017
+sudo lsof -i :5432
 sudo lsof -i :6379
 
 # Solution: Stop conflicting services or change ports
@@ -410,10 +773,10 @@ sudo lsof -i :6379
 ### Issue: Frontend can't connect to backend
 ```bash
 # Check if backend is healthy
-curl http://localhost/api/health
+curl http://localhost:5000/api/v1/health
 
 # Check docker network
-docker network inspect sarkari_network
+docker network inspect hermes_network
 
 # Restart backend
 docker compose restart backend
@@ -431,17 +794,17 @@ docker compose exec redis redis-cli -a your_redis_password ping
 docker compose restart celery_worker celery_beat
 ```
 
-### Issue: MongoDB connection failed
+### Issue: PostgreSQL connection failed
 ```bash
-# Check MongoDB logs
-docker compose logs mongodb
+# Check PostgreSQL logs
+docker compose logs postgresql
 
 # Test connection
-docker compose exec mongodb mongosh -u admin -p your_root_password
+docker compose exec postgresql psql -U hermes_user -d hermes_db -c "SELECT 1;"
 
-# Recreate MongoDB with fresh data
+# Recreate PostgreSQL with fresh data
 docker compose down -v
-docker compose up -d mongodb
+docker compose up -d postgresql
 ```
 
 ---
@@ -468,10 +831,10 @@ pip install -r requirements.txt
 python run.py
 ```
 
-**MongoDB & Redis:**
+**PostgreSQL & Redis:**
 ```bash
 # Install locally or use Docker
-docker run -d -p 27017:27017 mongo:7.0
+docker run -d -p 5432:5432 -e POSTGRES_USER=hermes_user -e POSTGRES_PASSWORD=password -e POSTGRES_DB=hermes_db postgres:16-alpine
 docker run -d -p 6379:6379 redis:7-alpine
 ```
 
@@ -514,19 +877,26 @@ The system has **3 user roles** with different permissions:
 
 **New users always register with "user" role by default.** To create the first admin:
 
-**Option A: MongoDB Direct Insert** (Quickest for first admin)
+**Option A: PostgreSQL Direct Insert** (Quickest for first admin)
 ```bash
-# Connect to MongoDB
-docker compose exec mongodb mongosh -u admin -p admin
-
-# Switch to sarkari_path database
-use sarkari_path
+# Connect to PostgreSQL
+docker compose exec postgresql psql -U hermes_user -d hermes_db
 
 # Create admin user directly
-db.users.insertOne({
-  email: "admin@example.com",
-  password: "$2b$12$HASHED_PASSWORD_HERE", // Use bcrypt hash
-  full_name: "Admin User",
+INSERT INTO users (
+  email, password_hash, full_name, role,
+  is_verified, is_email_verified, status,
+  created_at, last_login
+) VALUES (
+  'admin@example.com',
+  '$2b$12$HASHED_PASSWORD_HERE',  -- Use bcrypt hash
+  'Admin User', 'admin',
+  TRUE, TRUE, 'active',
+  NOW(), NOW()
+);
+
+\q
+```
   role: "admin", // Directly set admin role
   is_verified: true,
   is_email_verified: true,
@@ -549,13 +919,10 @@ curl -X POST http://localhost:5000/api/v1/auth/register \
     "name": "Admin User"
   }'
 
-# 2. Update role in MongoDB
-docker compose exec mongodb mongosh -u admin -p admin
-use sarkari_path
-db.users.updateOne(
-  {email: "admin@example.com"},
-  {$set: {role: "admin"}}
-)
+# 2. Update role in PostgreSQL
+docker compose exec postgresql psql -U hermes_user -d hermes_db
+UPDATE users SET role = 'admin' WHERE email = 'admin@example.com';
+\q
 ```
 
 ### Step 2: Create Operators (Admin-Only)
@@ -633,7 +1000,8 @@ curl -X PUT http://localhost:5000/api/v1/admin/users/USER_ID/role \
 from flask import request, jsonify, Blueprint
 from flask_jwt_extended import jwt_required, get_jwt
 from functools import wraps
-from bson import ObjectId
+from app.extensions import db
+from app.models import User, AdminLog
 
 bp = Blueprint('admin', __name__, url_prefix='/api/v1/admin')
 
@@ -665,32 +1033,26 @@ def change_user_role(user_id):
         return {"error": "VALIDATION_INVALID_ROLE"}, 400
     
     # Find and update user
-    from app.models import db
-    user = db.users.find_one_and_update(
-        {'_id': ObjectId(user_id)},
-        {'$set': {'role': new_role, 'updated_at': datetime.utcnow()}},
-        return_document=True
-    )
-    
+    user = User.query.get(user_id)
+
     if not user:
         return {"error": "NOT_FOUND_USER"}, 404
-    
-    # Log audit trail
-    admin_id = get_jwt()['sub']
-    db.audit_trail.insert_one({
-        'action': 'role_changed',
-        'admin_id': ObjectId(admin_id),
-        'user_id': ObjectId(user_id),
-        'new_role': new_role,
-        'old_role': user.get('role', 'user'),
-        'timestamp': datetime.utcnow()
-    })
-    
+
+    old_role = user.role
+    user.role = new_role
+    db.session.add(AdminLog(
+        action='role_changed',
+        admin_id=get_jwt()['sub'],
+        user_id=user_id,
+        details={'new_role': new_role, 'old_role': old_role}
+    ))
+    db.session.commit()
+
     return {
-        'user_id': str(user['_id']),
-        'email': user['email'],
-        'role': user['role'],
-        'updated_at': user['updated_at'].isoformat()
+        'user_id': str(user.id),
+        'email': user.email,
+        'role': user.role,
+        'updated_at': user.updated_at.isoformat()
     }, 200
 ```
 
@@ -757,7 +1119,7 @@ After deployment:
 
 1. **Create Admin User**
    - Follow the bootstrap instructions in [👥 User & Role Management](#-user--role-management) section
-   - Use MongoDB direct insert or register + manual update methods
+   - Use PostgreSQL direct insert or register + manual update methods
 
 2. **Create Operators** (Optional)
    - Use the `PUT /api/v1/admin/users/<id>/role` endpoint from admin account
@@ -780,14 +1142,10 @@ After deployment:
    ```
 
 5. **Setup Backups**
-   - Configure automated MongoDB backups
+   - Configure automated PostgreSQL backups via pg_dump
    - Set up backup retention policy
    - Test restore procedure
 
-6. **Monitoring**
-   - Setup application monitoring (Sentry, etc.)
-   - Configure uptime monitoring
-   - Setup alerts for errors
 
 ---
 
@@ -804,7 +1162,7 @@ After deployment:
 **Flask Microservices:**
 - [Flask Documentation](https://flask.palletsprojects.com/)
 - [Docker Compose Tutorial](https://docs.docker.com/compose/)
-- [MongoDB with Python](https://pymongo.readthedocs.io/)
+- [PostgreSQL with SQLAlchemy](https://docs.sqlalchemy.org/en/20/dialects/postgresql.html)
 
 **Celery:**
 - [Celery Documentation](https://docs.celeryproject.org/)

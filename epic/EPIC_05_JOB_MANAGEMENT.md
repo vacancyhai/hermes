@@ -46,7 +46,7 @@
 
 #### Acceptance Criteria:
 - [ ] Job model with all required fields
-- [ ] MongoDB indexes for performance
+- [ ] PostgreSQL indexes for performance
 - [ ] Data validation rules
 - [ ] Relationship with other models
 - [ ] Job status management

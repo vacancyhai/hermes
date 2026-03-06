@@ -1,0 +1,127 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgresql:
+    image: postgres:16-alpine
+    container_name: hermes_postgresql
+    restart: unless-stopped
+    # PostgreSQL requires its own POSTGRES_* variable names — mapped from .env values
+    environment:
+      POSTGRES_USER: ${DB_USER:-hermes_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-hermes_password}
+      POSTGRES_DB: ${DB_NAME:-hermes_db}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=en_US.UTF-8"
+    volumes:
+      - postgresql_data:/var/lib/postgresql/data
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    networks:
+      - backend_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-hermes_user} -d ${DB_NAME:-hermes_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache & Task Queue
+  redis:
+    image: redis:7-alpine
+    container_name: hermes_redis
+    restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_PASSWORD} --appendonly yes --appendfsync everysec
+    env_file:
+      - .env
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - backend_network
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a $$REDIS_PASSWORD ping | grep PONG"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # Backend API (Flask REST API)
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hermes_api
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./app:/app/app
+      - backend_logs:/app/logs
+    ports:
+      - "${BACKEND_PORT:-5000}:5000"
+    depends_on:
+      postgresql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - backend_network
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/api/v1/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      start_period: 40s
+      retries: 3
+
+  # Celery Worker - Background Tasks (Emails, Notifications, Job Matching)
+  celery_worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hermes_celery_worker
+    restart: unless-stopped
+    command: celery -A app.tasks.celery_app worker --loglevel=info --concurrency=4
+    env_file:
+      - .env
+    volumes:
+      - ./app:/app/app
+    depends_on:
+      postgresql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    networks:
+      - backend_network
+
+  # Celery Beat - Task Scheduler (Cron Jobs)
+  celery_beat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hermes_celery_beat
+    restart: unless-stopped
+    command: celery -A app.tasks.celery_app beat --loglevel=info
+    env_file:
+      - .env
+    volumes:
+      - ./app:/app/app
+    depends_on:
+      postgresql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    networks:
+      - backend_network
+
+volumes:
+  postgresql_data:
+  redis_data:
+  backend_logs:
+
+networks:
+  backend_network:
+    driver: bridge
+    name: src_backend_network
