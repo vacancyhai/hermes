@@ -2,7 +2,45 @@
 Backend Configuration Settings
 """
 import os
+import sys
 from datetime import timedelta
+
+# Variables that must be explicitly set in production (no insecure defaults allowed)
+_REQUIRED_IN_PRODUCTION = [
+    'SECRET_KEY',
+    'JWT_SECRET_KEY',
+    'DATABASE_URL',
+    'REDIS_URL',
+    'REDIS_PASSWORD',
+]
+
+def _validate_env():
+    """Abort startup if required production vars are missing or still set to dev defaults."""
+    env = os.getenv('FLASK_ENV', 'development')
+    if env != 'production':
+        return
+
+    _INSECURE_DEFAULTS = {
+        'SECRET_KEY': 'dev-secret-key-change-in-production',
+        'JWT_SECRET_KEY': 'jwt-secret-change-in-production',
+    }
+
+    missing = [v for v in _REQUIRED_IN_PRODUCTION if not os.getenv(v)]
+    insecure = [k for k, bad in _INSECURE_DEFAULTS.items() if os.getenv(k) == bad]
+
+    errors = []
+    if missing:
+        errors.append(f"Missing required env vars: {', '.join(missing)}")
+    if insecure:
+        errors.append(f"Insecure default values still set for: {', '.join(insecure)}")
+
+    if errors:
+        for msg in errors:
+            print(f"[CONFIG ERROR] {msg}", file=sys.stderr)
+        sys.exit(1)
+
+_validate_env()
+
 
 class Config:
     """Base configuration"""
