@@ -32,7 +32,7 @@ cd "$FRONTEND_PATH"
 # Load environment configuration
 if [ -f "../../config/$ENVIRONMENT/.env.frontend.$ENVIRONMENT" ]; then
     echo "📋 Loading configuration from: config/$ENVIRONMENT/.env.frontend.$ENVIRONMENT"
-    export $(cat "../../config/$ENVIRONMENT/.env.frontend.$ENVIRONMENT" | xargs)
+    export $(grep -v '^\s*#' "../../config/$ENVIRONMENT/.env.frontend.$ENVIRONMENT" | grep -v '^\s*$' | xargs)
 fi
 
 # Check if .env exists in frontend root

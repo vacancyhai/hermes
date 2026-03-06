@@ -1,5 +1,9 @@
 """
-Celery App - Stub (tasks implemented in EPIC_08)
+Celery application instance.
+
+init_celery(app) must be called from the Flask app factory so that every
+task runs inside a Flask application context and can safely use db.session,
+current_app, and other Flask-bound resources.
 """
 from celery import Celery
 import os
@@ -18,3 +22,20 @@ celery_app.conf.update(
     enable_utc=True,
     task_track_started=True,
 )
+
+
+def init_celery(app):
+    """
+    Wrap every Celery task so it executes inside a Flask application context.
+
+    Call this once from create_app() after the Flask app is fully configured.
+    Without this, tasks that access db.session or current_app will raise
+    "RuntimeError: Working outside of application context."
+    """
+    class ContextTask(celery_app.Task):
+        def __call__(self, *args, **kwargs):
+            with app.app_context():
+                return self.run(*args, **kwargs)
+
+    celery_app.Task = ContextTask
+    return celery_app

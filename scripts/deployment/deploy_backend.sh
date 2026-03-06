@@ -32,7 +32,7 @@ cd "$BACKEND_PATH"
 # Load environment configuration
 if [ -f "../../config/$ENVIRONMENT/.env.backend.$ENVIRONMENT" ]; then
     echo "📋 Loading configuration from: config/$ENVIRONMENT/.env.backend.$ENVIRONMENT"
-    export $(cat "../../config/$ENVIRONMENT/.env.backend.$ENVIRONMENT" | xargs)
+    export $(grep -v '^\s*#' "../../config/$ENVIRONMENT/.env.backend.$ENVIRONMENT" | grep -v '^\s*$' | xargs)
 fi
 
 # Check if .env exists in backend root

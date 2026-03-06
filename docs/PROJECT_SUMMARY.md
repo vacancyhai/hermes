@@ -651,9 +651,8 @@ Same backend, different frontend technology! ✨
 | File | Purpose |
 |------|---------|
 | **README.md** | Complete project documentation with database schemas, API endpoints, deployment guides |
-| **DOCKER_DEPLOYMENT.md** | Detailed Docker setup with all configuration files (Dockerfile, docker-compose.yml, nginx.conf) |
 | **WORKFLOW_DIAGRAMS.md** | ASCII diagrams showing 10 system workflows (registration, job matching, notifications, etc.) |
-| **JINJA2_TEMPLATES_GUIDE.md** | Complete Flask template architecture with examples (base.html, components, pages, email templates) |
+| **PROJECT_STRUCTURE.md** | Folder tree with implementation status (✅/🟡/❌) for every file, plus known design issues |
 | **PROJECT_SUMMARY.md** | This file - quick start guide and overview |
 
 ---

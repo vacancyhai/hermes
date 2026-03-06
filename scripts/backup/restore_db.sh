@@ -60,6 +60,11 @@ echo "📥 Restoring database..."
 CONTAINER_ID=$(docker-compose -f "$BACKEND_PATH/docker-compose.yml" ps -q postgresql)
 docker cp "$BACKUP_FILE" "$CONTAINER_ID:/tmp/restore.dump"
 
+# Terminate all existing connections before dropping (prevents "database is being accessed" error)
+docker-compose -f "$BACKEND_PATH/docker-compose.yml" exec -T postgresql \
+    psql -U hermes_user -d postgres \
+    -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'hermes_db' AND pid <> pg_backend_pid();"
+
 # Drop and recreate database (clean slate)
 docker-compose -f "$BACKEND_PATH/docker-compose.yml" exec -T postgresql \
     psql -U hermes_user -d postgres -c "DROP DATABASE IF EXISTS hermes_db;"

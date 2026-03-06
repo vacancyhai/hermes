@@ -15,7 +15,7 @@ hermes/
 │   ├── PROJECT_STRUCTURE.md           ✅  this file
 │   ├── PROJECT_SUMMARY.md             ✅
 │   ├── WORKFLOW_DIAGRAMS.md           ✅
-│   └── DOCKER_ENVIRONMENTS.md        ✅
+│   └── DOCKER_ENVIRONMENTS.md        ❌  not created yet
 │
 ├── config/                            ✅  env templates (copy to src/*/. env)
 │   ├── README.md
@@ -329,6 +329,25 @@ Directories exist. Assets planned:
 | Low | `backend/utils/` — helpers, decorators, constants |
 | Low | `backend/tasks/` — notification, reminder, cleanup task functions |
 | Low | Test files in `tests/unit/` and `tests/integration/` |
+
+---
+
+## Design Issues — All Fixed
+
+All issues identified during code review have been resolved. What changed and where:
+
+| # | Issue | Fixed in |
+|---|-------|----------|
+| 1 | Celery had no Flask app context — tasks using `db.session` would crash | `app/tasks/celery_app.py` — added `init_celery(app)` factory; called from `app/__init__.py` |
+| 2 | `role_permissions` table never seeded — every request returned 403 | `migrations/versions/0001_initial_schema.py` — seed data added to `upgrade()` |
+| 3 | JWT logout had no token revocation | `app/__init__.py` — Redis-backed `@jwt.token_in_blocklist_loader` registered; logout route must `setex(f"blocklist:{jti}", ttl, "1")` |
+| 4 | Error handler format didn't match README spec | `app/middleware/error_handler.py` — returns `{"success": false, "error": {"code", "message", "details", "timestamp", "request_id"}}` |
+| 5 | `job_vacancies` missing `correction_start`, `correction_end`, `exam_city_release` | `app/models/job.py` + `migrations/versions/0001_initial_schema.py` |
+| 6 | `pydantic` in requirements but Marshmallow planned for validators | `requirements.txt` — replaced `pydantic` with `marshmallow==3.21.0` |
+| 7 | `flask-limiter` missing from requirements | `requirements.txt` — added `Flask-Limiter==3.5.0` |
+| 8 | CORS allowed all origins (`*`) | `config/settings.py` — added `CORS_ORIGINS`; `app/__init__.py` — passes it to `CORS(app, origins=...)` |
+| 9 | `updated_at` not auto-updated on direct SQL writes | `migrations/versions/0001_initial_schema.py` — `_set_updated_at()` trigger function + `BEFORE UPDATE` triggers on all 11 affected tables |
+| 10 | `views` counter causes row-level lock contention at scale | `config/settings.py` — added `VIEWS_REDIS_KEY_PREFIX` + `VIEWS_FLUSH_INTERVAL_SECONDS`; implement Redis INCR + Celery flush when building the page-view routes |
 
 ---
 

@@ -4,7 +4,7 @@
 
 > **📂 Project Structure**: See [docs/PROJECT_STRUCTURE.md](./docs/PROJECT_STRUCTURE.md) for complete folder structure and architecture.
 
-> **📚 Documentation Index**: Browse [docs/INDEX.md](./docs/INDEX.md) for all available documentation.
+> **📚 Documentation**: See the `docs/` folder for all available documentation.
 
 ## 📋 Table of Contents
 
@@ -22,7 +22,6 @@
 12. [Troubleshooting](#troubleshooting-hostinger-vps)
 
 📖 **Additional Documentation**:
-- [Docker Deployment Guide](./docs/DOCKER_DEPLOYMENT.md)
 - [Workflow Diagrams](./docs/WORKFLOW_DIAGRAMS.md)
 - [Project Structure](./docs/PROJECT_STRUCTURE.md)
 

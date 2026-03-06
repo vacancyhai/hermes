@@ -95,8 +95,11 @@ def upgrade() -> None:
         sa.Column('application_end', sa.Date),
         sa.Column('last_date_fee', sa.Date),
         sa.Column('admit_card_release', sa.Date),
+        sa.Column('exam_city_release', sa.Date),
         sa.Column('exam_start', sa.Date),
         sa.Column('exam_end', sa.Date),
+        sa.Column('correction_start', sa.Date),
+        sa.Column('correction_end', sa.Date),
         sa.Column('answer_key_release', sa.Date),
         sa.Column('result_date', sa.Date),
         sa.Column('exam_details', postgresql.JSONB, nullable=False, server_default='{}'),
@@ -496,12 +499,81 @@ def upgrade() -> None:
     op.create_index('idx_search_logs_date', 'search_logs', [sa.text('searched_at DESC')])
     op.create_index('idx_search_logs_filters', 'search_logs', ['filters_applied'], postgresql_using='gin')
 
+    # ------------------------------------------------------------------
+    # updated_at TRIGGERS
+    # Ensures updated_at is always current even on direct SQL writes,
+    # not just ORM updates.
+    # ------------------------------------------------------------------
+    op.execute("""
+        CREATE OR REPLACE FUNCTION _set_updated_at()
+        RETURNS TRIGGER AS $$
+        BEGIN
+            NEW.updated_at = NOW();
+            RETURN NEW;
+        END;
+        $$ LANGUAGE plpgsql;
+    """)
+    for _tbl in [
+        'users', 'user_profiles', 'job_vacancies', 'role_permissions',
+        'results', 'admit_cards', 'answer_keys', 'admissions',
+        'yojanas', 'board_results', 'categories',
+    ]:
+        op.execute(f"""
+            CREATE TRIGGER trg_{_tbl}_updated_at
+            BEFORE UPDATE ON {_tbl}
+            FOR EACH ROW EXECUTE FUNCTION _set_updated_at();
+        """)
+
+    # ------------------------------------------------------------------
+    # DEFAULT ROLE PERMISSIONS SEED
+    # Populates the baseline RBAC matrix so authenticated requests don't
+    # return 403 on a fresh deployment.
+    # ------------------------------------------------------------------
+    import json as _json
+    _permissions = [
+        # (role, resource, actions_dict, field_restrictions_pg_literal)
+        ('user', 'jobs',          {'GET': True,  'POST': False, 'PUT': False, 'DELETE': False}, '{}'),
+        ('user', 'applications',  {'GET': True,  'POST': True,  'PUT': True,  'DELETE': True},  '{}'),
+        ('user', 'notifications', {'GET': True,  'POST': False, 'PUT': True,  'DELETE': True},  '{}'),
+        ('user', 'users',         {'GET': True,  'POST': False, 'PUT': True,  'DELETE': False}, '{}'),
+        ('user', 'admin',         {'GET': False, 'POST': False, 'PUT': False, 'DELETE': False}, '{}'),
+        ('operator', 'jobs',          {'GET': True,  'POST': False, 'PUT': True,  'DELETE': False}, '{salary_initial,salary_max,total_vacancies,vacancy_breakdown}'),
+        ('operator', 'applications',  {'GET': True,  'POST': False, 'PUT': False, 'DELETE': False}, '{}'),
+        ('operator', 'notifications', {'GET': True,  'POST': False, 'PUT': False, 'DELETE': False}, '{}'),
+        ('operator', 'users',         {'GET': True,  'POST': False, 'PUT': False, 'DELETE': False}, '{password_hash}'),
+        ('operator', 'admin',         {'GET': False, 'POST': False, 'PUT': False, 'DELETE': False}, '{}'),
+        ('admin', 'jobs',          {'GET': True, 'POST': True, 'PUT': True, 'DELETE': True}, '{}'),
+        ('admin', 'applications',  {'GET': True, 'POST': True, 'PUT': True, 'DELETE': True}, '{}'),
+        ('admin', 'notifications', {'GET': True, 'POST': True, 'PUT': True, 'DELETE': True}, '{}'),
+        ('admin', 'users',         {'GET': True, 'POST': True, 'PUT': True, 'DELETE': True}, '{}'),
+        ('admin', 'admin',         {'GET': True, 'POST': True, 'PUT': True, 'DELETE': True}, '{}'),
+    ]
+    for _role, _resource, _actions, _fields in _permissions:
+        _actions_sql = _json.dumps(_actions).replace("'", "''")
+        op.execute(f"""
+            INSERT INTO role_permissions (id, role, resource, actions, field_restrictions)
+            VALUES (
+                gen_random_uuid(), '{_role}', '{_resource}',
+                '{_actions_sql}'::jsonb, '{_fields}'::text[]
+            )
+            ON CONFLICT (role, resource) DO NOTHING;
+        """)
+
     # Grant all privileges to the app user
     op.execute("GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO hermes_user")
     op.execute("GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO hermes_user")
 
 
 def downgrade() -> None:
+    # Drop triggers and shared function before dropping tables
+    for _tbl in [
+        'categories', 'board_results', 'yojanas', 'admissions',
+        'answer_keys', 'admit_cards', 'results', 'role_permissions',
+        'job_vacancies', 'user_profiles', 'users',
+    ]:
+        op.execute(f"DROP TRIGGER IF EXISTS trg_{_tbl}_updated_at ON {_tbl};")
+    op.execute("DROP FUNCTION IF EXISTS _set_updated_at();")
+
     op.drop_table('search_logs')
     op.drop_table('page_views')
     op.drop_table('categories')

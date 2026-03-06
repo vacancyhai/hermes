@@ -45,10 +45,7 @@ docker-compose -f "$BACKEND_PATH/docker-compose.yml" exec -T postgresql pg_dump 
     -f "/tmp/$BACKUP_FILENAME"
 
 # Copy backup from container to host
-docker-compose -f "$BACKEND_PATH/docker-compose.yml" cp \
-    "postgresql:(tmp/$BACKUP_FILENAME)" \
-    "$BACKUP_PATH" 2>/dev/null || \
-    docker cp "$(docker-compose -f "$BACKEND_PATH/docker-compose.yml" ps -q postgresql):/tmp/$BACKUP_FILENAME" \
+docker cp "$(docker-compose -f "$BACKEND_PATH/docker-compose.yml" ps -q postgresql):/tmp/$BACKUP_FILENAME" \
     "$BACKUP_PATH"
 
 # Verify backup was created
