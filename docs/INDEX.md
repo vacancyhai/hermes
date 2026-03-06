@@ -35,7 +35,7 @@ This project contains comprehensive documentation across multiple files. Use thi
 - ✅ Project overview and key capabilities
 - ✅ Complete tech stack (Frontend, Backend, Infrastructure)
 - ✅ Microservices architecture diagram
-- ✅ Enhanced database schemas (15 MongoDB collections - expanded from 6 to support complete Hermes job notification portal)
+- ✅ Enhanced database schemas (15 PostgreSQL tables - expanded from 6 to support complete Hermes job notification portal)
 - ✅ API endpoints (60+ REST endpoints with descriptions)
 - ✅ Key features implementation (Job matching algorithm, Notification system)
 - ✅ Flask-Mail email service configuration
@@ -50,7 +50,7 @@ This project contains comprehensive documentation across multiple files. Use thi
 **Sections:**
 1. Tech Stack → What technologies are used
 2. System Architecture → How components connect
-3. Database Schema → 15 MongoDB collections (Jobs, Results, Admit Cards, Answer Keys, Admissions, Yojanas, Board Results, etc.)
+3. Database Schema → 15 PostgreSQL tables (Jobs, Results, Admit Cards, Answer Keys, Admissions, Yojanas, Board Results, etc.)
 4. API Endpoints → All REST API routes
 5. Key Features → Job matching algorithm, notification triggers
 6. Deployment Options → Docker microservices (recommended)
@@ -66,10 +66,10 @@ This project contains comprehensive documentation across multiple files. Use thi
 ### 2. **[DOCKER_DEPLOYMENT.md](./DOCKER_DEPLOYMENT.md)** - Separated Services Setup
 **What's inside:**
 - ✅ Why separated services? (Advantages explained)
-- ✅ Complete architecture diagram (6 containers across 2 services)
+- ✅ Complete architecture diagram (7 containers with Nginx proxy)
 - ✅ Backend Dockerfile (Flask REST API)
 - ✅ Frontend Dockerfile (Flask + Jinja2, replaceable with React/Mobile)
-- ✅ Backend docker-compose.yml (MongoDB, Redis, Backend API, Celery Worker, Celery Beat)
+- ✅ Backend docker-compose.yml (PostgreSQL, Redis, Backend API, Celery Worker, Celery Beat)
 - ✅ Frontend docker-compose.yml (Frontend only)
 - ✅ .env.example for both backend and frontend
 - ✅ Deployment steps (backend first, then frontend)
@@ -102,7 +102,7 @@ This project contains comprehensive documentation across multiple files. Use thi
 **What's inside:**
 - ✅ 10 detailed ASCII workflow diagrams (updated for separated architecture)
 - ✅ Overall system architecture (separated microservices)
-- ✅ Backend service components (MongoDB, Redis, API, Celery)
+- ✅ Backend service components (PostgreSQL, Redis, API, Celery)
 - ✅ Frontend service components (UI, API client)
 - ✅ Communication flow (Frontend HTTP → Backend REST API)
 - ✅ User registration & profile setup flow
@@ -111,7 +111,7 @@ This project contains comprehensive documentation across multiple files. Use thi
 - ✅ User job application tracking
 - ✅ Priority job update notifications
 - ✅ Admin dashboard layout
-- ✅ 15 MongoDB collections with relationships and indexes
+- ✅ 15 PostgreSQL tables with relationships and indexes
 - ✅ Celery task scheduler (7 scheduled tasks with timing)
 - ✅ Complete user journey map (registration → result)
 
@@ -125,7 +125,7 @@ This project contains comprehensive documentation across multiple files. Use thi
 5. Application Tracking → User marks applied → Reminders set
 6. Priority Job Notifications → Update triggers immediate notification
 7. Admin Dashboard → Stats, recent activity, analytics
-8. Database Collections → All 15 collections (in Backend service)
+8. Database Tables → All 15 tables (in Backend service)
 9. Celery Scheduler → Daily tasks, weekly reports, cleanup jobs (in Backend service)
 10. User Journey → Complete flow from signup to getting hired
 
@@ -162,7 +162,7 @@ This project contains comprehensive documentation across multiple files. Use thi
 
 #### Develop the backend
 1. Start → [PROJECT_STRUCTURE.md](./PROJECT_STRUCTURE.md) (Backend folder: `src/backend/`)
-2. Environment → Configure backend/.env (MongoDB, Redis, SMTP)
+- Environment → Configure backend/.env (PostgreSQL, Redis, SMTP)
 3. Architecture → Backend exposes `/api/v1/*` REST endpoints
 4. CORS → Configure allowed frontend origins
 5. Flow → [WORKFLOW_DIAGRAMS.md](./WORKFLOW_DIAGRAMS.md) (Business logic flows)
@@ -234,11 +234,11 @@ This project contains comprehensive documentation across multiple files. Use thi
 ### Configuration & Setup (NEW Structure)
 
 **Backend Configuration (`src/backend/`)**
-- **docker-compose.yml** - Backend services (MongoDB, Redis, API, Celery)
+- **docker-compose.yml** - Backend services (PostgreSQL, Redis, API, Celery)
 - **.env.example** - Backend environment variables
 - **requirements.txt** - Python dependencies
 - **Dockerfile** - Backend container definition
-- **mongo-init.js** - MongoDB initialization
+- **init.sql** - PostgreSQL initialization (DDL + indexes)
 
 **Frontend Configuration (`src/frontend/`)**
 - **docker-compose.yml** - Frontend service only
@@ -255,7 +255,7 @@ This project contains comprehensive documentation across multiple files. Use thi
 - **deployment/deploy_backend.sh** - Deploy backend service
 - **deployment/deploy_frontend.sh** - Deploy frontend service
 - **deployment/deploy_all.sh** - Deploy both services
-- **backup/backup_db.sh** - Backup MongoDB (backend)
+- **backup/backup_db.sh** - Backup PostgreSQL via pg_dump (backend)
 
 **Root Files**
 - **Makefile** - Common commands for both services
@@ -302,7 +302,7 @@ cd src/frontend && git pull && docker-compose up -d --build
 ```
 
 ---
-- 6 containers (MongoDB, Redis, Backend, Frontend, Celery Worker, Celery Beat, Nginx)
+- 7 containers (Nginx Reverse Proxy, Backend API, Frontend, PostgreSQL, Redis, Celery Worker, Celery Beat)
 - Network and volume configuration
 
 ---
@@ -316,9 +316,9 @@ The `/epic` folder contains detailed implementation plans organized as epics wit
 **👉 [EPIC_01_DOCKER_INFRASTRUCTURE.md](../epic/EPIC_01_DOCKER_INFRASTRUCTURE.md)** 🔥 CRITICAL
 - 6 stories, 34 story points, Week 1-4
 - Docker base infrastructure & container orchestration
-- Nginx reverse proxy, MongoDB, Redis setup
+- Nginx reverse proxy, PostgreSQL, Redis setup
 - Health monitoring, environment configuration
-- **Current Status**: Story 1.1 (70% complete - needs health checks, mongo-init.js, Redis AOF)
+- **Current Status**: Story 1.1 (70% complete - needs health checks, init.sql, Redis AOF)
 
 **👉 [EPIC_02_BACKEND_API_FOUNDATION.md](../epic/EPIC_02_BACKEND_API_FOUNDATION.md)**
 - Backend Flask API foundation
@@ -432,11 +432,11 @@ Each epic document contains:
 
 ## 🔍 Quick Reference
 
-### Database Collections
+### Database Tables
 → [README.md](../README.md) (Database Schema section)
-- 15 MongoDB collections with full JSON structure
-- Indexes explained
-- Relationships documented
+- 15 PostgreSQL tables with SQL DDL
+- B-tree and GIN indexes explained
+- Foreign key relationships documented
 
 ### API Endpoints
 → [README.md](../README.md) (API Endpoints section)

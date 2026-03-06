@@ -74,9 +74,9 @@ htmlcov/
 docker-compose.override.yml
 
 # Nginx
-infrastructure/nginx/ssl/*.key
-infrastructure/nginx/ssl/*.crt
-infrastructure/nginx/ssl/*.pem
+src/nginx/ssl/*.key
+src/nginx/ssl/*.crt
+src/nginx/ssl/*.pem
 
 # Backup
 backups/

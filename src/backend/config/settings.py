@@ -13,8 +13,19 @@ class Config:
     HOST = os.getenv('HOST', '0.0.0.0')
     PORT = int(os.getenv('PORT', 5000))
     
-    # MongoDB
-    MONGO_URI = os.getenv('MONGO_URI', 'mongodb://localhost:27017/hermes')
+    # PostgreSQL Database
+    SQLALCHEMY_DATABASE_URI = os.getenv(
+        'DATABASE_URL',
+        'postgresql://hermes_user:hermes_password@localhost:5432/hermes_db'
+    )
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
+    SQLALCHEMY_ECHO = os.getenv('DEBUG', 'False') == 'True'
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        'pool_size': int(os.getenv('DB_POOL_SIZE', 20)),
+        'pool_recycle': 3600,
+        'pool_pre_ping': True,
+        'max_overflow': 40
+    }
     
     # Redis
     REDIS_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
@@ -51,12 +62,10 @@ class Config:
     RATE_LIMIT_LOGIN_ATTEMPTS = 5  # max 5 failed attempts before lockout
     RATE_LIMIT_LOGIN_DURATION = 300  # 5 minutes lockout
     
-    # MongoDB Connection Pooling
-    MONGO_MAX_POOL_SIZE = 50
-    MONGO_MIN_POOL_SIZE = 10
-    MONGO_WAIT_QUEUE_TIMEOUT = 10000  # milliseconds
-    MONGO_SOCKET_TIMEOUT = 5000  # milliseconds
-    MONGO_CONNECT_TIMEOUT = 10000  # milliseconds
+    # PostgreSQL Timeouts
+    DB_CONNECT_TIMEOUT = 10  # seconds
+    DB_STATEMENT_TIMEOUT = 30000  # milliseconds
+    DB_POOL_TIMEOUT = 10  # seconds waiting for connection
     
     # Redis Connection
     REDIS_SOCKET_CONNECT_TIMEOUT = 5  # seconds
@@ -64,7 +73,7 @@ class Config:
     REDIS_SOCKET_KEEPALIVE_OPTIONS = {'TCP_KEEPIDLE': 60}
     REDIS_CONNECTION_POOL_MAX_CONNECTIONS = 50
     
-    # Data Retention Policies (MongoDB TTL Indexes)
+    # Data Retention Policies (PostgreSQL - cleanup via scheduled Celery tasks)
     NOTIFICATION_RETENTION_DAYS = 90  # auto-delete old notifications
     LOG_RETENTION_DAYS = 30  # auto-delete old application logs
     EMAIL_EVENT_RETENTION_DAYS = 60  # keep email delivery logs

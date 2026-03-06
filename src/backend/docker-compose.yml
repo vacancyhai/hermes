@@ -1,24 +1,25 @@
 version: '3.8'
 
 services:
-  # MongoDB Database
-  mongodb:
-    image: mongo:7.0
-    container_name: hermes_backend_mongodb
+  # PostgreSQL Database
+  postgresql:
+    image: postgres:16-alpine
+    container_name: hermes_backend_postgresql
     restart: unless-stopped
     environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
-      MONGO_INITDB_DATABASE: hermes
+      POSTGRES_USER: ${DB_USER:-hermes_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-hermes_password}
+      POSTGRES_DB: ${DB_NAME:-hermes_db}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=en_US.UTF-8"
     volumes:
-      - mongodb_data:/data/db
-      - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+      - postgresql_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
     ports:
-      - "27017:27017"
+      - "${DB_PORT:-5432}:5432"
     networks:
       - backend_network
     healthcheck:
-      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/hermes --quiet
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-hermes_user} -d ${DB_NAME:-hermes_db}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -41,7 +42,7 @@ services:
       timeout: 3s
       retries: 5
 
-  # Backend API
+  # Backend API (Flask REST API)
   backend:
     build:
       context: .
@@ -52,7 +53,7 @@ services:
       - FLASK_ENV=production
       - SECRET_KEY=${SECRET_KEY}
       - JWT_SECRET_KEY=${JWT_SECRET_KEY}
-      - MONGO_URI=mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongodb:27017/hermes?authSource=hermes
+      - DATABASE_URL=postgresql://${DB_USER:-hermes_user}:${DB_PASSWORD:-hermes_password}@postgresql:5432/${DB_NAME:-hermes_db}
       - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/1
@@ -68,7 +69,7 @@ services:
     ports:
       - "${BACKEND_PORT:-5000}:5000"
     depends_on:
-      mongodb:
+      postgresql:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -81,7 +82,7 @@ services:
       start_period: 40s
       retries: 3
 
-  # Celery Worker (Background Tasks)
+  # Celery Worker - Background Tasks (Emails, Notifications, Job Matching)
   celery_worker:
     build:
       context: .
@@ -90,7 +91,7 @@ services:
     restart: unless-stopped
     command: celery -A app.tasks.celery_app worker --loglevel=info --concurrency=4
     environment:
-      - MONGO_URI=mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongodb:27017/hermes?authSource=hermes
+      - DATABASE_URL=postgresql://${DB_USER:-hermes_user}:${DB_PASSWORD:-hermes_password}@postgresql:5432/${DB_NAME:-hermes_db}
       - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/1
@@ -102,7 +103,7 @@ services:
     volumes:
       - ./app:/app/app
     depends_on:
-      mongodb:
+      postgresql:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -111,7 +112,7 @@ services:
     networks:
       - backend_network
 
-  # Celery Beat (Task Scheduler)
+  # Celery Beat - Task Scheduler (Cron Jobs)
   celery_beat:
     build:
       context: .
@@ -120,14 +121,14 @@ services:
     restart: unless-stopped
     command: celery -A app.tasks.celery_app beat --loglevel=info
     environment:
-      - MONGO_URI=mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongodb:27017/hermes?authSource=hermes
+      - DATABASE_URL=postgresql://${DB_USER:-hermes_user}:${DB_PASSWORD:-hermes_password}@postgresql:5432/${DB_NAME:-hermes_db}
       - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/1
     volumes:
       - ./app:/app/app
     depends_on:
-      mongodb:
+      postgresql:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -137,10 +138,11 @@ services:
       - backend_network
 
 volumes:
-  mongodb_data:
+  postgresql_data:
   redis_data:
   backend_logs:
 
 networks:
   backend_network:
     driver: bridge
+    name: src_backend_network

@@ -114,39 +114,41 @@ backend/app/decorators/version.py   # Version decorators
 
 ---
 
-### Story 2.3: Database Connection & ODM Setup
+### Story 2.3: Database Connection & ORM Setup
 
 **Story ID**: EPIC-002-STORY-003  
-**Story Title**: Database Connection & ODM Setup  
+**Story Title**: Database Connection & ORM Setup  
 **Priority**: HIGH  
 **Story Points**: 8  
 **Sprint**: Week 2
 
 **As a** backend developer  
-**I want** reliable database connectivity  
+**I want** reliable PostgreSQL connectivity  
 **So that** data operations are consistent and performant
 
 #### Acceptance Criteria:
-- [ ] MongoDB connection with PyMongo/MongoEngine
+- [ ] PostgreSQL connection with SQLAlchemy (Flask-SQLAlchemy)
 - [ ] Connection pooling configuration
 - [ ] Database health checks
 - [ ] Automatic reconnection handling
 - [ ] Query logging and monitoring
+- [ ] Migration system with Alembic
 - [ ] Index creation and management
 
 #### Technical Implementation Tasks:
 ```python
 # Files to implement:
 backend/config/database.py          # Database configuration
-backend/app/database.py             # Database initialization
+backend/app/extensions.py           # SQLAlchemy initialization
 backend/app/models/__init__.py      # Model registry
-backend/scripts/create-indexes.py  # Index creation
-backend/app/utils/db_utils.py      # Database utilities
+backend/alembic/                    # Database migrations
+backend/scripts/create-indexes.py   # Index creation
+backend/app/utils/db_utils.py       # Database utilities
 backend/app/monitoring/db_monitor.py # DB performance monitoring
 ```
 
 #### Definition of Done:
-- [ ] Database connects successfully
+- [ ] PostgreSQL connects successfully
 - [ ] Connection pooling active
 - [ ] Health checks implemented
 - [ ] Reconnection works automatically

@@ -11,7 +11,7 @@
 1. [Project Overview](#project-overview)
 2. [Tech Stack](#tech-stack)
 3. [System Architecture](#system-architecture)
-4. [Database Schema](#database-schema-mongodb-collections)
+4. [Database Schema](#database-schema-postgresql-tables)
 5. [API Endpoints](#api-endpoints)
 6. [Key Features](#key-features-implementation)
 7. [Deployment Options](#deployment-options)
@@ -23,8 +23,8 @@
 
 📖 **Additional Documentation**:
 - [Docker Deployment Guide](./docs/DOCKER_DEPLOYMENT.md)
-- [Jinja2 Templates Guide](./docs/JINJA2_TEMPLATES_GUIDE.md)
 - [Workflow Diagrams](./docs/WORKFLOW_DIAGRAMS.md)
+- [Project Structure](./docs/PROJECT_STRUCTURE.md)
 
 ## Project Overview
 
@@ -42,7 +42,8 @@ A comprehensive web application that provides users with personalized government
 
 ### Backend (Flask API)
 - **Framework**: Python Flask 3.0.0
-- **Database**: MongoDB 7.0 (NoSQL)
+- **Database**: PostgreSQL 16 (Relational)
+- **ORM**: Flask-SQLAlchemy 3.1 + psycopg2-binary
 - **Authentication**: Flask-JWT-Extended
 - **Task Queue**: Celery 5.3.4 with Redis broker
 - **Email Service**: Flask-Mail (SMTP)
@@ -100,14 +101,14 @@ A comprehensive web application that provides users with personalized government
        │                │                │               │
        ↓                ↓                ↓               ↓
 ┌─────────────┐  ┌─────────────┐  ┌──────────┐  ┌──────────┐
-│  MongoDB    │  │   Redis     │  │ Celery   │  │ Celery   │
+│ PostgreSQL  │  │   Redis     │  │ Celery   │  │ Celery   │
 │  Container  │  │  Container  │  │ Worker   │  │  Beat    │
 │             │  │             │  │Container │  │Container │
 │ - Jobs DB   │  │ - Cache     │  │          │  │          │
 │ - Users DB  │  │ - Sessions  │  │ - Emails │  │- Schedule│
 │ - Logs      │  │ - Queue     │  │ - Push   │  │- Cron    │
 │             │  │             │  │ - Match  │  │          │
-│Port: 27017  │  │Port: 6379   │  │          │  │          │
+│Port: 5432   │  │Port: 6379   │  │          │  │          │
 └─────────────┘  └─────────────┘  └──────────┘  └──────────┘
 
          All containers connected via Docker bridge network
@@ -129,16 +130,16 @@ A comprehensive web application that provides users with personalized government
 **Why Health Checks Matter?** Without them, Nginx might route traffic to crashed containers.
 
 **What the system checks:**
-- **MongoDB**: Every 10 seconds (must be healthy before Backend starts)
+- **PostgreSQL**: Every 10 seconds (must be healthy before Backend starts)
 - **Redis**: Every 10 seconds (must be healthy before Celery starts)
 - **Backend**: Every 30 seconds at `/api/v1/health` (must be healthy before Frontend starts)
 - **Frontend**: Every 30 seconds at `/` (must be healthy before Nginx routes)
 - **Nginx**: Every 30 seconds at `/health` (monitors reverse proxy health)
 
 **Dependency Chain (ensures ordered startup)**:
-1. MongoDB starts and becomes healthy
+1. PostgreSQL starts and becomes healthy
 2. Redis starts and becomes healthy
-3. Backend waits for MongoDB + Redis healthy, then starts
+3. Backend waits for PostgreSQL + Redis healthy, then starts
 4. Frontend waits for Backend healthy, then starts
 5. Nginx waits for Frontend + Backend healthy, then starts
 
@@ -157,673 +158,799 @@ docker compose ps
 docker compose ps backend  # Shows healthy/unhealthy status
 
 # View health check logs
+docker compose exec postgresql pg_isready -U hermes_user -d hermes_db
 docker compose exec backend curl http://localhost:5000/api/v1/health
 ```
 
 ---
 
-## Database Schema (MongoDB Collections - Enhanced)
+## 📊 Monitoring Stack & Observability
 
-> **📊 Total Collections**: 15 (Enhanced from original 6 to support complete Hermes job notification portal features)
+**Complete monitoring infrastructure included**: Prometheus metrics collection, Grafana dashboards, AlertManager notifications, and exporters for all system components.
 
-### 1. Users Collection
-```json
-{
-  "_id": "ObjectId",
-  "email": "user@example.com",
-  "password": "hashed_password",
-  "full_name": "John Doe",
-  "phone": "+91-9876543210",
-  "created_at": "2025-12-07T10:00:00Z",
-  "last_login": "2025-12-07T10:00:00Z",
-  "is_verified": true,
-  "is_email_verified": true,
-  "is_mobile_verified": false,
-  "role": "user", // user/admin/operator
-  "avatar_url": "https://cdn.example.com/avatar.jpg",
-  "status": "active" // active/suspended/deleted
-}
+### Monitoring Components
+
+The monitoring stack includes **8 additional services** for production observability:
+
+| Service | Port | Purpose |
+|---------|------|---------|
+| **Prometheus** | 9090 | Metrics aggregation & alert evaluation |
+| **Grafana** | 3000 | Dashboards & visualization |
+| **AlertManager** | 9093 | Alert routing (Slack, Email, PagerDuty) |
+| **Node Exporter** | 9100 | System metrics (CPU, Memory, Disk, Network) |
+| **Postgres Exporter** | 9187 | PostgreSQL detailed metrics |
+| **Redis Exporter** | 9121 | Redis cache & queue metrics |
+| **Nginx Exporter** | 9113 | Reverse proxy traffic metrics |
+| **cAdvisor** | 8080 | Docker container metrics |
+
+### Quick Start - 4 Service Deployment
+
+The platform is organized as **4 independent microservices** in separate docker-compose files:
+
+1. **Backend** (src/backend/) - PostgreSQL, Redis, API, Celery workers
+2. **Frontend** (src/frontend/) - Flask web application  
+3. **Nginx** (src/nginx/) - Reverse proxy & load balancer
+4. **Monitoring** (src/monitoring/) - Prometheus, Grafana, AlertManager
+
+#### Step 1: Start Backend Services
+
+```bash
+cd src/backend
+cp .env.example .env     # Configure database credentials if needed
+docker-compose up -d     # PostgreSQL, Redis, API, Celery start here
+
+# Verify backend is healthy
+docker-compose ps        # All services should show "healthy" or "running"
+curl http://localhost:5000/api/v1/health  # Should return 200 OK
 ```
 
-### 2. User Profiles Collection (Enhanced)
-```json
-{
-  "_id": "ObjectId",
-  "user_id": "ObjectId (ref: Users)",
-  "personal_info": {
-    "date_of_birth": "1995-01-15",
-    "gender": "Male/Female/Other",
-    "category": "General/OBC/SC/ST/EWS/EBC",
-    "pwd": false,
-    "ex_serviceman": false,
-    "state": "Delhi",
-    "city": "New Delhi",
-    "pincode": "110001"
-  },
-  "education": {
-    "highest_qualification": "12th/Graduation/Post-Graduation/PhD",
-    "10th": {
-      "completed": true,
-      "board": "CBSE",
-      "percentage": 88.0,
-      "year": 2011
-    },
-    "12th": {
-      "completed": true,
-      "stream": "Science/Commerce/Arts",
-      "board": "CBSE",
-      "percentage": 85.5,
-      "year": 2013
-    },
-    "graduation": {
-      "completed": true,
-      "degree": "B.Tech",
-      "specialization": "Computer Science",
-      "university": "Delhi University",
-      "percentage": 75.0,
-      "year": 2017
-    },
-    "post_graduation": {
-      "completed": false
-    }
-  },
-  "physical_details": {
-    "height_cm": 175,
-    "weight_kg": 65,
-    "chest_cm": 82,
-    "chest_expanded_cm": 87,
-    "vision": "6/6",
-    "is_color_blind": false
-  },
-  "quick_filters": {
-    "interested_organizations": ["Railway", "SSC", "UPSC", "Banking", "Defense", "Teaching", "Police"],
-    "interested_job_types": ["Technical", "Non-Technical", "Police", "Teaching", "Clerical"],
-    "preferred_locations": ["Delhi", "Mumbai", "Bangalore", "Any"],
-    "salary_expectation": {"min": 20000, "max": 50000},
-    "job_nature": ["Permanent", "Temporary", "Contract"]
-  },
-  "notification_preferences": {
-    "organizations": ["Railway", "SSC", "UPSC", "Banking"],
-    "job_types": ["Technical", "Non-Technical", "Teaching"],
-    "locations": ["Delhi", "Mumbai", "Bangalore"],
-    "email_enabled": true,
-    "sms_enabled": false,
-    "push_enabled": true,
-    "whatsapp_enabled": true,
-    "telegram_enabled": false,
-    "frequency": "instant", // instant/daily_digest/weekly_digest
-    "digest_time": "09:00",
-    "notification_types": ["new_jobs", "application_reminders", "admit_cards", "results", "answer_keys"]
-  },
-  "updated_at": "2025-12-07T10:00:00Z"
-}
+#### Step 2: Start Frontend Service
+
+```bash
+cd src/frontend
+cp .env.example .env     # Configure backend API URL if needed
+docker-compose up -d     # Frontend Flask app starts
+
+# Verify frontend is ready
+docker-compose ps
+curl http://localhost:8080/health  # Should return 200 OK
 ```
 
-### 3. Job Vacancies Collection (Significantly Enhanced)
-```json
-{
-  "_id": "ObjectId",
-  "job_title": "SSC GD Constable Recruitment 2025",
-  "slug": "ssc-gd-constable-recruitment-2025",
-  "organization": "Staff Selection Commission",
-  "department": "SSC",
-  "post_code": "SSC-GD-2025",
-  "job_type": "latest_job", // latest_job/result/admit_card/answer_key/admission/yojana
-  "employment_type": "permanent", // permanent/temporary/contract/apprentice
-  "qualification_level": "10th", // 10th/10+2/graduate/post-graduate/diploma/iti
-  
-  "total_vacancies": 25487,
-  "vacancy_breakdown": {
-    "by_category": {
-      "UR": 10195,
-      "OBC": 6872,
-      "EWS": 2549,
-      "SC": 3823,
-      "ST": 2048,
-      "EBC": 0,
-      "PWD": 100,
-      "Ex_Serviceman": 0
-    },
-    "by_post": [
-      {
-        "post_name": "Constable GD",
-        "post_code": "GD-01",
-        "total": 20000,
-        "qualification": "10th Pass",
-        "age_limit": "18-23",
-        "pay_scale": "₹21,700 - ₹69,100"
-      },
-      {
-        "post_name": "Head Constable",
-        "post_code": "HC-01",
-        "total": 5487,
-        "qualification": "12th Pass",
-        "age_limit": "21-27",
-        "pay_scale": "₹25,500 - ₹81,100"
-      }
-    ],
-    "by_state": [
-      {"state": "Delhi", "vacancies": {"UR": 500, "OBC": 300, "SC": 150, "ST": 50}},
-      {"state": "UP", "vacancies": {"UR": 2000, "OBC": 1200, "SC": 800, "ST": 400}},
-      {"state": "Bihar", "vacancies": {"UR": 1500, "OBC": 900, "SC": 600, "ST": 300}}
-    ],
-    "by_trade": [
-      {"trade": "Fitter", "total": 150},
-      {"trade": "Welder", "total": 180},
-      {"trade": "Electrician", "total": 70}
-    ]
-  },
-  
-  "description": "Full job description with HTML formatting...",
-  "short_description": "SSC has released 25487 GD Constable vacancies...",
-  
-  "eligibility": {
-    "min_qualification": "10th",
-    "required_stream": null,
-    "qualification_details": "10th Pass from recognized board",
-    "age_limit": {
-      "min": 18,
-      "max": 23,
-      "cutoff_date": "2026-01-01",
-      "relaxation": {
-        "OBC": 3,
-        "SC": 5,
-        "ST": 5,
-        "PWD": 10,
-        "Ex_Serviceman": 5,
-        "J&K_Domicile": 5
-      },
-      "is_post_wise": false
-    },
-    "physical_standards": {
-      "male": {
-        "general": {"height": 170, "chest": 80, "chest_expanded": 85},
-        "obc": {"height": 170, "chest": 80, "chest_expanded": 85},
-        "sc_st": {"height": 165, "chest": 78, "chest_expanded": 83}
-      },
-      "female": {
-        "all": {"height": 157, "weight": 48}
-      }
-    },
-    "medical_standards": {
-      "vision": "6/6 in one eye, 6/9 in other",
-      "color_blindness": "No color blindness",
-      "other": "No flat foot, knock knee, squint eyes"
-    }
-  },
-  
-  "application_details": {
-    "application_mode": "Online",
-    "application_link": "https://ssc.nic.in/apply",
-    "official_website": "https://ssc.nic.in",
-    "notification_pdf": "https://ssc.nic.in/notification.pdf",
-    "application_fee": {
-      "General": 100,
-      "OBC": 100,
-      "EWS": 100,
-      "SC": 0,
-      "ST": 0,
-      "Female": 0,
-      "PWD": 0,
-      "EBC": 0,
-      "Transgender": 0,
-      "Ex_Serviceman": 0
-    },
-    "fee_payment_mode": "Online (Credit/Debit Card, Net Banking, UPI)",
-    "important_links": [
-      {"type": "apply_online", "text": "Apply Online", "url": "https://ssc.nic.in/apply"},
-      {"type": "download_notification", "text": "Download Notification", "url": "https://ssc.nic.in/notification.pdf"},
-      {"type": "syllabus", "text": "Download Syllabus", "url": "https://ssc.nic.in/syllabus.pdf"},
-      {"type": "previous_papers", "text": "Previous Year Papers", "url": "https://ssc.nic.in/papers"}
-    ]
-  },
-  
-  "important_dates": {
-    "notification_date": "2025-12-01",
-    "application_start": "2025-12-10",
-    "application_end": "2026-01-10",
-    "last_date_fee_payment": "2026-01-12",
-    "correction_start": "2026-01-15",
-    "correction_end": "2026-01-20",
-    "admit_card_release": "2026-02-01",
-    "exam_city_release": "2026-02-05",
-    "exam_start": "2026-02-15",
-    "exam_end": "2026-03-15",
-    "answer_key_release": "2026-03-20",
-    "objection_start": "2026-03-20",
-    "objection_end": "2026-03-25",
-    "result_date": "2026-04-15"
-  },
-  
-  "exam_details": {
-    "exam_pattern": [
-      {
-        "phase": "CBT",
-        "subjects": [
-          {"name": "General Intelligence", "questions": 40, "marks": 40},
-          {"name": "General Awareness", "questions": 40, "marks": 40},
-          {"name": "Mathematics", "questions": 40, "marks": 40},
-          {"name": "English", "questions": 40, "marks": 40}
-        ],
-        "total_marks": 160,
-        "duration_minutes": 120,
-        "negative_marking": 0.25,
-        "exam_mode": "Online"
-      },
-      {
-        "phase": "PET",
-        "tests": ["Race", "Long Jump", "High Jump"],
-        "qualifying": true
-      },
-      {
-        "phase": "PST",
-        "qualifying": true
-      }
-    ],
-    "syllabus_link": "https://ssc.nic.in/syllabus.pdf",
-    "exam_language": ["Hindi", "English"],
-    "total_phases": 3
-  },
-  
-  "salary": {
-    "pay_scale": "₹21,700 - ₹69,100",
-    "pay_level": "Level-3",
-    "grade_pay": "₹2,000",
-    "initial_salary": 21700,
-    "max_salary": 69100,
-    "allowances": ["DA", "HRA", "TA"],
-    "other_benefits": "Medical, Pension, PF"
-  },
-  
-  "selection_process": [
-    {"phase": 1, "name": "Computer Based Test (CBT)", "qualifying": false},
-    {"phase": 2, "name": "Physical Efficiency Test (PET)", "qualifying": true},
-    {"phase": 3, "name": "Physical Standard Test (PST)", "qualifying": true},
-    {"phase": 4, "name": "Medical Examination", "qualifying": true},
-    {"phase": 5, "name": "Document Verification", "qualifying": true}
-  ],
-  
-  "documents_required": [
-    {"name": "10th Certificate", "mandatory": true, "format": "PDF", "max_size_kb": 500},
-    {"name": "12th Certificate", "mandatory": false, "format": "PDF", "max_size_kb": 500},
-    {"name": "Aadhar Card", "mandatory": true, "format": "PDF", "max_size_kb": 300},
-    {"name": "Photo", "mandatory": true, "format": "JPG", "max_size_kb": 100},
-    {"name": "Signature", "mandatory": true, "format": "JPG", "max_size_kb": 50},
-    {"name": "Category Certificate", "mandatory": false, "format": "PDF", "max_size_kb": 300}
-  ],
-  
-  "status": "active", // active/expired/cancelled/upcoming
-  "is_featured": true,
-  "is_urgent": false,
-  "is_trending": true,
-  "priority": 5,
-  
-  "meta_title": "SSC GD Constable Recruitment 2025 - 25487 Posts Apply Online",
-  "meta_description": "SSC GD Constable Recruitment 2025: Apply online for 25487 posts...",
-  "meta_keywords": ["SSC GD", "Constable Recruitment", "Apply Online", "Government Jobs"],
-  
-  "views": 15000,
-  "applications_count": 2500,
-  "shares_count": 500,
-  
-  "created_by": "ObjectId (ref: Users - admin)",
-  "created_at": "2025-12-01T10:00:00Z",
-  "updated_at": "2025-12-07T10:00:00Z",
-  "published_at": "2025-12-01T10:00:00Z"
-}
+#### Step 3: Start Nginx Reverse Proxy
+
+```bash
+cd src/nginx
+cp .env.example .env     # Optional - configure ports/URLs
+docker-compose up -d     # Nginx starts routing traffic
+
+# Nginx now proxies:
+# - http://localhost → Frontend
+# - http://localhost/api/* → Backend API
+curl http://localhost/health  # Health endpoint
 ```
 
-### 4. User Job Applications Collection
-```json
-{
-  "_id": "ObjectId",
-  "user_id": "ObjectId (ref: Users)",
-  "job_id": "ObjectId (ref: Job Vacancies)",
-  "application_number": "SSC2025123456",
-  "is_priority": true,
-  "applied_on": "2025-12-15T10:00:00Z",
-  "exam_center": "Delhi - Rajendra Place",
-  "admit_card_downloaded": false,
-  "exam_appeared": false,
-  "status": "applied", // applied/admit_card_released/exam_completed/result_pending/selected/rejected/waiting_list
-  "notes": "User's personal notes about this application",
-  "reminders": [
-    {"type": "application_deadline", "date": "2026-01-10", "notified": false},
-    {"type": "correction_window", "date": "2026-01-15", "notified": false},
-    {"type": "admit_card", "date": "2026-02-01", "notified": false},
-    {"type": "exam_date", "date": "2026-02-15", "notified": false},
-    {"type": "answer_key", "date": "2026-03-20", "notified": false},
-    {"type": "result", "date": "2026-04-15", "notified": false}
-  ],
-  "result_info": {
-    "marks_obtained": null,
-    "total_marks": null,
-    "rank": null,
-    "cutoff_marks": null,
-    "status": null
-  }
-}
+#### Step 4: Start Monitoring Stack (Optional)
+
+```bash
+cd src/monitoring
+cp .env.example .env     # Configure Grafana password, alert webhooks
+docker-compose up -d     # 8 monitoring services start
+
+# Access dashboards:
+# - Grafana: http://localhost:3000 (admin/securepassword123)
+# - Prometheus: http://localhost:9090
+# - AlertManager: http://localhost:9093
 ```
 
-### 5. Notifications Collection (Enhanced)
-```json
-{
-  "_id": "ObjectId",
-  "user_id": "ObjectId (ref: Users)",
-  "entity_type": "job", // job/result/admit_card/answer_key/admission/yojana
-  "entity_id": "ObjectId",
-  "type": "new_vacancy", // new_vacancy/application_reminder/admit_card/exam_date/result/answer_key/correction_window
-  "title": "New SSC GD Constable Vacancy Alert!",
-  "message": "SSC has released 25487 GD Constable vacancies...",
-  "action_url": "/jobs/ssc-gd-constable-recruitment-2025",
-  "is_read": false,
-  "sent_via": ["email", "push", "in-app", "whatsapp"],
-  "priority": "high", // low/medium/high
-  "created_at": "2025-12-07T10:00:00Z",
-  "read_at": null
-}
+#### Quick Start with Make Command
+
+Or use the Makefile shortcut to start all services:
+
+```bash
+# Start backend, frontend, and nginx (monitoring optional)
+make all-up
+
+# View status
+make all-status
+
+# View logs from all services
+make backend-logs     # Backend logs
+make frontend-logs    # Frontend logs
+make nginx-logs       # Nginx logs
+make monitoring-logs  # Monitoring logs
 ```
 
-### 6. Admin Logs Collection
-```json
-{
-  "_id": "ObjectId",
-  "admin_id": "ObjectId (ref: Users)",
-  "action": "create_job", // create_job/update_job/delete_job/create_result/approve_user
-  "resource_type": "job_vacancy", // job_vacancy/result/admit_card/answer_key/user
-  "resource_id": "ObjectId",
-  "details": "Created new job vacancy for SSC GD Constable",
-  "changes": {"field": "status", "old_value": "draft", "new_value": "active"},
-  "timestamp": "2025-12-07T10:00:00Z",
-  "ip_address": "192.168.1.1",
-  "user_agent": "Mozilla/5.0..."
-}
+#### Service Access URLs After Startup
+
+| Service | URL | Purpose |
+|---------|-----|---------|
+| **Frontend (via Nginx)** | http://localhost | Web UI for users |
+| **API (via Nginx)** | http://localhost/api/v1/ | REST API endpoints |
+| **API Direct** | http://localhost:5000/api/v1/ | Direct backend access |
+| **Frontend Direct** | http://localhost:8080 | Direct frontend access |
+| **Grafana** | http://localhost:3000 | Dashboards & monitoring |
+| **Prometheus** | http://localhost:9090 | Metrics & alerts |
+| **AlertManager** | http://localhost:9093 | Alert status |
+
+#### Environment Configuration
+
+Each service has `.env` files for configuration:
+
+```bash
+# Backend configuration
+src/backend/.env
+- DB_USER, DB_PASSWORD
+- REDIS_PASSWORD
+- API secret keys
+
+# Frontend configuration  
+src/frontend/.env
+- BACKEND_API_URL
+- APP secret keys
+
+# Nginx configuration
+src/nginx/.env
+- NGINX_HTTP_PORT, NGINX_HTTPS_PORT
+- Backend/frontend upstream URLs
+
+# Monitoring configuration
+src/monitoring/.env
+- Grafana admin user/password
+- Slack, Email, PagerDuty alert routes
+- Database/cache exporter credentials
 ```
 
-### 7. Results Collection (NEW)
-```json
-{
-  "_id": "ObjectId",
-  "job_id": "ObjectId (ref: Job Vacancies)",
-  "result_type": "written", // written/prelims/mains/interview/final/cutoff/merit_list/psl_list/dv_list/waiting_list
-  "result_phase": "Tier-1",
-  "result_title": "SSC GD Constable CBT Result 2025",
-  "result_date": "2026-04-15",
-  "result_links": {
-    "result_pdf": "https://ssc.nic.in/result.pdf",
-    "scorecard_link": "https://ssc.nic.in/scorecard",
-    "marks_link": "https://ssc.nic.in/marks",
-    "merit_list_link": "https://ssc.nic.in/merit-list"
-  },
-  "cut_off_marks": {
-    "general": {"male": 145.5, "female": 140.0},
-    "obc": {"male": 140.5, "female": 135.0},
-    "sc": {"male": 135.0, "female": 130.0},
-    "st": {"male": 130.0, "female": 125.0},
-    "ews": {"male": 143.0, "female": 138.0},
-    "pwd": {"male": 125.0, "female": 120.0}
-  },
-  "statistics": {
-    "total_appeared": 500000,
-    "total_qualified": 100000,
-    "total_selected": 25487,
-    "highest_marks": 198.5,
-    "lowest_marks": 125.0
-  },
-  "is_final": false,
-  "status": "active", // active/revised/cancelled
-  "created_at": "2026-04-15T10:00:00Z",
-  "updated_at": "2026-04-15T10:00:00Z"
-}
+### Monitoring Features
+
+**Complete Observability Stack** (see [src/monitoring/README.md](./src/monitoring/README.md) for detailed setup)**
+
+**API Performance:**
+- Request rate (requests/sec)
+- Response latency (p50, p95, p99)
+- Error rate (%)
+- Requests by endpoint
+
+**Database Health:**
+- Active connections
+- Slow query count
+- Transaction rate
+- Query duration
+- Disk space usage
+
+**Cache Performance:**
+- Memory usage
+- Hit/miss ratio
+- Evictions
+- Connection count
+
+**System Resources:**
+- CPU usage (%)
+- Memory usage (%)
+- Disk I/O wait
+- Network bandwidth
+- System load
+
+**Background Jobs:**
+- Celery tasks queued
+- Tasks succeeded/failed
+- Task execution time
+- Worker count
+
+### Alert Rules (Automated)
+
+**Critical Alerts** (immediate escalation):
+- API error rate > 1% for 5 minutes
+- Backend API down for 2 minutes
+- PostgreSQL unavailable for 2 minutes
+- Memory usage > 90%
+- Disk space low (< 15% remaining)
+
+**Warning Alerts** (team notification):
+- API response time p95 > 500ms
+- PostgreSQL slow queries > 50
+- Redis evictions detected
+- High CPU usage (> 85%)
+- Database connections > 90%
+
+**Alert Channels:**
+- 🔴 **Critical**: SlackPagerDuty + Email (immediate)
+- 🟡 **Warning**: Slack + Email (1-hour digest)
+- 📊 **Info**: Slack #monitoring channel
+
+### Grafana Dashboards
+
+**Pre-built key dashboards:**
+
+1. **System Overview** - CPU, Memory, Disk, NetworkNetwork health
+2. **API Performance** - Latency, errors, request rate
+3. **Database** - Connections, query times, slow queries
+4. **Cache (Redis)** - Memory, evictions, hit ratio
+5. **Celery Tasks** - Queue length, success/failure rates
+6. **Container Health** - All docker containers status
+
+### Configuration Files
+
+📁 Complete monitoring configuration:
+- `src/monitoring/prometheus.yml` - Scrape targets
+- `src/monitoring/alert_rules.yml` - Alert definitions
+- `src/monitoring/alertmanager.yml` - Alert routing
+- `src/monitoring/grafana_datasources.yml` - Data sources
+- `src/monitoring/README.md` - Full setup guide
+
+### Alert Configuration
+
+**Example: Email alerts on critical issues**
+
+Set in `.env` file:
+```bash
+SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/WEBHOOK/URL
+PAGERDUTY_SERVICE_KEY=your_key
+EMAIL_CRITICAL_ALERTS=oncall@yourcompany.com
+MAIL_SERVER=smtp.gmail.com
+MAIL_PORT=587
+MAIL_USERNAME=alerts@yourcompany.com
+MAIL_PASSWORD=your_app_password
 ```
 
-### 8. Admit Cards Collection (NEW)
-```json
-{
-  "_id": "ObjectId",
-  "job_id": "ObjectId (ref: Job Vacancies)",
-  "exam_name": "SSC GD Constable CBT 2025",
-  "exam_phase": "Tier-1",
-  "release_date": "2026-02-01",
-  "exam_date_start": "2026-02-15",
-  "exam_date_end": "2026-03-15",
-  "exam_mode": "Online",
-  "download_link": "https://ssc.nic.in/admit-card",
-  "exam_city_link": "https://ssc.nic.in/exam-city",
-  "mock_test_link": "https://ssc.nic.in/mock-test",
-  "self_slot_selection_link": null,
-  "instructions": "Bring Original Photo ID proof, Admit Card printout...",
-  "reporting_time": "08:00 AM",
-  "exam_timing": "10:00 AM to 12:00 PM",
-  "important_documents": ["Admit Card", "Photo ID", "Passport Size Photo"],
-  "exam_centers": ["Delhi", "Mumbai", "Bangalore", "Kolkata", "Chennai"],
-  "status": "active", // active/expired
-  "created_at": "2026-02-01T10:00:00Z",
-  "updated_at": "2026-02-01T10:00:00Z"
-}
+**Example: Adding custom alerts**
+
+Edit `src/monitoring/alert_rules.yml`:
+```yaml
+- alert: CustomAlert
+  expr: your_prometheus_query > threshold
+  for: 5m
+  labels:
+    severity: warning
+  annotations:
+    summary: "Custom alert triggered"
+    action: "Take specific action"
 ```
 
-### 9. Answer Keys Collection (NEW)
-```json
-{
-  "_id": "ObjectId",
-  "job_id": "ObjectId (ref: Job Vacancies)",
-  "exam_name": "SSC GD Constable CBT 2025",
-  "exam_phase": "Tier-1",
-  "paper_name": "All Sets",
-  "release_date": "2026-03-20",
-  "answer_key_links": [
-    {"set": "Set A", "url": "https://ssc.nic.in/answer-key-a.pdf"},
-    {"set": "Set B", "url": "https://ssc.nic.in/answer-key-b.pdf"},
-    {"set": "Set C", "url": "https://ssc.nic.in/answer-key-c.pdf"},
-    {"set": "Set D", "url": "https://ssc.nic.in/answer-key-d.pdf"}
-  ],
-  "subject_wise_links": [
-    {"subject": "General Intelligence", "url": "https://ssc.nic.in/gi-key.pdf"},
-    {"subject": "General Awareness", "url": "https://ssc.nic.in/ga-key.pdf"}
-  ],
-  "objection_start": "2026-03-20",
-  "objection_end": "2026-03-25",
-  "objection_fee": 100,
-  "objection_link": "https://ssc.nic.in/objection",
-  "response_sheet_link": "https://ssc.nic.in/response-sheet",
-  "question_paper_link": "https://ssc.nic.in/question-paper",
-  "total_questions": 160,
-  "status": "active", // active/expired/final_published
-  "created_at": "2026-03-20T10:00:00Z",
-  "updated_at": "2026-03-20T10:00:00Z"
-}
+### Prometheus Query Examples
+
+```promql
+# API response time (milliseconds)
+histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) * 1000
+
+# Error rate (percentage)
+(sum(rate(http_requests_total{status=~"5.."}[5m])) / sum(rate(http_requests_total[5m]))) * 100
+
+# CPU usage
+(1 - avg(rate(node_cpu_seconds_total{mode="idle"}[5m]))) * 100
+
+# Memory usage
+(1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100
+
+# Disk usage
+(1 - (node_filesystem_avail_bytes / node_filesystem_size_bytes)) * 100
+
+# Active database connections
+pg_stat_activity_count
+
+# Redis memory usage
+(redis_memory_used_bytes / redis_memory_max_bytes) * 100
 ```
 
-### 10. Admissions Collection (NEW)
-```json
-{
-  "_id": "ObjectId",
-  "title": "JEE Main 2026 Application Form",
-  "slug": "jee-main-2026-application-form",
-  "admission_type": "entrance_exam", // ug/pg/diploma/certificate/school/entrance_exam
-  "course_name": "B.Tech/B.E.",
-  "conducting_body": "National Testing Agency (NTA)",
-  "total_seats": 100000,
-  "description": "Complete admission details...",
-  "eligibility": {
-    "qualification": "12th Pass with PCM",
-    "min_percentage": 75.0,
-    "age_limit": "No age limit",
-    "nationality": "Indian/Foreign",
-    "required_subjects": ["Physics", "Chemistry", "Mathematics"]
-  },
-  "application_dates": {
-    "notification_date": "2025-12-01",
-    "start": "2025-12-15",
-    "end": "2026-01-15",
-    "correction_start": "2026-01-20",
-    "correction_end": "2026-01-25",
-    "admit_card_date": "2026-03-20",
-    "exam_date": "2026-04-01",
-    "result_date": "2026-05-01",
-    "counseling_date": "2026-06-01"
-  },
-  "application_fee": {
-    "general": 1000,
-    "sc_st": 500,
-    "obc": 1000,
-    "ews": 1000,
-    "female": 1000,
-    "pwd": 500
-  },
-  "application_link": "https://jeemain.nta.nic.in",
-  "notification_pdf": "https://jeemain.nta.nic.in/notification.pdf",
-  "syllabus_link": "https://jeemain.nta.nic.in/syllabus.pdf",
-  "exam_pattern": {
-    "papers": ["Paper 1 - B.Tech", "Paper 2 - B.Arch"],
-    "mode": "Online",
-    "duration": "180 minutes",
-    "total_marks": 300
-  },
-  "selection_process": "Merit based on JEE Main score + JoSAA counseling",
-  "status": "active", // active/expired/upcoming
-  "is_featured": true,
-  "views": 50000,
-  "created_at": "2025-12-01T10:00:00Z",
-  "updated_at": "2025-12-07T10:00:00Z"
-}
+### Disabling Monitoring (Optional)
+
+If monitoring services are not needed, comment out in `docker-compose.yml`:
+```bash
+# To disable specific services:
+# docker-compose up -d --scale prometheus=0 grafana=0 alertmanager=0
+
+# Or edit docker-compose and comment out monitoring services
 ```
 
-### 11. Yojanas (Government Schemes) Collection (NEW)
-```json
-{
-  "_id": "ObjectId",
-  "title": "PM Kisan Samman Nidhi Yojana",
-  "slug": "pm-kisan-samman-nidhi-yojana",
-  "yojana_type": "central", // central/state/scholarship/pension/subsidy/insurance/loan
-  "state": null,
-  "department": "Ministry of Agriculture",
-  "short_description": "₹6000 per year to small and marginal farmers...",
-  "full_description": "Complete scheme details with HTML formatting...",
-  "eligibility": "Small and marginal farmers with cultivable land...",
-  "benefits": "₹6000 per year in 3 equal installments of ₹2000 each",
-  "benefit_amount": "₹6000/year",
-  "installment_details": "3 installments of ₹2000 (Apr-Jul, Aug-Nov, Dec-Mar)",
-  "how_to_apply": "Visit pmkisan.gov.in and register...",
-  "required_documents": ["Aadhar Card", "Bank Account", "Land Documents"],
-  "application_link": "https://pmkisan.gov.in/",
-  "official_website": "https://pmkisan.gov.in",
-  "guidelines_pdf": "https://pmkisan.gov.in/guidelines.pdf",
-  "helpline": "011-23381092",
-  "email": "pmkisan-ict@gov.in",
-  "start_date": "2019-02-01",
-  "last_date": null,
-  "is_active": true,
-  "status": "active", // active/expired/upcoming
-  "is_featured": true,
-  "views": 100000,
-  "applicants_count": 110000000,
-  "created_at": "2019-02-01T10:00:00Z",
-  "updated_at": "2025-12-07T10:00:00Z"
-}
+---
+
+## Database Schema (PostgreSQL Tables)
+
+> **📊 Total Tables**: 15 — fully relational PostgreSQL 16 tables with UUID primary keys, JSONB for flexible metadata, and proper foreign-key constraints
+
+### 1. `users` Table
+```sql
+CREATE TABLE users (
+  id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email               VARCHAR(255) UNIQUE NOT NULL,
+  password_hash       VARCHAR(255) NOT NULL,
+  full_name           VARCHAR(255) NOT NULL,
+  phone               VARCHAR(20),
+  role                VARCHAR(20) NOT NULL DEFAULT 'user'
+                        CHECK (role IN ('user','admin','operator')),
+  status              VARCHAR(20) NOT NULL DEFAULT 'active'
+                        CHECK (status IN ('active','suspended','deleted')),
+  avatar_url          TEXT,
+  is_verified         BOOLEAN NOT NULL DEFAULT FALSE,
+  is_email_verified   BOOLEAN NOT NULL DEFAULT FALSE,
+  is_mobile_verified  BOOLEAN NOT NULL DEFAULT FALSE,
+  last_login          TIMESTAMP WITH TIME ZONE,
+  created_at          TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  updated_at          TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_users_email  ON users (email);
+CREATE INDEX idx_users_status ON users (status);
 ```
 
-### 12. Board Results Collection (NEW)
-```json
-{
-  "_id": "ObjectId",
-  "board_name": "CBSE", // CBSE/UP Board/Bihar Board/RBSE/etc
-  "class": "12th", // 10th/12th/5th/8th
-  "stream": "Science", // Arts/Commerce/Science/All
-  "exam_year": 2025,
-  "result_type": "regular", // regular/supplementary/compartment/improvement
-  "exam_dates": {
-    "start": "2025-02-15",
-    "end": "2025-04-04"
-  },
-  "result_date": "2025-05-13",
-  "result_time": "12:00 PM",
-  "result_link": "https://cbseresults.nic.in",
-  "marksheet_download_link": "https://digilocker.gov.in",
-  "topper_list_link": "https://cbse.gov.in/toppers",
-  "date_sheet_link": "https://cbse.gov.in/datesheet",
-  "statistics": {
-    "total_students": 1500000,
-    "passed_students": 1425000,
-    "pass_percentage": 95.0,
-    "girls_pass_percentage": 96.5,
-    "boys_pass_percentage": 93.8,
-    "distinction_count": 50000,
-    "first_division_count": 500000
-  },
-  "how_to_check": "Visit cbseresults.nic.in, enter roll number and DOB...",
-  "alternative_links": [
-    "https://results.gov.in",
-    "https://cbse.nic.in"
-  ],
-  "status": "active", // active/expired
-  "views": 5000000,
-  "created_at": "2025-05-13T10:00:00Z",
-  "updated_at": "2025-05-13T10:00:00Z"
-}
+### 2. `user_profiles` Table (Enhanced)
+```sql
+-- education and notification_preferences use JSONB for flexible nested structure
+CREATE TABLE user_profiles (
+  id                        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id                   UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  date_of_birth             DATE,
+  gender                    VARCHAR(20) CHECK (gender IN ('Male','Female','Other')),
+  category                  VARCHAR(20) CHECK (category IN ('General','OBC','SC','ST','EWS','EBC')),
+  is_pwd                    BOOLEAN NOT NULL DEFAULT FALSE,
+  is_ex_serviceman          BOOLEAN NOT NULL DEFAULT FALSE,
+  state                     VARCHAR(100),
+  city                      VARCHAR(100),
+  pincode                   VARCHAR(10),
+  highest_qualification     VARCHAR(50),
+  -- JSONB: stores 10th/12th/graduation/post-graduation sub-documents
+  education                 JSONB NOT NULL DEFAULT '{}',
+  -- JSONB: stores height/weight/chest/vision/color_blindness
+  physical_details          JSONB NOT NULL DEFAULT '{}',
+  -- JSONB: stores quick filter arrays (organizations, job types, locations, salary range)
+  quick_filters             JSONB NOT NULL DEFAULT '{}',
+  -- JSONB: stores notification channels and frequency preferences
+  notification_preferences  JSONB NOT NULL DEFAULT '{}',
+  updated_at                TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+CREATE UNIQUE INDEX idx_user_profiles_user_id ON user_profiles (user_id);
+-- GIN index for fast JSONB containment queries
+CREATE INDEX idx_user_profiles_education       ON user_profiles USING GIN (education);
+CREATE INDEX idx_user_profiles_notif_prefs     ON user_profiles USING GIN (notification_preferences);
 ```
 
-### 13. Categories/Organizations Collection (NEW)
-```json
-{
-  "_id": "ObjectId",
-  "name": "Railway Jobs",
-  "slug": "railway-jobs",
-  "parent_id": null,
-  "type": "organization", // organization/job_type/department/board
-  "icon": "train.svg",
-  "description": "All Indian Railway job vacancies including RRB, RRC, Metro",
-  "display_order": 1,
-  "is_active": true,
-  "job_count": 150,
-  "meta_title": "Railway Jobs 2025 - Latest Railway Recruitment",
-  "meta_description": "Find latest Railway job vacancies...",
-  "created_at": "2025-01-01T10:00:00Z",
-  "updated_at": "2025-12-07T10:00:00Z"
-}
+### 3. `job_vacancies` Table (Significantly Enhanced)
+```sql
+-- Large nested structures (vacancy_breakdown, eligibility, exam_details, salary, etc.)
+-- are stored as JSONB for schema flexibility while keeping core filter columns indexed.
+CREATE TABLE job_vacancies (
+  id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  job_title             VARCHAR(500) NOT NULL,
+  slug                  VARCHAR(500) UNIQUE NOT NULL,
+  organization          VARCHAR(255) NOT NULL,
+  department            VARCHAR(255),
+  post_code             VARCHAR(100),
+  job_type              VARCHAR(50) NOT NULL DEFAULT 'latest_job'
+                          CHECK (job_type IN ('latest_job','result','admit_card','answer_key','admission','yojana')),
+  employment_type       VARCHAR(50) DEFAULT 'permanent'
+                          CHECK (employment_type IN ('permanent','temporary','contract','apprentice')),
+  qualification_level   VARCHAR(50),   -- '10th','10+2','graduate','post-graduate','diploma','iti'
+  total_vacancies       INTEGER,
+  -- JSONB: by_category, by_post, by_state, by_trade breakdowns
+  vacancy_breakdown     JSONB NOT NULL DEFAULT '{}',
+  description           TEXT,
+  short_description     TEXT,
+  -- JSONB: age_limit, physical_standards, medical_standards, qualification_details
+  eligibility           JSONB NOT NULL DEFAULT '{}',
+  -- JSONB: application_link, fee, important_links, payment_mode
+  application_details   JSONB NOT NULL DEFAULT '{}',
+  -- Individual date columns for indexed range queries
+  notification_date     DATE,
+  application_start     DATE,
+  application_end       DATE,
+  last_date_fee         DATE,
+  correction_start      DATE,
+  correction_end        DATE,
+  admit_card_release    DATE,
+  exam_city_release     DATE,
+  exam_start            DATE,
+  exam_end              DATE,
+  answer_key_release    DATE,
+  result_date           DATE,
+  -- JSONB: exam_pattern, phases, syllabus_link
+  exam_details          JSONB NOT NULL DEFAULT '{}',
+  salary_initial        INTEGER,
+  salary_max            INTEGER,
+  -- JSONB: pay_scale, pay_level, allowances, other_benefits
+  salary                JSONB NOT NULL DEFAULT '{}',
+  -- JSONB: selection phases array
+  selection_process     JSONB NOT NULL DEFAULT '[]',
+  -- JSONB: documents required array
+  documents_required    JSONB NOT NULL DEFAULT '[]',
+  status                VARCHAR(20) NOT NULL DEFAULT 'active'
+                          CHECK (status IN ('active','expired','cancelled','upcoming')),
+  is_featured           BOOLEAN NOT NULL DEFAULT FALSE,
+  is_urgent             BOOLEAN NOT NULL DEFAULT FALSE,
+  is_trending           BOOLEAN NOT NULL DEFAULT FALSE,
+  priority              SMALLINT NOT NULL DEFAULT 0,
+  meta_title            VARCHAR(500),
+  meta_description      TEXT,
+  meta_keywords         TEXT[],
+  views                 INTEGER NOT NULL DEFAULT 0,
+  applications_count    INTEGER NOT NULL DEFAULT 0,
+  shares_count          INTEGER NOT NULL DEFAULT 0,
+  created_by            UUID REFERENCES users(id),
+  published_at          TIMESTAMP WITH TIME ZONE,
+  created_at            TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  updated_at            TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_jobs_organization      ON job_vacancies (organization);
+CREATE INDEX idx_jobs_status_created    ON job_vacancies (status, created_at DESC);
+CREATE INDEX idx_jobs_qual_level        ON job_vacancies (qualification_level);
+CREATE INDEX idx_jobs_application_end   ON job_vacancies (application_end);
+CREATE INDEX idx_jobs_org_status        ON job_vacancies (organization, status, created_at DESC);
+CREATE INDEX idx_jobs_eligibility_gin   ON job_vacancies USING GIN (eligibility);
 ```
 
-### 14. Page Views Collection (Analytics - NEW)
-```json
-{
-  "_id": "ObjectId",
-  "entity_type": "job", // job/result/admit_card/admission/yojana/page
-  "entity_id": "ObjectId",
-  "user_id": "ObjectId", // null for anonymous
-  "session_id": "session_uuid",
-  "ip_address": "192.168.1.1",
-  "user_agent": "Mozilla/5.0...",
-  "device_type": "desktop", // desktop/mobile/tablet
-  "browser": "Chrome",
-  "os": "Windows",
-  "referrer": "https://google.com/search?q=ssc+jobs",
-  "page_url": "/jobs/ssc-gd-constable-recruitment-2025",
-  "time_spent_seconds": 120,
-  "viewed_at": "2025-12-15T10:00:00Z"
-}
+### 4. `user_job_applications` Table
+```sql
+CREATE TABLE user_job_applications (
+  id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id                 UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  job_id                  UUID NOT NULL REFERENCES job_vacancies(id) ON DELETE CASCADE,
+  application_number      VARCHAR(100),
+  is_priority             BOOLEAN NOT NULL DEFAULT FALSE,
+  applied_on              TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  exam_center             VARCHAR(255),
+  admit_card_downloaded   BOOLEAN NOT NULL DEFAULT FALSE,
+  exam_appeared           BOOLEAN NOT NULL DEFAULT FALSE,
+  status                  VARCHAR(50) NOT NULL DEFAULT 'applied'
+                            CHECK (status IN (
+                              'applied','admit_card_released','exam_completed',
+                              'result_pending','selected','rejected','waiting_list'
+                            )),
+  notes                   TEXT,
+  -- JSONB: reminder objects with type, date, notified flag
+  reminders               JSONB NOT NULL DEFAULT '[]',
+  -- JSONB: marks_obtained, total_marks, rank, cutoff_marks, status
+  result_info             JSONB NOT NULL DEFAULT '{}',
+  UNIQUE (user_id, job_id)
+);
+
+CREATE INDEX idx_applications_user_job      ON user_job_applications (user_id, job_id);
+CREATE INDEX idx_applications_user_applied  ON user_job_applications (user_id, applied_on DESC);
 ```
 
-### 15. Search Logs Collection (Analytics - NEW)
-```json
-{
-  "_id": "ObjectId",
-  "user_id": "ObjectId", // null for anonymous
-  "session_id": "session_uuid",
-  "search_query": "railway jobs 2025",
-  "filters_applied": {
-    "organization": ["Railway"],
-    "qualification": ["12th"],
-    "state": ["Delhi", "UP"],
-    "job_type": ["Technical"]
-  },
-  "results_count": 25,
-  "clicked_results": ["ObjectId1", "ObjectId2"],
-  "first_click_position": 3,
-  "time_to_first_click_seconds": 15,
-  "no_results": false,
-  "searched_at": "2025-12-15T10:00:00Z"
-}
+### 5. `notifications` Table (Enhanced)
+```sql
+CREATE TABLE notifications (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  entity_type VARCHAR(50)  -- 'job','result','admit_card','answer_key','admission','yojana'
+                CHECK (entity_type IN ('job','result','admit_card','answer_key','admission','yojana')),
+  entity_id   UUID,
+  type        VARCHAR(60) NOT NULL,  -- 'new_vacancy','application_reminder','admit_card', etc.
+  title       VARCHAR(500) NOT NULL,
+  message     TEXT NOT NULL,
+  action_url  TEXT,
+  is_read     BOOLEAN NOT NULL DEFAULT FALSE,
+  sent_via    TEXT[],              -- e.g. ARRAY['email','push','in-app']
+  priority    VARCHAR(10) NOT NULL DEFAULT 'medium'
+                CHECK (priority IN ('low','medium','high')),
+  created_at  TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  read_at     TIMESTAMP WITH TIME ZONE,
+  -- Row-level TTL enforced by a scheduled pg_cron job (90-day retention)
+  expires_at  TIMESTAMP WITH TIME ZONE NOT NULL
+                DEFAULT (NOW() + INTERVAL '90 days')
+);
+
+CREATE INDEX idx_notifications_user_read    ON notifications (user_id, is_read);
+CREATE INDEX idx_notifications_user_created ON notifications (user_id, created_at DESC);
+CREATE INDEX idx_notifications_expires      ON notifications (expires_at);
+```
+
+### 6. `admin_logs` Table
+```sql
+CREATE TABLE admin_logs (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  admin_id      UUID NOT NULL REFERENCES users(id),
+  action        VARCHAR(100) NOT NULL,   -- 'create_job','update_job','delete_job','approve_user'
+  resource_type VARCHAR(100),            -- 'job_vacancy','result','admit_card','user'
+  resource_id   UUID,
+  details       TEXT,
+  -- JSONB: field-level old_value / new_value diff
+  changes       JSONB NOT NULL DEFAULT '{}',
+  ip_address    INET,
+  user_agent    TEXT,
+  timestamp     TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  -- Row-level TTL: Celery cleanup task deletes rows older than 30 days
+  expires_at    TIMESTAMP WITH TIME ZONE NOT NULL
+                  DEFAULT (NOW() + INTERVAL '30 days')
+);
+
+CREATE INDEX idx_admin_logs_admin_ts ON admin_logs (admin_id, timestamp DESC);
+CREATE INDEX idx_admin_logs_expires  ON admin_logs (expires_at);
+```
+
+### 7. `results` Table (NEW)
+```sql
+CREATE TABLE results (
+  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  job_id         UUID REFERENCES job_vacancies(id) ON DELETE SET NULL,
+  result_type    VARCHAR(50) NOT NULL,  -- 'written','prelims','mains','interview','final','cutoff','merit_list','psl_list','dv_list','waiting_list'
+  result_phase   VARCHAR(100),
+  result_title   VARCHAR(500) NOT NULL,
+  result_date    DATE,
+  -- JSONB: result_pdf, scorecard_link, marks_link, merit_list_link
+  result_links   JSONB NOT NULL DEFAULT '{}',
+  -- JSONB: category-wise cutoff marks {general: {male, female}, obc: {...}, ...}
+  cut_off_marks  JSONB NOT NULL DEFAULT '{}',
+  -- JSONB: total_appeared, qualified, selected, highest_marks, lowest_marks
+  statistics     JSONB NOT NULL DEFAULT '{}',
+  is_final       BOOLEAN NOT NULL DEFAULT FALSE,
+  status         VARCHAR(20) NOT NULL DEFAULT 'active'
+                   CHECK (status IN ('active','revised','cancelled')),
+  created_at     TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  updated_at     TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_results_job_id ON results (job_id);
+```
+
+### 8. `admit_cards` Table (NEW)
+```sql
+CREATE TABLE admit_cards (
+  id                        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  job_id                    UUID REFERENCES job_vacancies(id) ON DELETE SET NULL,
+  exam_name                 VARCHAR(500) NOT NULL,
+  exam_phase                VARCHAR(100),
+  release_date              DATE,
+  exam_date_start           DATE,
+  exam_date_end             DATE,
+  exam_mode                 VARCHAR(50),
+  download_link             TEXT,
+  exam_city_link            TEXT,
+  mock_test_link            TEXT,
+  self_slot_selection_link  TEXT,
+  instructions              TEXT,
+  reporting_time            VARCHAR(50),
+  exam_timing               VARCHAR(100),
+  important_documents       TEXT[],
+  exam_centers              TEXT[],
+  status                    VARCHAR(20) NOT NULL DEFAULT 'active'
+                              CHECK (status IN ('active','expired')),
+  created_at                TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  updated_at                TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_admit_cards_job_id ON admit_cards (job_id);
+```
+
+### 9. `answer_keys` Table (NEW)
+```sql
+CREATE TABLE answer_keys (
+  id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  job_id                UUID REFERENCES job_vacancies(id) ON DELETE SET NULL,
+  exam_name             VARCHAR(500) NOT NULL,
+  exam_phase            VARCHAR(100),
+  paper_name            VARCHAR(255),
+  release_date          DATE,
+  -- JSONB: [{set, url}, ...]
+  answer_key_links      JSONB NOT NULL DEFAULT '[]',
+  -- JSONB: [{subject, url}, ...]
+  subject_wise_links    JSONB NOT NULL DEFAULT '[]',
+  objection_start       DATE,
+  objection_end         DATE,
+  objection_fee         INTEGER,
+  objection_link        TEXT,
+  response_sheet_link   TEXT,
+  question_paper_link   TEXT,
+  total_questions       INTEGER,
+  status                VARCHAR(30) NOT NULL DEFAULT 'active'
+                          CHECK (status IN ('active','expired','final_published')),
+  created_at            TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  updated_at            TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_answer_keys_job_id ON answer_keys (job_id);
+```
+
+### 10. `admissions` Table (NEW)
+```sql
+CREATE TABLE admissions (
+  id                UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  title             VARCHAR(300) NOT NULL,
+  slug              VARCHAR(320) NOT NULL UNIQUE,
+  admission_type    VARCHAR(30)  NOT NULL CHECK (admission_type IN ('ug','pg','diploma','certificate','school','entrance_exam')),
+  course_name       VARCHAR(200),
+  conducting_body   VARCHAR(200),
+  total_seats       INTEGER,
+  description       TEXT,
+  eligibility       JSONB,        -- {qualification, min_percentage, age_limit, nationality, required_subjects[]}
+  application_dates JSONB,        -- {notification_date, start, end, correction_start, correction_end, admit_card_date, exam_date, result_date, counseling_date}
+  application_fee   JSONB,        -- {general, sc_st, obc, ews, female, pwd}
+  application_link  TEXT,
+  notification_pdf  TEXT,
+  syllabus_link     TEXT,
+  exam_pattern      JSONB,        -- {papers[], mode, duration, total_marks}
+  selection_process TEXT,
+  status            VARCHAR(20)   NOT NULL DEFAULT 'active' CHECK (status IN ('active','expired','upcoming')),
+  is_featured       BOOLEAN       NOT NULL DEFAULT FALSE,
+  views             INTEGER       NOT NULL DEFAULT 0,
+  created_at        TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  updated_at        TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_admissions_slug        ON admissions (slug);
+CREATE INDEX idx_admissions_status      ON admissions (status, created_at DESC);
+CREATE INDEX idx_admissions_type        ON admissions (admission_type);
+CREATE INDEX idx_admissions_featured    ON admissions (is_featured) WHERE is_featured = TRUE;
+CREATE INDEX idx_admissions_eligibility ON admissions USING GIN (eligibility);
+```
+
+### 11. `yojanas` (Government Schemes) Table (NEW)
+```sql
+CREATE TABLE yojanas (
+  id                  UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+  title               VARCHAR(300) NOT NULL,
+  slug                VARCHAR(320) NOT NULL UNIQUE,
+  yojana_type         VARCHAR(30)  NOT NULL CHECK (yojana_type IN ('central','state','scholarship','pension','subsidy','insurance','loan')),
+  state               VARCHAR(100),
+  department          VARCHAR(200),
+  short_description   TEXT,
+  full_description    TEXT,
+  eligibility         TEXT,
+  benefits            TEXT,
+  benefit_amount      VARCHAR(100),
+  installment_details TEXT,
+  how_to_apply        TEXT,
+  required_documents  TEXT[],
+  application_link    TEXT,
+  official_website    TEXT,
+  guidelines_pdf      TEXT,
+  helpline            VARCHAR(50),
+  email               VARCHAR(200),
+  start_date          DATE,
+  last_date           DATE,
+  is_active           BOOLEAN      NOT NULL DEFAULT TRUE,
+  status              VARCHAR(20)  NOT NULL DEFAULT 'active' CHECK (status IN ('active','expired','upcoming')),
+  is_featured         BOOLEAN      NOT NULL DEFAULT FALSE,
+  views               INTEGER      NOT NULL DEFAULT 0,
+  applicants_count    BIGINT       NOT NULL DEFAULT 0,
+  created_at          TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  updated_at          TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_yojanas_slug     ON yojanas (slug);
+CREATE INDEX idx_yojanas_type     ON yojanas (yojana_type);
+CREATE INDEX idx_yojanas_status   ON yojanas (status, is_active);
+CREATE INDEX idx_yojanas_featured ON yojanas (is_featured) WHERE is_featured = TRUE;
+```
+
+### 12. `board_results` Table (NEW)
+```sql
+CREATE TABLE board_results (
+  id                      UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+  board_name              VARCHAR(100) NOT NULL,    -- CBSE/UP Board/Bihar Board/RBSE/etc
+  class                   VARCHAR(10)  NOT NULL,    -- 10th/12th/5th/8th
+  stream                  VARCHAR(30),              -- Arts/Commerce/Science/All
+  exam_year               INTEGER      NOT NULL,
+  result_type             VARCHAR(30)  NOT NULL DEFAULT 'regular' CHECK (result_type IN ('regular','supplementary','compartment','improvement')),
+  exam_start_date         DATE,
+  exam_end_date           DATE,
+  result_date             DATE,
+  result_time             VARCHAR(20),
+  result_link             TEXT,
+  marksheet_download_link TEXT,
+  topper_list_link        TEXT,
+  date_sheet_link         TEXT,
+  statistics              JSONB,        -- {total_students, passed_students, pass_percentage, girls_pass_percentage, boys_pass_percentage, distinction_count, first_division_count}
+  how_to_check            TEXT,
+  alternative_links       TEXT[],
+  status                  VARCHAR(20)  NOT NULL DEFAULT 'active' CHECK (status IN ('active','expired')),
+  views                   INTEGER      NOT NULL DEFAULT 0,
+  created_at              TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  updated_at              TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_board_results_board      ON board_results (board_name);
+CREATE INDEX idx_board_results_year       ON board_results (exam_year DESC);
+CREATE INDEX idx_board_results_class      ON board_results (class, exam_year DESC);
+CREATE INDEX idx_board_results_statistics ON board_results USING GIN (statistics);
+```
+
+### 13. `categories` (Organizations) Table (NEW)
+```sql
+CREATE TABLE categories (
+  id               UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+  name             VARCHAR(200) NOT NULL,
+  slug             VARCHAR(220) NOT NULL UNIQUE,
+  parent_id        UUID         REFERENCES categories(id) ON DELETE SET NULL,
+  type             VARCHAR(30)  NOT NULL CHECK (type IN ('organization','job_type','department','board')),
+  icon             VARCHAR(100),
+  description      TEXT,
+  display_order    INTEGER      NOT NULL DEFAULT 0,
+  is_active        BOOLEAN      NOT NULL DEFAULT TRUE,
+  job_count        INTEGER      NOT NULL DEFAULT 0,
+  meta_title       VARCHAR(300),
+  meta_description TEXT,
+  created_at       TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  updated_at       TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_categories_slug   ON categories (slug);
+CREATE INDEX idx_categories_type   ON categories (type) WHERE is_active = TRUE;
+CREATE INDEX idx_categories_parent ON categories (parent_id);
+CREATE INDEX idx_categories_order  ON categories (display_order, type);
+```
+
+### 14. `page_views` Table (Analytics - NEW)
+```sql
+CREATE TABLE page_views (
+  id                  UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+  entity_type         VARCHAR(30)  NOT NULL CHECK (entity_type IN ('job','result','admit_card','admission','yojana','page')),
+  entity_id           UUID,
+  user_id             UUID         REFERENCES users(id) ON DELETE SET NULL,
+  session_id          VARCHAR(100),
+  ip_address          INET,
+  user_agent          TEXT,
+  device_type         VARCHAR(20)  CHECK (device_type IN ('desktop','mobile','tablet')),
+  browser             VARCHAR(50),
+  os                  VARCHAR(50),
+  referrer            TEXT,
+  page_url            TEXT,
+  time_spent_seconds  INTEGER,
+  viewed_at           TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_page_views_entity  ON page_views (entity_type, entity_id);
+CREATE INDEX idx_page_views_user    ON page_views (user_id, viewed_at DESC);
+CREATE INDEX idx_page_views_session ON page_views (session_id);
+CREATE INDEX idx_page_views_date    ON page_views (viewed_at DESC);
+```
+
+### 15. `search_logs` Table (Analytics - NEW)
+```sql
+CREATE TABLE search_logs (
+  id                          UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id                     UUID         REFERENCES users(id) ON DELETE SET NULL,
+  session_id                  VARCHAR(100),
+  search_query                VARCHAR(500) NOT NULL,
+  filters_applied             JSONB,        -- {organization[], qualification[], state[], job_type[]}
+  results_count               INTEGER      NOT NULL DEFAULT 0,
+  clicked_results             UUID[],       -- array of entity UUIDs clicked
+  first_click_position        INTEGER,
+  time_to_first_click_seconds INTEGER,
+  no_results                  BOOLEAN      NOT NULL DEFAULT FALSE,
+  searched_at                 TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_search_logs_user           ON search_logs (user_id, searched_at DESC);
+CREATE INDEX idx_search_logs_query          ON search_logs (search_query);
+CREATE INDEX idx_search_logs_date           ON search_logs (searched_at DESC);
+CREATE INDEX idx_search_logs_filters        ON search_logs USING GIN (filters_applied);
+CREATE INDEX idx_search_logs_no_results     ON search_logs (no_results) WHERE no_results = TRUE;
+```
+
+### 16. `role_permissions` Table (RBAC Support)
+```sql
+CREATE TABLE role_permissions (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  role          VARCHAR(50) NOT NULL CHECK (role IN ('user','operator','admin')),
+  resource      VARCHAR(100) NOT NULL,
+  -- JSONB: {GET: true/false, POST: true/false, PUT: true/false, DELETE: true/false}
+  actions       JSONB NOT NULL DEFAULT '{}',
+  -- JSONB: array of field names restricted for this role
+  field_restrictions JSONB NOT NULL DEFAULT '[]',
+  is_enabled    BOOLEAN NOT NULL DEFAULT TRUE,
+  is_restricted BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at    TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  updated_at    TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  UNIQUE (role, resource)
+);
+
+CREATE INDEX idx_role_permissions_role     ON role_permissions (role);
+CREATE INDEX idx_role_permissions_enabled  ON role_permissions (is_enabled);
+```
+
+### 17. `access_audit_logs` Table (RBAC Audit Trail)
+```sql
+CREATE TABLE access_audit_logs (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  admin_id      UUID NOT NULL REFERENCES users(id),
+  action        VARCHAR(100) NOT NULL,   -- 'permission_changed','role_disabled','role_enabled'
+  role          VARCHAR(50),
+  resource      VARCHAR(100),
+  -- JSONB: tracks what changed {field_name: {from: old_value, to: new_value}}
+  changes       JSONB NOT NULL DEFAULT '{}',
+  reason        TEXT,
+  ip_address    INET,
+  timestamp     TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_access_audit_logs_admin     ON access_audit_logs (admin_id, timestamp DESC);
+CREATE INDEX idx_access_audit_logs_role      ON access_audit_logs (role, timestamp DESC);
+CREATE INDEX idx_access_audit_logs_timestamp ON access_audit_logs (timestamp DESC);
 ```
 
 ---
@@ -832,75 +959,81 @@ docker compose exec backend curl http://localhost:5000/api/v1/health
 
 ### ⚡ Indexing Strategy (CRITICAL for Performance)
 
-**Problem**: Without proper indexes, queries scan entire collections (slow)
+**Problem**: Without proper indexes, queries scan entire tables (slow)
 
-**Required Indexes** (create in mongo-init.js):
+**Required Indexes** (create via Alembic migration or `init.sql`):
 
-```javascript
-// User queries
-db.users.createIndex({ "email": 1 }, { unique: true });
-db.users.createIndex({ "status": 1 });
+```sql
+-- User queries
+CREATE UNIQUE INDEX idx_users_email  ON users (email);
+CREATE        INDEX idx_users_status ON users (status);
 
-// Job search queries (most critical - scanned frequently)
-db.job_vacancies.createIndex({ "organization": 1 });
-db.job_vacancies.createIndex({ "status": 1, "created_at": -1 });
-db.job_vacancies.createIndex({ "eligibility.qualification": 1 });
-db.job_vacancies.createIndex({ "important_dates.application_end": 1 });
-db.job_vacancies.createIndex({ 
-  "organization": 1, 
-  "status": 1, 
-  "created_at": -1 
-});  // Compound index for filtered sorted queries
+-- Job search queries (most critical - scanned frequently)
+CREATE INDEX idx_jobs_organization ON job_vacancies (organization);
+CREATE INDEX idx_jobs_status_date  ON job_vacancies (status, created_at DESC);
+CREATE INDEX idx_jobs_app_end      ON job_vacancies (application_end_date);
 
-// Application tracking
-db.user_job_applications.createIndex({ "user_id": 1, "job_id": 1 }, { unique: true });
-db.user_job_applications.createIndex({ "user_id": 1, "applied_date": -1 });
+-- Compound index for filtered + sorted queries
+CREATE INDEX idx_jobs_org_status_date ON job_vacancies (organization, status, created_at DESC);
 
-// Notifications
-db.notifications.createIndex({ "user_id": 1, "is_read": 1 });
-db.notifications.createIndex({ "user_id": 1, "created_at": -1 });
+-- GIN indexes for JSONB containment queries
+CREATE INDEX idx_jobs_eligibility      ON job_vacancies USING GIN (eligibility);
+CREATE INDEX idx_profiles_education    ON user_profiles USING GIN (education);
+CREATE INDEX idx_profiles_quick_filter ON user_profiles USING GIN (quick_filters);
 
-// TTL Indexes (auto-delete old data)
-db.notifications.createIndex({ "created_at": 1 }, { expireAfterSeconds: 7776000 });  // Delete after 90 days
-db.activity_logs.createIndex({ "created_at": 1 }, { expireAfterSeconds: 2592000 });  // Delete after 30 days
+-- Application tracking
+CREATE UNIQUE INDEX idx_applications_user_job ON user_job_applications (user_id, job_id);
+CREATE        INDEX idx_applications_user_date ON user_job_applications (user_id, applied_date DESC);
+
+-- Notifications
+CREATE INDEX idx_notif_user_read ON notifications (user_id, is_read);
+CREATE INDEX idx_notif_user_date ON notifications (user_id, created_at DESC);
+
+-- Cleanup: partial index for non-expired rows
+CREATE INDEX idx_notif_expires  ON notifications (expires_at) WHERE expires_at IS NOT NULL;
 ```
 
-**Impact**: 
-- ✅ `GET /api/v1/jobs?org=Railway&status=active` now uses index
+**Impact**:
+- ✅ `GET /api/v1/jobs?org=Railway&status=active` now uses `idx_jobs_org_status_date`
 - ✅ Job listing query: 1000ms → 10ms (100x faster)
+- ✅ JSONB containment `eligibility @> '{"qualification": "Graduate"}'` uses GIN index
 - ✅ Cache hits improve (less database load)
 
 ### ⚡ Denormalization Strategy (Optional Optimization)
 
-Some data is duplicated in User Profiles for faster queries:
+Some data is cached in `user_profiles` for faster queries:
 
-```javascript
-// Instead of joining:
-// user_profiles → match education → job_vacancies → send notification
-// Just store in user profile:
-db.user_profiles.updateOne(
-  { user_id: ObjectId("...") },
-  { 
-    $set: { 
-      "cached_job_matches": [
-        { job_id: ObjectId("..."), org: "Railway", title: "GD Constable" },
-        { job_id: ObjectId("..."), org: "SSC", title: "CGL" }
-      ]
-    }
-  }
-);
-// Refresh this cache every 6 hours via Celery task
+```python
+# Instead of joining user_profiles → job_vacancies just to send a notification,
+# store a small cache directly on the profile row:
+from app.extensions import db
+from app.models import UserProfile
+
+profile = UserProfile.query.filter_by(user_id=user_id).one()
+profile.cached_job_matches = [
+    {"job_id": str(job.id), "org": job.organization, "title": job.job_title}
+    for job in matched_jobs[:20]
+]
+db.session.commit()
+# Refresh this cache every 6 hours via Celery task
 ```
-
-**Tradeoff**: 
-- ✅ Faster job matching queries (no joins needed)
-- ⚠️ Cache needs refresh (6-hour delay on new jobs)
 
 ### Data Lifecycle & TTL
 
 **Auto-Delete Old Data**:
-- Notifications: Delete after 90 days (TTL index)
-- Activity logs: Delete after 30 days (TTL index)
+PostgreSQL does not have native TTL indexes. Row expiry is handled via an `expires_at TIMESTAMP` column (set to `NOW() + INTERVAL 'N days'` at insert time) and a scheduled Celery beat task (or `pg_cron`) that runs daily to purge expired rows:
+
+```python
+# tasks/cleanup.py
+@celery.task
+def purge_expired_rows():
+    db.session.execute(text("DELETE FROM notifications WHERE expires_at < NOW()"))
+    db.session.execute(text("DELETE FROM admin_logs   WHERE expires_at < NOW()"))
+    db.session.commit()
+```
+
+- Notifications: Delete after 90 days (`expires_at = NOW() + INTERVAL '90 days'`)
+- Activity logs: Delete after 30 days (`expires_at = NOW() + INTERVAL '30 days'`)
 - Failed email logs: Delete after 14 days
 
 **Reduces**: Storage cost, query time, backup size
@@ -1097,7 +1230,7 @@ SERVER_CELERY_ERROR             - Background task failed
              │ r1
              ↓
 ┌──────────────────────────┐
-│ MongoDB Query            │
+│ PostgreSQL               │
 │ Stored with request_id   │
 │ audit_trail.request_id   │
 └──────────────────────────┘
@@ -1178,7 +1311,7 @@ curl "http://kibana:5601/elasticsearch?q=request_id:req_abc123"
 ```
 ❌ FCM service down
 ↓
-✅ Fall back to in-app notification (stored in MongoDB)
+✅ Fall back to in-app notification (stored in PostgreSQL)
 ✅ Email user as backup
 ✅ Alert: "Notifications temporarily via email"
 ✅ Auto-retry FCM when service recovers
@@ -1186,7 +1319,7 @@ curl "http://kibana:5601/elasticsearch?q=request_id:req_abc123"
 
 ### Database Slow (> 50ms)
 ```
-❌ MongoDB query taking 500ms
+❌ PostgreSQL query taking 500ms
 ↓
 ✅ Return cached data from Redis (if available)
 ✅ Add header: "X-Cache: STALE_DATA, from_cache=true"
@@ -1319,64 +1452,59 @@ def send_email_notification(user_id, job_id):
 
 ## 🎯 Database Design & Optimization
 
-### ⚡ Indexing Strategy for MongoDB
+### ⚡ Indexing Strategy for PostgreSQL
 
-**Compound Indexes** (for job search):
+**B-tree Indexes** (scalar columns):
 
-```javascript
-db.jobs.createIndex({ "posted_date": -1, "category": 1 })
-db.jobs.createIndex({ "location": 1, "salary_min": -1 })
-db.jobs.createIndex({ "exam_name": 1, "status": 1 })
+```sql
+CREATE INDEX idx_jobs_posted_date  ON job_vacancies (created_at DESC);
+CREATE INDEX idx_jobs_category     ON job_vacancies (category_id);
+CREATE INDEX idx_jobs_exam_status  ON job_vacancies (exam_name, status);
 ```
 
-**TTL Indexes** (auto-cleanup):
+**GIN Indexes** (JSONB containment queries):
 
-```javascript
-// Auto-delete notifications after 90 days
-db.notifications.createIndex(
-  { "created_at": 1 }, 
-  { expireAfterSeconds: 7776000 }
-)
+```sql
+-- Fast containment queries on flexible nested data
+CREATE INDEX idx_jobs_eligibility_gin   ON job_vacancies   USING GIN (eligibility);
+CREATE INDEX idx_profiles_education_gin ON user_profiles   USING GIN (education);
+CREATE INDEX idx_search_filters_gin     ON search_logs     USING GIN (filters_applied);
+```
 
-// Auto-delete logs after 30 days
-db.logs.createIndex(
-  { "timestamp": 1 }, 
-  { expireAfterSeconds: 2592000 }
-)
+**Row Cleanup** (PostgreSQL `expires_at` + Celery nightly purge):
+
+```sql
+-- expires_at column set at INSERT time; purged nightly by Celery task
+ALTER TABLE notifications ADD COLUMN expires_at TIMESTAMP WITH TIME ZONE
+  DEFAULT (NOW() + INTERVAL '90 days');
+ALTER TABLE admin_logs    ADD COLUMN expires_at TIMESTAMP WITH TIME ZONE
+  DEFAULT (NOW() + INTERVAL '30 days');
 ```
 
 ### ⚡ Denormalization Strategy (Optional for Scale)
 
 **Problem**: Querying user profile + all applied jobs requires 2 queries  
-**Solution**: Store job summary in user document:
+**Solution**: Store job summary inside `user_profiles.cached_job_matches` (JSONB):
 
-```javascript
-db.users.findOne({ user_id: "123" })
-{
-  _id: "123",
-  name: "Alice",
-  email: "alice@example.com",
-  applied_jobs: [  // Denormalized
-    {
-      job_id: "456",
-      company: "Google",
-      position: "SDE",
-      status: "selected"
-    }
-  ]
-}
+```python
+# SQLAlchemy – store denormalized summary on user_profiles row
+profile = UserProfile.query.filter_by(user_id="123").one()
+profile.cached_job_matches = [
+    {"job_id": "456", "company": "UPSC", "position": "IAS", "status": "applied"}
+]
+db.session.commit()
 ```
 
 **When to use**: Only if >1000 queries/minute on user profiles
 
 ### ⚡ Data Lifecycle & TTL Management
 
-| Collection | TTL | Reason |
-|------------|-----|--------|
-| notifications | 90 days | Notifications auto-archive after 3 months |
-| application_logs | 30 days | Keep recent logs for debugging |
-| email_events | 60 days | Track email delivery/bounce history |
-| audit_trail | 1 year | Compliance requirement for admin logs |
+| Table | Retention | Mechanism |
+|-------|-----------|-----------|
+| notifications | 90 days | `expires_at` column + nightly Celery purge |
+| admin_logs | 30 days | `expires_at` column + nightly Celery purge |
+| email_events | 60 days | `expires_at` column + nightly Celery purge |
+| audit_trail | 1 year | Manual archive via pg_dump partition |
 
 ---
 
@@ -1696,29 +1824,27 @@ def send_reminder_email(user, application, reminder_type):
 
 ### Creating Admin (First Time Bootstrap)
 
-**Option A: MongoDB Direct Insert (Recommended)**
+**Option A: PostgreSQL Direct Insert (Recommended)**
 
 ```bash
-# Connect to MongoDB
-docker compose exec mongodb mongosh -u admin -p admin
+# Connect to PostgreSQL
+docker compose exec postgresql psql -U hermes_user -d hermes_db
 
-# Switch to hermes_db database
-use hermes_db
+-- Create admin user directly
+INSERT INTO users (email, password_hash, full_name, role, is_verified, is_email_verified, status, created_at, last_login)
+VALUES (
+  'admin@example.com',
+  '$2b$12$HASHED_PASSWORD_HERE',  -- Use bcrypt hash
+  'Admin User',
+  'admin',
+  TRUE,
+  TRUE,
+  'active',
+  NOW(),
+  NOW()
+);
 
-# Create admin user directly
-db.users.insertOne({
-  email: "admin@example.com",
-  password: "$2b$12$HASHED_PASSWORD_HERE", // Use bcrypt hash
-  full_name: "Admin User",
-  role: "admin",
-  is_verified: true,
-  is_email_verified: true,
-  status: "active",
-  created_at: new Date(),
-  last_login: new Date()
-})
-
-exit
+\q
 ```
 
 **Option B: Register Then Promote**
@@ -1733,13 +1859,10 @@ curl -X POST http://localhost:5000/api/v1/auth/register \
     "name": "Admin User"
   }'
 
-# 2. Promote to admin (via MongoDB)
-docker compose exec mongodb mongosh
-use hermes_db
-db.users.updateOne(
-  {email: "admin@example.com"},
-  {$set: {role: "admin"}}
-)
+# 2. Promote to admin (via psql)
+docker compose exec postgresql psql -U hermes_user -d hermes_db
+UPDATE users SET role = 'admin' WHERE email = 'admin@example.com';
+\q
 ```
 
 ### Creating Operators (Admin-Only)
@@ -1784,7 +1907,7 @@ curl -X PUT http://localhost:5000/api/v1/admin/users/USER_ID/role \
 
 ### Overview
 
-Admins can **dynamically enable/disable access** for roles without restarting the app. Permissions are stored in MongoDB and checked on every API request.
+Admins can **dynamically enable/disable access** for roles without restarting the app. Permissions are stored in PostgreSQL and checked on every API request.
 
 **Example Use Cases:**
 - Temporarily disable "Operator" access to sensitive endpoints during maintenance
@@ -1794,53 +1917,46 @@ Admins can **dynamically enable/disable access** for roles without restarting th
 
 ### Access Control Database Schema
 
-**Collections Created:**
+**Tables Created:**
 
-#### 1. `role_permissions` Collection
+#### 1. `role_permissions` Table
 
 Stores which actions each role can perform:
 
-```json
-{
-  "_id": "507f1f77bcf86cd799439012",
-  "role": "operator",
-  "resource": "jobs",
-  "actions": {
-    "GET": true,
-    "POST": false,
-    "PUT": true,
-    "DELETE": false
-  },
-  "field_restrictions": [
-    "salary_min",
-    "salary_max",
-    "vacancy_count"
-  ],
-  "is_enabled": true,
-  "is_restricted": false,
-  "created_at": "2026-01-01T00:00:00Z",
-  "updated_at": "2026-03-03T10:30:00Z"
-}
+```sql
+CREATE TABLE role_permissions (
+  id                UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  role              VARCHAR(20) NOT NULL CHECK (role IN ('user','operator','admin')),
+  resource          VARCHAR(50) NOT NULL,
+  actions           JSONB       NOT NULL,       -- {"GET": true, "POST": false, "PUT": true, "DELETE": false}
+  field_restrictions TEXT[]     NOT NULL DEFAULT '{}',
+  is_enabled        BOOLEAN     NOT NULL DEFAULT TRUE,
+  is_restricted     BOOLEAN     NOT NULL DEFAULT FALSE,
+  created_at        TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  updated_at        TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  UNIQUE (role, resource)
+);
+CREATE INDEX idx_role_permissions_role ON role_permissions (role, resource);
 ```
 
-#### 2. `access_audit_logs` Collection
+#### 2. `access_audit_logs` Table
 
 Log every permission change for compliance:
 
-```json
-{
-  "_id": "507f1f77bcf86cd799439013",
-  "admin_id": "507f1f77bcf86cd799439001",
-  "action": "permission_changed",
-  "role": "operator",
-  "resource": "jobs",
-  "changes": {
-    "DELETE": {"from": true, "to": false}
-  },
-  "reason": "Security audit - restrict delete operations",
-  "ip_address": "192.168.1.1",
-  "timestamp": "2026-03-03T10:30:00Z"
-}
+```sql
+CREATE TABLE access_audit_logs (
+  id          UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+  admin_id    UUID         NOT NULL REFERENCES users(id),
+  action      VARCHAR(50)  NOT NULL,
+  role        VARCHAR(20)  NOT NULL,
+  resource    VARCHAR(50),
+  changes     JSONB,
+  reason      TEXT,
+  ip_address  INET,
+  timestamp   TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_audit_logs_role  ON access_audit_logs (role, timestamp DESC);
+CREATE INDEX idx_audit_logs_admin ON access_audit_logs (admin_id, timestamp DESC);
 ```
 
 ### Admin API Endpoints for Access Management
@@ -1981,48 +2097,43 @@ curl -X GET "http://localhost:5000/api/v1/admin/permissions/audit-log?role=opera
 **backend/app/models/permissions.py:**
 
 ```python
-from mongoengine import Document, StringField, DictField, ListField, BooleanField, DateTimeField
+from app.extensions import db
+from sqlalchemy.dialects.postgresql import UUID, JSONB, INET, ARRAY
+import uuid
 from datetime import datetime
 
-class RolePermission(Document):
-    """Store role-based permissions in MongoDB"""
-    
-    role = StringField(required=True, choices=['user', 'operator', 'admin'])
-    resource = StringField(required=True)  # 'jobs', 'users', 'admin', 'notifications'
-    
-    actions = DictField(required=True)  # {'GET': True, 'POST': False, 'PUT': True, 'DELETE': False}
-    
-    field_restrictions = ListField(StringField())  # Fields this role cannot see/edit
-    is_enabled = BooleanField(default=True)
-    is_restricted = BooleanField(default=False)
-    
-    created_at = DateTimeField(default=datetime.utcnow)
-    updated_at = DateTimeField(default=datetime.utcnow)
-    
-    class Meta:
-        collection = 'role_permissions'
-        indexes = [
-            ('role', 'resource')  # Unique compound index
-        ]
+class RolePermission(db.Model):
+    """Store role-based permissions in PostgreSQL"""
+    __tablename__ = 'role_permissions'
 
-class AccessAuditLog(Document):
+    id                = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    role              = db.Column(db.String(20), nullable=False)
+    resource          = db.Column(db.String(50), nullable=False)
+    actions           = db.Column(JSONB, nullable=False, default=dict)
+    field_restrictions = db.Column(ARRAY(db.Text), nullable=False, default=list)
+    is_enabled        = db.Column(db.Boolean, nullable=False, default=True)
+    is_restricted     = db.Column(db.Boolean, nullable=False, default=False)
+    created_at        = db.Column(db.DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+    updated_at        = db.Column(db.DateTime(timezone=True), nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (
+        db.UniqueConstraint('role', 'resource', name='uq_role_resource'),
+    )
+
+
+class AccessAuditLog(db.Model):
     """Log all permission changes for compliance"""
-    
-    admin_id = StringField(required=True)
-    action = StringField(required=True)  # 'permission_changed', 'role_disabled'
-    role = StringField(required=True)
-    resource = StringField()
-    changes = DictField()  # What changed: {'DELETE': {'from': True, 'to': False}}
-    reason = StringField()
-    ip_address = StringField()
-    timestamp = DateTimeField(default=datetime.utcnow)
-    
-    class Meta:
-        collection = 'access_audit_logs'
-        indexes = [
-            ('role', '-timestamp'),
-            ('admin_id', '-timestamp')
-        ]
+    __tablename__ = 'access_audit_logs'
+
+    id         = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    admin_id   = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), nullable=False)
+    action     = db.Column(db.String(50), nullable=False)
+    role       = db.Column(db.String(20), nullable=False)
+    resource   = db.Column(db.String(50))
+    changes    = db.Column(JSONB)
+    reason     = db.Column(db.Text)
+    ip_address = db.Column(INET)
+    timestamp  = db.Column(db.DateTime(timezone=True), nullable=False, default=datetime.utcnow)
 ```
 
 #### 2. Permission Checking Middleware
@@ -2081,23 +2192,23 @@ def check_access(resource, required_action='GET'):
     return decorator
 
 def get_permission(role, resource):
-    """Get permission from Redis cache or MongoDB"""
+    """Get permission from Redis cache or PostgreSQL"""
     from app import cache
-    
+
     cache_key = f"perm:{role}:{resource}"
-    
+
     # Try cache first
     cached = cache.get(cache_key)
     if cached:
         return cached
-    
+
     # Fetch from database
-    perm = RolePermission.objects(role=role, resource=resource).first()
-    
+    perm = RolePermission.query.filter_by(role=role, resource=resource).first()
+
     if perm:
         # Cache for 1 hour
         cache.set(cache_key, perm, 3600)
-    
+
     return perm
 
 def invalidate_permission_cache(role, resource):
@@ -2113,10 +2224,10 @@ def invalidate_permission_cache(role, resource):
 ```python
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt
-from bson import ObjectId
 from datetime import datetime
 from functools import wraps
 from app.models import RolePermission, AccessAuditLog
+from app.extensions import db
 from app.middleware import invalidate_permission_cache
 import logging
 
@@ -2139,14 +2250,14 @@ def get_permissions():
     """Get all permissions or permissions for specific role"""
     role = request.args.get('role')
     resource = request.args.get('resource')
-    
-    query = RolePermission.objects()
-    
+
+    query = RolePermission.query
+
     if role:
-        query = query(role=role)
+        query = query.filter_by(role=role)
     if resource:
-        query = query(resource=resource)
-    
+        query = query.filter_by(resource=resource)
+
     permissions = [
         {
             'id': str(p.id),
@@ -2157,9 +2268,9 @@ def get_permissions():
             'is_enabled': p.is_enabled,
             'updated_at': p.updated_at.isoformat()
         }
-        for p in query
+        for p in query.all()
     ]
-    
+
     return jsonify({'permissions': permissions}), 200
 
 @bp.route('', methods=['PUT'])
@@ -2177,31 +2288,27 @@ def update_permissions():
     # Validate
     if not role or not resource:
         return {'error': 'VALIDATION_MISSING_FIELD'}, 400
-    
+
     if role not in ['user', 'operator', 'admin']:
         return {'error': 'VALIDATION_INVALID_ROLE'}, 400
-    
+
     # Get or create permission
-    perm = RolePermission.objects(role=role, resource=resource).first()
-    
+    perm = RolePermission.query.filter_by(role=role, resource=resource).first()
+
     if perm:
         old_actions = perm.actions
         perm.actions = actions
         perm.field_restrictions = field_restrictions
         perm.updated_at = datetime.utcnow()
-        perm.save()
-        
-        # Log change
-        AccessAuditLog.objects.create(
+        db.session.add(AccessAuditLog(
             admin_id=get_jwt()['sub'],
             action='permission_changed',
             role=role,
             resource=resource,
             changes={'actions': {'from': old_actions, 'to': actions}},
             reason=reason,
-            ip_address=request.remote_addr,
-            timestamp=datetime.utcnow()
-        )
+            ip_address=request.remote_addr
+        ))
     else:
         perm = RolePermission(
             role=role,
@@ -2209,21 +2316,21 @@ def update_permissions():
             actions=actions,
             field_restrictions=field_restrictions
         )
-        perm.save()
-        
-        # Log creation
-        AccessAuditLog.objects.create(
+        db.session.add(perm)
+        db.session.add(AccessAuditLog(
             admin_id=get_jwt()['sub'],
             action='permission_created',
             role=role,
             resource=resource,
             reason=reason,
             ip_address=request.remote_addr
-        )
-    
+        ))
+
+    db.session.commit()
+
     # Invalidate cache
     invalidate_permission_cache(role, resource)
-    
+
     return {
         'status': 'success',
         'permission_id': str(perm.id),
@@ -2241,26 +2348,25 @@ def disable_role():
     
     if not role:
         return {'error': 'VALIDATION_MISSING_FIELD'}, 400
-    
+
     # Disable all permissions for this role
-    RolePermission.objects(role=role).update(set__is_enabled=False)
-    
-    # Log action
-    AccessAuditLog.objects.create(
+    RolePermission.query.filter_by(role=role).update({'is_enabled': False})
+    db.session.add(AccessAuditLog(
         admin_id=get_jwt()['sub'],
         action='role_disabled',
         role=role,
         reason=reason,
         ip_address=request.remote_addr
-    )
-    
+    ))
+    db.session.commit()
+
     # Clear all caches for this role
     from app import cache
     for resource in ['jobs', 'users', 'applications', 'admin', 'notifications']:
         cache.delete(f"perm:{role}:{resource}")
-    
+
     logger.critical(f"Role {role} disabled by admin {get_jwt()['sub']}: {reason}")
-    
+
     return {
         'status': 'success',
         'message': f'All permissions disabled for {role} role'
@@ -2277,21 +2383,20 @@ def enable_role():
     
     if not role:
         return {'error': 'VALIDATION_MISSING_FIELD'}, 400
-    
+
     # Enable all permissions for this role
-    RolePermission.objects(role=role).update(set__is_enabled=True)
-    
-    # Log action
-    AccessAuditLog.objects.create(
+    RolePermission.query.filter_by(role=role).update({'is_enabled': True})
+    db.session.add(AccessAuditLog(
         admin_id=get_jwt()['sub'],
         action='role_enabled',
         role=role,
         reason=reason,
         ip_address=request.remote_addr
-    )
-    
+    ))
+    db.session.commit()
+
     logger.info(f"Role {role} re-enabled by admin {get_jwt()['sub']}")
-    
+
     return {
         'status': 'success',
         'message': f'All permissions enabled for {role} role'
@@ -2305,20 +2410,20 @@ def get_audit_log():
     role = request.args.get('role')
     limit = int(request.args.get('limit', 50))
     offset = int(request.args.get('offset', 0))
-    
-    query = AccessAuditLog.objects()
-    
+
+    query = AccessAuditLog.query
+
     if role:
-        query = query(role=role)
-    
+        query = query.filter_by(role=role)
+
     total = query.count()
-    logs = query.order_by('-timestamp').skip(offset).limit(limit)
-    
+    logs  = query.order_by(AccessAuditLog.timestamp.desc()).offset(offset).limit(limit).all()
+
     return jsonify({
         'audit_logs': [
             {
                 'timestamp': log.timestamp.isoformat(),
-                'admin_id': log.admin_id,
+                'admin_id': str(log.admin_id),
                 'action': log.action,
                 'role': log.role,
                 'resource': log.resource,
@@ -2463,7 +2568,7 @@ curl -X GET "http://localhost:5000/api/v1/admin/permissions/audit-log?role=opera
 9. **API Versioning**: `/api/v1/` allows v2 without breaking v1 clients
 
 ### 🔒 Data Protection
-10. **MongoDB Auth**: Username/password authentication (authSource=hermes_db)
+10. **PostgreSQL Auth**: Username/password authentication (`pg_hba.conf`, `SQLALCHEMY_DATABASE_URI`)
 11. **Redis Auth**: Password protected (requirepass enforced)
 12. **HTTPS/SSL**: Let's Encrypt certificates (TLSv1.2+)
     - Automatic renewal (certbot)
@@ -2539,7 +2644,7 @@ logger.addHandler(handler)
 
 ### ⚡ Full-Text Search (Elasticsearch)
 
-**Problem**: Job listing with search = MongoDB text index is slow for large datasets
+**Problem**: Job listing with search = PostgreSQL full-text search (`tsvector`) can be slow for very large datasets
 
 **Solution**: Use dedicated Elasticsearch for job search
 
@@ -2621,12 +2726,14 @@ Memory usage: Should be < 500MB per container
 ### ⭐ Option 1: Docker Microservices (Recommended)
 
 **Containerized Architecture:**
-- 🐳 **6 Containers**: Nginx, Frontend, Backend, MongoDB, Redis, Celery
+- 🐳 **7 Core Containers**: Nginx Reverse Proxy, Frontend, Backend API, PostgreSQL, Redis, Celery Worker, Celery Beat
+- 🐳 **+8 Monitoring Containers** (optional): Prometheus, Grafana, AlertManager, Node Exporter, Postgres Exporter, Redis Exporter, Nginx Exporter, cAdvisor
 - ✅ **10-minute setup** vs 2-hour manual installation  
 - ✅ **Independent scaling** - Scale frontend/backend separately
 - ✅ **Zero-downtime updates** - Update services without full restart
 - ✅ **Built-in health checks** and auto-restart
 - ✅ **Service isolation** - Each component in separate container
+- ✅ **Complete monitoring** - Metrics, dashboards, and alerts included
 
 **Quick Start:**
 ```bash
@@ -2635,7 +2742,7 @@ cd hermes
 
 # Configure environment
 cp .env.example .env
-nano .env  # Add your MongoDB, Redis, Email credentials
+nano .env  # Add your PostgreSQL, Redis, Email credentials
 
 # Deploy all services
 docker compose up -d --build
@@ -2654,12 +2761,13 @@ docker compose ps
 
 📘 **Complete Docker Guide**: [DOCKER_DEPLOYMENT.md](./DOCKER_DEPLOYMENT.md)
 
-### Option 2: Traditional Monolithic Deployment
+### Option 2: Production Deployment with Let's Encrypt SSL
 
-Single Flask application with Supervisor on Hostinger VPS.  
-See "Hostinger VPS Deployment Guide" below for full instructions.
+Same separated architecture (Backend + Frontend) with SSL certificates from Let's Encrypt.
 
-**Note**: For production, Docker microservices architecture is recommended for better scalability and maintenance.
+**Docker-based**: Nginx is included in `src/nginx/docker-compose.yml`. Configure SSL in `src/nginx/nginx.conf`.
+
+**Host-based**: Install Nginx on host machine and use certbot for automatic SSL renewal. See instructions below.
 
 ---
 
@@ -2694,11 +2802,11 @@ See "Hostinger VPS Deployment Guide" below for full instructions.
 │  ┌─────────┼──────────────────────────────────────────────┐ │
 │  │         │                                               │ │
 │  │    ┌────▼─────┐  ┌──────────┐  ┌──────────┐  ┌──────┐│ │
-│  │    │ MongoDB  │  │  Redis   │  │  Celery  │  │Celery││ │
+│  │    │PostgreSQL│  │  Redis   │  │  Celery  │  │Celery││ │
 │  │    │Container │  │Container │  │  Worker  │  │ Beat ││ │
 │  │    │          │  │          │  │Container │  │ Cont ││ │
 │  │    │- Port    │  │- Port    │  │          │  │      ││ │
-│  │    │  27017   │  │  6379    │  │- Emails  │  │-Cron ││ │
+│  │    │  5432    │  │  6379    │  │- Emails  │  │-Cron ││ │
 │  │    │- Auth    │  │- Cache   │  │- Notify  │  │Tasks ││ │
 │  │    │- Persist │  │- Queue   │  │- Match   │  │      ││ │
 │  │    └──────────┘  └──────────┘  └──────────┘  └──────┘│ │
@@ -2706,7 +2814,7 @@ See "Hostinger VPS Deployment Guide" below for full instructions.
 │  │        Docker Bridge Network (hermes_network)        │ │
 │  └───────────────────────────────────────────────────────┘ │
 │                                                             │
-│  Volumes: mongodb_data, redis_data, backend_logs          │
+│  Volumes: postgresql_data, redis_data, backend_logs        │
 └─────────────────────────────────────────────────────────────┘
 
         Internet ↕️ HTTPS (Port 443)
@@ -2737,9 +2845,9 @@ See "Hostinger VPS Deployment Guide" below for full instructions.
 │  ┌─────────────────┼─────────────────────────────┐    │
 │  │                 │                             │    │
 │  │  ┌──────────────▼──────────┐  ┌─────────────┐│    │
-│  │  │     MongoDB             │  │   Redis     ││    │
-│  │  │  - Port 27017           │  │ - Port 6379 ││    │
-│  │  │  - Local/Atlas          │  │ - Cache     ││    │
+│  │  │     PostgreSQL          │  │   Redis     ││    │
+│  │  │  - Port 5432            │  │ - Port 6379 ││    │
+│  │  │  - Local/RDS            │  │ - Cache     ││    │
 │  │  └─────────────────────────┘  │ - Sessions  ││    │
 │  │                                │ - Celery    ││    │
 │  │                                └─────────────┘│    │
@@ -2872,7 +2980,7 @@ hermes/
 │       ├── cert.pem
 │       └── key.pem
 │
-├── mongo-init.js                      # MongoDB initialization
+├── init.sql                           # PostgreSQL initialization (DDL + indexes)
 ├── docker-compose.yml                 # All services orchestration
 ├── .env                               # Environment variables
 ├── .env.example
@@ -2888,7 +2996,7 @@ hermes/
 ```txt
 # Flask Framework
 Flask==3.0.0
-Flask-PyMongo==2.3.0
+Flask-SQLAlchemy==3.1.1
 Flask-Login==0.6.3
 Flask-JWT-Extended==4.5.3
 Flask-Mail==0.9.1
@@ -2896,7 +3004,8 @@ Flask-WTF==1.2.1
 Flask-Cors==4.0.0
 
 # Database & Caching
-pymongo==4.6.0
+psycopg2-binary==2.9.9
+alembic==1.13.0
 redis==5.0.1
 
 # Background Tasks
@@ -2937,7 +3046,7 @@ sentry-sdk[flask]==1.39.0
 
 ### Resource Usage Estimates
 - **Flask App (3 Gunicorn workers)**: ~1.5GB RAM
-- **MongoDB**: ~1GB RAM
+- **PostgreSQL**: Idle ~500MB; Active ~1-4GB RAM
 - **Redis**: ~500MB RAM
 - **Celery Workers**: ~500MB RAM
 - **System & Nginx**: ~500MB RAM
@@ -2950,8 +3059,9 @@ FLASK_APP=run.py
 FLASK_ENV=development
 SECRET_KEY=your-secret-key-here
 
-# MongoDB Configuration
-MONGO_URI=mongodb://localhost:27017/hermes
+# PostgreSQL Configuration
+SQLALCHEMY_DATABASE_URI=postgresql://hermes_user:your_db_password@localhost:5432/hermes_db
+DB_POOL_SIZE=20
 
 # Redis Configuration
 REDIS_URL=redis://localhost:6379/0
@@ -2986,7 +3096,7 @@ ADMIN_EMAIL=admin@hermes.com
 
 ### Phase 1: Setup & Core (Week 1-2)
 - Project setup and environment configuration
-- Database schema design and MongoDB setup
+- Database schema design and PostgreSQL setup
 - User authentication system
 - Basic profile management
 
@@ -3070,13 +3180,14 @@ sudo ufw enable
 # Install Python 3.11 and dependencies
 sudo apt install python3.11 python3.11-venv python3-pip -y
 
-# Install MongoDB
-wget -qO - https://www.mongodb.org/static/pgp/server-7.0.asc | sudo apt-key add -
-echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/7.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-7.0.list
+# Install PostgreSQL 16
+sudo apt install -y gnupg curl
+curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/postgresql.gpg
+echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
 sudo apt update
-sudo apt install -y mongodb-org
-sudo systemctl start mongod
-sudo systemctl enable mongod
+sudo apt install -y postgresql-16 postgresql-client-16
+sudo systemctl start postgresql
+sudo systemctl enable postgresql
 
 # Install Redis
 sudo apt install redis-server -y
@@ -3258,50 +3369,32 @@ sudo certbot --nginx -d yourdomain.com -d www.yourdomain.com
 sudo certbot renew --dry-run
 ```
 
-### Step 9: Setup MongoDB (Production Configuration)
+### Step 9: Setup PostgreSQL (Production Configuration)
 
 ```bash
-# Secure MongoDB
-sudo nano /etc/mongod.conf
+# Create database and user
+sudo -u postgres psql
 ```
 
-```yaml
-# MongoDB Configuration
-net:
-  port: 27017
-  bindIp: 127.0.0.1
-
-security:
-  authorization: enabled
-
-storage:
-  dbPath: /var/lib/mongodb
-  journal:
-    enabled: true
+```sql
+CREATE USER hermes_user WITH PASSWORD 'your_strong_password';
+CREATE DATABASE hermes_db OWNER hermes_user;
+GRANT ALL PRIVILEGES ON DATABASE hermes_db TO hermes_user;
+\q
 ```
 
 ```bash
-# Create MongoDB admin user
-mongosh
+# Restrict remote access (bind to localhost only)
+sudo nano /etc/postgresql/16/main/postgresql.conf
+# Set: listen_addresses = 'localhost'
 
-use admin
-db.createUser({
-  user: "admin",
-  pwd: "your_strong_password",
-  roles: [ { role: "userAdminAnyDatabase", db: "admin" }, "readWriteAnyDatabase" ]
-})
+# Run Alembic migrations
+cd /home/hermes/hermes
+source venv/bin/activate
+flask db upgrade
 
-use hermes
-db.createUser({
-  user: "hermes_user",
-  pwd: "your_db_password",
-  roles: [ { role: "readWrite", db: "hermes" } ]
-})
-
-exit
-
-# Restart MongoDB
-sudo systemctl restart mongod
+# Verify connection
+psql -h localhost -U hermes_user -d hermes_db -c "\dt"
 ```
 
 ### Step 10: Environment Variables for Production
@@ -3316,8 +3409,9 @@ FLASK_APP=run.py
 FLASK_ENV=production
 SECRET_KEY=your-production-secret-key-min-32-chars
 
-# MongoDB Configuration
-MONGO_URI=mongodb://hermes_user:your_db_password@localhost:27017/hermes?authSource=hermes
+# PostgreSQL Configuration
+SQLALCHEMY_DATABASE_URI=postgresql://hermes_user:your_db_password@localhost:5432/hermes_db
+DB_POOL_SIZE=20
 
 # Redis Configuration
 REDIS_URL=redis://localhost:6379/0
@@ -3352,42 +3446,39 @@ APP_URL=https://yourdomain.com
 
 ```bash
 # Create backup script
-nano /home/hermes/backup_mongodb.sh
+nano /home/hermes/backup_postgresql.sh
 ```
 
 ```bash
 #!/bin/bash
-# MongoDB Backup Script
+# PostgreSQL Backup Script
 
-BACKUP_DIR="/home/hermes/backups/mongodb"
+BACKUP_DIR="/home/hermes/backups/postgresql"
 DATE=$(date +"%Y%m%d_%H%M%S")
-BACKUP_NAME="hermes_backup_$DATE"
+BACKUP_NAME="hermes_backup_$DATE.dump"
 
 # Create backup directory
 mkdir -p $BACKUP_DIR
 
-# Dump MongoDB
-mongodump --uri="mongodb://hermes_user:your_db_password@localhost:27017/hermes?authSource=hermes" --out="$BACKUP_DIR/$BACKUP_NAME"
-
-# Compress backup
-cd $BACKUP_DIR
-tar -czf "$BACKUP_NAME.tar.gz" "$BACKUP_NAME"
-rm -rf "$BACKUP_NAME"
+# Dump PostgreSQL (custom format – compressed, supports parallel restore)
+PGPASSWORD="your_db_password" pg_dump \
+  -h localhost -U hermes_user -d hermes_db \
+  -F c -f "$BACKUP_DIR/$BACKUP_NAME"
 
 # Delete backups older than 7 days
-find $BACKUP_DIR -name "*.tar.gz" -type f -mtime +7 -delete
+find $BACKUP_DIR -name "*.dump" -type f -mtime +7 -delete
 
-echo "Backup completed: $BACKUP_NAME.tar.gz"
+echo "Backup completed: $BACKUP_NAME"
 ```
 
 ```bash
 # Make script executable
-chmod +x /home/hermes/backup_mongodb.sh
+chmod +x /home/hermes/backup_postgresql.sh
 
 # Add to crontab (daily at 2 AM)
 crontab -e
 # Add this line:
-0 2 * * * /home/hermes/backup_mongodb.sh >> /home/hermes/logs/backup.log 2>&1
+0 2 * * * /home/hermes/backup_postgresql.sh >> /home/hermes/logs/backup.log 2>&1
 ```
 
 ### Step 12: Setup Log Rotation
@@ -3420,6 +3511,7 @@ cd /home/hermes/hermes
 git pull origin main
 source venv/bin/activate
 pip install -r requirements.txt
+flask db upgrade
 sudo supervisorctl restart all
 
 # View logs
@@ -3429,7 +3521,7 @@ sudo supervisorctl tail -f hermes stderr
 # Check status
 sudo supervisorctl status
 sudo systemctl status nginx
-sudo systemctl status mongod
+sudo systemctl status postgresql
 sudo systemctl status redis-server
 
 # Restart services
@@ -3441,9 +3533,9 @@ sudo systemctl restart nginx
 
 1. **Application Monitoring**: Use tools like Sentry for error tracking
 2. **Performance Monitoring**: Monitor API response times with Nginx logs
-3. **Database Monitoring**: MongoDB monitoring with mongostat and mongotop
+3. **Database Monitoring**: PostgreSQL monitoring with `pg_stat_activity`, `pg_stat_user_tables`, and `EXPLAIN ANALYZE`
 4. **Log Management**: Centralized logging with logrotate
-5. **Backup Strategy**: Daily automated MongoDB backups (retention: 7 days)
+5. **Backup Strategy**: Daily automated PostgreSQL backups via `pg_dump` (retention: 7 days)
 6. **Update Schedule**: Weekly security patches, monthly feature updates
 7. **Server Monitoring**: Use htop, iostat for resource monitoring
 8. **Uptime Monitoring**: UptimeRobot or similar service
@@ -3498,16 +3590,16 @@ workers = 2  # Instead of 3
 sudo supervisorctl restart all
 ```
 
-### MongoDB Connection Issues
+### PostgreSQL Connection Issues
 ```bash
-# Check MongoDB status
-sudo systemctl status mongod
+# Check PostgreSQL status
+sudo systemctl status postgresql
 
-# Check MongoDB logs
-sudo tail -f /var/log/mongodb/mongod.log
+# Check PostgreSQL logs
+sudo tail -f /var/log/postgresql/postgresql-16-main.log
 
 # Test connection
-mongosh "mongodb://hermes_user:password@localhost:27017/hermes"
+psql -h localhost -U hermes_user -d hermes_db -c "SELECT 1;"
 ```
 
 ### Celery Tasks Not Running

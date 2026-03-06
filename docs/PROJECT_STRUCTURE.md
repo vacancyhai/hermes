@@ -15,7 +15,6 @@ hermes/
 │   ├── INDEX.md                       # Documentation index
 │   ├── PROJECT_SUMMARY.md             # Quick start guide
 │   ├── DOCKER_DEPLOYMENT.md           # Docker deployment guide
-│   ├── JINJA2_TEMPLATES_GUIDE.md      # Frontend templating guide (Flask)
 │   ├── WORKFLOW_DIAGRAMS.md           # System workflow diagrams
 │   └── PROJECT_STRUCTURE.md           # This file
 │
@@ -25,12 +24,13 @@ hermes/
 │   ├── EPIC_03_USER_AUTHENTICATION.md
 │   └── ... (12 epic files total)
 │
-├── src/                               # 🚀 SOURCE CODE (Backend + Frontend SEPARATED)
+├── src/                               # 🚀 SOURCE CODE (Microservices - MODULAR & INDEPENDENT)
+│   │                                  # 4 independent services, each with own docker-compose.yml
 │   │
 │   ├── backend/                       # 🔧 BACKEND SERVICE (INDEPENDENT)
 │   │   │
 │   │   ├── docker-compose.yml        # Backend orchestration
-│   │   │                              # Services: MongoDB, Redis, Backend API, Celery Worker, Celery Beat
+│   │   │                              # Services: PostgreSQL, Redis, Backend API, Celery Worker, Celery Beat
 │   │   ├── Dockerfile                # Backend container definition
 │   │   ├── requirements.txt          # Python dependencies
 │   │   ├── .env.example              # Backend environment template
@@ -41,7 +41,7 @@ hermes/
 │   │   ├── app/
 │   │   │   ├── __init__.py               # Flask app factory
 │   │   │   │
-│   │   │   ├── models/                   # 📊 Database models (MongoDB)
+│   │   │   ├── models/                   # 📊 SQLAlchemy ORM models (PostgreSQL)
 │   │   │   │   ├── __init__.py
 │   │   │   │   ├── user.py              # User model
 │   │   │   │   ├── job.py               # Job posting model
@@ -97,7 +97,7 @@ hermes/
 │   │   ├── config/                       # ⚙️ Configuration files
 │   │   │   ├── __init__.py
 │   │   │   ├── settings.py              # App settings (JWT, rate limits, timeouts)
-│   │   │   ├── database.py              # MongoDB connection with pooling
+│   │   │   ├── database.py              # PostgreSQL connection with SQLAlchemy pooling
 │   │   │   ├── redis_config.py          # Redis connection with keepalive
 │   │   │   └── celery_config.py         # Celery configuration with task routing
 │   │   │
@@ -115,115 +115,135 @@ hermes/
 │   │       ├── app.log
 │   │       └── error.log
 │   │
+│   ├── frontend/                      # 🎨 FRONTEND SERVICE (INDEPENDENT)
+│   │   │                              # 🔄 Can be replaced with React, React Native, iOS, Android
+│   │   │                              # Current: Flask + Jinja2 (SSR)
+│   │   │                              # Future: React SPA / Mobile Apps
+│   │   │
+│   │   ├── docker-compose.yml        # Frontend orchestration (Frontend only)
+│   │   ├── Dockerfile                # Frontend container definition
+│   │   ├── requirements.txt          # Python dependencies (Flask version)
+│   │   ├── .env.example              # Frontend environment template
+│   │   ├── .dockerignore
+│   │   ├── run.py                    # Frontend entry point
+│   │   ├── README.md                 # Frontend-specific documentation
+│   │   │
+│   │   ├── app/
+│   │   │   ├── __init__.py              # Flask app factory
+│   │   │   │
+│   │   │   ├── routes/                   # 🛣️ Page routes
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── main.py              # / (homepage)
+│   │   │   │   ├── auth.py              # /login, /register, /logout
+│   │   │   │   ├── jobs.py              # /jobs, /jobs/<id>
+│   │   │   │   ├── profile.py           # /profile, /settings
+│   │   │   │   ├── admin.py             # /admin/*
+│   │   │   │   └── errors.py            # Error pages (404, 500)
+│   │   │   │
+│   │   │   ├── utils/                    # 🛠️ Utility functions
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── api_client.py        # Backend API HTTP client
+│   │   │   │   │                         # Calls: http://BACKEND_API_URL/api/v1/*
+│   │   │   │   ├── session_manager.py   # Session handling
+│   │   │   │   └── helpers.py           # Template helpers
+│   │   │   │
+│   │   │   └── middleware/               # 🔐 Middleware
+│   │   │       ├── __init__.py
+│   │   │       ├── auth_middleware.py   # Login required decorator
+│   │   │       └── error_handler.py     # Error handling
+│   │   │
+│   │   ├── templates/                    # 📄 Jinja2 templates (Flask only)
+│   │   │   │                             # NOTE: Remove this folder for React/Mobile
+│   │   │   ├── layouts/                 # Base layouts
+│   │   │   │   ├── base.html            # Main layout
+│   │   │   │   ├── admin.html           # Admin layout
+│   │   │   │   └── minimal.html         # Minimal layout (auth pages)
+│   │   │   │
+│   │   │   ├── components/              # Reusable components
+│   │   │   │   ├── navbar.html
+│   │   │   │   ├── footer.html
+│   │   │   │   ├── sidebar.html
+│   │   │   │   ├── job_card.html
+│   │   │   │   ├── notification_item.html
+│   │   │   │   └── pagination.html
+│   │   │   │
+│   │   │   └── pages/                   # Page templates
+│   │   │       ├── index.html           # Homepage
+│   │   │       │
+│   │   │       ├── auth/                # Authentication pages
+│   │   │       │   ├── login.html
+│   │   │       │   ├── register.html
+│   │   │       │   └── forgot_password.html
+│   │   │       │
+│   │   │       ├── jobs/                # Job-related pages
+│   │   │       │   ├── list.html        # Job listings
+│   │   │       │   ├── detail.html      # Job detail page
+│   │   │       │   └── search.html      # Job search
+│   │   │       │
+│   │   │       ├── profile/             # User profile pages
+│   │   │       │   ├── dashboard.html   # User dashboard
+│   │   │       │   ├── settings.html    # Profile settings
+│   │   │       │   ├── applications.html # My applications
+│   │   │       │   └── notifications.html
+│   │   │       │
+│   │   │       └── admin/               # Admin pages
+│   │   │           ├── dashboard.html
+│   │   │           ├── jobs_manage.html
+│   │   │           ├── users_manage.html
+│   │   │           └── analytics.html
+│   │   │
+│   │   ├── static/                       # 📦 Static assets (Flask only)
+│   │   │   │                             # NOTE: Remove this folder for React/Mobile
+│   │   │   ├── css/
+│   │   │   │   ├── main.css             # Main stylesheet
+│   │   │   │   ├── auth.css             # Auth pages styles
+│   │   │   │   ├── jobs.css             # Job pages styles
+│   │   │   │   └── admin.css            # Admin styles
+│   │   │   │
+│   │   │   ├── js/
+│   │   │   │   ├── main.js              # Main JavaScript
+│   │   │   │   ├── jobs.js              # Job interactions
+│   │   │   │   ├── notifications.js     # Notification handling
+│   │   │   │   └── admin.js             # Admin functionality
+│   │   │   │
+│   │   │   ├── images/
+│   │   │   │   ├── logo.png
+│   │   │   │   ├── favicon.ico
+│   │   │   │   └── placeholder.jpg
+│   │   │   │
+│   │   │   └── fonts/                   # Custom fonts
+│   │   │
+│   │   ├── config/                       # ⚙️ Configuration
+│   │   │   ├── __init__.py
+│   │   │   └── settings.py
+│   │   │
+│   │   └── tests/                        # 🧪 Frontend tests
+│   │       ├── unit/
+│   │       │   └── test_utils.py
+│   │       └── integration/
+│   │           ├── test_routes.py
+│   │           └── test_templates.py
 │   │
-│   └── frontend/                      # 🎨 FRONTEND SERVICE (INDEPENDENT)
-│       │                              # 🔄 Can be replaced with React, React Native, iOS, Android
-│       │                              # Current: Flask + Jinja2 (SSR)
-│       │                              # Future: React SPA / Mobile Apps
+│   ├── nginx/                         # 🌐 NGINX REVERSE PROXY SERVICE (INDEPENDENT)
+│   │   │
+│   │   ├── docker-compose.yml        # Nginx orchestration (single container)
+│   │   ├── nginx.conf                # 🔧 Nginx configuration (local)
+│   │   ├── ssl/                      # 📁 SSL certificates directory (optional)
+│   │   ├── .env.example              # Nginx environment configuration
+│   │   └── README.md                 # Nginx-specific documentation
+│   │                                  # All configs bundled with service
+│   │
+│   └── monitoring/                    # 📊 MONITORING STACK SERVICE (INDEPENDENT)
 │       │
-│       ├── docker-compose.yml        # Frontend orchestration (Frontend only)
-│       ├── Dockerfile                # Frontend container definition
-│       ├── requirements.txt          # Python dependencies (Flask version)
-│       ├── .env.example              # Frontend environment template
-│       ├── .dockerignore
-│       ├── run.py                    # Frontend entry point
-│       ├── README.md                 # Frontend-specific documentation
-│       │
-│       ├── app/
-│       │   ├── __init__.py              # Flask app factory
-│       │   │
-│       │   ├── routes/                   # 🛣️ Page routes
-│       │   │   ├── __init__.py
-│       │   │   ├── main.py              # / (homepage)
-│       │   │   ├── auth.py              # /login, /register, /logout
-│       │   │   ├── jobs.py              # /jobs, /jobs/<id>
-│       │   │   ├── profile.py           # /profile, /settings
-│       │   │   ├── admin.py             # /admin/*
-│       │   │   └── errors.py            # Error pages (404, 500)
-│       │   │
-│       │   ├── utils/                    # 🛠️ Utility functions
-│       │   │   ├── __init__.py
-│       │   │   ├── api_client.py        # Backend API HTTP client
-│       │   │   │                         # Calls: http://BACKEND_API_URL/api/v1/*
-│       │   │   ├── session_manager.py   # Session handling
-│       │   │   └── helpers.py           # Template helpers
-│       │   │
-│       │   └── middleware/               # 🔐 Middleware
-│       │       ├── __init__.py
-│       │       ├── auth_middleware.py   # Login required decorator
-│       │       └── error_handler.py     # Error handling
-│       │
-│       ├── templates/                    # 📄 Jinja2 templates (Flask only)
-│       │   │                             # NOTE: Remove this folder for React/Mobile
-│       │   ├── layouts/                 # Base layouts
-│       │   │   ├── base.html            # Main layout
-│       │   │   ├── admin.html           # Admin layout
-│       │   │   └── minimal.html         # Minimal layout (auth pages)
-│       │   │
-│       │   ├── components/              # Reusable components
-│       │   │   ├── navbar.html
-│       │   │   ├── footer.html
-│       │   │   ├── sidebar.html
-│       │   │   ├── job_card.html
-│       │   │   ├── notification_item.html
-│       │   │   └── pagination.html
-│       │   │
-│       │   └── pages/                   # Page templates
-│       │       ├── index.html           # Homepage
-│       │       │
-│       │       ├── auth/                # Authentication pages
-│       │       │   ├── login.html
-│       │       │   ├── register.html
-│       │       │   └── forgot_password.html
-│       │       │
-│       │       ├── jobs/                # Job-related pages
-│       │       │   ├── list.html        # Job listings
-│       │       │   ├── detail.html      # Job detail page
-│       │       │   └── search.html      # Job search
-│       │       │
-│       │       ├── profile/             # User profile pages
-│       │       │   ├── dashboard.html   # User dashboard
-│       │       │   ├── settings.html    # Profile settings
-│       │       │   ├── applications.html # My applications
-│       │       │   └── notifications.html
-│       │       │
-│       │       └── admin/               # Admin pages
-│       │           ├── dashboard.html
-│       │           ├── jobs_manage.html
-│       │           ├── users_manage.html
-│       │           └── analytics.html
-│       │
-│       ├── static/                       # 📦 Static assets (Flask only)
-│       │   │                             # NOTE: Remove this folder for React/Mobile
-│       │   ├── css/
-│       │   │   ├── main.css             # Main stylesheet
-│       │   │   ├── auth.css             # Auth pages styles
-│       │   │   ├── jobs.css             # Job pages styles
-│       │   │   └── admin.css            # Admin styles
-│       │   │
-│       │   ├── js/
-│       │   │   ├── main.js              # Main JavaScript
-│       │   │   ├── jobs.js              # Job interactions
-│       │   │   ├── notifications.js     # Notification handling
-│       │   │   └── admin.js             # Admin functionality
-│       │   │
-│       │   ├── images/
-│       │   │   ├── logo.png
-│       │   │   ├── favicon.ico
-│       │   │   └── placeholder.jpg
-│       │   │
-│       │   └── fonts/                   # Custom fonts
-│       │
-│       ├── config/                       # ⚙️ Configuration
-│       │   ├── __init__.py
-│       │   └── settings.py
-│       │
-│       └── tests/                        # 🧪 Frontend tests
-│           ├── unit/
-│           │   └── test_utils.py
-│           └── integration/
-│               ├── test_routes.py
-│               └── test_templates.py
+│       ├── docker-compose.yml        # Monitoring orchestration (8 services)
+│       ├── prometheus.yml            # 🔧 Prometheus scrape config (local)
+│       ├── alert_rules.yml           # 📋 40+ alert rules (local)
+│       ├── alertmanager.yml          # 🔔 Alert routing config (local)
+│       ├── grafana_datasources.yml   # 📊 Grafana datasources (local)
+│       ├── .env.example              # Monitoring environment configuration
+│       └── README.md                 # Monitoring-specific documentation
+│                                      # All configs bundled with service  
+
 │
 ├── config/                           # 🌍 Environment configs (shared reference only)
 │   ├── production/
@@ -249,7 +269,7 @@ hermes/
 │   │   └── restore_db.sh            # Database restore
 │   │
 │   └── migration/
-│       ├── init_db.js               # Initialize MongoDB
+│       ├── init_db.sql              # Initialize PostgreSQL schema (DDL + indexes)
 │       └── seed_data.py             # Seed sample data
 │
 ├── tests/                            # 🧪 End-to-end tests
@@ -323,7 +343,7 @@ Frontend (any tech) → HTTP → Backend API (http://backend-url:5000/api/v1/*)
 ### 6. **Production Ready**
 - Health checks for all containers
 - Redis AOF persistence for task queue
-- MongoDB connection pooling (50 max)
+- PostgreSQL connection pooling (SQLAlchemy pool_size=20)
 - Graceful degradation patterns
 - API response SLAs (< 200ms for reads)
 - Comprehensive audit logging
@@ -333,7 +353,7 @@ Frontend (any tech) → HTTP → Backend API (http://backend-url:5000/api/v1/*)
 ### Backend Structure (`src/backend/`)
 
 **Complete Backend Ecosystem:**
-- MongoDB (Database)
+- PostgreSQL (Database)
 - Redis (Cache + Task Queue)
 - Backend API (Flask REST)
 - Celery Worker (Background tasks)
@@ -342,7 +362,7 @@ Frontend (any tech) → HTTP → Backend API (http://backend-url:5000/api/v1/*)
 All orchestrated via `src/backend/docker-compose.yml`
 
 #### `/backend/app/models/`
-MongoDB document models using PyMongo or MongoEngine. Each model represents a collection with proper indexing and TTL (Time To Live) for auto-cleanup.
+SQLAlchemy ORM models mapped to PostgreSQL tables. Each model uses UUID primary keys, proper foreign keys, and JSONB columns for flexible nested data. Indexes are defined via Alembic migrations.
 
 #### `/backend/app/routes/`
 API v1 endpoints organized by resource. Returns standardized JSON responses with error codes. All routes prefixed with `/api/v1/`.
@@ -393,7 +413,7 @@ CSS, JavaScript, images served directly. **NOTE**: Remove this when migrating to
 │   Port: 5000              │ REST  │   Port: 8080 or any      │
 │                           │ API   │                          │
 │   docker-compose.yml:     │       │   docker-compose.yml:    │
-│   - MongoDB               │       │   - Frontend only        │
+│   - PostgreSQL            │       │   - Frontend only        │
 │   - Redis                 │       │                          │
 │   - Backend API           │       │   Calls backend via:     │
 │   - Celery Worker         │       │   http://backend:5000    │
@@ -551,7 +571,7 @@ src/frontend-mobile/
 - **API Versioning**: `/api/v1/` for safe upgrades
 
 ### Data Security
-- **MongoDB Authentication**: Password-protected with connection pooling
+- **PostgreSQL Authentication**: Password-protected via `pg_hba.conf` and `SQLALCHEMY_DATABASE_URI`
 - **Redis Authentication**: Password + AOF persistence
 - **Environment Variables**: Secrets in `.env` files
 
@@ -564,7 +584,7 @@ src/frontend-mobile/
 ## 📊 Performance Optimizations
 
 ### Connection Pooling
-- **MongoDB**: maxPoolSize=50, minPoolSize=10
+- **PostgreSQL**: SQLAlchemy `pool_size=20`, `max_overflow=30`, `pool_pre_ping=True`
 - **Redis**: 50 max connections, socket keepalive enabled
 
 ### Caching Strategy

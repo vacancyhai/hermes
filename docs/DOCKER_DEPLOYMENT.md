@@ -7,7 +7,7 @@
 **Container Breakdown:**
 
 ### Backend Service (`src/backend/docker-compose.yml`):
-1. **MongoDB** - Database with TTL indexes
+1. **PostgreSQL** - Database with SQLAlchemy ORM
 2. **Redis** - Cache + Queue (AOF persistence)
 3. **Backend API** - Flask REST API (/api/v1/*)
 4. **Celery Worker** - Background task executor (scalable: 1-N)
@@ -70,9 +70,9 @@
 │                             │ API  │                              │
 │  docker-compose.yml         │      │  docker-compose.yml          │
 │  ┌─────────────────┐        │      │  ┌──────────────────┐       │
-│  │ 1. MongoDB      │        │      │  │ Frontend         │       │
+│  │ 1. PostgreSQL   │        │      │  │ Frontend         │       │
 │  │    - Database   │        │      │  │ - Flask/Jinja2   │       │
-│  │    - Port 27017 │        │      │  │ - Calls Backend  │       │
+│  │    - Port 5432  │        │      │  │ - Calls Backend  │       │
 │  │    - Persistent │        │      │  │   via HTTP       │       │
 │  └─────────────────┘        │      │  │ - Renders HTML   │       │
 │                             │      │  └──────────────────┘       │
@@ -134,7 +134,7 @@ Backend Service (src/backend/ - Port 5000)
     ├─ Rate limiting
     ├─ Route → Service → Model
     ↓
-MongoDB / Redis
+PostgreSQL / Redis
     ↓
 Response: JSON
     ├─ Status: 200/400/401/500
@@ -233,24 +233,24 @@ CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--workers", "2", "--timeout", "30", 
 version: '3.8'
 
 services:
-  # MongoDB Database
-  mongodb:
-    image: mongo:7.0
-    container_name: hermes_backend_mongodb
+  # PostgreSQL Database
+  postgresql:
+    image: postgres:16-alpine
+    container_name: hermes_backend_postgresql
     restart: unless-stopped
     environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
-      MONGO_INITDB_DATABASE: hermes
+      POSTGRES_USER: hermes_user
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: hermes_db
     volumes:
-      - mongodb_data:/data/db
-      - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+      - postgresql_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     ports:
-      - "27017:27017"  # Expose to host (optional for external access)
+      - "5432:5432"  # Expose to host (optional for external access)
     networks:
       - backend_network
     healthcheck:
-      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/hermes_db --quiet
+      test: ["CMD-SHELL", "pg_isready -U hermes_user -d hermes_db"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -284,7 +284,8 @@ services:
       - FLASK_ENV=production
       - SECRET_KEY=${SECRET_KEY}
       - JWT_SECRET_KEY=${JWT_SECRET_KEY}
-      - MONGO_URI=mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongodb:27017/hermes_db?authSource=hermes_db
+      - SQLALCHEMY_DATABASE_URI=postgresql://hermes_user:${DB_PASSWORD}@postgresql:5432/hermes_db
+      - DB_POOL_SIZE=20
       - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/1
@@ -301,7 +302,7 @@ services:
     ports:
       - "${BACKEND_PORT:-5000}:5000"  # Expose backend API to host
     depends_on:
-      mongodb:
+      postgresql:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -323,7 +324,7 @@ services:
     restart: unless-stopped
     command: celery -A app.tasks.celery_app worker --loglevel=info --concurrency=4
     environment:
-      - MONGO_URI=mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongodb:27017/hermes_db?authSource=hermes_db
+      - SQLALCHEMY_DATABASE_URI=postgresql://hermes_user:${DB_PASSWORD}@postgresql:5432/hermes_db
       - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/1
@@ -335,7 +336,7 @@ services:
     volumes:
       - ./app:/app/app
     depends_on:
-      mongodb:
+      postgresql:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -353,14 +354,15 @@ services:
     restart: unless-stopped
     command: celery -A app.tasks.celery_app beat --loglevel=info
     environment:
-      - MONGO_URI=mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongodb:27017/hermes_db?authSource=hermes_db
+      - SQLALCHEMY_DATABASE_URI=postgresql://hermes_user:${DB_PASSWORD}@postgresql:5432/hermes_db
+      - DB_POOL_SIZE=20
       - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/1
     volumes:
       - ./app:/app/app
     depends_on:
-      mongodb:
+      postgresql:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -370,7 +372,7 @@ services:
       - backend_network
 
 volumes:
-  mongodb_data:
+  postgresql_data:
   redis_data:
   backend_logs:
 
@@ -381,7 +383,7 @@ networks:
 
 **Key Points:**
 - ✅ Backend runs on port 5000 (exposed to host)
-- ✅ All backend services (MongoDB, Redis, Celery) in one compose file
+- ✅ All backend services (PostgreSQL, Redis, Celery) in one compose file
 - ✅ Self-contained: Can run completely independently
 - ✅ CORS enabled to allow frontend requests
 
@@ -525,26 +527,25 @@ server {
 version: '3.8'
 
 services:
-  # MongoDB Database
+  # PostgreSQL Database
   # ⚡ IMPORTANT FOR PRODUCTION: This is single-node setup
-  # For production failover, setup 3-node replica set:
-  # - rs.initiate({_id: "rs0", members: [{_id: 0, host: "mongo1:27017"}, ...]})
+  # For production failover, setup read replicas or use managed PostgreSQL (RDS, Cloud SQL)
   # Current setup: Suitable for development/staging with single-node persistence
-  mongodb:
-    image: mongo:7.0
-    container_name: hermes_mongodb
+  postgresql:
+    image: postgres:16-alpine
+    container_name: hermes_postgresql
     restart: unless-stopped
     environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
-      MONGO_INITDB_DATABASE: hermes_db
+      POSTGRES_USER: hermes_user
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: hermes_db
     volumes:
-      - mongodb_data:/data/db
-      - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+      - postgresql_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     networks:
       - hermes_network
     healthcheck:
-      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/hermes_db --quiet
+      test: ["CMD-SHELL", "pg_isready -U hermes_user -d hermes_db"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -575,7 +576,7 @@ services:
 
 **Redis serves two purposes**:
 1. **Celery Broker** (task queue) - DB updates → Celery task → Redis → Workers execute
-2. **Cache Layer** (session/data cache) - App check Redis before querying MongoDB
+2. **Cache Layer** (session/data cache) - App check Redis before querying PostgreSQL
 
 **Cache-Aside Pattern** (Used throughout app):
 ```python
@@ -588,17 +589,18 @@ def get_jobs(limit=20, page=1):
     if cached:
         return json.loads(cached)  # Cache hit!
     
-    # Step 2: Cache miss - load from MongoDB
-    jobs = db.jobs.find().limit(limit).skip((page-1)*limit)
+    # Step 2: Cache miss - load from PostgreSQL
+    jobs = Job.query.order_by(Job.created_at.desc()).limit(limit).offset((page-1)*limit).all()
+    jobs_data = [j.to_dict() for j in jobs]
     
     # Step 3: Store in Redis for next request
     redis.setex(
         cache_key,
-        TTL=3600,  # 1 hour
-        value=json.dumps(jobs)
+        3600,  # 1 hour
+        json.dumps(jobs_data)
     )
     
-    return jobs
+    return jobs_data
 ```
 
 **Cache TTL by Data Type**:
@@ -628,59 +630,63 @@ def update_job(job_id):
 
 ---
 
-## ⚡ MongoDB Data Retention & TTL Cleanup
+## ⚡ PostgreSQL Data Retention & Scheduled Cleanup
 
-**TTL Indexes auto-delete old data** (saving storage costs):
+**`expires_at` column + Celery nightly purge** handle scheduled data cleanup (saving storage costs):
 
-```javascript
-// mongo-init.js - Create TTL Indexes
+```sql
+-- In init.sql - Add expires_at columns for auto-cleanup via Celery
 
-// Notifications: Auto-delete after 90 days (3 months)
-db.notifications.createIndex(
-  {"created_at": 1},
-  {expireAfterSeconds: 7776000}  // 90 days
-)
+-- Notifications: expires after 90 days
+ALTER TABLE notifications ADD COLUMN IF NOT EXISTS
+  expires_at TIMESTAMP DEFAULT (NOW() + INTERVAL '90 days');
 
-// Application Logs: Auto-delete after 30 days
-db.application_logs.createIndex(
-  {"timestamp": 1},
-  {expireAfterSeconds: 2592000}  // 30 days
-)
+-- Application Logs (admin_logs): expires after 30 days
+ALTER TABLE admin_logs ADD COLUMN IF NOT EXISTS
+  expires_at TIMESTAMP DEFAULT (NOW() + INTERVAL '30 days');
 
-// Email Events: Keep for 60 days (bounce/delivery tracking)
-db.email_events.createIndex(
-  {"created_at": 1},
-  {expireAfterSeconds: 5184000}  // 60 days
-)
+-- Search Logs: expires after 6 months
+ALTER TABLE search_logs ADD COLUMN IF NOT EXISTS
+  expires_at TIMESTAMP DEFAULT (NOW() + INTERVAL '180 days');
 
-// Audit Trail: Keep for 1 year (compliance requirement)
-db.audit_trail.createIndex(
-  {"created_at": 1},
-  {expireAfterSeconds: 31536000}  // 365 days
-)
+-- Create index on expires_at for fast cleanup queries
+CREATE INDEX IF NOT EXISTS idx_notifications_expires_at ON notifications(expires_at);
+CREATE INDEX IF NOT EXISTS idx_admin_logs_expires_at ON admin_logs(expires_at);
+CREATE INDEX IF NOT EXISTS idx_search_logs_expires_at ON search_logs(expires_at);
+```
 
-// Search History: Keep for 6 months
-db.search_history.createIndex(
-  {"timestamp": 1},
-  {expireAfterSeconds: 15552000}  // 180 days
-)
+**Celery Nightly Purge Task** (runs at 2:00 AM):
+```python
+# backend/app/tasks/maintenance.py
+from app import db
+from datetime import datetime
+
+@celery.task
+def purge_expired_rows():
+    """Delete expired rows from all tables with expires_at column."""
+    now = datetime.utcnow()
+    tables = [Notification, AdminLog, SearchLog]
+    for model in tables:
+        deleted = model.query.filter(model.expires_at <= now).delete()
+        db.session.commit()
+        logger.info(f"Purged {deleted} rows from {model.__tablename__}")
 ```
 
 **How It Works**:
 ```
-MongoDB runs cleanup job every 60 seconds (configurable)
-Reads all documents with TTL indexes
-Deletes any where (current_time - created_at) > TTL
+Celery Beat triggers purge_expired_rows() nightly at 2:00 AM
+Task queries all rows where expires_at <= NOW()
+Deletes expired rows and commits transaction
 Frees disk space automatically - no manual cleanup needed
 ```
 
 **Storage Benefits**:
 ```
-Without TTL:  100,000 notifications per month
+Without expires_at:  100,000 notifications per month
   × 12 months = 1.2M notifications stored forever
   Size: ~500 MB
 
-With 90-day TTL:  Only 300,000 notifications at any time
+With 90-day expires_at:  Only 300,000 notifications at any time
   Size: ~125 MB
   Savings: 75% disk space reduction
 ```
@@ -696,7 +702,8 @@ With 90-day TTL:  Only 300,000 notifications at any time
       - FLASK_ENV=production
       - SECRET_KEY=${SECRET_KEY}
       - JWT_SECRET_KEY=${JWT_SECRET_KEY}
-      - MONGO_URI=mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongodb:27017/hermes_db?authSource=hermes_db
+      - SQLALCHEMY_DATABASE_URI=postgresql://hermes_user:${DB_PASSWORD}@postgresql:5432/hermes_db
+      - DB_POOL_SIZE=20
       - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/1
@@ -710,7 +717,7 @@ With 90-day TTL:  Only 300,000 notifications at any time
       - backend_logs:/app/logs
     depends_on:
       # ⚡ Only start after dependencies are healthy
-      mongodb:
+      postgresql:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -772,7 +779,8 @@ With 90-day TTL:  Only 300,000 notifications at any time
     command: celery -A celery_worker.celery worker --loglevel=info --concurrency=2
     environment:
       - FLASK_ENV=production
-      - MONGO_URI=mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongodb:27017/hermes_db?authSource=hermes_db&maxPoolSize=50
+      - SQLALCHEMY_DATABASE_URI=postgresql://hermes_user:${DB_PASSWORD}@postgresql:5432/hermes_db
+      - DB_POOL_SIZE=20
       - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/1
@@ -785,7 +793,7 @@ With 90-day TTL:  Only 300,000 notifications at any time
       - ./backend:/app
     depends_on:
       # ⚡ Workers wait for queue to be ready
-      mongodb:
+      postgresql:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -807,7 +815,8 @@ With 90-day TTL:  Only 300,000 notifications at any time
     command: celery -A celery_worker.celery beat --loglevel=info
     environment:
       - FLASK_ENV=production
-      - MONGO_URI=mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongodb:27017/hermes_db?authSource=hermes_db
+      - SQLALCHEMY_DATABASE_URI=postgresql://hermes_user:${DB_PASSWORD}@postgresql:5432/hermes_db
+      - DB_POOL_SIZE=20
       - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
     volumes:
@@ -852,7 +861,7 @@ networks:
     driver: bridge
 
 volumes:
-  mongodb_data:
+  postgresql_data:
   redis_data:
   backend_logs:
 ```
@@ -888,115 +897,123 @@ Dockerfile
 node_modules/
 ```
 
-### 4. mongo-init.js (MongoDB Initialization)
+### 4. init.sql (PostgreSQL Initialization)
 
-```javascript
-// mongo-init.js
-db = db.getSiblingDB('hermes');
+```sql
+-- init.sql
+-- Creates application user and grants permissions
 
-db.createUser({
-  user: process.env.MONGO_USER,
-  pwd: process.env.MONGO_PASSWORD,
-  roles: [
-    {
-      role: 'readWrite',
-      db: 'hermes'
-    }
-  ]
-});
+CREATE USER hermes_user WITH PASSWORD :'DB_PASSWORD';
+CREATE DATABASE hermes_db OWNER hermes_user;
+GRANT ALL PRIVILEGES ON DATABASE hermes_db TO hermes_user;
 
-// ⚡ Production: Create TTL indexes for auto-cleanup
-// Notifications older than 90 days auto-delete
-db.notifications.createIndex({ "created_at": 1 }, { expireAfterSeconds: 7776000 });
+\c hermes_db
 
-// Old logs auto-delete after 30 days
-db.activity_logs.createIndex({ "created_at": 1 }, { expireAfterSeconds: 2592000 });
+-- Enable UUID extension
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
-// ⚡ Create necessary indexes for queries (MUST HAVE for performance)
-db.users.createIndex({ "email": 1 }, { unique: true });
-db.user_profiles.createIndex({ "user_id": 1 }, { unique: true });
+-- ⚡ Production: Create B-tree and GIN indexes for performance
+-- Users: unique email index
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email);
 
-// Job search indexes (critical for performance with filters)
-db.job_vacancies.createIndex({ "organization": 1 });
-db.job_vacancies.createIndex({ "status": 1 });
-db.job_vacancies.createIndex({ "created_at": -1 });
-db.job_vacancies.createIndex({ "eligibility.qualification": 1, "organization": 1 });
-db.job_vacancies.createIndex({ "important_dates.application_end": 1 });
+-- User profiles: unique user_id
+CREATE UNIQUE INDEX IF NOT EXISTS idx_user_profiles_user_id ON user_profiles(user_id);
 
-// Application tracking indexes
-db.user_job_applications.createIndex({ "user_id": 1, "job_id": 1 }, { unique: true });
-db.user_job_applications.createIndex({ "user_id": 1, "applied_date": -1 });
+-- Job search indexes (critical for performance with filters)
+CREATE INDEX IF NOT EXISTS idx_job_vacancies_organization ON job_vacancies(organization);
+CREATE INDEX IF NOT EXISTS idx_job_vacancies_status ON job_vacancies(status);
+CREATE INDEX IF NOT EXISTS idx_job_vacancies_created_at ON job_vacancies(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_job_vacancies_eligibility ON job_vacancies USING GIN (eligibility);
 
-// Notification query indexes
-db.notifications.createIndex({ "user_id": 1, "is_read": 1 });
-db.notifications.createIndex({ "user_id": 1, "created_at": -1 });
+-- Application tracking indexes
+CREATE UNIQUE INDEX IF NOT EXISTS idx_user_job_apps_user_job
+  ON user_job_applications(user_id, job_id);
+CREATE INDEX IF NOT EXISTS idx_user_job_apps_user_date
+  ON user_job_applications(user_id, applied_date DESC);
 
-print('MongoDB initialized with TTL and query indexes');
+-- Notification query indexes
+CREATE INDEX IF NOT EXISTS idx_notifications_user_read
+  ON notifications(user_id, is_read);
+CREATE INDEX IF NOT EXISTS idx_notifications_user_date
+  ON notifications(user_id, created_at DESC);
 ```
 
 ---
 
-### 4a. ⚡ Production MongoDB Replica Set Setup
+### 4a. ⚡ Production PostgreSQL High Availability Setup
 
-**Why Replica Set?** Single MongoDB instance = no failover. If it crashes, entire system is down.
+**Why HA?** Single PostgreSQL instance = no failover. If it crashes, the entire system is down.
 
-**For Production, setup 3-node replica set** (1 primary + 2 secondaries):
+**For Production, use streaming replication** (1 primary + 1 standby) or a managed service (AWS RDS, Google Cloud SQL):
 
 ```bash
-# After MongoDB is running, initialize replica set
-docker compose exec mongodb mongosh -u admin -p your_password
+# Check PostgreSQL is running and healthy
+docker compose exec postgresql pg_isready -U hermes_user -d hermes_db
 
-# Inside mongosh, run:
-rs.initiate({
-  _id: "rs0",
-  members: [
-    { _id: 0, host: "mongodb1:27017" },
-    { _id: 1, host: "mongodb2:27017" },
-    { _id: 2, host: "mongodb3:27017" }
-  ]
-});
+# Connect to PostgreSQL
+docker compose exec postgresql psql -U hermes_user -d hermes_db
 
-# Verify:
-rs.status()  # Primary shows as "PRIMARY", others as "SECONDARY"
+# Run migrations
+docker compose exec backend flask db upgrade
+
+# Verify tables created
+docker compose exec postgresql psql -U hermes_user -d hermes_db -c '\dt'
 ```
 
-**Update Connection String for Replica Set**:
+**Update Connection String for Read Replica** (optional):
 ```bash
-# Before (single node):
-MONGO_URI=mongodb://user:pass@mongodb:27017/hermes_db
+# Primary (read/write)
+SQLALCHEMY_DATABASE_URI=postgresql://hermes_user:pass@postgresql:5432/hermes_db
 
-# After (replica set):
-MONGO_URI=mongodb://user:pass@mongodb1:27017,mongodb2:27017,mongodb3:27017/hermes?replicaSet=rs0&authSource=admin
+# With read replica (using pgBouncer or SQLAlchemy routing)
+SQLALCHEMY_DATABASE_URI=postgresql://hermes_user:pass@pgbouncer:5432/hermes_db
 ```
 
 **Benefits**:
-- ✅ Automatic failover (primary crashes → secondary takes over)
-- ✅ Read scaling (read from secondaries)
-- ✅ Zero-downtime upgrades (upgrade one node at a time)
-- ✅ Data redundancy (3 copies of data)
+- ✅ Streaming replication for automatic failover
+- ✅ pg_dump for reliable backups
+- ✅ pg_stat_activity for query monitoring
+- ✅ JSONB + GIN indexes for flexible querying
 
-**Current Development Setup**: Single-node is fine, but add this before going to production.
+**Current Development Setup**: Single-node is fine; add streaming replication before going to production.
 
 ---
 
-### 4b. ⚡ MongoDB Connection Pooling Configuration
+### 4b. ⚡ SQLAlchemy Connection Pooling Configuration
 
 **Why Connection Pooling?** Creating new database connections is expensive (100-500ms). Connection pools reuse existing connections.
 
 **Configuration in Environment Variables:**
 ```bash
 # Development (low traffic)
-MONGO_URI=mongodb://user:pass@mongodb:27017/hermes?authSource=hermes&maxPoolSize=10&minPoolSize=2
+SQLALCHEMY_DATABASE_URI=postgresql://hermes_user:pass@postgresql:5432/hermes_db
+DB_POOL_SIZE=5
 
 # Production (high traffic)
-MONGO_URI=mongodb://user:pass@mongodb:27017/hermes?authSource=hermes&maxPoolSize=50&minPoolSize=10&maxIdleTimeMS=60000
+SQLALCHEMY_DATABASE_URI=postgresql://hermes_user:pass@postgresql:5432/hermes_db
+DB_POOL_SIZE=20
+```
+
+**SQLAlchemy Engine Configuration:**
+```python
+# backend/config/settings.py
+from sqlalchemy import create_engine
+
+engine = create_engine(
+    SQLALCHEMY_DATABASE_URI,
+    pool_size=20,          # Maximum 20 persistent connections
+    max_overflow=30,       # Allow 30 extra connections under load
+    pool_pre_ping=True,    # Verify connection health before use
+    pool_recycle=3600,     # Recycle connections after 1 hour
+    connect_args={"connect_timeout": 5}
+)
 ```
 
 **Connection Pool Parameters:**
-- `maxPoolSize=50` - Maximum 50 concurrent connections
-- `minPoolSize=10` - Always keep 10 connections ready
-- `maxIdleTimeMS=60000` - Close idle connections after 60 seconds
-- `waitQueueTimeoutMS=5000` - Wait max 5 seconds for available connection
+- `pool_size=20` - Always keep 20 connections ready
+- `max_overflow=30` - Allow up to 50 total under peak load
+- `pool_pre_ping=True` - Auto-recover from dropped connections
+- `pool_recycle=3600` - Prevent stale connection errors
 
 **Benefits:**
 - ✅ Faster query execution (no connection overhead)
@@ -1007,20 +1024,20 @@ MONGO_URI=mongodb://user:pass@mongodb:27017/hermes?authSource=hermes&maxPoolSize
 **Monitoring Connection Pool:**
 ```python
 # backend/app/utils/db_monitor.py
-from pymongo import monitoring
+from sqlalchemy import event
+from sqlalchemy.pool import Pool
 
-class ConnectionPoolLogger(monitoring.ConnectionPoolListener):
-    def pool_created(self, event):
-        print(f"Connection pool created: {event.address}")
-    
-    def connection_checked_out(self, event):
-        print(f"Connection checked out: Pool size: {event.connection_id}")
-    
-    def connection_checked_in(self, event):
-        print(f"Connection returned to pool")
+@event.listens_for(Pool, "connect")
+def on_connect(dbapi_conn, connection_record):
+    print(f"New DB connection established")
 
-# Register monitor
-monitoring.register(ConnectionPoolLogger())
+@event.listens_for(Pool, "checkout")
+def on_checkout(dbapi_conn, connection_record, connection_proxy):
+    print(f"Connection checked out from pool")
+
+@event.listens_for(Pool, "checkin")
+def on_checkin(dbapi_conn, connection_record):
+    print(f"Connection returned to pool")
 ```
 
 ---
@@ -1100,17 +1117,18 @@ def get_jobs(limit=20):
         logger.warning("Redis unavailable, falling back to database")
     
     try:
-        # Load from MongoDB
-        jobs = db.jobs.find().limit(limit)
+        # Load from PostgreSQL
+        jobs = Job.query.order_by(Job.created_at.desc()).limit(limit).all()
+        jobs_data = [j.to_dict() for j in jobs]
         
         # Try to cache for next time
         try:
-            redis.setex(f"jobs:limit_{limit}", 3600, json.dumps(jobs))
+            redis.setex(f"jobs:limit_{limit}", 3600, json.dumps(jobs_data))
         except redis.ConnectionError:
             pass  # Cache write failed, but we have the data
         
-        return jobs
-    except pymongo.errors.ServerSelectionTimeoutError:
+        return jobs_data
+    except sqlalchemy.exc.OperationalError:
         # Database is down - return stale cache if available
         stale_cache = redis.get(f"jobs:limit_{limit}:backup")
         if stale_cache:
@@ -1124,14 +1142,14 @@ def get_jobs(limit=20):
 **Connection Pool Exhausted Handling:**
 ```python
 # backend/app/utils/db_handler.py
-from pymongo.errors import ServerSelectionTimeoutError
+from sqlalchemy.exc import OperationalError
 import time
 
 def execute_with_retry(operation, max_retries=3):
     for attempt in range(max_retries):
         try:
             return operation()
-        except ServerSelectionTimeoutError:
+        except OperationalError:
             if attempt == max_retries - 1:
                 raise ServiceUnavailable("Database connection pool exhausted")
             # Exponential backoff: 100ms, 200ms, 400ms
@@ -1416,13 +1434,11 @@ SECRET_KEY=your-secret-key-min-32-chars-change-this
 # API Configuration
 API_VERSION=v1
 
-# MongoDB Configuration with Connection Pooling
-MONGO_ROOT_PASSWORD=strong_root_password_change_this
-MONGO_USER=hermes_user
-MONGO_PASSWORD=strong_db_password_change_this
+# PostgreSQL Configuration with Connection Pooling
+DB_PASSWORD=strong_db_password_change_this
 # ⚡ Connection pool settings for production
-MONGO_MAX_POOL_SIZE=50
-MONGO_MIN_POOL_SIZE=10
+DB_POOL_SIZE=20
+DB_MAX_OVERFLOW=30
 
 # Redis Configuration with Socket Keepalive
 REDIS_PASSWORD=strong_redis_password_change_this
@@ -1673,7 +1689,7 @@ docker compose logs -f app  # specific container
 
 # Execute command in container
 docker compose exec app bash
-docker compose exec mongodb mongosh
+docker compose exec postgresql psql -U hermes_user -d hermes_db
 
 # Update application (pull latest code)
 cd /home/hermes/hermes
@@ -1701,14 +1717,14 @@ docker compose logs -f celery_worker
 
 ### Database Operations
 ```bash
-# MongoDB shell access
-docker compose exec mongodb mongosh -u hermes_user -p
+# PostgreSQL shell access
+docker compose exec postgresql psql -U hermes_user -d hermes_db
 
-# Backup MongoDB
-docker compose exec mongodb mongodump --out=/data/backup
+# Backup PostgreSQL
+docker compose exec -T postgresql pg_dump -U hermes_user hermes_db > backup.sql
 
-# Restore MongoDB
-docker compose exec mongodb mongorestore /data/backup
+# Restore PostgreSQL
+docker compose exec -T postgresql psql -U hermes_user -d hermes_db < backup.sql
 
 # Redis CLI access
 docker compose exec redis redis-cli -a your_redis_password
@@ -1740,32 +1756,29 @@ Create `backup.sh`:
 
 ```bash
 #!/bin/bash
-# backup.sh - Docker MongoDB Backup Script
+# backup.sh - Docker PostgreSQL Backup Script
 
-BACKUP_DIR="/home/hermes/backups/mongodb"
+BACKUP_DIR="/home/hermes/backups/postgresql"
 DATE=$(date +"%Y%m%d_%H%M%S")
-BACKUP_NAME="hermes_backup_$DATE"
+BACKUP_NAME="hermes_backup_$DATE.dump"
 
 # Create backup directory
 mkdir -p $BACKUP_DIR
 
-# Backup MongoDB from Docker container
-docker compose exec -T mongodb mongodump \
-  --uri="mongodb://hermes_user:${MONGO_PASSWORD}@localhost:27017/hermes?authSource=hermes" \
-  --out=/tmp/$BACKUP_NAME
+# Backup PostgreSQL from Docker container
+docker compose exec -T postgresql pg_dump \
+  -U hermes_user \
+  -d hermes_db \
+  -F c \
+  -f /tmp/$BACKUP_NAME
 
 # Copy backup from container
-docker compose cp mongodb:/tmp/$BACKUP_NAME $BACKUP_DIR/
-
-# Compress
-cd $BACKUP_DIR
-tar -czf "$BACKUP_NAME.tar.gz" "$BACKUP_NAME"
-rm -rf "$BACKUP_NAME"
+docker compose cp postgresql:/tmp/$BACKUP_NAME $BACKUP_DIR/
 
 # Delete backups older than 7 days
-find $BACKUP_DIR -name "*.tar.gz" -type f -mtime +7 -delete
+find $BACKUP_DIR -name "*.dump" -type f -mtime +7 -delete
 
-echo "Backup completed: $BACKUP_NAME.tar.gz"
+echo "Backup completed: $BACKUP_NAME"
 ```
 
 ```bash
@@ -1863,13 +1876,13 @@ def login():
     
     # ⚡ Access token: 15 minutes (not 1 hour)
     access_token = create_access_token(
-        identity=str(user['_id']),
+        identity=str(user.id),
         expires_delta=timedelta(minutes=15)
     )
     
     # ⚡ Refresh token: 7 days (not 30 days)
     refresh_token = create_refresh_token(
-        identity=str(user['_id']),
+        identity=str(user.id),
         expires_delta=timedelta(days=7)
     )
     
@@ -2058,13 +2071,14 @@ def create_job():
 
 ### 8. Database Security
 
-**MongoDB Authentication:**
+**PostgreSQL Authentication:**
 ```yaml
 # In docker-compose.yml
-mongodb:
+postgresql:
   environment:
-    MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER}
-    MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
+    POSTGRES_USER: hermes_user
+    POSTGRES_PASSWORD: ${DB_PASSWORD}
+    POSTGRES_DB: hermes_db
 ```
 
 **Redis Authentication:**
@@ -2078,11 +2092,11 @@ redis:
 ```python
 # Never log connection strings
 import logging
-logging.getLogger('pymongo').setLevel(logging.WARNING)
+logging.getLogger('sqlalchemy.engine').setLevel(logging.WARNING)
 
 # Use environment variables, never hardcode
-MONGO_URI = os.getenv('MONGO_URI')  # ✅
-# MONGO_URI = "mongodb://user:pass@host"  # ❌ NEVER DO THIS
+SQLALCHEMY_DATABASE_URI = os.getenv('SQLALCHEMY_DATABASE_URI')  # ✅
+# SQLALCHEMY_DATABASE_URI = "postgresql://user:pass@host"  # ❌ NEVER DO THIS
 ```
 
 ### 9. Secrets Management
@@ -2104,7 +2118,7 @@ client = hvac.Client(url='http://vault:8200', token=os.getenv('VAULT_TOKEN'))
 
 # Read secrets from Vault
 secret = client.secrets.kv.v2.read_secret_version(path='hermes/prod')
-MONGO_PASSWORD = secret['data']['data']['mongo_password']
+DB_PASSWORD = secret['data']['data']['db_password']
 ```
 
 **Alternative: AWS Secrets Manager**
@@ -2112,8 +2126,8 @@ MONGO_PASSWORD = secret['data']['data']['mongo_password']
 import boto3
 
 client = boto3.client('secretsmanager', region_name='us-east-1')
-response = client.get_secret_value(SecretId='hermes/mongo_password')
-MONGO_PASSWORD = response['SecretString']
+response = client.get_secret_value(SecretId='hermes/db_password')
+DB_PASSWORD = response['SecretString']
 ```
 
 ### 10. Audit Logging
@@ -2122,6 +2136,8 @@ MONGO_PASSWORD = response['SecretString']
 # backend/app/middleware/audit.py
 from functools import wraps
 from flask_jwt_extended import get_jwt_identity
+from app import db
+from app.models import AdminLog
 
 def audit_log(action):
     def decorator(fn):
@@ -2131,24 +2147,23 @@ def audit_log(action):
             request_id = g.get('request_id')
             
             # Log before action
-            db.audit_trail.insert_one({
-                'user_id': user_id,
-                'action': action,
-                'request_id': request_id,
-                'ip_address': request.remote_addr,
-                'user_agent': request.headers.get('User-Agent'),
-                'timestamp': datetime.utcnow(),
-                'status': 'initiated'
-            })
+            log = AdminLog(
+                admin_id=user_id,
+                action=action,
+                request_id=request_id,
+                ip_address=request.remote_addr,
+                user_agent=request.headers.get('User-Agent'),
+                status='initiated'
+            )
+            db.session.add(log)
+            db.session.commit()
             
             # Execute action
             result = fn(*args, **kwargs)
             
             # Log after action
-            db.audit_trail.update_one(
-                {'request_id': request_id},
-                {'$set': {'status': 'completed'}}
-            )
+            AdminLog.query.filter_by(request_id=request_id).update({'status': 'completed'})
+            db.session.commit()
             
             return result
         return wrapper
@@ -2169,7 +2184,7 @@ Before deploying to production, verify:
 
 - [ ] All secrets moved to environment variables (no hardcoded passwords)
 - [ ] HTTPS/SSL enabled with valid certificate
-- [ ] MongoDB and Redis password-protected
+- [ ] PostgreSQL and Redis password-protected
 - [ ] JWT tokens use short expiration (15 min access, 7 day refresh)
 - [ ] Rate limiting enabled at nginx and application layers
 - [ ] CORS configured with specific allowed origins
@@ -2220,10 +2235,10 @@ docker system prune -a
 docker volume prune
 ```
 
-### MongoDB connection issues
+### PostgreSQL connection issues
 ```bash
-docker compose logs mongodb
-docker compose exec app env | grep MONGO
+docker compose logs postgresql
+docker compose exec app env | grep SQLALCHEMY
 ```
 
 ---

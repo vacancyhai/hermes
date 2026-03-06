@@ -6,7 +6,7 @@ This is the **Backend Service** for Hermes - a completely independent REST API s
 
 **Technology Stack:**
 - Flask (Python web framework)
-- MongoDB (Database)
+- PostgreSQL 16 (Relational Database)
 - Redis (Cache + Task Queue)
 - Celery (Background tasks)
 - JWT (Authentication)
@@ -24,7 +24,7 @@ This is the **Backend Service** for Hermes - a completely independent REST API s
 cp .env.example .env
 nano .env
 # Update all values, especially:
-# - MongoDB credentials
+# - PostgreSQL credentials (DB_USER, DB_PASSWORD, DB_NAME)
 # - Redis password
 # - Secret keys
 # - Email credentials
@@ -38,7 +38,7 @@ docker-compose up -d --build
 ```
 
 This starts:
-- MongoDB (port 27017)
+- PostgreSQL (port 5432)
 - Redis (port 6379)
 - Backend API (port 5000)
 - Celery Worker (background tasks)
@@ -97,19 +97,24 @@ All endpoints are prefixed with `/api/v1/`
 ## Environment Variables
 
 **Required:**
-- `MONGO_URI` - MongoDB connection string
+- `DATABASE_URL` - PostgreSQL connection string
+- `DB_USER` - PostgreSQL username
+- `DB_PASSWORD` - PostgreSQL password
+- `DB_NAME` - PostgreSQL database name
 - `REDIS_URL` - Redis connection URL
-- `SECRET_KEY` - Flask secret key
+- `SECRET_KEY` - Flask secret key (minimum 32 characters)
 - `JWT_SECRET_KEY` - JWT signing key
-- `MAIL_SERVER` - SMTP server
+- `MAIL_SERVER` - SMTP server (e.g., smtp.gmail.com)
 - `MAIL_USERNAME` - Email username
 - `MAIL_PASSWORD` - Email password
 
 **Optional:**
-- `CORS_ORIGINS` - Allowed frontend origins (comma-separated)
+- `CORS_ORIGINS` - Allowed frontend origins, comma-separated (default: `http://localhost:8080,http://frontend:8080`)
 - `BACKEND_PORT` - API port (default: 5000)
-- `RATE_LIMIT_PER_IP` - Rate limit per IP (default: 100)
-- `RATE_LIMIT_PER_USER` - Rate limit per user (default: 1000)
+- `RATE_LIMIT_PER_IP` - Rate limit per IP in requests/minute (default: 100)
+- `RATE_LIMIT_PER_USER` - Rate limit per user in requests/minute (default: 1000)
+- `DB_POOL_SIZE` - PostgreSQL connection pool size (default: 20)
+- `DB_MAX_OVERFLOW` - PostgreSQL connection pool overflow (default: 40)
 
 ---
 
@@ -129,20 +134,56 @@ CORS_ORIGINS=http://localhost:8080,https://yourdomain.com,https://app.yourdomain
 
 ## Database
 
-**MongoDB Collections:**
-- `users` - User accounts
-- `jobs` - Job postings
-- `notifications` - User notifications
-- `applications` - User job applications
-- `preferences` - User preferences
-- `audit_logs` - Audit trail
+**PostgreSQL Tables:**
+- `users` - User accounts and authentication
+- `user_profiles` - Extended user profile information
+- `job_vacancies` - Job postings with detailed eligibility
+- `user_job_applications` - User applications tracking
+- `notifications` - User notifications and alerts
+- `results` - Exam results and cutoff marks
+- `admit_cards` - Admit card information
+- `answer_keys` - Answer key releases with objection data
+- `admissions` - University/college admissions
+- `yojanas` - Government schemes/yojanas
+- `board_results` - Board exam results
+- `categories` - Job categories and organizations
+- `page_views` - Analytics - page view tracking
+- `search_logs` - Analytics - search history
+- `role_permissions` - Dynamic RBAC permission mapping
+- `access_audit_logs` - Access control audit trail
+
+**Database Migrations:**
+
+```bash
+# Run migrations (Alembic)
+docker-compose exec backend flask db upgrade
+```
 
 **Backup Database:**
 
 ```bash
-docker-compose exec mongodb mongodump \
-  --uri="mongodb://hermes_user:password@localhost:27017/hermes?authSource=hermes" \
-  --out=/backup
+# Create backup (custom format - compressed)
+docker-compose exec postgresql pg_dump \
+  -U hermes_user -d hermes_db \
+  -F c -f /backup/hermes_backup_$(date +%Y%m%d_%H%M%S).dump
+
+# Restore from backup
+docker-compose exec postgresql pg_restore \
+  -U hermes_user -d hermes_db \
+  /backup/hermes_backup_YYYYMMDD_HHMMSS.dump
+```
+
+**View Database:**
+
+```bash
+# Connect to PostgreSQL CLI
+docker-compose exec postgresql psql -U hermes_user -d hermes_db
+
+# List tables
+\dt
+
+# View schema
+\d users
 ```
 
 ---
@@ -224,10 +265,10 @@ src/backend/
 │   └── validators/         # Input validators
 │
 ├── config/
-│   ├── settings.py         # App settings
-│   ├── database.py         # MongoDB config
+│   ├── settings.py         # App settings (PostgreSQL config)
 │   └── redis_config.py     # Redis config
 │
+├── alembic/                # Database migrations
 ├── tests/
 │   ├── unit/               # Unit tests
 │   └── integration/        # Integration tests
@@ -285,7 +326,7 @@ curl http://localhost:5000/api/v1/jobs \
 
 For backend-related issues:
 1. Check logs: `docker-compose logs -f backend`
-2. Verify database: Check MongoDB connection
+2. Verify database: Check PostgreSQL connection
 3. Check Redis: Verify Redis is running
 4. Review environment variables in `.env`
 

@@ -35,3 +35,4 @@ services:
 networks:
   frontend_network:
     driver: bridge
+    name: src_frontend_network

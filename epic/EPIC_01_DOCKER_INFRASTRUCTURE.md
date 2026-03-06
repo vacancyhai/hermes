@@ -11,7 +11,7 @@
 
 ## 📋 Epic Acceptance Criteria
 
-- ✅ All 8 Docker containers defined and orchestrated
+- ✅ All 7 Docker containers defined and orchestrated (Nginx Reverse Proxy, Backend API, Frontend, PostgreSQL, Redis, Celery Worker, Celery Beat)
 - ✅ Container networking and communication established
 - ✅ Health checks and service discovery working
 - ✅ Environment-based configuration management
@@ -60,7 +60,7 @@ docker/                     # Directory for service-specific configs
 ├── nginx/
 ├── backend/
 ├── frontend/
-├── mongodb/
+├── postgresql/
 ├── redis/
 ├── celery-worker/
 └── celery-beat/
@@ -75,39 +75,48 @@ docker/                     # Directory for service-specific configs
 
 ---
 
-### Story 1.2: Nginx Reverse Proxy Setup
+### Story 1.2: Nginx Reverse Proxy Setup (PRODUCTION ONLY)
 
 **Story ID**: EPIC-001-STORY-002  
-**Story Title**: Nginx Reverse Proxy Setup  
-**Priority**: HIGH  
+**Story Title**: Nginx Reverse Proxy Setup (Production Deployment)  
+**Priority**: HIGH (for production), OPTIONAL (for development)  
 **Story Points**: 8  
-**Sprint**: Week 1-2
+**Sprint**: Week 1-2  
+**Status**: ⏳ FUTURE (Not required for MVP, needed for production deployment)
 
-**As a** user  
-**I want** requests to be properly routed to services  
-**So that** I can access frontend and API through single endpoint
+**As a** production user  
+**I want** requests to be properly routed to services via reverse proxy  
+**So that** I can access frontend and API through a single domain with SSL
 
 #### Acceptance Criteria:
-- [ ] Nginx configuration for reverse proxy
-- [ ] Route /api/* to backend service
-- [ ] Route /* to frontend service
-- [ ] Static file serving configuration
-- [ ] Load balancing for multiple backend instances
+- [ ] Nginx reverse proxy configuration
+- [ ] Route /api/* to backend service (port 5000)
+- [ ] Route /* to frontend service (port 8080)
+- [ ] Static file serving for frontend assets
 - [ ] GZIP compression enabled
-- [ ] Security headers configured
+- [ ] Security headers configured (X-Frame-Options, CSP, etc)
+- [ ] SSL/TLS setup with Let's Encrypt
+- [ ] Load balancing for multiple backend instances (optional scaling)
 
 #### Technical Implementation Tasks:
 ```nginx
 # Files to create:
-nginx/nginx.conf              # Complete proxy configuration
-nginx/ssl/                    # SSL certificate directory
-nginx/logs/                   # Nginx log directory
-nginx/sites-available/        # Site configurations
-nginx/sites-enabled/          # Active sites
-docker/nginx/Dockerfile       # Custom Nginx container
+src/nginx/nginx.conf                  # Main proxy configuration
+src/nginx/ssl/                        # SSL certificate directory
+src/nginx/logs/                       # Nginx log directory
+docker/nginx/Dockerfile                      # Optional: Nginx Docker container
+scripts/deployment/setup_nginx.sh            # SSL certificate renewal script
 ```
 
+#### Note:
+- **Development**: Not needed - directly access `localhost:5000` and `localhost:8080`
+- **Production**: Required for SSL, domain routing, and security headers
+- **Deployment Options**:
+  1. **Host-based Nginx**: Install Nginx on host machine (recommended)
+  2. **Docker-based Nginx**: Create separate nginx docker-compose service
+
 #### Definition of Done:
+
 - [ ] Nginx routes API calls to backend
 - [ ] Frontend serves through Nginx
 - [ ] Static files serve correctly
@@ -117,41 +126,41 @@ docker/nginx/Dockerfile       # Custom Nginx container
 
 ---
 
-### Story 1.3: MongoDB Container Setup
+### Story 1.3: PostgreSQL Container Setup
 
 **Story ID**: EPIC-001-STORY-003  
-**Story Title**: MongoDB Container Setup  
+**Story Title**: PostgreSQL Container Setup  
 **Priority**: HIGH  
 **Story Points**: 6  
 **Sprint**: Week 1
 
 **As a** developer  
-**I want** a properly configured MongoDB instance  
-**So that** application data is stored reliably
+**I want** a properly configured PostgreSQL instance  
+**So that** application data is stored reliably with ACID compliance
 
 #### Acceptance Criteria:
-- [ ] MongoDB container with authentication enabled
-- [ ] Database initialization script for collections
+- [ ] PostgreSQL 16 container with authentication enabled
+- [ ] Database initialization script with schema
 - [ ] User account creation for application
-- [ ] TTL indexes for data cleanup
-- [ ] Replica set configuration (optional)
+- [ ] Indexes created for query performance
+- [ ] Automated cleanup via scheduled tasks
 - [ ] Backup volume mounting
 - [ ] Memory and storage limits set
 
 #### Technical Implementation Tasks:
-```javascript
+```sql
 # Files to create:
-mongo-init.js                # Database and user creation
-mongodb/mongod.conf          # MongoDB configuration
-scripts/backup-mongo.sh      # Backup script
-docker/mongodb/Dockerfile    # Custom MongoDB container
-data/mongodb/                # Persistent data directory
+init.sql                      # Database schema and initialization
+postgresql/postgresql.conf    # PostgreSQL configuration
+scripts/backup-postgresql.sh  # Backup script
+docker/postgresql/Dockerfile  # Custom PostgreSQL container
+data/postgresql/              # Persistent data directory
 ```
 
 #### Definition of Done:
-- [ ] MongoDB container starts successfully
+- [ ] PostgreSQL container starts successfully
 - [ ] Authentication works for app user
-- [ ] Initial collections created
+- [ ] Initial schema created with all tables
 - [ ] Backups can be performed
 - [ ] Data persists across restarts
 - [ ] Connection pooling configured

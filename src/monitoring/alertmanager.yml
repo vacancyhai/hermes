@@ -1,0 +1,219 @@
+# AlertManager Configuration
+# Routes alerts to different channels based on severity and service
+# Includes email, Slack, PagerDuty, and web hooks
+
+global:
+  resolve_timeout: 5m
+  slack_api_url: '${SLACK_WEBHOOK_URL}'  # Set via environment variable
+  pagerduty_url: 'https://events.pagerduty.com/v2/enqueue'
+  
+# Email templates directory
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'
+
+# Route configuration - defines how alerts are grouped and sent
+route:
+  # Default settings for all routes
+  receiver: 'null'
+  group_by: ['alertname', 'cluster', 'service']
+  group_wait: 10s                    # Wait 10s to group alerts together
+  group_interval: 10s                # Re-evaluate every 10s
+  repeat_interval: 12h               # Re-send unresolved alerts every 12h
+
+  # Child routes with specific handlers
+  routes:
+    # ============== Critical Alerts (Immediate escalation) ==============
+    - match:
+        severity: critical
+      receiver: 'critical-channel'
+      group_wait: 0s                 # Send immediately
+      repeat_interval: 5m            # Re-send every 5 minutes
+
+    # ============== Warning Alerts (Less urgent) ==============
+    - match:
+        severity: warning
+      receiver: 'warning-channel'
+      group_wait: 30s
+      repeat_interval: 1h
+
+    # ============== Service-specific routes ==============
+    
+    # Database alerts
+    - match:
+        service: database
+      receiver: 'database-alerts'
+      group_wait: 10s
+      repeat_interval: 30m
+
+    # Cache/Redis alerts
+    - match:
+        service: cache
+      receiver: 'cache-alerts'
+      group_wait: 10s
+      repeat_interval: 30m
+
+    # API/Backend alerts
+    - match:
+        service: backend
+      receiver: 'backend-alerts'
+      group_wait: 5s
+      repeat_interval: 15m
+
+    # System resource alerts
+    - match:
+        service: system
+      receiver: 'system-alerts'
+      group_wait: 30s
+      repeat_interval: 1h
+
+    # Celery task alerts
+    - match:
+        service: celery
+      receiver: 'celery-alerts'
+      group_wait: 10s
+      repeat_interval: 30m
+
+    # Low priority test alerts
+    - match:
+        severity: notice
+      receiver: 'null'  # Silently discard notice-level alerts
+
+
+# Receivers - define where alerts are sent
+receivers:
+  # Null receiver - silently discard alerts
+  - name: 'null'
+
+  # Critical alerts - multiple channels for immediate visibility
+  - name: 'critical-channel'
+    slack_configs:
+      - channel: '#critical-alerts'
+        title: '🚨 CRITICAL: {{ .GroupLabels.alertname }}'
+        text: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
+        send_resolved: true
+        color: '{{ if eq .Status "firing" }}danger{{ else }}good{{ end }}'
+        actions:
+          - type: button
+            text: 'View Dashboard'
+            url: 'http://grafana:3000/d/hermes-overview'
+          - type: button
+            text: 'View Logs'
+            url: 'http://loki:3000'
+
+    pagerduty_configs:
+      - service_key: '${PAGERDUTY_SERVICE_KEY}'
+        client: 'Hermes AlertManager'
+        client_url: 'http://grafana:3000'
+
+    email_configs:
+      - to: '${EMAIL_CRITICAL_ALERTS}'
+        from: 'alertmanager@hermes.local'
+        smarthost: '${MAIL_SERVER}:${MAIL_PORT}'
+        auth_username: '${MAIL_USERNAME}'
+        auth_password: '${MAIL_PASSWORD}'
+        headers:
+          Subject: '🚨 CRITICAL: {{ .GroupLabels.alertname }}'
+        html: |
+          <h2 style="color: red;">🚨 CRITICAL ALERT</h2>
+          <p><strong>Alert:</strong> {{ .GroupLabels.alertname }}</p>
+          <p><strong>Service:</strong> {{ .GroupLabels.service }}</p>
+          <p><strong>Status:</strong> {{ .Status }}</p>
+          <hr>
+          {{ range .Alerts }}
+            <p><strong>Description:</strong> {{ .Annotations.description }}</p>
+            <p><strong>Action:</strong> {{ .Annotations.action }}</p>
+          {{ end }}
+          <p><a href="http://grafana:3000/d/hermes-overview">View Dashboard</a></p>
+
+  # Warning alerts - Slack only
+  - name: 'warning-channel'
+    slack_configs:
+      - channel: '#warnings'
+        title: '⚠️  WARNING: {{ .GroupLabels.alertname }}'
+        text: '{{ range .Alerts }}{{ .Annotations.description }}\n{{ end }}'
+        send_resolved: true
+        color: '{{ if eq .Status "firing" }}warning{{ else }}good{{ end }}'
+
+  # Database-specific alerts
+  - name: 'database-alerts'
+    email_configs:
+      - to: '${EMAIL_DBA}'
+        from: 'alertmanager@hermes.local'
+        smarthost: '${MAIL_SERVER}:${MAIL_PORT}'
+        auth_username: '${MAIL_USERNAME}'
+        auth_password: '${MAIL_PASSWORD}'
+        headers:
+          Subject: '🚨 Database Alert: {{ .GroupLabels.alertname }}'
+    slack_configs:
+      - channel: '#database'
+        title: '🗄️  Database: {{ .GroupLabels.alertname }}'
+
+  # Cache/Redis alerts
+  - name: 'cache-alerts'
+    slack_configs:
+      - channel: '#cache'
+        title: '💾 Cache: {{ .GroupLabels.alertname }}'
+
+  # Backend/API alerts
+  - name: 'backend-alerts'
+    slack_configs:
+      - channel: '#api'
+        title: '🔧 API: {{ .GroupLabels.alertname }}'
+    pagerduty_configs:
+      - service_key: '${PAGERDUTY_API_KEY}'
+        client: 'Hermes Backend'
+        client_url: 'http://grafana:3000'
+
+  # System resource alerts
+  - name: 'system-alerts'
+    slack_configs:
+      - channel: '#infrastructure'
+        title: '🖥️  System: {{ .GroupLabels.alertname }}'
+    email_configs:
+      - to: '${EMAIL_OPS}'
+        from: 'alertmanager@hermes.local'
+        smarthost: '${MAIL_SERVER}:${MAIL_PORT}'
+        auth_username: '${MAIL_USERNAME}'
+        auth_password: '${MAIL_PASSWORD}'
+
+  # Celery task alerts
+  - name: 'celery-alerts'
+    slack_configs:
+      - channel: '#celery'
+        title: '🔄 Celery: {{ .GroupLabels.alertname }}'
+
+
+# Inhibition rules - suppress certain alerts if others are active
+inhibit_rules:
+  # Don't alert on slow queries if database is down
+  - source_match:
+      severity: critical
+      service: database
+      alertname: PostgreSQLNotHealthy
+    target_match:
+      service: database
+    equal: ['service']
+
+  # Don't alert on high latency if API is already down
+  - source_match:
+      severity: critical
+      service: backend
+      alertname: APIDowntime
+    target_match:
+      service: backend
+    equal: ['service']
+
+  # Don't alert on memory/CPU if entire system is down
+  - source_match:
+      severity: critical
+      service: system
+    target_match:
+      service: system
+    equal: ['instance']
+
+  # Suppress container memory alerts if container is crashing
+  - source_match:
+      alertname: ContainerCrashed
+    target_match:
+      alertname: ContainerMemoryLimitApproaching
+    equal: ['name']

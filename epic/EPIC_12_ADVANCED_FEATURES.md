@@ -965,7 +965,7 @@ from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.exporter.jaeger.thrift import JaegerExporter
 from opentelemetry.instrumentation.flask import FlaskInstrumentor
 from opentelemetry.instrumentation.requests import RequestsInstrumentor
-from opentelemetry.instrumentation.pymongo import PymongoInstrumentor
+from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
 
 def init_tracing(app):
     # Setup tracer
@@ -987,8 +987,8 @@ def init_tracing(app):
     # Auto-instrument requests library
     RequestsInstrumentor().instrument()
     
-    # Auto-instrument MongoDB
-    PymongoInstrumentor().instrument()
+    # Auto-instrument PostgreSQL (via SQLAlchemy)
+    SQLAlchemyInstrumentor().instrument()
     
     return tracer
 
@@ -1100,12 +1100,12 @@ def check_error_rate(error_count, total_requests):
 # Database connection alert
 def check_database_health():
     try:
-        db.command('ping')
+        db.session.execute('SELECT 1')
     except Exception as e:
         alert_manager.send_alert(
             severity='critical',
             title='Database Connection Failed',
-            message=f'Unable to connect to MongoDB: {str(e)}'
+            message=f'Unable to connect to PostgreSQL: {str(e)}'
         )
 ```
 
@@ -1238,17 +1238,25 @@ class InputSanitizer:
         return escape(text)
     
     @staticmethod
-    def sanitize_mongodb_query(query):
-        """Prevent NoSQL injection"""
-        if isinstance(query, dict):
-            for key, value in query.items():
-                # Block MongoDB operators in keys
-                if key.startswith('$'):
-                    raise ValueError(f"Invalid query key: {key}")
-                # Recursively sanitize nested queries
-                if isinstance(value, dict):
-                    InputSanitizer.sanitize_mongodb_query(value)
-        return query
+    def validate_sql_identifier(identifier):
+        """Prevent SQL injection via identifiers (column names, table names)"""
+        # Only allow alphanumeric and underscores
+        if not re.match(r'^[a-zA-Z0-9_]+$', identifier):
+            raise ValueError(f"Invalid SQL identifier: {identifier}")
+        return identifier
+    
+    @staticmethod
+    def validate_sql_value(value):
+        """SQLAlchemy automatically parameterizes queries - use ORM methods"""
+        # Never concatenate user input into SQL strings
+        # Always use SQLAlchemy's query builder or parameterized queries
+        if isinstance(value, str):
+            # Check for common SQL injection patterns
+            dangerous_patterns = ['--', '/*', '*/', 'xp_', 'sp_', ';']
+            for pattern in dangerous_patterns:
+                if pattern.lower() in value.lower():
+                    raise ValueError(f"Dangerous SQL pattern detected: {pattern}")
+        return value
     
     @staticmethod
     def validate_email(email):

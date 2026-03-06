@@ -34,9 +34,9 @@
 │                        │   │                      │   │                       │
 │  docker-compose.yml    │   │  Routes:             │   │  docker-compose.yml   │
 │  ┌──────────────────┐  │   │  /api/* → Backend   │   │  ┌─────────────────┐  │
-│  │  Frontend        │  │   │  /*     → Frontend  │   │  │  1. MongoDB     │  │
+│  │  Frontend        │  │   │  /*     → Frontend  │   │  │  1. PostgreSQL     │  │
 │  │  - Flask/Jinja2  │  │   └──────────────────────┘   │  │  Database       │  │
-│  │  - Port 8080     │  │            │                 │  │  Port 27017     │  │
+│  │  - Port 8080     │  │            │                 │  │  Port 5432           │  │
 │  │  - Renders HTML  │  │            │                 │  │  Persistent     │  │
 │  │                  │  │            │                 │  │                 │  │
 │  │  Calls Backend:  │──┼────────────┘                 │  └────────┬────────┘  │
@@ -161,8 +161,8 @@ User → Frontend (HTML/SPA/Mobile)
      │                                  │
      ▼                                  │
 ┌──────────────────────┐               │
-│ Save to MongoDB      │               │
-│ (Users collection)   │               │
+│ Save to PostgreSQL   │               │
+│ (users table)        │               │
 └────┬─────────────────┘               │
      │                                  │
      ▼                                  │
@@ -203,8 +203,8 @@ User → Frontend (HTML/SPA/Mobile)
      ▼
 ┌──────────────────────┐
 │ Save profile to      │
-│ User Profiles        │
-│ collection           │
+│ user_profiles        │
+│ table                │
 └────┬─────────────────┘
      │
      ▼
@@ -319,9 +319,9 @@ User → Frontend (HTML/SPA/Mobile)
      │ Valid                           │
      ▼                                 │
 ┌──────────────────────┐              │
-│ Save to MongoDB      │              │
-│ (Job Vacancies       │              │
-│  collection)         │              │
+│ Save to PostgreSQL   │              │
+│ (job_vacancies       │              │
+│  table)              │              │
 └────┬─────────────────┘              │
      │                                 │
      ▼                                 │
@@ -899,12 +899,12 @@ User → Frontend (HTML/SPA/Mobile)
 
 ```
 ┌────────────────────────────────────────────────────┐
-│              MONGODB COLLECTIONS                   │
+│              POSTGRESQL TABLES                     │
 └────────────────────────────────────────────────────┘
 
          ┌─────────────────────────────┐
          │        Users                │
-         │  - _id (Primary Key)        │
+         │  - id (Primary Key, UUID)   │
          │  - email                    │
          │  - password_hash            │
          │  - role                     │
@@ -914,7 +914,7 @@ User → Frontend (HTML/SPA/Mobile)
                      │
          ┌───────────▼─────────────────┐
          │    User Profiles            │
-         │  - _id (Primary Key)        │
+         │  - id (Primary Key, UUID)   │
          │  - user_id (Foreign Key)    │
          │  - personal_info            │
          │  - education                │
@@ -928,7 +928,7 @@ User → Frontend (HTML/SPA/Mobile)
          │                             │
 ┌────────▼──────────┐      ┌───────────▼──────────┐
 │  Notifications    │      │ User Job Applications│
-│  - _id            │      │  - _id               │
+│  - id             │      │  - id                │
 │  - user_id (FK)   │      │  - user_id (FK)      │
 │  - job_id (FK)    │      │  - job_id (FK)       │
 │  - message        │      │  - is_priority       │
@@ -939,7 +939,7 @@ User → Frontend (HTML/SPA/Mobile)
                                       │
                            ┌──────────▼───────────┐
                            │   Job Vacancies      │
-                           │  - _id (Primary Key) │
+                           │  - id (Primary Key, UUID) │
                            │  - job_title         │
                            │  - organization      │
                            │  - eligibility       │
@@ -950,7 +950,7 @@ User → Frontend (HTML/SPA/Mobile)
                                       │
                            ┌──────────▼───────────┐
                            │    Admin Logs        │
-                           │  - _id               │
+                           │  - id                │
                            │  - admin_id (FK)     │
                            │  - action            │
                            │  - resource_id       │
@@ -1320,7 +1320,7 @@ Rate Limits:
   - API: 1000 requests/min per user
   - Login: 5 attempts/min
 
-All admin actions are logged in audit_trail collection
+All admin actions are logged in admin_logs table
 
 EXAMPLE PERMISSION CHECK IN CODE:
 ═════════════════════════════════
@@ -1335,7 +1335,7 @@ def update_job(job_id):
     user_role = claims['role']
     
     # Get the job
-    job = Job.objects(id=job_id).first()
+    job = Job.query.get(job_id)
     if not job:
         return {"error": "NOT_FOUND_JOB"}, 404
     
@@ -1354,7 +1354,9 @@ def update_job(job_id):
                 }, 403
     
     # Update the job
-    job.update(**data)
+    for key, value in data.items():
+        setattr(job, key, value)
+    db.session.commit()
     
     return jsonify(job.to_dict()), 200
 
@@ -1363,11 +1365,12 @@ def update_job(job_id):
 @jwt_required()
 @require_role('admin')  # ⭐ Only admin can delete
 def delete_job(job_id):
-    job = Job.objects(id=job_id).first()
+    job = Job.query.get(job_id)
     if not job:
         return {"error": "NOT_FOUND_JOB"}, 404
     
-    job.delete()
+    db.session.delete(job)
+    db.session.commit()
     return '', 204
 
 PERMISSION CHECK FLOW EXAMPLE:
@@ -1412,7 +1415,7 @@ Step 5: Log the attempt
   ip_address = "192.168.1.100"
   timestamp = "2026-03-05T10:30:00Z"
   field_attempted = "salary_max"
-  stored in audit_trail collection (TTL: 1 year)
+  stored in admin_logs table (expires_at: 1 year)
 ```
 
 ---
@@ -1729,7 +1732,7 @@ User Request
          │
          ▼
 ┌────────────────────────────────────┐
-│ Backend queries MongoDB            │
+│ Backend queries PostgreSQL         │
 │ Log: [abc123...] Query jobs DB     │
 │      Duration: 45ms                │
 └────────┬───────────────────────────┘
@@ -1811,7 +1814,7 @@ Request ID: abc123-def456-ghi789
   Backend Processing:  10ms
   Total:               67ms
   
-  Bottleneck: MongoDB query (67% of time)
+  Bottleneck: PostgreSQL query (67% of time)
   Recommendation: Add index on query field
 ```
 
@@ -1946,7 +1949,7 @@ SCENARIO 2: Firebase Push Notification Failure
             └──────────────────────┘
 
 
-SCENARIO 3: MongoDB Slow Response
+SCENARIO 3: PostgreSQL Slow Response
 ══════════════════════════════════
 
 API Request: GET /api/v1/jobs
@@ -1960,7 +1963,7 @@ API Request: GET /api/v1/jobs
     │          │
     ▼ HIT      ▼ MISS
 ┌────────┐  ┌──────────────────────┐
-│ Return │  │ Query MongoDB        │
+│ Return │  │ Query PostgreSQL     │
 │ cached │  │ Timeout: 2 seconds   │
 │ data   │  └────────┬─────────────┘
 └────────┘           │
@@ -2145,8 +2148,8 @@ DETAILED FLOW:
      │          │
      ▼ HIT      ▼ MISS
 ┌────────────┐  ┌──────────────────────┐
-│ Return     │  │ Query MongoDB        │
-│ cached     │  │ db.jobs.find()       │
+│ Return     │  │ Query PostgreSQL     │
+│ cached     │  │ db.query(Job)        │
 │ data       │  └─────────┬────────────┘
 │            │            │
 │ Response   │            ▼
@@ -2245,7 +2248,7 @@ Example flow:
          │
          ▼
 ┌──────────────────────┐
-│ Save to MongoDB      │
+│ Save to PostgreSQL   │
 └────────┬─────────────┘
          │
          ▼

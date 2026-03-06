@@ -13,7 +13,7 @@
 - ✅ Admin panel for complete content management
 - ✅ Advanced analytics and search tracking
 
-> **🗄️ Database**: Enhanced 15-collection MongoDB schema (expanded from 6 to support complete Hermes job notification portal features)
+> **🗄️ Database**: Enhanced 15-table PostgreSQL 16 schema (expanded from 6 to support complete Hermes job notification portal features)
 
 ---
 
@@ -35,7 +35,7 @@
 │   Port: 5000                │ REST │   Port: 8080 (or any)       │
 │                             │ API  │                             │
 │   docker-compose.yml:       │      │   docker-compose.yml:       │
-│   - MongoDB                 │      │   - Frontend only           │
+│   - PostgreSQL              │      │   - Frontend only           │
 │   - Redis                   │      │                             │
 │   - Backend API             │      │   API calls via HTTP:       │
 │   - Celery Worker           │      │   http://backend:5000       │
@@ -75,14 +75,14 @@ hermes/
 ├── src/                              # 🚀 All source code
 │   │
 │   ├── backend/                      # 🔧 BACKEND SERVICE (INDEPENDENT)
-│   │   ├── docker-compose.yml        # Backend: MongoDB, Redis, API, Celery
+│   │   ├── docker-compose.yml        # Backend: PostgreSQL, Redis, API, Celery
 │   │   ├── Dockerfile
 │   │   ├── requirements.txt
 │   │   ├── .env.example              # Backend environment variables
 │   │   ├── run.py
 │   │   ├── app/
 │   │   │   ├── routes/               # API endpoints (/api/v1/*)
-│   │   │   ├── models/               # MongoDB models
+│   │   │   ├── models/               # SQLAlchemy ORM models (PostgreSQL)
 │   │   │   ├── services/             # Business logic
 │   │   │   └── tasks/                # Celery background tasks
 │   │   ├── config/
@@ -158,11 +158,9 @@ nano .env
 
 Required backend environment variables:
 ```env
-# MongoDB
-MONGO_ROOT_USER=admin
-MONGO_ROOT_PASSWORD=your_secure_password
-MONGO_USER=hermes_user
-MONGO_PASSWORD=your_db_password
+# PostgreSQL
+SQLALCHEMY_DATABASE_URI=postgresql://hermes_user:your_db_password@postgresql:5432/hermes_db
+DB_POOL_SIZE=20
 
 # Redis
 REDIS_PASSWORD=your_redis_password
@@ -180,11 +178,10 @@ MAIL_PASSWORD=your-app-password
 # Firebase (for push notifications)
 FIREBASE_CREDENTIALS_PATH=/app/firebase-credentials.json
 
-# Backend API Port
+# Backend Port
 BACKEND_PORT=5000
 
-# MongoDB Database Name (hermes_db instead of sarkari_path)
-MONGO_DB_NAME=hermes_db
+# Note: Database is hermes_db
 ```
 
 **3. Start Backend Services**
@@ -194,7 +191,7 @@ docker-compose up -d --build
 ```
 
 This starts:
-- ✅ MongoDB (database)
+- ✅ PostgreSQL 16 (database)
 - ✅ Redis (cache & queue)
 - ✅ Backend API (Flask REST API on port 5000)
 - ✅ Celery Worker (background tasks)
@@ -375,7 +372,7 @@ docker-compose logs -f
 
 # Specific service
 docker-compose logs -f backend
-docker-compose logs -f mongodb        # Database: hermes_db
+docker-compose logs -f postgresql      # Database: hermes_db
 docker-compose logs -f redis
 docker-compose logs -f celery_worker
 docker-compose logs -f celery_beat
@@ -411,11 +408,11 @@ docker-compose up -d --no-deps --build backend
 ```bash
 cd src/backend
 
-# Access MongoDB shell
-docker-compose exec mongodb mongosh -u hermes_user -p your_db_password --authenticationDatabase hermes
+# Access PostgreSQL shell
+docker-compose exec postgresql psql -U hermes_user -d hermes_db
 
 # Backup database
-docker-compose exec mongodb mongodump --uri="mongodb://hermes_user:your_db_password@localhost:27017/hermes?authSource=hermes" --out=/backup
+docker-compose exec postgresql pg_dump -U hermes_user -d hermes_db -F c -f /backup/hermes_backup.dump
 
 # View Redis keys
 docker-compose exec redis redis-cli -a your_redis_password
@@ -576,7 +573,7 @@ HTTP Request: http://backend-url:5000/api/v1/jobs
 Backend Service (src/backend/) - Port 5000
     ├─ Receives HTTP request on /api/v1/jobs
     ├─ Validates JWT token
-    ├─ Fetches data from MongoDB
+    ├─ Fetches data from PostgreSQL via SQLAlchemy
     └─ Returns JSON response
     ↓
 HTTP Response: JSON
@@ -597,7 +594,7 @@ User sees job listings page
 Backend (.env in src/backend/):
 ```env
 BACKEND_PORT=5000
-MONGO_URI=mongodb://user:pass@mongodb:27017/hermes_db
+SQLALCHEMY_DATABASE_URI=postgresql://hermes_user:password@postgresql:5432/hermes_db
 REDIS_URL=redis://:password@redis:6379/0
 ```
 
@@ -645,7 +642,7 @@ Same backend, different frontend technology! ✨
 **Channels:**
 - 📧 **Email**: Flask-Mail via SMTP (Gmail/Outlook)
 - 📱 **Push**: Firebase Cloud Messaging (web + mobile)
-- 🔔 **In-app**: Stored in MongoDB notifications collection
+- 🔔 **In-app**: Stored in PostgreSQL notifications table
 
 ---
 
@@ -671,7 +668,7 @@ Same backend, different frontend technology! ✨
 - ✅ **CORS**: Only whitelisted origins allowed, credentials protected
 - ✅ **HTTPS/SSL**: Let's Encrypt with HSTS headers
 - ✅ **Input Validation**: Email, password, and all user inputs sanitized
-- ✅ **Database Auth**: MongoDB and Redis password protected
+- ✅ **Database Auth**: PostgreSQL and Redis password protected
 - ✅ **Security Headers**: X-Frame-Options, X-Content-Type-Options, CSP, HSTS, etc.
 - ✅ **Secrets Management**: .env in dev, Vault/AWS Secrets in production
 - ✅ **API Versioning**: `/api/v1/` allows safe upgrades
@@ -704,7 +701,7 @@ Same backend, different frontend technology! ✨
 - ✅ **JWT Token Rotation**: 15-min access + 7-day refresh (not 1-hour + 30-day)
 - ✅ **Rate Limiting Config**: 100 req/min per IP, 1000 req/min per user
 - ✅ **Request Timeout**: 10-second timeout per API request
-- ✅ **Connection Pooling**: MongoDB 50-connection pool, Redis socket keepalive
+- ✅ **Connection Pooling**: PostgreSQL SQLAlchemy pool_size=20, Redis socket keepalive
 - ✅ **Data Retention Policy**: Notifications 90d, Logs 30d, Audits 1 year auto-cleanup
 
 ### Error Handling & Tracing
@@ -768,11 +765,11 @@ ab -n 1000 -c 10 http://localhost/
 ### Issue: Containers not starting
 ```bash
 # Check logs
-docker compose logs mongodb redis
+docker compose logs postgresql redis
 
 # Check if ports are in use
 sudo lsof -i :80
-sudo lsof -i :27017
+sudo lsof -i :5432
 sudo lsof -i :6379
 
 # Solution: Stop conflicting services or change ports
@@ -802,17 +799,17 @@ docker compose exec redis redis-cli -a your_redis_password ping
 docker compose restart celery_worker celery_beat
 ```
 
-### Issue: MongoDB connection failed
+### Issue: PostgreSQL connection failed
 ```bash
-# Check MongoDB logs
-docker compose logs mongodb
+# Check PostgreSQL logs
+docker compose logs postgresql
 
 # Test connection
-docker compose exec mongodb mongosh -u admin -p your_root_password
+docker compose exec postgresql psql -U hermes_user -d hermes_db -c "SELECT 1;"
 
-# Recreate MongoDB with fresh data
+# Recreate PostgreSQL with fresh data
 docker compose down -v
-docker compose up -d mongodb
+docker compose up -d postgresql
 ```
 
 ---
@@ -839,10 +836,10 @@ pip install -r requirements.txt
 python run.py
 ```
 
-**MongoDB & Redis:**
+**PostgreSQL & Redis:**
 ```bash
 # Install locally or use Docker
-docker run -d -p 27017:27017 mongo:7.0
+docker run -d -p 5432:5432 -e POSTGRES_USER=hermes_user -e POSTGRES_PASSWORD=password -e POSTGRES_DB=hermes_db postgres:16-alpine
 docker run -d -p 6379:6379 redis:7-alpine
 ```
 
@@ -885,19 +882,26 @@ The system has **3 user roles** with different permissions:
 
 **New users always register with "user" role by default.** To create the first admin:
 
-**Option A: MongoDB Direct Insert** (Quickest for first admin)
+**Option A: PostgreSQL Direct Insert** (Quickest for first admin)
 ```bash
-# Connect to MongoDB
-docker compose exec mongodb mongosh -u admin -p admin
-
-# Switch to hermes_db database
-use hermes_db
+# Connect to PostgreSQL
+docker compose exec postgresql psql -U hermes_user -d hermes_db
 
 # Create admin user directly
-db.users.insertOne({
-  email: "admin@example.com",
-  password: "$2b$12$HASHED_PASSWORD_HERE", // Use bcrypt hash
-  full_name: "Admin User",
+INSERT INTO users (
+  email, password_hash, full_name, role,
+  is_verified, is_email_verified, status,
+  created_at, last_login
+) VALUES (
+  'admin@example.com',
+  '$2b$12$HASHED_PASSWORD_HERE',  -- Use bcrypt hash
+  'Admin User', 'admin',
+  TRUE, TRUE, 'active',
+  NOW(), NOW()
+);
+
+\q
+```
   role: "admin", // Directly set admin role
   is_verified: true,
   is_email_verified: true,
@@ -920,13 +924,10 @@ curl -X POST http://localhost:5000/api/v1/auth/register \
     "name": "Admin User"
   }'
 
-# 2. Update role in MongoDB
-docker compose exec mongodb mongosh -u admin -p admin
-use hermes_db
-db.users.updateOne(
-  {email: "admin@example.com"},
-  {$set: {role: "admin"}}
-)
+# 2. Update role in PostgreSQL
+docker compose exec postgresql psql -U hermes_user -d hermes_db
+UPDATE users SET role = 'admin' WHERE email = 'admin@example.com';
+\q
 ```
 
 ### Step 2: Create Operators (Admin-Only)
@@ -1004,7 +1005,8 @@ curl -X PUT http://localhost:5000/api/v1/admin/users/USER_ID/role \
 from flask import request, jsonify, Blueprint
 from flask_jwt_extended import jwt_required, get_jwt
 from functools import wraps
-from bson import ObjectId
+from app.extensions import db
+from app.models import User, AdminLog
 
 bp = Blueprint('admin', __name__, url_prefix='/api/v1/admin')
 
@@ -1036,32 +1038,26 @@ def change_user_role(user_id):
         return {"error": "VALIDATION_INVALID_ROLE"}, 400
     
     # Find and update user
-    from app.models import db
-    user = db.users.find_one_and_update(
-        {'_id': ObjectId(user_id)},
-        {'$set': {'role': new_role, 'updated_at': datetime.utcnow()}},
-        return_document=True
-    )
-    
+    user = User.query.get(user_id)
+
     if not user:
         return {"error": "NOT_FOUND_USER"}, 404
-    
-    # Log audit trail
-    admin_id = get_jwt()['sub']
-    db.audit_trail.insert_one({
-        'action': 'role_changed',
-        'admin_id': ObjectId(admin_id),
-        'user_id': ObjectId(user_id),
-        'new_role': new_role,
-        'old_role': user.get('role', 'user'),
-        'timestamp': datetime.utcnow()
-    })
-    
+
+    old_role = user.role
+    user.role = new_role
+    db.session.add(AdminLog(
+        action='role_changed',
+        admin_id=get_jwt()['sub'],
+        user_id=user_id,
+        details={'new_role': new_role, 'old_role': old_role}
+    ))
+    db.session.commit()
+
     return {
-        'user_id': str(user['_id']),
-        'email': user['email'],
-        'role': user['role'],
-        'updated_at': user['updated_at'].isoformat()
+        'user_id': str(user.id),
+        'email': user.email,
+        'role': user.role,
+        'updated_at': user.updated_at.isoformat()
     }, 200
 ```
 
@@ -1128,7 +1124,7 @@ After deployment:
 
 1. **Create Admin User**
    - Follow the bootstrap instructions in [👥 User & Role Management](#-user--role-management) section
-   - Use MongoDB direct insert or register + manual update methods
+   - Use PostgreSQL direct insert or register + manual update methods
 
 2. **Create Operators** (Optional)
    - Use the `PUT /api/v1/admin/users/<id>/role` endpoint from admin account
@@ -1151,7 +1147,7 @@ After deployment:
    ```
 
 5. **Setup Backups**
-   - Configure automated MongoDB backups
+   - Configure automated PostgreSQL backups via pg_dump
    - Set up backup retention policy
    - Test restore procedure
 
@@ -1175,7 +1171,7 @@ After deployment:
 **Flask Microservices:**
 - [Flask Documentation](https://flask.palletsprojects.com/)
 - [Docker Compose Tutorial](https://docs.docker.com/compose/)
-- [MongoDB with Python](https://pymongo.readthedocs.io/)
+- [PostgreSQL with SQLAlchemy](https://docs.sqlalchemy.org/en/20/dialects/postgresql.html)
 
 **Celery:**
 - [Celery Documentation](https://docs.celeryproject.org/)
