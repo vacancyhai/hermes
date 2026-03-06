@@ -54,11 +54,18 @@ def create_app():
             return False
         return app.redis.get(f'blocklist:{jti}') is not None
 
+    # Standardized JWT error responses + proactive token rotation
+    from app.middleware.auth_middleware import register_jwt_error_handlers, register_token_rotation
+    register_jwt_error_handlers(jwt)
+    register_token_rotation(app)
+
     # Import models so Flask-Migrate can detect schema changes
     from app import models  # noqa: F401
 
     # Register blueprints
     from app.routes import auth, jobs, users, notifications, admin, health
+    from app.routes.auth import limiter as auth_limiter
+    auth_limiter.init_app(app)
     app.register_blueprint(auth.bp)
     app.register_blueprint(jobs.bp)
     app.register_blueprint(users.bp)

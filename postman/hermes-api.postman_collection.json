@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Hermes API",
-    "description": "Complete API collection for the Hermes job portal backend.\n\n**Base URL:** `http://localhost:5001/api/v1`\n\n**Setup:**\n1. Set the `base_url` variable to your backend address\n2. Run `POST /auth/login` — the `access_token` variable is set automatically\n3. All protected routes use `Bearer {{access_token}}`",
+    "description": "Complete API collection for the Hermes job portal backend.\n\n**Base URL:** `http://localhost:5001/api/v1`\n\n**Setup:**\n1. Set the `base_url` variable to your backend address\n2. Run `POST /auth/login` — `access_token` and `refresh_token` are set automatically\n3. All protected routes use `Bearer {{access_token}}`\n\n**Response envelope:**\n- Success: `{\"success\": true, \"data\": {...}}`\n- Error: `{\"success\": false, \"error\": {\"code\", \"message\", \"details\", \"timestamp\", \"request_id\"}}`\n\n**Token rotation:** If the server returns an `X-New-Access-Token` header, replace `access_token` with its value.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -21,9 +21,27 @@
       "type": "string"
     },
     {
+      "key": "reset_token",
+      "value": "",
+      "type": "string",
+      "description": "Password reset token received from forgot-password email"
+    },
+    {
+      "key": "verify_token",
+      "value": "",
+      "type": "string",
+      "description": "Email verification token received in registration email"
+    },
+    {
       "key": "job_id",
       "value": "",
       "type": "string"
+    },
+    {
+      "key": "application_id",
+      "value": "",
+      "type": "string",
+      "description": "Job application ID — set after calling POST /users/me/applications"
     },
     {
       "key": "notification_id",
@@ -66,10 +84,19 @@
               "listen": "test",
               "script": {
                 "exec": [
+                  "// Handle proactive token rotation",
+                  "const newToken = pm.response.headers.get('X-New-Access-Token');",
+                  "if (newToken) pm.collectionVariables.set('access_token', newToken);",
+                  "",
                   "if (pm.response.code === 201) {",
                   "  const json = pm.response.json();",
-                  "  pm.collectionVariables.set('access_token', json.access_token);",
-                  "  pm.collectionVariables.set('refresh_token', json.refresh_token);",
+                  "  pm.collectionVariables.set('access_token', json.data.access_token);",
+                  "  pm.collectionVariables.set('refresh_token', json.data.refresh_token);",
+                  "  pm.test('Returns user object without password_hash', () => {",
+                  "    pm.expect(json.data.user).to.have.property('id');",
+                  "    pm.expect(json.data.user).to.have.property('email');",
+                  "    pm.expect(json.data.user).to.not.have.property('password_hash');",
+                  "  });",
                   "}"
                 ],
                 "type": "text/javascript"
@@ -79,18 +106,19 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Request-ID", "value": "req_register_001", "description": "Optional — used for tracing in error responses" }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"SecurePass123!\",\n  \"full_name\": \"John Doe\",\n  \"phone\": \"+919876543210\"\n}"
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"SecurePass123!\",\n  \"full_name\": \"John Doe\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/auth/register",
               "host": ["{{base_url}}"],
               "path": ["auth", "register"]
             },
-            "description": "Register a new user account. Returns JWT tokens on success."
+            "description": "Register a new user account.\n\n**Rate limit:** 5 requests/minute per IP.\n\n**Returns:** `{success, data: {user, access_token, refresh_token}}`\n\n**Errors:**\n- `400 VALIDATION_ERROR` — missing/invalid fields or unknown fields in body\n- `400 VALIDATION_EMAIL_EXISTS` — email already registered"
           },
           "response": []
         },
@@ -101,10 +129,18 @@
               "listen": "test",
               "script": {
                 "exec": [
+                  "// Handle proactive token rotation",
+                  "const newToken = pm.response.headers.get('X-New-Access-Token');",
+                  "if (newToken) pm.collectionVariables.set('access_token', newToken);",
+                  "",
                   "if (pm.response.code === 200) {",
                   "  const json = pm.response.json();",
-                  "  pm.collectionVariables.set('access_token', json.access_token);",
-                  "  pm.collectionVariables.set('refresh_token', json.refresh_token);",
+                  "  pm.collectionVariables.set('access_token', json.data.access_token);",
+                  "  pm.collectionVariables.set('refresh_token', json.data.refresh_token);",
+                  "  pm.test('Response has token pair', () => {",
+                  "    pm.expect(json.data).to.have.property('access_token');",
+                  "    pm.expect(json.data).to.have.property('refresh_token');",
+                  "  });",
                   "}"
                 ],
                 "type": "text/javascript"
@@ -114,7 +150,8 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Request-ID", "value": "req_login_001" }
             ],
             "body": {
               "mode": "raw",
@@ -125,7 +162,7 @@
               "host": ["{{base_url}}"],
               "path": ["auth", "login"]
             },
-            "description": "Login with email and password. Automatically sets `access_token` and `refresh_token` collection variables."
+            "description": "Login with email and password. Automatically sets `access_token` and `refresh_token` collection variables.\n\n**Rate limit:** 5 requests/minute per IP.\n\n**Returns:** `{success, data: {access_token, refresh_token}}`\n\n**Errors:**\n- `401 AUTH_INVALID_CREDENTIALS` — wrong email or password\n- `401 AUTH_ACCOUNT_SUSPENDED` — account suspended by admin"
           },
           "response": []
         },
@@ -138,7 +175,8 @@
                 "exec": [
                   "if (pm.response.code === 200) {",
                   "  const json = pm.response.json();",
-                  "  pm.collectionVariables.set('access_token', json.access_token);",
+                  "  pm.collectionVariables.set('access_token', json.data.access_token);",
+                  "  pm.collectionVariables.set('refresh_token', json.data.refresh_token);",
                   "}"
                 ],
                 "type": "text/javascript"
@@ -155,7 +193,7 @@
               "host": ["{{base_url}}"],
               "path": ["auth", "refresh"]
             },
-            "description": "Exchange the refresh token for a new access token. Updates `access_token` variable automatically."
+            "description": "Exchange the refresh token for a new access + refresh token pair. The old refresh token JTI is blocklisted after rotation.\n\n**Auth:** Requires the **refresh** token in Authorization header (not the access token).\n\n**Returns:** `{success, data: {access_token, refresh_token}}`\n\n**Errors:**\n- `401 AUTH_UNAUTHORIZED` — token is an access token, not a refresh token\n- `401 AUTH_TOKEN_REVOKED` — refresh token was already used or logged out"
           },
           "response": []
         },
@@ -185,7 +223,61 @@
               "host": ["{{base_url}}"],
               "path": ["auth", "logout"]
             },
-            "description": "Invalidate the current access token. Clears both token variables."
+            "description": "Invalidate the current access token by adding its JTI to the Redis blocklist. Clears both token variables on success.\n\n**Auth:** JWT required.\n\n**Errors:**\n- `401 AUTH_UNAUTHORIZED` — no token provided\n- `401 AUTH_TOKEN_REVOKED` — token already blocklisted"
+          },
+          "response": []
+        },
+        {
+          "name": "Forgot Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/forgot-password",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "forgot-password"]
+            },
+            "description": "Request a password reset email. Always returns 200 regardless of whether the email is registered — this prevents account enumeration.\n\n**Returns:** `{success, data: {message}}`\n\n**Token TTL:** 1 hour (stored in Redis).\n\n**Errors:**\n- `400 VALIDATION_ERROR` — invalid email format"
+          },
+          "response": []
+        },
+        {
+          "name": "Reset Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{reset_token}}\",\n  \"new_password\": \"NewSecurePass456!\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/reset-password",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "reset-password"]
+            },
+            "description": "Submit a new password using the reset token received by email. The token is single-use and deleted from Redis after a successful reset.\n\n**Returns:** `{success, data: {message}}`\n\n**Errors:**\n- `400 VALIDATION_ERROR` — password < 8 chars or missing token\n- `400 AUTH_INVALID_TOKEN` — token is invalid or has expired"
+          },
+          "response": []
+        },
+        {
+          "name": "Verify Email",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/auth/verify-email/{{verify_token}}",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "verify-email", "{{verify_token}}"]
+            },
+            "description": "Verify the user's email address using the token sent after registration. The token is single-use (deleted from Redis on success) with a 24-hour TTL.\n\n**Returns:** `{success, data: {message}}`\n\n**Errors:**\n- `400 AUTH_INVALID_TOKEN` — token is invalid or has expired"
           },
           "response": []
         }
@@ -202,11 +294,11 @@
               { "key": "Authorization", "value": "Bearer {{access_token}}" }
             ],
             "url": {
-              "raw": "{{base_url}}/users/profile",
+              "raw": "{{base_url}}/users/me",
               "host": ["{{base_url}}"],
-              "path": ["users", "profile"]
+              "path": ["users", "me"]
             },
-            "description": "Get the authenticated user's full profile including education, physical details, and category."
+            "description": "Get the authenticated user's full profile. Implemented in Story 4."
           },
           "response": []
         },
@@ -220,51 +312,14 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"full_name\": \"John Doe\",\n  \"phone\": \"+919876543210\",\n  \"date_of_birth\": \"1995-06-15\",\n  \"gender\": \"Male\",\n  \"category\": \"General\",\n  \"state\": \"Maharashtra\",\n  \"city\": \"Mumbai\",\n  \"pincode\": \"400001\",\n  \"highest_qualification\": \"Graduate\",\n  \"education\": {\n    \"degree\": \"B.Tech\",\n    \"stream\": \"Computer Science\",\n    \"university\": \"Mumbai University\",\n    \"year\": 2018,\n    \"percentage\": 75.5\n  }\n}"
+              "raw": "{\n  \"date_of_birth\": \"1995-06-15\",\n  \"gender\": \"Male\",\n  \"category\": \"General\",\n  \"state\": \"Maharashtra\",\n  \"city\": \"Mumbai\",\n  \"pincode\": \"400001\",\n  \"highest_qualification\": \"Graduate\",\n  \"education\": {\n    \"degree\": \"B.Tech\",\n    \"stream\": \"Computer Science\",\n    \"university\": \"Mumbai University\",\n    \"year\": 2018,\n    \"percentage\": 75.5\n  }\n}"
             },
             "url": {
-              "raw": "{{base_url}}/users/profile",
+              "raw": "{{base_url}}/users/me",
               "host": ["{{base_url}}"],
-              "path": ["users", "profile"]
+              "path": ["users", "me"]
             },
-            "description": "Update the authenticated user's profile fields."
-          },
-          "response": []
-        },
-        {
-          "name": "Get Preferences",
-          "request": {
-            "method": "GET",
-            "header": [
-              { "key": "Authorization", "value": "Bearer {{access_token}}" }
-            ],
-            "url": {
-              "raw": "{{base_url}}/users/preferences",
-              "host": ["{{base_url}}"],
-              "path": ["users", "preferences"]
-            },
-            "description": "Get the user's notification and job matching preferences."
-          },
-          "response": []
-        },
-        {
-          "name": "Update Preferences",
-          "request": {
-            "method": "PUT",
-            "header": [
-              { "key": "Authorization", "value": "Bearer {{access_token}}" },
-              { "key": "Content-Type", "value": "application/json" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"notification_preferences\": {\n    \"email\": true,\n    \"push\": true,\n    \"sms\": false,\n    \"frequency\": \"daily\"\n  },\n  \"quick_filters\": {\n    \"job_types\": [\"latest_job\", \"result\"],\n    \"qualifications\": [\"Graduate\"],\n    \"states\": [\"Maharashtra\", \"Delhi\"]\n  }\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/users/preferences",
-              "host": ["{{base_url}}"],
-              "path": ["users", "preferences"]
-            },
-            "description": "Update the user's notification and job matching preferences."
+            "description": "Update the authenticated user's profile (PATCH semantics — send only fields to change). Implemented in Story 4."
           },
           "response": []
         },
@@ -276,16 +331,20 @@
               { "key": "Authorization", "value": "Bearer {{access_token}}" }
             ],
             "url": {
-              "raw": "{{base_url}}/users/applications",
+              "raw": "{{base_url}}/users/me/applications?page=1&per_page=20",
               "host": ["{{base_url}}"],
-              "path": ["users", "applications"]
+              "path": ["users", "me", "applications"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "per_page", "value": "20" }
+              ]
             },
-            "description": "Get all job applications tracked by the authenticated user."
+            "description": "Get all job applications for the authenticated user. Implemented in Story 4."
           },
           "response": []
         },
         {
-          "name": "Track Job Application",
+          "name": "Apply to Job",
           "request": {
             "method": "POST",
             "header": [
@@ -294,14 +353,30 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"job_id\": \"{{job_id}}\",\n  \"application_number\": \"APP2024001234\",\n  \"is_priority\": true\n}"
+              "raw": "{\n  \"job_id\": \"{{job_id}}\"\n}"
             },
             "url": {
-              "raw": "{{base_url}}/users/applications",
+              "raw": "{{base_url}}/users/me/applications",
               "host": ["{{base_url}}"],
-              "path": ["users", "applications"]
+              "path": ["users", "me", "applications"]
             },
-            "description": "Start tracking a job application for the authenticated user."
+            "description": "Apply to a job vacancy. Returns 409 if already applied. Implemented in Story 4."
+          },
+          "response": []
+        },
+        {
+          "name": "Withdraw Application",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/users/me/applications/{{application_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["users", "me", "applications", "{{application_id}}"]
+            },
+            "description": "Withdraw a job application (sets status to 'withdrawn'). Implemented in Story 4."
           },
           "response": []
         }
@@ -316,21 +391,19 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/jobs?page=1&per_page=20&status=active&job_type=latest_job&qualification=Graduate&state=Maharashtra",
+              "raw": "{{base_url}}/jobs?page=1&per_page=20&status=active",
               "host": ["{{base_url}}"],
               "path": ["jobs"],
               "query": [
                 { "key": "page", "value": "1" },
                 { "key": "per_page", "value": "20" },
-                { "key": "status", "value": "active" },
-                { "key": "job_type", "value": "latest_job", "description": "latest_job | result | admit_card | answer_key | admission | yojana" },
-                { "key": "qualification", "value": "Graduate", "disabled": true },
-                { "key": "state", "value": "Maharashtra", "disabled": true },
-                { "key": "organization", "value": "", "disabled": true },
-                { "key": "search", "value": "", "disabled": true }
+                { "key": "status", "value": "active", "description": "upcoming | active | closed" },
+                { "key": "category", "value": "", "disabled": true },
+                { "key": "state", "value": "", "disabled": true },
+                { "key": "search", "value": "", "disabled": true, "description": "Full-text search on title/org" }
               ]
             },
-            "description": "List all job vacancies with optional filters. Public endpoint — no auth required."
+            "description": "List paginated job vacancies with optional filters. Public endpoint.\n\n**Returns:** `{success, data: {items: [...], meta: {total, page, per_page, pages}}}`\n\nImplemented in Story 3."
           },
           "response": []
         },
@@ -344,12 +417,12 @@
               "host": ["{{base_url}}"],
               "path": ["jobs", "{{job_id}}"]
             },
-            "description": "Get full details for a single job vacancy. Public endpoint — no auth required."
+            "description": "Get full details for a single job vacancy. Increments Redis view counter. Public endpoint.\n\nImplemented in Story 3."
           },
           "response": []
         },
         {
-          "name": "Create Job (Admin)",
+          "name": "Create Job (Admin/Operator)",
           "request": {
             "method": "POST",
             "header": [
@@ -358,19 +431,19 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"job_title\": \"SSC CGL 2024\",\n  \"organization\": \"Staff Selection Commission\",\n  \"department\": \"Various Departments\",\n  \"job_type\": \"latest_job\",\n  \"employment_type\": \"permanent\",\n  \"qualification_level\": \"Graduate\",\n  \"total_vacancies\": 17727,\n  \"vacancy_breakdown\": {\n    \"General\": 8200,\n    \"OBC\": 4500,\n    \"SC\": 2700,\n    \"ST\": 1327,\n    \"EWS\": 1000\n  },\n  \"short_description\": \"SSC Combined Graduate Level Examination 2024\",\n  \"eligibility\": {\n    \"age_min\": 18,\n    \"age_max\": 32,\n    \"qualification\": \"Graduate from recognized university\",\n    \"nationality\": \"Indian\"\n  },\n  \"application_details\": {\n    \"fee_general\": 100,\n    \"fee_sc_st\": 0,\n    \"fee_women\": 0,\n    \"apply_link\": \"https://ssc.nic.in\"\n  },\n  \"notification_date\": \"2024-09-17\",\n  \"application_start\": \"2024-09-17\",\n  \"application_end\": \"2024-10-07\",\n  \"exam_start\": \"2024-12-09\",\n  \"salary_initial\": 25500,\n  \"salary_max\": 151100,\n  \"is_featured\": true\n}"
+              "raw": "{\n  \"job_title\": \"SSC CGL 2024\",\n  \"organization\": \"Staff Selection Commission\",\n  \"department\": \"Various Departments\",\n  \"category\": \"latest_job\",\n  \"total_vacancies\": 17727,\n  \"vacancy_breakdown\": {\n    \"General\": 8200,\n    \"OBC\": 4500,\n    \"SC\": 2700,\n    \"ST\": 1327,\n    \"EWS\": 1000\n  },\n  \"state\": \"Central\",\n  \"status\": \"upcoming\",\n  \"notification_date\": \"2024-09-17\",\n  \"application_start\": \"2024-09-17\",\n  \"application_end\": \"2024-10-07\",\n  \"exam_start\": \"2024-12-09\",\n  \"salary_initial\": 25500,\n  \"salary_max\": 151100\n}"
             },
             "url": {
               "raw": "{{base_url}}/jobs",
               "host": ["{{base_url}}"],
               "path": ["jobs"]
             },
-            "description": "Create a new job vacancy. Requires Admin role."
+            "description": "Create a new job vacancy. Requires Admin or Operator role.\n\n**Errors:**\n- `401 AUTH_UNAUTHORIZED` — not logged in\n- `403 FORBIDDEN_PERMISSION_DENIED` — insufficient role\n\nImplemented in Story 3."
           },
           "response": []
         },
         {
-          "name": "Update Job (Admin)",
+          "name": "Update Job (Admin/Operator)",
           "request": {
             "method": "PUT",
             "header": [
@@ -379,14 +452,14 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"status\": \"active\",\n  \"total_vacancies\": 18000,\n  \"is_featured\": true,\n  \"is_urgent\": false\n}"
+              "raw": "{\n  \"status\": \"active\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/jobs/{{job_id}}",
               "host": ["{{base_url}}"],
               "path": ["jobs", "{{job_id}}"]
             },
-            "description": "Update a job vacancy. Requires Admin role."
+            "description": "Update a job vacancy (PATCH semantics). Operators cannot change salary/vacancy fields per role_permissions. Implemented in Story 3."
           },
           "response": []
         },
@@ -402,7 +475,7 @@
               "host": ["{{base_url}}"],
               "path": ["jobs", "{{job_id}}"]
             },
-            "description": "Delete a job vacancy. Requires Admin role."
+            "description": "Delete a job vacancy. Requires Admin role. Implemented in Story 3."
           },
           "response": []
         }
@@ -419,16 +492,16 @@
               { "key": "Authorization", "value": "Bearer {{access_token}}" }
             ],
             "url": {
-              "raw": "{{base_url}}/notifications?page=1&per_page=20&is_read=false",
+              "raw": "{{base_url}}/notifications?page=1&per_page=20&unread=true",
               "host": ["{{base_url}}"],
               "path": ["notifications"],
               "query": [
                 { "key": "page", "value": "1" },
                 { "key": "per_page", "value": "20" },
-                { "key": "is_read", "value": "false", "description": "true | false — omit for all" }
+                { "key": "unread", "value": "true", "description": "true = unread only; omit for all" }
               ]
             },
-            "description": "Get notifications for the authenticated user. Filter by read/unread status."
+            "description": "Get notifications for the authenticated user. Implemented in Story 5."
           },
           "response": []
         },
@@ -444,7 +517,7 @@
               "host": ["{{base_url}}"],
               "path": ["notifications", "{{notification_id}}", "read"]
             },
-            "description": "Mark a single notification as read."
+            "description": "Mark a single notification as read. Implemented in Story 5."
           },
           "response": []
         },
@@ -460,7 +533,7 @@
               "host": ["{{base_url}}"],
               "path": ["notifications", "read-all"]
             },
-            "description": "Mark all of the authenticated user's notifications as read."
+            "description": "Mark all of the authenticated user's notifications as read. Implemented in Story 5."
           },
           "response": []
         },
@@ -476,7 +549,7 @@
               "host": ["{{base_url}}"],
               "path": ["notifications", "{{notification_id}}"]
             },
-            "description": "Delete a specific notification."
+            "description": "Delete a specific notification. Implemented in Story 5."
           },
           "response": []
         }
@@ -497,7 +570,7 @@
               "host": ["{{base_url}}"],
               "path": ["admin", "stats"]
             },
-            "description": "Get dashboard statistics — total users, active jobs, applications, etc. Requires Admin role."
+            "description": "Get dashboard statistics. Requires Admin role. Implemented in Story 6."
           },
           "response": []
         },
@@ -519,7 +592,7 @@
                 { "key": "role", "value": "user", "description": "user | admin | operator" }
               ]
             },
-            "description": "List all registered users with filters. Requires Admin role."
+            "description": "List all registered users with filters. Requires Admin role. Implemented in Story 4."
           },
           "response": []
         },
@@ -535,7 +608,7 @@
               "host": ["{{base_url}}"],
               "path": ["admin", "users", "{{user_id}}"]
             },
-            "description": "Get full details for a specific user. Requires Admin role."
+            "description": "Get full details for a specific user. Requires Admin role. Implemented in Story 4."
           },
           "response": []
         },
@@ -556,7 +629,7 @@
               "host": ["{{base_url}}"],
               "path": ["admin", "users", "{{user_id}}", "status"]
             },
-            "description": "Update a user's status (active/suspended/deleted). Requires Admin role."
+            "description": "Update a user's status. Requires Admin role. Implemented in Story 4."
           },
           "response": []
         },
@@ -575,7 +648,7 @@
                 { "key": "period", "value": "30d", "description": "7d | 30d | 90d | 1y" }
               ]
             },
-            "description": "Get analytics data (page views, search trends, top jobs). Requires Admin role."
+            "description": "Get analytics data. Requires Admin role. Implemented in Story 6."
           },
           "response": []
         }
