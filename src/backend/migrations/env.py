@@ -66,12 +66,13 @@ def run_migrations_online() -> None:
     if conf_args.get('process_revision_directives') is None:
         conf_args['process_revision_directives'] = process_revision_directives
 
+    conf_args.setdefault('compare_type', True)
+
     connectable = get_engine()
     with connectable.connect() as connection:
         context.configure(
             connection=connection,
             target_metadata=get_metadata(),
-            compare_type=True,
             **conf_args,
         )
         with context.begin_transaction():
