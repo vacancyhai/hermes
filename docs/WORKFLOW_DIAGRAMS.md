@@ -2302,35 +2302,6 @@ Backend container starts
 └──────────────────────┘
 
 
-MONITORING CACHE PERFORMANCE:
-════════════════════════════
-
-Track these metrics:
-
-┌───────────────────────────────────────────┐
-│ Cache Hit Rate                            │
-│ = (Cache Hits / Total Requests) × 100     │
-│                                           │
-│ Target: > 80% for jobs                    │
-│         > 95% for preferences             │
-└───────────────────────────────────────────┘
-
-┌───────────────────────────────────────────┐
-│ Cache Memory Usage                        │
-│ REDIS INFO memory                         │
-│                                           │
-│ Monitor: used_memory_human                │
-│ Alert if: > 90% of max_memory             │
-└───────────────────────────────────────────┘
-
-┌───────────────────────────────────────────┐
-│ Cache Latency                             │
-│ Measure: Time for GET operations          │
-│                                           │
-│ Target: < 1ms for GET                     │
-│         < 2ms for SET                     │
-└───────────────────────────────────────────┘
-
 
 EXAMPLE CODE:
 ════════════

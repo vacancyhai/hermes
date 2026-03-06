@@ -1,4 +1,4 @@
-.PHONY: help install dev-install test clean backend-build backend-up backend-down backend-logs frontend-build frontend-up frontend-down frontend-logs backend-run frontend-run nginx-up nginx-down nginx-logs monitoring-up monitoring-down monitoring-logs all-up all-down all-logs all-status
+.PHONY: help install dev-install test clean backend-build backend-up backend-down backend-logs frontend-build frontend-up frontend-down frontend-logs backend-run frontend-run nginx-up nginx-down nginx-logs all-up all-down all-logs all-status
 
 help:
 	@echo "Hermes - Separated Microservices Architecture"
@@ -23,13 +23,8 @@ help:
 	@echo "  make nginx-down      - Stop Nginx reverse proxy"
 	@echo "  make nginx-logs      - View Nginx logs"
 	@echo ""
-	@echo "📊 MONITORING COMMANDS (src/monitoring/)"
-	@echo "  make monitoring-up   - Start monitoring stack (Prometheus, Grafana, AlertManager)"
-	@echo "  make monitoring-down - Stop monitoring stack"
-	@echo "  make monitoring-logs - View monitoring logs"
-	@echo ""
-	@echo "🔗 FULL STACK COMMANDS"
-	@echo "  make all-up         - Start all services (backend → frontend → nginx → monitoring)"
+	@echo "� FULL STACK COMMANDS"
+	@echo "  make all-up         - Start all services (backend → frontend → nginx)"
 	@echo "  make all-down       - Stop all services"
 	@echo "  make all-logs       - View all service logs"
 	@echo "  make all-status     - Show status of all services"
@@ -40,15 +35,13 @@ help:
 	@echo "  make test           - Run all tests (backend + frontend)"
 	@echo "  make clean          - Clean temporary files (__pycache__, .pyc, etc)"
 	@echo ""
-	@echo "💡 QUICK START (4-step deployment)"
-	@echo "  make backend-up && make frontend-up && make nginx-up && make monitoring-up"
+	@echo "💡 QUICK START (3-step deployment)"
+	@echo "  make backend-up && make frontend-up && make nginx-up"
 	@echo "  OR use: make all-up"
 	@echo ""
 	@echo "📌 SERVICE STATUS AFTER STARTUP"
-	@echo "  Backend API: http://localhost:5000/api/v1/"
+	@echo "  Backend API: http://localhost:5001/api/v1/"
 	@echo "  Frontend: http://localhost/  (via Nginx proxy)"
-	@echo "  Grafana: http://localhost:3000"
-	@echo "  Prometheus: http://localhost:9090"
 	@echo ""
 
 # ============================================
@@ -161,26 +154,6 @@ nginx-logs:
 	cd src/nginx && docker-compose logs -f
 
 # ============================================
-# MONITORING COMMANDS (src/monitoring/)
-# ============================================
-
-monitoring-up:
-	@echo "🚀 Starting monitoring stack (Prometheus, Grafana, AlertManager)..."
-	cd src/monitoring && docker-compose up -d
-	@echo "✅ Monitoring services started!"
-	@echo "   Grafana: http://localhost:3000 (admin/securepassword123)"
-	@echo "   Prometheus: http://localhost:9090"
-	@echo "   AlertManager: http://localhost:9093"
-
-monitoring-down:
-	@echo "⛔ Stopping monitoring stack..."
-	cd src/monitoring && docker-compose down
-
-monitoring-logs:
-	@echo "📋 Monitoring logs (Ctrl+C to exit)..."
-	cd src/monitoring && docker-compose logs -f
-
-# ============================================
 # FULL STACK COMMANDS
 # ============================================
 
@@ -191,15 +164,10 @@ all-up: backend-up frontend-up nginx-up
 	@echo "📌 Access Your Services:"
 	@echo "   Frontend: http://localhost"
 	@echo "   Backend API: http://localhost/api/v1/"
-	@echo "   Direct Backend: http://localhost:5000/api/v1/"
-	@echo ""
-	@echo "💡 Optional Services (start separately):"
-	@echo "   Monitoring: make monitoring-up"
-	@echo "   Grafana: http://localhost:3000 (admin/securepassword123)"
-	@echo "   Prometheus: http://localhost:9090"
+	@echo "   Direct Backend: http://localhost:5001/api/v1/"
 	@echo ""
 
-all-down: backend-down frontend-down nginx-down monitoring-down
+all-down: backend-down frontend-down nginx-down
 	@echo "✅ All services stopped!"
 
 all-logs:
@@ -208,7 +176,6 @@ all-logs:
 	@echo "   make backend-logs"
 	@echo "   make frontend-logs"
 	@echo "   make nginx-logs"
-	@echo "   make monitoring-logs"
 
 all-status:
 	@echo "📊 SERVICE STATUS"
@@ -222,6 +189,3 @@ all-status:
 	@echo ""
 	@echo "Nginx Service:"
 	@cd src/nginx && docker-compose ps || true
-	@echo ""
-	@echo "Monitoring Services:"
-	@cd src/monitoring && docker-compose ps || true

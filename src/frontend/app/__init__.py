@@ -17,7 +17,12 @@ def create_app():
     login_manager = LoginManager()
     login_manager.init_app(app)
     login_manager.login_view = 'auth.login'
-    
+
+    @login_manager.user_loader
+    def load_user(user_id):
+        # Stub: implement with real User model lookup in EPIC_03/EPIC_10
+        return None
+
     # Register blueprints
     from app.routes import main, auth, jobs, profile, admin, errors
     app.register_blueprint(main.bp)

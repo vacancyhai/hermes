@@ -444,7 +444,6 @@ PREFERENCE_CATEGORIES = {
 - [ ] Notification architecture documentation
 - [ ] Channel integration guides
 - [ ] Template development guide
-- [ ] Analytics and monitoring setup
 
 ### User Documentation:
 - [ ] Notification preference guide
@@ -461,7 +460,7 @@ PREFERENCE_CATEGORIES = {
 - **Push notification service downtime**: Mitigation - Fallback services, retry mechanisms
 
 ### Medium Risk:
-- **SMS cost escalation**: Mitigation - Rate limiting, cost monitoring, budget alerts
+- **SMS cost escalation**: Mitigation - Rate limiting and usage caps
 - **Notification spam**: Mitigation - Frequency capping, user preference enforcement
 
 ### Low Risk:

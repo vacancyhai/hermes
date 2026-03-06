@@ -58,7 +58,6 @@ This project contains comprehensive documentation across multiple files. Use thi
 8. Environment Variables → .env configuration
 9. Development Workflow → Phase-by-phase development plan
 10. Hostinger VPS Deployment → Traditional server setup
-11. Monitoring & Maintenance → Production operations
 12. Troubleshooting → Common issues and solutions
 
 ---
@@ -317,7 +316,6 @@ The `/epic` folder contains detailed implementation plans organized as epics wit
 - 6 stories, 34 story points, Week 1-4
 - Docker base infrastructure & container orchestration
 - Nginx reverse proxy, PostgreSQL, Redis setup
-- Health monitoring, environment configuration
 - **Current Status**: Story 1.1 (70% complete - needs health checks, init.sql, Redis AOF)
 
 **👉 [EPIC_02_BACKEND_API_FOUNDATION.md](../epic/EPIC_02_BACKEND_API_FOUNDATION.md)**
@@ -366,7 +364,6 @@ The `/epic` folder contains detailed implementation plans organized as epics wit
 - Admin dashboard with analytics
 - User management interface
 - Job management tools
-- System monitoring
 
 **👉 [EPIC_10_FRONTEND_UI.md](../epic/EPIC_10_FRONTEND_UI.md)**
 - Jinja2 template implementation

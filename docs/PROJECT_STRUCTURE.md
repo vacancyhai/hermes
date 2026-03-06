@@ -232,18 +232,6 @@ hermes/
 │   │   ├── .env.example              # Nginx environment configuration
 │   │   └── README.md                 # Nginx-specific documentation
 │   │                                  # All configs bundled with service
-│   │
-│   └── monitoring/                    # 📊 MONITORING STACK SERVICE (INDEPENDENT)
-│       │
-│       ├── docker-compose.yml        # Monitoring orchestration (8 services)
-│       ├── prometheus.yml            # 🔧 Prometheus scrape config (local)
-│       ├── alert_rules.yml           # 📋 40+ alert rules (local)
-│       ├── alertmanager.yml          # 🔔 Alert routing config (local)
-│       ├── grafana_datasources.yml   # 📊 Grafana datasources (local)
-│       ├── .env.example              # Monitoring environment configuration
-│       └── README.md                 # Monitoring-specific documentation
-│                                      # All configs bundled with service  
-
 │
 ├── config/                           # 🌍 Environment configs (shared reference only)
 │   ├── production/
@@ -575,11 +563,6 @@ src/frontend-mobile/
 - **Redis Authentication**: Password + AOF persistence
 - **Environment Variables**: Secrets in `.env` files
 
-### Monitoring & Auditing
-- **Request ID Propagation**: X-Request-ID header for tracing
-- **Audit Logging**: All sensitive operations logged
-- **Error Tracking**: Standardized error codes
-- **Health Checks**: All services monitored
 
 ## 📊 Performance Optimizations
 

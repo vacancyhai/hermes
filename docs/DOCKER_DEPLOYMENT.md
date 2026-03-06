@@ -236,7 +236,7 @@ services:
   # PostgreSQL Database
   postgresql:
     image: postgres:16-alpine
-    container_name: hermes_backend_postgresql
+    container_name: hermes_postgresql
     restart: unless-stopped
     environment:
       POSTGRES_USER: hermes_user
@@ -258,7 +258,7 @@ services:
   # Redis Cache & Broker
   redis:
     image: redis:7-alpine
-    container_name: hermes_backend_redis
+    container_name: hermes_redis
     restart: unless-stopped
     command: redis-server --requirepass ${REDIS_PASSWORD} --appendonly yes --appendfsync everysec
     volumes:
@@ -278,7 +278,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: hermes_backend_api
+    container_name: hermes_api
     restart: unless-stopped
     environment:
       - FLASK_ENV=production
@@ -320,7 +320,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: hermes_backend_celery_worker
+    container_name: hermes_celery_worker
     restart: unless-stopped
     command: celery -A app.tasks.celery_app worker --loglevel=info --concurrency=4
     environment:
@@ -350,7 +350,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: hermes_backend_celery_beat
+    container_name: hermes_celery_beat
     restart: unless-stopped
     command: celery -A app.tasks.celery_app beat --loglevel=info
     environment:
@@ -696,7 +696,7 @@ With 90-day expires_at:  Only 300,000 notifications at any time
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: hermes_backend
+    container_name: hermes_api
     restart: unless-stopped
     environment:
       - FLASK_ENV=production
@@ -972,7 +972,7 @@ SQLALCHEMY_DATABASE_URI=postgresql://hermes_user:pass@pgbouncer:5432/hermes_db
 **Benefits**:
 - ✅ Streaming replication for automatic failover
 - ✅ pg_dump for reliable backups
-- ✅ pg_stat_activity for query monitoring
+- ✅ pg_stat_activity for query analysis
 - ✅ JSONB + GIN indexes for flexible querying
 
 **Current Development Setup**: Single-node is fine; add streaming replication before going to production.
@@ -1021,9 +1021,9 @@ engine = create_engine(
 - ✅ Automatic connection recovery
 - ✅ Better resource utilization
 
-**Monitoring Connection Pool:**
+**Connection Pool Events:**
 ```python
-# backend/app/utils/db_monitor.py
+# backend/app/utils/db_utils.py
 from sqlalchemy import event
 from sqlalchemy.pool import Pool
 
@@ -1490,10 +1490,9 @@ ADMIN_EMAIL=admin@yourdomain.com
 # Application URL
 APP_URL=https://yourdomain.com
 
-# Monitoring & Logging
+# Logging
 LOG_LEVEL=INFO
 ENABLE_REQUEST_LOGGING=true
-ENABLE_PERFORMANCE_MONITORING=true
 ```
 
 ---
@@ -1572,98 +1571,6 @@ Add this service to your docker-compose.yml for SSL:
       - hermes_network
 ```
 
----
-
-## ⚡ Monitoring & Logging Setup (Production)
-
-### Centralized Logging (ELK Stack)
-
-Add to docker-compose.yml for production log aggregation:
-
-```yaml
-services:
-  elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.0.0
-    container_name: hermes_elasticsearch
-    restart: unless-stopped
-    environment:
-      - discovery.type=single-node
-      - xpack.security.enabled=false
-    ports:
-      - "9200:9200"
-    volumes:
-      - elasticsearch_data:/usr/share/elasticsearch/data
-    networks:
-      - hermes_network
-
-  kibana:
-    image: docker.elastic.co/kibana/kibana:8.0.0
-    container_name: hermes_kibana
-    restart: unless-stopped
-    ports:
-      - "5601:5601"
-    environment:
-      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
-    depends_on:
-      - elasticsearch
-    networks:
-      - hermes_network
-```
-
-**Enable JSON logging in all services**:
-```python
-# backend/app/__init__.py
-import logging
-from pythonjsonlogger import jsonlogger
-
-handler = logging.FileHandler('logs/app.log')
-formatter = jsonlogger.JsonFormatter()
-handler.setFormatter(formatter)
-
-# Now logs: {"timestamp": "...", "service": "backend", "level": "INFO", "message": ""}
-```
-
-**Access Kibana**: http://localhost:5601
-Search: `service:backend AND level:ERROR`
-
-### Performance Monitoring (Prometheus + Grafana)
-
-```yaml
-services:
-  prometheus:
-    image: prom/prometheus:latest
-    container_name: hermes_prometheus
-    ports:
-      - "9090:9090"
-    volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
-      - prometheus_data:/prometheus
-    networks:
-      - hermes_network
-
-  grafana:
-    image: grafana/grafana:latest
-    container_name: hermes_grafana
-    ports:
-      - "3000:3000"
-    environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
-    volumes:
-      - grafana_data:/var/lib/grafana
-    depends_on:
-      - prometheus
-    networks:
-      - hermes_network
-```
-
-**Metrics to Monitor**:
-- API response times (goal: < 200ms for job search)
-- Database query latency (goal: < 50ms)
-- Celery task execution time (goal: email < 5s)
-- Error rates (goal: < 1%)
-- Memory/CPU per container (goal: < 80%)
-
-**Access Grafana**: http://localhost:3000 (admin/admin)
 
 ---
 
@@ -1695,24 +1602,6 @@ docker compose exec postgresql psql -U hermes_user -d hermes_db
 cd /home/hermes/hermes
 git pull origin main
 docker compose up -d --build app celery_worker celery_beat
-```
-
-### Monitoring
-```bash
-# Check resource usage
-docker stats
-
-# Inspect container
-docker compose inspect app
-
-# Check container health
-docker compose ps
-
-# View application logs
-docker compose logs -f --tail=100 app
-
-# View Celery logs
-docker compose logs -f celery_worker
 ```
 
 ### Database Operations
@@ -2210,7 +2099,6 @@ Before deploying to production, verify:
 | **Isolation** | ✅ Full isolation | ⚠️ Shared system |
 | **Portability** | ✅ Any server | ⚠️ OS-specific |
 | **Backup** | ✅ Volume snapshots | ⚠️ Manual scripts |
-| **Monitoring** | ✅ Built-in tools | ⚠️ Custom setup |
 
 ---
 

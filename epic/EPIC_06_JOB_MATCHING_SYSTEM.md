@@ -22,6 +22,10 @@
 - **Story Count**: 5 stories
 - **Story Points**: 45 (estimated)
 - **Dependencies**: Epic 5 (Job Management), Epic 7 (User Profiles)
+- **⚠️ STRATEGY**: Use hybrid job matching (content-based + collaborative filtering)
+  - Content-Based (60% weight): TF-IDF similarity on skills/location/requirements
+  - Collaborative (40% weight): Find similar users' applied jobs
+  - Combined score 0-100 with confidence metric
 - **Success Metrics**:
   - Matching accuracy >85%
   - Recommendation response time <300ms
@@ -263,7 +267,6 @@ class JobRecommendationEngine:
 - [ ] Asynchronous processing with Celery
 - [ ] Bulk user matching optimization
 - [ ] Match result caching
-- [ ] Pipeline monitoring and alerts
 - [ ] Failure recovery mechanisms
 
 #### Technical Implementation Tasks:
@@ -272,7 +275,6 @@ class JobRecommendationEngine:
 backend/app/tasks/matching_tasks.py         # Matching pipeline
 backend/app/services/pipeline_service.py   # Pipeline orchestration
 backend/app/models/matching_job.py         # Pipeline job model
-backend/app/monitoring/pipeline_monitor.py # Monitoring
 backend/app/utils/batch_processor.py       # Batch processing
 backend/app/services/event_handler.py      # Event handling
 ```
@@ -286,7 +288,6 @@ backend/app/services/event_handler.py      # Event handling
 # 4. Bulk user matching in background
 # 5. Match results cached
 # 6. Notifications triggered for matches
-# 7. Pipeline metrics updated
 ```
 
 #### Definition of Done:
@@ -294,7 +295,6 @@ backend/app/services/event_handler.py      # Event handling
 - [ ] Asynchronous processing prevents blocking
 - [ ] Bulk matching optimized for performance
 - [ ] Match results cached for quick access
-- [ ] Monitoring tracks pipeline health
 - [ ] Failure recovery prevents data loss
 
 ---
@@ -377,7 +377,7 @@ backend/app/services/event_handler.py      # Event handling
 
 ### Medium Risk:
 - **Recommendation accuracy**: Mitigation - A/B testing, user feedback
-- **Real-time pipeline failures**: Mitigation - Error handling, monitoring
+- **Real-time pipeline failures**: Mitigation - Error handling, retry logic
 
 ### Low Risk:
 - **Cache staleness**: Mitigation - Smart cache invalidation

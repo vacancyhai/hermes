@@ -688,11 +688,6 @@ Same backend, different frontend technology! ✨
 - ✅ **Request timeouts**: 10-second timeout, 3-retry exponential backoff
 - ✅ **Notification retries**: Failed emails auto-retry up to 5 times
 
-**Monitoring**:
-- ✅ **Centralized logging**: All container logs in Elasticsearch (ELK stack)
-- ✅ **Full-text search**: Elasticsearch for job search (fuzzy matching, relevance)
-- ✅ **APM**: Track API response times, database latency, Celery task performance
-- ✅ **Real-time alerts**: Error rate, response time, memory usage thresholds
 
 ---
 ## ⚡ Advanced Design Improvements (13 New Features)
@@ -1151,10 +1146,6 @@ After deployment:
    - Set up backup retention policy
    - Test restore procedure
 
-6. **Monitoring**
-   - Setup application monitoring (Sentry, etc.)
-   - Configure uptime monitoring
-   - Setup alerts for errors
 
 ---
 

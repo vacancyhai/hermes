@@ -67,7 +67,6 @@ docker-compose logs -f nginx
 - **Frontend**: http://localhost/
 - **API Documentation**: http://localhost/api/v1/docs
 - **Health Check**: http://localhost/health
-- **Metrics**: http://localhost/metrics (if monitoring enabled)
 
 ## Configuration
 
@@ -151,42 +150,6 @@ Compression reduces bandwidth by 60-80% for text content.
   - Connect timeout: 60s
   - Read timeout: 60s
   - Send timeout: 60s
-
-## Monitoring
-
-### Metrics Collection
-
-When monitoring stack is enabled, Nginx exports metrics via `/nginx_status` endpoint:
-
-```bash
-# View Nginx stats
-curl http://localhost:80/nginx_status
-```
-
-Prometheus scrapes these metrics:
-- Active connections
-- Accepted/handled connections
-- Requests processed
-- Reading/writing/waiting states
-
-### Container Logs
-
-```bash
-# Real-time logs
-docker-compose logs -f nginx
-
-# View error logs only
-docker-compose logs nginx | grep error
-```
-
-### Health Check
-
-Nginx includes a health check endpoint:
-
-```bash
-curl -v http://localhost:80/health
-# Returns: 200 OK with empty body
-```
 
 ## Troubleshooting
 
@@ -308,9 +271,6 @@ cd src/frontend && docker-compose up -d
 # Terminal 3: Start Nginx (load balancer)
 cd src/nginx && docker-compose up -d
 
-# Terminal 4 (Optional): Start Monitoring
-cd src/monitoring && docker-compose up -d
-
 # Or use Makefile
 make all-up
 ```
@@ -354,4 +314,3 @@ For issues or questions:
 
 - [Backend API](../backend/README.md) - Main application server
 - [Frontend](../frontend/README.md) - Web UI application
-- [Monitoring](../monitoring/README.md) - Observability stack (Prometheus, Grafana, AlertManager)

@@ -21,7 +21,11 @@
 
 - **Story Count**: 5 stories
 - **Story Points**: 35 (estimated)
-- **Dependencies**: Epic 3 (User Authentication)
+- **Dependencies**: Epic 2 (Backend API Foundation) + Epic 3 (User Authentication)
+- **⚠️ CRITICAL**: CANNOT run in parallel with EPIC_03
+  - Requires EPIC_02 for blueprint system
+  - Requires EPIC_03 User model to be complete FIRST
+  - Must follow sequentially: EPIC_02 → EPIC_03 → EPIC_04
 - **Success Metrics**:
   - Role assignment accuracy 100%
   - Permission checks <50ms response time
@@ -132,7 +136,7 @@ PERMISSION_CATEGORIES = {
     'jobs': ['create', 'read', 'update', 'delete', 'publish', 'moderate'],
     'users': ['create', 'read', 'update', 'delete', 'suspend', 'activate'],
     'content': ['create', 'read', 'update', 'delete', 'moderate'],
-    'system': ['config', 'backup', 'logs', 'monitor'],
+    'system': ['config', 'backup', 'logs'],
     'reports': ['generate', 'export', 'schedule', 'share']
 }
 ```
@@ -277,7 +281,7 @@ AUDIT_CATEGORIES = {
 # Files to implement:
 backend/app/api/v1/routes/admin/emergency.py # Emergency endpoints
 backend/app/services/emergency_service.py # Emergency logic
-backend/app/tasks/security_tasks.py   # Security monitoring
+backend/app/tasks/security_tasks.py   # Security tasks
 backend/app/models/emergency_action.py # Emergency tracking
 backend/app/utils/security_utils.py   # Security utilities
 backend/app/alerts/security_alerts.py # Security alerting
@@ -401,7 +405,7 @@ EMERGENCY_ACTIONS = {
 
 ### High Risk:
 - **Privilege escalation vulnerability**: Mitigation - Strict role hierarchy, comprehensive testing
-- **Audit trail gaps**: Mitigation - Middleware-level logging, monitoring
+- **Audit trail gaps**: Mitigation - Middleware-level logging
 
 ### Medium Risk:
 - **Performance impact of permission checks**: Mitigation - Permission caching, optimization

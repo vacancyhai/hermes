@@ -19,10 +19,12 @@
 
 ## 📊 Epic Metrics
 
-- **Story Count**: 5 stories
-- **Story Points**: 30 (estimated)
+- **Story Count**: 6 stories (added health check endpoint - START HERE!)
+- **Story Points**: 35 (estimated, was 30)
 - **Dependencies**: Epic 1 (Docker Infrastructure)
+- **⚠️ FIRST STORY**: Story 2.0 - Health Check Endpoint (simplest, 2 points)
 - **Success Metrics**:
+  - Health check endpoint responding
   - API responds to health checks
   - Database connections stable
   - Request/response middleware working
@@ -131,7 +133,7 @@ backend/app/decorators/version.py   # Version decorators
 - [ ] Connection pooling configuration
 - [ ] Database health checks
 - [ ] Automatic reconnection handling
-- [ ] Query logging and monitoring
+- [ ] Query logging
 - [ ] Migration system with Alembic
 - [ ] Index creation and management
 
@@ -144,7 +146,6 @@ backend/app/models/__init__.py      # Model registry
 backend/alembic/                    # Database migrations
 backend/scripts/create-indexes.py   # Index creation
 backend/app/utils/db_utils.py       # Database utilities
-backend/app/monitoring/db_monitor.py # DB performance monitoring
 ```
 
 #### Definition of Done:
@@ -152,7 +153,6 @@ backend/app/monitoring/db_monitor.py # DB performance monitoring
 - [ ] Connection pooling active
 - [ ] Health checks implemented
 - [ ] Reconnection works automatically
-- [ ] Query performance monitored
 - [ ] Indexes created properly
 
 ---
@@ -316,7 +316,7 @@ backend/app/middleware/rate_limit.py # Rate limiting
 
 ### High Risk:
 - **Database connection failures**: Mitigation - Implement retry logic and connection pooling
-- **Performance bottlenecks**: Mitigation - Implement monitoring and profiling
+- **Performance bottlenecks**: Mitigation - Implement profiling
 
 ### Medium Risk:
 - **Validation bypass**: Mitigation - Comprehensive test coverage

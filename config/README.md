@@ -248,7 +248,6 @@ python3 -c "import secrets; print(secrets.token_urlsafe(32))"
 - [ ] Logging configured for production
 - [ ] SSL certificates valid (Let's Encrypt)
 - [ ] Health checks configured
-- [ ] Monitoring and alerting set up
 
 ---
 
@@ -278,7 +277,7 @@ chmod 600 src/frontend/.env
 curl https://yourdomain.com/api/v1/health
 curl https://yourdomain.com/health
 
-# 6. Monitor
+# 6. Check logs
 docker-compose -f src/backend/docker-compose.yml logs -f
 docker-compose -f src/frontend/docker-compose.yml logs -f
 ```

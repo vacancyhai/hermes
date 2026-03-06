@@ -265,7 +265,7 @@ backend/app/services/session_service.py # Session management
 backend/app/models/user_session.py   # Session model
 backend/app/middleware/session_auth.py # Session validation
 backend/app/utils/security_utils.py  # Security helpers
-backend/app/tasks/security_tasks.py  # Security monitoring
+backend/app/tasks/security_tasks.py  # Security tasks
 backend/app/api/v1/routes/sessions.py # Session management API
 ```
 
@@ -361,7 +361,7 @@ backend/app/api/v1/routes/sessions.py # Session management API
 ### Session Security:
 - Secure session cookies
 - Session rotation on privilege escalation
-- Concurrent session monitoring
+- Concurrent session detection
 - Suspicious activity detection
 
 ### Data Protection:
@@ -383,7 +383,7 @@ backend/app/api/v1/routes/sessions.py # Session management API
 - **Session hijacking**: Mitigation - Secure cookies, IP validation
 
 ### Low Risk:
-- **Token cleanup failures**: Mitigation - Automated monitoring and alerts
+- **Token cleanup failures**: Mitigation - Automated alerts
 - **Email template issues**: Mitigation - Template testing and validation
 
 ---

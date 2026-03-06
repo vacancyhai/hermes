@@ -10,10 +10,10 @@ class Config:
     SECRET_KEY = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
     DEBUG = os.getenv('DEBUG', 'False') == 'True'
     HOST = os.getenv('HOST', '0.0.0.0')
-    PORT = int(os.getenv('PORT', 5001))
+    PORT = int(os.getenv('PORT', 8080))
     
     # Backend API
-    BACKEND_API_URL = os.getenv('BACKEND_API_URL', 'http://localhost:5000/api')
+    BACKEND_API_URL = os.getenv('BACKEND_API_URL', 'http://localhost:5000/api/v1')
     
     # Session
     SESSION_TYPE = 'filesystem'

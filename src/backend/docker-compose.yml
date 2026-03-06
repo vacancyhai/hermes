@@ -4,7 +4,7 @@ services:
   # PostgreSQL Database
   postgresql:
     image: postgres:16-alpine
-    container_name: hermes_backend_postgresql
+    container_name: hermes_postgresql
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${DB_USER:-hermes_user}
@@ -27,7 +27,7 @@ services:
   # Redis Cache & Task Queue
   redis:
     image: redis:7-alpine
-    container_name: hermes_backend_redis
+    container_name: hermes_redis
     restart: unless-stopped
     command: redis-server --requirepass ${REDIS_PASSWORD} --appendonly yes --appendfsync everysec
     volumes:
@@ -47,7 +47,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: hermes_backend_api
+    container_name: hermes_api
     restart: unless-stopped
     environment:
       - FLASK_ENV=production
@@ -76,7 +76,7 @@ services:
     networks:
       - backend_network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/api/v1/health"]
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/api/v1/health')"]
       interval: 30s
       timeout: 10s
       start_period: 40s
@@ -87,7 +87,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: hermes_backend_celery_worker
+    container_name: hermes_celery_worker
     restart: unless-stopped
     command: celery -A app.tasks.celery_app worker --loglevel=info --concurrency=4
     environment:
@@ -117,7 +117,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: hermes_backend_celery_beat
+    container_name: hermes_celery_beat
     restart: unless-stopped
     command: celery -A app.tasks.celery_app beat --loglevel=info
     environment:
