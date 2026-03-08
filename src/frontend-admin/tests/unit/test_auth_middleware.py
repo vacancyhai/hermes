@@ -45,28 +45,18 @@ class TestLoginRequired:
         assert resp.status_code == 302
         assert "/auth/login" in resp.headers["Location"]
 
-    def test_redirects_when_role_is_user(self, app, client):
+    def test_redirects_when_role_is_user(self, app):
         """A plain 'user' role must be rejected even with a valid token."""
         with app.test_request_context("/some-page"):
-            with client.session_transaction() as sess:
-                sess["access_token"] = "tok"
-                sess["user_id"] = "uid-u"
-                sess["email"] = "u@e.com"
-                sess["full_name"] = ""
-                sess["role"] = "user"
-
-            # Simulate session state inside a request context
-            with app.test_client() as c:
-                _set_session(c, "user")
-                with c.application.test_request_context("/some-page"):
-                    from flask import session as inner_sess
-                    inner_sess["access_token"] = "tok"
-                    inner_sess["user_id"] = "u"
-                    inner_sess["email"] = "u@e.com"
-                    inner_sess["full_name"] = ""
-                    inner_sess["role"] = "user"
-                    resp = login_required(_stub_view)()
-            assert resp.status_code == 302
+            from flask import session as req_sess
+            req_sess["access_token"] = "tok"
+            req_sess["user_id"] = "uid-u"
+            req_sess["email"] = "u@e.com"
+            req_sess["full_name"] = ""
+            req_sess["role"] = "user"
+            resp = login_required(_stub_view)()
+        assert resp.status_code == 302
+        assert "/auth/login" in resp.headers["Location"]
 
     def test_passes_when_role_is_admin(self, app):
         """Admin role must be allowed through."""

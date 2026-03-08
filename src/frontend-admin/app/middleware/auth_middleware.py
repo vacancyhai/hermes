@@ -7,8 +7,8 @@ Provides two decorators:
     Redirects unauthenticated requests to the admin login page.
 
 ``@role_required(*roles)``
-    Redirects if the user is not authenticated, and returns 403 if the
-    authenticated user's role is not in the allowed set.
+    Redirects to login if the user is not authenticated, and redirects to
+    dashboard if the authenticated user's role is not in the allowed set.
 
 Usage::
 
@@ -26,7 +26,7 @@ from functools import wraps
 
 from flask import flash, redirect, session, url_for
 
-from app.utils.session_manager import get_user_data, is_authenticated
+from app.utils.session_manager import clear_session, get_user_data, is_authenticated
 
 _ALLOWED_ROLES = ('admin', 'operator')
 
@@ -42,7 +42,6 @@ def login_required(f):
         # if a user's role was downgraded while they were logged in)
         data = get_user_data(session)
         if not data or data.get('role') not in _ALLOWED_ROLES:
-            from app.utils.session_manager import clear_session
             clear_session(session)
             flash('Access denied. Admin or operator role required.', 'error')
             return redirect(url_for('auth.login'))
