@@ -16,6 +16,7 @@ services:
     networks:
       - backend_network
       - frontend_network
+      - frontend_admin_network
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80/health"]
       interval: 30s
@@ -35,3 +36,7 @@ networks:
   frontend_network:
     external: true
     name: src_frontend_network
+
+  frontend_admin_network:
+    external: true
+    name: src_frontend_admin_network

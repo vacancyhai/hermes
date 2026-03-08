@@ -49,13 +49,23 @@ A comprehensive web application that provides users with personalized government
 - **Push Notifications**: Firebase Cloud Messaging (FCM)
 - **Production Server**: Gunicorn 21.2.0
 
-### Frontend (Flask + Jinja2)
+### User Frontend (`src/frontend/`) — port 8080
 - **Framework**: Python Flask 3.0.0
 - **Template Engine**: Jinja2
 - **Session Management**: Flask-Login
 - **Static Assets**: HTML5, CSS3, JavaScript
 - **API Client**: Python Requests library
 - **Production Server**: Gunicorn 21.2.0
+- **Audience**: Public users — register, login, browse jobs, manage profile
+
+### Admin Frontend (`src/frontend-admin/`) — port 8081
+- **Framework**: Python Flask 3.0.0
+- **Template Engine**: Jinja2
+- **Session Management**: Flask-Login
+- **Static Assets**: HTML5, CSS3, JavaScript
+- **API Client**: Python Requests library
+- **Production Server**: Gunicorn 21.2.0
+- **Audience**: Admin + Operator roles only — dashboard, job management, user management
 
 ### Infrastructure
 - **Containerization**: Docker + Docker Compose
@@ -65,7 +75,7 @@ A comprehensive web application that provides users with personalized government
 
 ## System Architecture
 
-### Microservices Architecture (Containerized)
+### Three-Service Architecture (Independent Containers)
 
 ```
 ┌────────────────────────────────────────────────────────────┐
@@ -79,48 +89,49 @@ A comprehensive web application that provides users with personalized government
 │         - Load Balancing                                   │
 │         - Static File Serving                              │
 │         - Rate Limiting                                    │
-└──────┬──────────────────────────────────┬──────────────────┘
-       │                                  │
-       │ /api/* → backend:5000           │ /* → frontend:8080
-       ↓                                  ↓
-┌─────────────────────┐          ┌─────────────────────────┐
-│ Backend Container   │          │  Frontend Container     │
-│ (Flask REST API)    │          │  (Flask + Jinja2)       │
-│                     │          │                         │
-│ - Business Logic    │          │ - UI Rendering          │
-│ - Data Validation   │◄─────────│ - Template Engine       │
-│ - Authentication    │  Calls   │ - User Sessions         │
-│ - Job Matching      │  API     │ - Static Assets         │
-│ - Notifications     │          │ - API Client            │
-│                     │          │                         │
-│ Port: 5000          │          │ Port: 8080              │
-└──────┬──────────────┘          └─────────────────────────┘
-       │
-       ├────────────────┬────────────────┬───────────────┐
-       │                │                │               │
-       ↓                ↓                ↓               ↓
+└────┬─────────────────────────┬──────────────────┬──────────┘
+     │                         │                  │
+     │ /api/* → backend:5000   │ /* → user:8080   │ admin.* → admin:8081
+     ↓                         ↓                  ↓
+┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐
+│ Backend Container│  │  User Frontend   │  │  Admin Frontend  │
+│ (Flask REST API) │  │  Container       │  │  Container       │
+│                  │  │  (Flask+Jinja2)  │  │  (Flask+Jinja2)  │
+│ - Auth (✅ done) │◄─│ - Register/Login │  │ - Admin Login    │
+│ - Business Logic │  │ - Job browsing   │◄─│ - Dashboard      │
+│ - JWT + RBAC     │  │ - User profile   │  │ - Job mgmt       │
+│ - Job Matching   │  │ - Notifications  │  │ - User mgmt      │
+│ - Notifications  │  │                  │  │                  │
+│ Port: 5000       │  │ Port: 8080       │  │ Port: 8081       │
+└────────┬─────────┘  └──────────────────┘  └──────────────────┘
+         │
+         ├──────────────┬──────────────┬─────────────┐
+         ↓              ↓              ↓             ↓
 ┌─────────────┐  ┌─────────────┐  ┌──────────┐  ┌──────────┐
 │ PostgreSQL  │  │   Redis     │  │ Celery   │  │ Celery   │
 │  Container  │  │  Container  │  │ Worker   │  │  Beat    │
 │             │  │             │  │Container │  │Container │
-│ - Jobs DB   │  │ - Cache     │  │          │  │          │
-│ - Users DB  │  │ - Sessions  │  │ - Emails │  │- Schedule│
-│ - Logs      │  │ - Queue     │  │ - Push   │  │- Cron    │
-│             │  │             │  │ - Match  │  │          │
-│Port: 5432   │  │Port: 6379   │  │          │  │          │
+│ - Jobs DB   │  │ - Token     │  │          │  │          │
+│ - Users DB  │  │   blocklist │  │ - Emails │  │- Schedule│
+│ - Logs      │  │ - Sessions  │  │ - Push   │  │- Cron    │
+│             │  │ - Queue     │  │ - Match  │  │          │
+│ Port: 5432  │  │ Port: 6379  │  │          │  │          │
 └─────────────┘  └─────────────┘  └──────────┘  └──────────┘
 
-         All containers connected via Docker bridge network
+  Backend network    User frontend network    Admin frontend network
+  (src_backend_      (src_frontend_           (src_frontend_admin_
+   network)           network)                 network)
+  Each service runs its own docker-compose.yml independently
 ```
 
 ### Core Components
 
-1. **User Management Module** (Backend + Frontend)
-2. **Job Vacancy Module** (Backend + Frontend)
+1. **User Management Module** (Backend + User Frontend)
+2. **Job Vacancy Module** (Backend + User Frontend)
 3. **Notification Engine** (Backend + Celery)
-4. **Admin Panel** (Backend + Frontend)
+4. **Admin Panel** (Backend + Admin Frontend — `src/frontend-admin/`, port 8081)
 5. **Profile Matching System** (Backend + Celery)
-6. **Application Tracking System** (Backend + Frontend)
+6. **Application Tracking System** (Backend + User Frontend)
 
 ---
 
@@ -131,16 +142,18 @@ A comprehensive web application that provides users with personalized government
 **What the system checks:**
 - **PostgreSQL**: Every 10 seconds (must be healthy before Backend starts)
 - **Redis**: Every 10 seconds (must be healthy before Celery starts)
-- **Backend**: Every 30 seconds at `/api/v1/health` (must be healthy before Frontend starts)
-- **Frontend**: Every 30 seconds at `/` (must be healthy before Nginx routes)
+- **Backend**: Every 30 seconds at `/api/v1/health`
+- **User Frontend**: Every 30 seconds at `/health` (port 8080)
+- **Admin Frontend**: Every 30 seconds at `/health` (port 8081)
 - **Nginx**: Every 30 seconds at `/health` (monitors reverse proxy health)
 
 **Dependency Chain (ensures ordered startup)**:
 1. PostgreSQL starts and becomes healthy
 2. Redis starts and becomes healthy
 3. Backend waits for PostgreSQL + Redis healthy, then starts
-4. Frontend waits for Backend healthy, then starts
-5. Nginx waits for Frontend + Backend healthy, then starts
+4. User Frontend starts independently (calls backend via `BACKEND_API_URL`)
+5. Admin Frontend starts independently (calls backend via `BACKEND_API_URL`)
+6. Nginx connects to all three networks and routes traffic
 
 **If a container fails:**
 - Docker restarts it automatically (`restart: unless-stopped`)
@@ -1344,6 +1357,8 @@ def send_reminder_email(user, application, reminder_type):
 
 ## Admin Panel Features
 
+> Admin and operator users log in at `http://localhost:8081` (`src/frontend-admin/`), not through the public user frontend.
+
 ### Dashboard
 - Total users, active jobs, total applications
 - Recent activity feed
@@ -1382,11 +1397,11 @@ def send_reminder_email(user, application, reminder_type):
 
 ### Three-Role System
 
-| Role | Type | Can Create Jobs | Can Review Jobs | Can Access Admin |
-|------|------|-----------------|-----------------|------------------|
-| **User** | Job Seeker | ❌ | ❌ | ❌ |
-| **Operator** | Content Reviewer | ❌ | ✅ | ❌ |
-| **Admin** | Full Control | ✅ | ✅ | ✅ |
+| Role | Type | Can Create Jobs | Can Review Jobs | Logs in via |
+|------|------|-----------------|-----------------|-------------|
+| **User** | Job Seeker | ❌ | ❌ | `src/frontend/` (port 8080) |
+| **Operator** | Content Reviewer | ❌ | ✅ | `src/frontend-admin/` (port 8081) |
+| **Admin** | Full Control | ✅ | ✅ | `src/frontend-admin/` (port 8081) |
 
 ### Creating Admin (First Time Bootstrap)
 
@@ -2159,46 +2174,44 @@ curl -X GET "http://localhost:5000/api/v1/admin/permissions/audit-log?role=opera
 ### ⭐ Option 1: Docker Microservices (Recommended)
 
 **Containerized Architecture:**
-- 🐳 **7 Core Containers**: Nginx Reverse Proxy, Frontend, Backend API, PostgreSQL, Redis, Celery Worker, Celery Beat
-- ✅ **10-minute setup** vs 2-hour manual installation  
-- ✅ **Independent scaling** - Scale frontend/backend separately
-- ✅ **Zero-downtime updates** - Update services without full restart
+- 🐳 **8 Core Containers**: Nginx Reverse Proxy, User Frontend, Admin Frontend, Backend API, PostgreSQL, Redis, Celery Worker, Celery Beat
+- ✅ **10-minute setup** vs 2-hour manual installation
+- ✅ **Independent scaling** — Scale each service separately
+- ✅ **Zero-downtime updates** — Update services without full restart
 - ✅ **Built-in health checks** and auto-restart
-- ✅ **Service isolation** - Each component in separate container
+- ✅ **Security isolation** — Admin frontend on separate port (can be firewalled)
 
 **Quick Start:**
 ```bash
 git clone https://github.com/SumanKr7/hermes.git
 cd hermes
 
-# Configure environment
-cp .env.example .env
-nano .env  # Add your PostgreSQL, Redis, Email credentials
+# Start backend (PostgreSQL, Redis, API, Celery)
+cd src/backend && cp .env.example .env && docker-compose up -d --build && cd ../..
 
-# Deploy all services
-docker compose up -d --build
+# Start user frontend (port 8080)
+cd src/frontend && cp .env.example .env && docker-compose up -d --build && cd ../..
 
-# View logs
-docker compose logs -f frontend backend
+# Start admin frontend (port 8081)
+cd src/frontend-admin && cp .env.example .env && docker-compose up -d --build && cd ../..
 
-# Check status
-docker compose ps
+# Access
+# User site:   http://localhost:8080
+# Admin panel: http://localhost:8081
+# Backend API: http://localhost:5000/api/v1/health
 ```
 
-**Container Communication:**
-- Frontend calls Backend via internal Docker network: `http://backend:5000/api`
-- All external traffic goes through Nginx reverse proxy
-- Containers restart automatically if they crash
+**Each service has its own docker-compose.yml and Docker network. They call each other via `BACKEND_API_URL` environment variable.**
 
 📘 **Complete Docker Guide**: [DOCKER_DEPLOYMENT.md](./DOCKER_DEPLOYMENT.md)
 
 ### Option 2: Production Deployment with Let's Encrypt SSL
 
-Same separated architecture (Backend + Frontend) with SSL certificates from Let's Encrypt.
+Same three-service architecture (Backend + User Frontend + Admin Frontend) with SSL certificates from Let's Encrypt.
 
-**Docker-based**: Nginx is included in `src/nginx/docker-compose.yml`. Configure SSL in `src/nginx/nginx.conf`.
+**Docker-based**: Nginx is included in `src/nginx/docker-compose.yml`. It connects to all three Docker networks (`src_backend_network`, `src_frontend_network`, `src_frontend_admin_network`). Configure SSL in `src/nginx/nginx.conf`.
 
-**Host-based**: Install Nginx on host machine and use certbot for automatic SSL renewal. See instructions below.
+**Host-based**: Install Nginx on host machine and use certbot for automatic SSL renewal. Proxy `/*` → port 8080, `/api/*` → port 5000, `admin.yourdomain.com/*` → port 8081.
 
 ---
 
@@ -2207,46 +2220,41 @@ Same separated architecture (Backend + Frontend) with SSL certificates from Let'
 ### Docker Microservices Architecture (Recommended)
 
 ```
-┌───────────────────────────────────────────────────────────────┐
-│                  Hostinger VPS + Docker                       │
-│                                                               │
-│  ┌─────────────────────────────────────────────────────────┐ │
-│  │           Nginx Container (Port 80/443)                 │ │
-│  │      - SSL/TLS Termination (Let's Encrypt)              │ │
-│  │      - Reverse Proxy & Load Balancing                   │ │
-│  │      - Static File Caching (30 days)                    │ │
-│  │      - Rate Limiting & Security Headers                 │ │
-│  └──────────────────┬───────────────────┬──────────────────┘ │
-│                     │                   │                     │
-│       /api/*        │                   │        /*           │
-│         ↓           │                   │         ↓           │
-│  ┌──────────────────┴─┐             ┌───┴──────────────────┐ │
-│  │  Backend Container │             │ Frontend Container   │ │
-│  │  (Flask REST API)  │             │ (Flask + Jinja2)     │ │
-│  │                    │             │                      │ │
-│  │  - Gunicorn (3w)   │◄────API─────│  - Gunicorn (2w)     │ │
-│  │  - Port 5000       │   Calls     │  - Port 8080         │ │
-│  │  - JWT Auth        │             │  - Sessions          │ │
-│  │  - Business Logic  │             │  - UI Templates      │ │
-│  └─────────┬──────────┘             └──────────────────────┘ │
-│            │                                                  │
-│  ┌─────────┼──────────────────────────────────────────────┐ │
-│  │         │                                               │ │
-│  │    ┌────▼─────┐  ┌──────────┐  ┌──────────┐  ┌──────┐│ │
-│  │    │PostgreSQL│  │  Redis   │  │  Celery  │  │Celery││ │
-│  │    │Container │  │Container │  │  Worker  │  │ Beat ││ │
-│  │    │          │  │          │  │Container │  │ Cont ││ │
-│  │    │- Port    │  │- Port    │  │          │  │      ││ │
-│  │    │  5432    │  │  6379    │  │- Emails  │  │-Cron ││ │
-│  │    │- Auth    │  │- Cache   │  │- Notify  │  │Tasks ││ │
-│  │    │- Persist │  │- Queue   │  │- Match   │  │      ││ │
-│  │    └──────────┘  └──────────┘  └──────────┘  └──────┘│ │
-│  │                                                       │ │
-│  │        Docker Bridge Network (hermes_network)        │ │
-│  └───────────────────────────────────────────────────────┘ │
-│                                                             │
-│  Volumes: postgresql_data, redis_data, backend_logs        │
-└─────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────────┐
+│                     Hostinger VPS + Docker                        │
+│                                                                   │
+│  ┌───────────────────────────────────────────────────────────┐   │
+│  │              Nginx Container (Port 80/443)                │   │
+│  │      - SSL/TLS Termination (Let's Encrypt)                │   │
+│  │      - Reverse Proxy & Load Balancing                     │   │
+│  │      - Rate Limiting & Security Headers                   │   │
+│  └────────┬──────────────────────┬───────────────────┬───────┘   │
+│           │                      │                   │            │
+│    /api/* │               /*     │   admin.domain/*  │            │
+│           ↓                      ↓                   ↓            │
+│  ┌────────────────┐  ┌──────────────────┐  ┌────────────────┐   │
+│  │ Backend        │  │ User Frontend    │  │ Admin Frontend │   │
+│  │ Container      │◄─│ Container        │  │ Container      │   │
+│  │ (Flask API)    │  │ (Flask+Jinja2)   │◄─│ (Flask+Jinja2) │   │
+│  │ Port 5000      │  │ Port 8080        │  │ Port 8081      │   │
+│  │ - JWT Auth ✅  │  │ - Public users   │  │ - Admin only   │   │
+│  │ - RBAC ✅      │  │ - Register/Login │  │ - Dashboard    │   │
+│  │ - Job Matching │  │ - Job browsing   │  │ - Job mgmt     │   │
+│  └───────┬────────┘  └──────────────────┘  └────────────────┘   │
+│          │                                                        │
+│  ┌───────┼─────────────────────────────────────────────────┐    │
+│  │  ┌────▼─────┐  ┌──────────┐  ┌──────────┐  ┌──────┐   │    │
+│  │  │PostgreSQL│  │  Redis   │  │  Celery  │  │Celery│   │    │
+│  │  │ Port5432 │  │ Port6379 │  │  Worker  │  │ Beat │   │    │
+│  │  │ hermes_db│  │ blocklist│  │- Emails  │  │-Cron │   │    │
+│  │  │ 15 tables│  │ cache    │  │- Notify  │  │Tasks │   │    │
+│  │  └──────────┘  └──────────┘  └──────────┘  └──────┘   │    │
+│  │         src_backend_network                             │    │
+│  └─────────────────────────────────────────────────────────┘    │
+│                                                                   │
+│  src_frontend_network       src_frontend_admin_network           │
+│  Volumes: postgresql_data, redis_data, backend_logs              │
+└───────────────────────────────────────────────────────────────────┘
 
         Internet ↕️ HTTPS (Port 443)
 ```
@@ -2295,131 +2303,67 @@ Same separated architecture (Backend + Frontend) with SSL certificates from Let'
         Internet ↕️ HTTPS (Port 443)
 ```
 
-## Project Structure (Microservices)
+## Project Structure (Three Independent Services)
+
+> For the full, annotated file tree with ✅/🟡/❌ status per file, see [docs/PROJECT_STRUCTURE.md](./docs/PROJECT_STRUCTURE.md).
 
 ```
 hermes/
-├── backend/                           # Backend API Container
-│   ├── app/
-│   │   ├── __init__.py
-│   │   ├── models/
-│   │   │   ├── __init__.py
-│   │   │   ├── user.py
-│   │   │   ├── job.py
-│   │   │   ├── application.py
-│   │   │   └── notification.py
-│   │   ├── routes/                    # REST API Endpoints
-│   │   │   ├── __init__.py
-│   │   │   ├── auth.py               # /api/auth/*
-│   │   │   ├── profile.py            # /api/profile/*
-│   │   │   ├── jobs.py               # /api/jobs/*
-│   │   │   ├── applications.py       # /api/applications/*
-│   │   │   ├── notifications.py      # /api/notifications/*
-│   │   │   └── admin.py              # /api/admin/*
-│   │   ├── services/
-│   │   │   ├── __init__.py
-│   │   │   ├── matching_engine.py
-│   │   │   ├── notification_service.py
-│   │   │   ├── email_service.py
-│   │   │   └── analytics_service.py
-│   │   └── utils/
-│   │       ├── __init__.py
-│   │       ├── decorators.py
-│   │       ├── validators.py
-│   │       └── helpers.py
-│   ├── tasks/
-│   │   ├── __init__.py
-│   │   ├── job_matching.py
-│   │   └── reminders.py
-│   ├── tests/
-│   │   ├── test_auth.py
-│   │   ├── test_jobs.py
-│   │   └── test_matching.py
-│   ├── config.py
-│   ├── run.py
-│   ├── celery_worker.py
-│   ├── Dockerfile
-│   └── requirements.txt
+├── src/
+│   ├── backend/                       # Backend API — port 5000
+│   │   ├── docker-compose.yml         # PostgreSQL, Redis, API, Celery Worker, Beat
+│   │   ├── Dockerfile
+│   │   ├── app/
+│   │   │   ├── routes/                # REST API (/api/v1/*)
+│   │   │   │   ├── auth.py            # ✅ register, login, logout, refresh, reset, verify
+│   │   │   │   ├── health.py          # ✅ GET /api/v1/health
+│   │   │   │   ├── jobs.py            # 🟡 stub
+│   │   │   │   ├── users.py           # 🟡 stub
+│   │   │   │   ├── notifications.py   # 🟡 stub
+│   │   │   │   └── admin.py           # 🟡 stub
+│   │   │   ├── models/                # ✅ 15 tables (User, Job, Notification, …)
+│   │   │   ├── services/
+│   │   │   │   └── auth_service.py    # ✅ full auth business logic
+│   │   │   ├── middleware/
+│   │   │   │   ├── auth_middleware.py # ✅ @require_role, get_current_user, token rotation
+│   │   │   │   └── error_handler.py   # ✅ JSON 400/401/403/404/500
+│   │   │   ├── validators/
+│   │   │   │   └── auth_validator.py  # ✅ marshmallow schemas
+│   │   │   └── tasks/                 # Celery tasks (stubs)
+│   │   ├── migrations/                # ✅ full DDL + seed data
+│   │   └── tests/                     # ✅ 74 tests passing
+│   │
+│   ├── frontend/                      # User Frontend — port 8080
+│   │   ├── docker-compose.yml
+│   │   ├── Dockerfile
+│   │   ├── app/
+│   │   │   ├── routes/                # /, /auth, /jobs, /profile (stubs)
+│   │   │   ├── templates/             # Jinja2 HTML (not yet created)
+│   │   │   └── static/                # CSS, JS, images (not yet created)
+│   │   └── config/settings.py
+│   │
+│   ├── frontend-admin/                # Admin Frontend — port 8081
+│   │   ├── docker-compose.yml
+│   │   ├── Dockerfile
+│   │   ├── app/
+│   │   │   ├── routes/                # /, /auth, /dashboard, /users, /jobs (stubs)
+│   │   │   ├── templates/             # Jinja2 HTML (not yet created)
+│   │   │   └── static/                # CSS, JS, images (not yet created)
+│   │   └── config/settings.py
+│   │
+│   └── nginx/                         # Reverse Proxy — ports 80/443
+│       ├── docker-compose.yml         # References all three networks
+│       └── nginx.conf
 │
-├── frontend/                          # Frontend UI Container
-│   ├── app/
-│   │   ├── __init__.py
-│   │   ├── routes/                    # Page Routes
-│   │   │   ├── __init__.py
-│   │   │   ├── main.py               # Homepage, about, contact
-│   │   │   ├── auth.py               # Login/register pages
-│   │   │   ├── jobs.py               # Job listing/details pages
-│   │   │   ├── profile.py            # User profile pages
-│   │   │   ├── applications.py       # My applications pages
-│   │   │   └── admin.py              # Admin dashboard pages
-│   │   ├── templates/
-│   │   │   ├── base.html
-│   │   │   ├── index.html
-│   │   │   ├── admin/
-│   │   │   │   ├── dashboard.html
-│   │   │   │   ├── job_form.html
-│   │   │   │   ├── job_list.html
-│   │   │   │   ├── user_list.html
-│   │   │   │   └── analytics.html
-│   │   │   ├── auth/
-│   │   │   │   ├── login.html
-│   │   │   │   ├── register.html
-│   │   │   │   ├── forgot_password.html
-│   │   │   │   └── verify_email.html
-│   │   │   ├── jobs/
-│   │   │   │   ├── job_list.html
-│   │   │   │   ├── job_detail.html
-│   │   │   │   └── recommended.html
-│   │   │   ├── profile/
-│   │   │   │   ├── profile.html
-│   │   │   │   ├── edit_profile.html
-│   │   │   │   └── preferences.html
-│   │   │   ├── applications/
-│   │   │   │   ├── my_applications.html
-│   │   │   │   └── application_detail.html
-│   │   │   ├── notifications/
-│   │   │   │   └── notifications.html
-│   │   │   └── components/
-│   │   │       ├── navbar.html
-│   │   │       ├── footer.html
-│   │   │       ├── job_card.html
-│   │   │       └── notification_item.html
-│   │   ├── static/
-│   │   │   ├── css/
-│   │   │   │   ├── style.css
-│   │   │   │   ├── admin.css
-│   │   │   │   └── components.css
-│   │   │   ├── js/
-│   │   │   │   ├── main.js
-│   │   │   │   ├── notifications.js
-│   │   │   │   └── admin.js
-│   │   │   ├── img/
-│   │   │   │   ├── logo.png
-│   │   │   │   └── default-avatar.png
-│   │   │   └── fonts/
-│   │   └── utils/
-│   │       ├── __init__.py
-│   │       └── api_client.py         # Backend API client
-│   ├── config.py
-│   ├── run.py
-│   ├── Dockerfile
-│   └── requirements.txt
-│
-├── nginx/                             # Nginx Reverse Proxy
-│   ├── nginx.conf
-│   └── ssl/
-│       ├── cert.pem
-│       └── key.pem
-│
-├── init.sql                           # PostgreSQL initialization (DDL + indexes)
-├── docker-compose.yml                 # All services orchestration
-├── .env                               # Environment variables
-├── .env.example
-├── .gitignore
-├── README.md
-├── DOCKER_DEPLOYMENT.md
-├── WORKFLOW_DIAGRAMS.md
-└── JINJA2_TEMPLATES_GUIDE.md
+├── docs/
+│   ├── PROJECT_STRUCTURE.md           # Full annotated file tree
+│   ├── PROJECT_SUMMARY.md             # Quick start guide
+│   └── WORKFLOW_DIAGRAMS.md
+├── postman/
+│   └── hermes-api.postman_collection.json
+├── config/                            # Env templates per environment
+├── scripts/
+└── README.md
 ```
 
 ## Required Python Packages

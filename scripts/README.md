@@ -7,9 +7,10 @@ This folder contains deployment and maintenance scripts for the Hermes applicati
 ```
 scripts/
 ├── deployment/          # Deployment scripts
-│   ├── deploy_backend.sh       # Deploy backend service
-│   ├── deploy_frontend.sh      # Deploy frontend service
-│   └── deploy_all.sh           # Deploy both services
+│   ├── deploy_backend.sh           # Deploy backend service (5 containers)
+│   ├── deploy_frontend.sh          # Deploy user frontend service (port 8080)
+│   ├── deploy_frontend_admin.sh    # Deploy admin frontend service (port 8081)
+│   └── deploy_all.sh               # Deploy all 3 services (8 containers total)
 │
 ├── backup/             # Database backup/restore scripts
 │   ├── backup_db.sh            # Backup PostgreSQL database
@@ -44,14 +45,14 @@ scripts/
 
 ---
 
-### Deploy Frontend Service
+### Deploy User Frontend Service
 ```bash
 ./scripts/deployment/deploy_frontend.sh [development|staging|production]
 ```
 
 **What it does:**
-- Builds frontend Docker image
-- Starts frontend service on port 8080
+- Builds user frontend Docker image
+- Starts user frontend service on port 8080
 - Loads environment configuration from `config/[env]/.env.frontend.[env]`
 - Verifies frontend is healthy
 - Shows endpoints
@@ -67,21 +68,45 @@ scripts/
 
 ---
 
+### Deploy Admin Frontend Service
+```bash
+./scripts/deployment/deploy_frontend_admin.sh [development|staging|production]
+```
+
+**What it does:**
+- Builds admin frontend Docker image
+- Starts admin frontend service on port 8081
+- Loads environment configuration from `config/[env]/.env.frontend-admin.[env]`
+- Verifies admin frontend is healthy
+- Shows admin login endpoint
+
+**Example:**
+```bash
+./scripts/deployment/deploy_frontend_admin.sh development
+# Output:
+# 🚀 Starting admin frontend service...
+# ✅ Admin frontend service is running!
+# 🔗 Endpoints: http://localhost:8081 (Admin Login: /auth/login)
+```
+
+---
+
 ### Deploy All Services
 ```bash
 ./scripts/deployment/deploy_all.sh [development|staging|production]
 ```
 
 **What it does:**
-- Deploys backend first (prerequisite for frontend)
-- Deploys frontend second
-- Shows summary of both deployments
+- Deploys backend first (PostgreSQL, Redis, API, Celery — 5 containers)
+- Deploys user frontend second (port 8080)
+- Deploys admin frontend third (port 8081)
+- Shows summary of all three deployments (8 containers total)
 
 **Example:**
 ```bash
 ./scripts/deployment/deploy_all.sh development
-# Deploys backend, then frontend
-# Shows endpoints for both services
+# Deploys backend, then user frontend, then admin frontend
+# Shows endpoints for all three services
 ```
 
 ---
@@ -147,12 +172,19 @@ scripts/
 # 1. Deploy backend (with PostgreSQL, Redis)
 ./scripts/deployment/deploy_backend.sh development
 
-# 2. Deploy frontend
+# 2. Deploy user frontend
 ./scripts/deployment/deploy_frontend.sh development
 
-# 3. Access application
-# Backend API: http://localhost:5000/api/v1/
-# Frontend: http://localhost:8080
+# 3. Deploy admin frontend
+./scripts/deployment/deploy_frontend_admin.sh development
+
+# 4. Access application
+# Backend API:    http://localhost:5000/api/v1/
+# User Frontend:  http://localhost:8080
+# Admin Frontend: http://localhost:8081  (login: /auth/login)
+
+# Or deploy all at once:
+./scripts/deployment/deploy_all.sh development
 ```
 
 ### Backup Before Update
@@ -223,6 +255,7 @@ chmod +x scripts/backup/*.sh
 # View logs after deployment
 cd src/backend && docker-compose logs -f
 cd src/frontend && docker-compose logs -f
+cd src/frontend-admin && docker-compose logs -f
 
 # Check container status
 docker ps
@@ -230,6 +263,7 @@ docker ps
 # Stop services
 cd src/backend && docker-compose down
 cd src/frontend && docker-compose down
+cd src/frontend-admin && docker-compose down
 ```
 
 ---

@@ -70,15 +70,15 @@ hermes/
     │   │   ├── routes/
     │   │   │   ├── __init__.py        ✅
     │   │   │   ├── health.py          ✅  GET /api/v1/health → {"status":"healthy"}
-    │   │   │   ├── auth.py            🟡  blueprint at /api/v1/auth — no endpoints yet
+    │   │   │   ├── auth.py            ✅  register, login, logout, refresh, forgot/reset password, verify-email
     │   │   │   ├── jobs.py            🟡  blueprint at /api/v1/jobs — no endpoints yet
     │   │   │   ├── users.py           🟡  blueprint at /api/v1/users — no endpoints yet
     │   │   │   ├── notifications.py   🟡  blueprint at /api/v1/notifications — no endpoints yet
     │   │   │   └── admin.py           🟡  blueprint at /api/v1/admin — no endpoints yet
     │   │   │
-    │   │   ├── services/              🟡  __init__.py only — modules to be added
+    │   │   ├── services/              ✅
     │   │   │   ├── __init__.py
-    │   │   │   ├── auth_service.py    ❌  register, login, JWT issue/refresh, password reset
+    │   │   │   ├── auth_service.py    ✅  register, login, logout, refresh, request/reset password, verify email
     │   │   │   ├── job_service.py     ❌  job CRUD, search, filtering, matching algorithm
     │   │   │   ├── user_service.py    ❌  profile read/update, preferences
     │   │   │   ├── notification_service.py  ❌  create, deliver, and mark notifications
@@ -97,16 +97,16 @@ hermes/
     │   │   │   ├── decorators.py      ❌  custom decorators (e.g. @admin_required)
     │   │   │   └── constants.py       ❌  app-wide constants (roles, statuses, limits)
     │   │   │
-    │   │   ├── validators/            🟡  __init__.py only — modules to be added
+    │   │   ├── validators/            ✅
     │   │   │   ├── __init__.py
-    │   │   │   ├── auth_validator.py  ❌  Marshmallow schemas for register/login payloads
+    │   │   │   ├── auth_validator.py  ✅  RegisterSchema, LoginSchema, PasswordReset schemas (marshmallow)
     │   │   │   ├── user_validator.py  ❌  Marshmallow schemas for profile update payloads
     │   │   │   └── job_validator.py   ❌  Marshmallow schemas for job create/update payloads
     │   │   │
     │   │   └── middleware/
     │   │       ├── __init__.py        ✅
     │   │       ├── error_handler.py   ✅  JSON error handlers for 400/401/403/404/500
-    │   │       ├── auth_middleware.py ❌  JWT verification, token rotation, @jwt_required wrapper
+    │   │       ├── auth_middleware.py ✅  require_role decorator, get_current_user, JWT error handlers, token rotation
     │   │       ├── rate_limiter.py    ❌  IP-level + user-level rate limiting (flask-limiter)
     │   │       ├── request_id.py      ❌  inject X-Request-ID header for distributed tracing
     │   │       └── rbac.py            ❌  role-based access control (@require_role decorator)
@@ -124,9 +124,14 @@ hermes/
     │   │       └── 0001_initial_schema.py  ✅  full DDL for all tables
     │   │
     │   ├── logs/                      📁  populated at runtime
+    │   ├── pytest.ini                 ✅
     │   └── tests/
-    │       ├── unit/                  📁  empty
-    │       └── integration/           📁  empty
+    │       ├── conftest.py            ✅  shared fixtures: fake_redis, app, client, token factories
+    │       ├── unit/
+    │       │   ├── test_auth_validator.py  ✅  22 tests — RegisterSchema, LoginSchema, PasswordReset schemas
+    │       │   └── test_auth_service.py    ✅  19 tests — register, login, logout, refresh, password reset, verify email
+    │       └── integration/
+    │           └── test_auth_routes.py     ✅  33 tests — all 7 auth endpoints + JWT error handlers
     │
     ├── frontend/                      ✅  Docker container starts and runs
     │   ├── docker-compose.yml         ✅  single frontend container, port 8080
@@ -204,8 +209,55 @@ hermes/
     │       ├── images/                📁  logo, favicon, placeholders
     │       └── fonts/                 📁  custom web fonts
     │
+    ├── frontend-admin/                ✅  Docker container starts and runs
+    │   ├── docker-compose.yml         ✅  single admin-frontend container, port 8081
+    │   ├── Dockerfile                 ✅  python:3.11-slim → gunicorn (2 workers)
+    │   ├── requirements.txt           ✅
+    │   ├── run.py                     ✅
+    │   ├── .env.example               ✅
+    │   ├── .dockerignore              ✅
+    │   │
+    │   ├── app/
+    │   │   ├── __init__.py            ✅  app factory: LoginManager, admin blueprints registered
+    │   │   │
+    │   │   ├── routes/
+    │   │   │   ├── __init__.py        ✅
+    │   │   │   ├── main.py            ✅  GET /health + GET / → JSON responses
+    │   │   │   ├── errors.py          ✅  404 + 500 JSON error handlers
+    │   │   │   ├── auth.py            🟡  blueprint at /auth — admin/operator login (no routes yet)
+    │   │   │   ├── dashboard.py       🟡  blueprint at /dashboard — overview stats (no routes yet)
+    │   │   │   ├── users.py           🟡  blueprint at /users — user management (no routes yet)
+    │   │   │   └── jobs.py            🟡  blueprint at /jobs — job management (no routes yet)
+    │   │   │
+    │   │   ├── utils/                 🟡  __init__.py only — modules to be added
+    │   │   │   └── __init__.py
+    │   │   │
+    │   │   └── middleware/            🟡  __init__.py only — modules to be added
+    │   │       └── __init__.py
+    │   │
+    │   ├── config/
+    │   │   └── settings.py            ✅  BACKEND_API_URL, session config, port 8081
+    │   │
+    │   ├── templates/                 📁  directories exist, no .html files yet
+    │   │   ├── layouts/               📁
+    │   │   ├── components/            📁
+    │   │   └── pages/
+    │   │       ├── auth/              📁  login.html ❌
+    │   │       ├── dashboard/         📁  index.html ❌
+    │   │       ├── users/             📁  list.html ❌  detail.html ❌
+    │   │       └── jobs/              📁  list.html ❌  detail.html ❌
+    │   │
+    │   ├── static/                    📁  directories exist, no asset files yet
+    │   │   ├── css/                   📁
+    │   │   ├── js/                    📁
+    │   │   └── images/                📁
+    │   │
+    │   └── tests/
+    │       ├── unit/                  📁  empty
+    │       └── integration/           📁  empty
+    │
     └── nginx/                         ✅  fully configured
-        ├── docker-compose.yml         ✅  external network references to backend + frontend
+        ├── docker-compose.yml         ✅  external network references to backend + frontend + frontend-admin
         ├── nginx.conf                 ✅  routing, gzip, rate limiting, security headers
         │                                  HTTPS block present but commented out (production)
         ├── .env / .env.example        ✅
@@ -226,15 +278,15 @@ Runs 5 containers via `docker-compose.yml`: PostgreSQL, Redis, the Flask API, a 
 All models are fully implemented with UUID PKs, JSONB columns, and SQLAlchemy relationships. See the tree above for which classes live in each file.
 
 ### `app/routes/`
-Only `health.py` has a live endpoint (`GET /api/v1/health`). All other route files are registered blueprints with no endpoints yet — add route functions directly to each file.
+`health.py` and `auth.py` are fully implemented. All other route files are registered blueprints with no endpoints yet — add route functions directly to each file.
 
 ### `app/services/`
-Business logic layer — keeps route handlers thin. Five modules planned:
-- `auth_service.py` — register, login, JWT issue/refresh, password reset
-- `job_service.py` — job CRUD, search filtering, user-to-job matching
-- `user_service.py` — profile read/update, notification preferences
-- `notification_service.py` — create, store, and deliver notifications
-- `email_service.py` — SMTP email via Flask-Mail (welcome, OTP, alerts)
+Business logic layer — keeps route handlers thin.
+- `auth_service.py` — ✅ register, login, logout, refresh, password reset, email verify
+- `job_service.py` — ❌ job CRUD, search filtering, user-to-job matching
+- `user_service.py` — ❌ profile read/update, notification preferences
+- `notification_service.py` — ❌ create, store, and deliver notifications
+- `email_service.py` — ❌ SMTP email via Flask-Mail (welcome, OTP, alerts)
 
 ### `app/tasks/`
 `celery_app.py` has the Celery instance wired to Redis. Three task modules planned:
@@ -243,11 +295,11 @@ Business logic layer — keeps route handlers thin. Five modules planned:
 - `cleanup_tasks.py` — cron: purge stale sessions and old analytics rows (LOW priority)
 
 ### `app/middleware/`
-`error_handler.py` is implemented. Four more modules planned:
-- `auth_middleware.py` — JWT verification, token rotation, `@jwt_required` wrapper
-- `rate_limiter.py` — IP-level + user-level limiting via flask-limiter
-- `request_id.py` — injects `X-Request-ID` header for distributed tracing
-- `rbac.py` — `@require_role('admin')` decorator using `RolePermission` model
+- `error_handler.py` — ✅ JSON 400/401/403/404/500 handlers
+- `auth_middleware.py` — ✅ `@require_role(*roles)`, `get_current_user()`, JWT error handlers, token rotation (`X-New-Access-Token`)
+- `rate_limiter.py` — ❌ IP-level + user-level limiting via flask-limiter
+- `request_id.py` — ❌ injects `X-Request-ID` header for distributed tracing
+- `rbac.py` — ❌ additional RBAC utilities
 
 ### `app/utils/`
 Three modules planned:
@@ -256,10 +308,9 @@ Three modules planned:
 - `constants.py` — app-wide constants: roles, job statuses, notification types
 
 ### `app/validators/`
-Marshmallow schema modules — three planned:
-- `auth_validator.py` — register and login payload schemas
-- `user_validator.py` — profile and preferences update schemas
-- `job_validator.py` — job create and update schemas
+- `auth_validator.py` — ✅ RegisterSchema, LoginSchema, PasswordResetRequestSchema, PasswordResetSchema (marshmallow 3.x, `unknown = RAISE`)
+- `user_validator.py` — ❌ profile and preferences update schemas
+- `job_validator.py` — ❌ job create and update schemas
 
 ### `config/settings.py`
 Full `Config` class: SQLAlchemy connection pooling, JWT expiry, Redis URL, Celery broker/backend, CORS origins, rate limits, mail settings. Includes a startup guard that aborts if required vars are missing or insecure in production.
@@ -269,9 +320,9 @@ Alembic wired up. `0001_initial_schema.py` contains full DDL for all tables. Run
 
 ---
 
-## Frontend (`src/frontend/`)
+## User Frontend (`src/frontend/`)
 
-Runs a single Gunicorn container on port 8080.
+Serves public users: registration, login, job browsing, profile. Runs a single Gunicorn container on port 8080.
 
 ### `app/routes/`
 `main.py` serves `GET /` and `GET /health` (JSON only — no template rendered yet). `errors.py` handles 404/500. All other blueprints are registered but have no routes.
@@ -305,30 +356,42 @@ Directories exist. Assets planned:
 
 ---
 
+## Admin Frontend (`src/frontend-admin/`)
+
+Serves admin and operator users only: login, dashboard, job management, user management. Completely separate Docker container on port 8081. Users registered via `src/frontend/` with `role = admin` or `role = operator` log in here.
+
+### `app/routes/`
+`main.py` serves `GET /` and `GET /health`. `errors.py` handles 404/500. All other blueprints are registered stubs with no routes yet.
+
+### `config/settings.py`
+Same structure as user frontend `settings.py` but defaults to port 8081.
+
+---
+
 ## What works right now
 
 - Full Docker stack (`make all-up`) starts cleanly.
-- `GET /api/v1/health` (backend) and `GET /health` (frontend) are live.
+- `GET /api/v1/health` (backend), `GET /health` (frontend), and `GET /health` (frontend-admin) are live.
+- Backend auth is fully implemented: register, login, logout, refresh, password reset, email verify.
 - Database schema is fully defined — run `flask db upgrade` to apply it.
 - All SQLAlchemy models are wired and ready for use.
+- 74 backend tests passing (22 validator + 19 service + 33 route).
 
 ## What's next
 
 | Priority | Work |
 |---|---|
-| High | `backend/middleware/auth_middleware.py` — JWT verify + token rotation |
-| High | `backend/routes/auth.py` — register, login, logout, refresh endpoints |
-| High | `backend/services/auth_service.py` — authentication business logic |
 | High | `frontend/app/utils/api_client.py` — HTTP client to backend API |
 | High | `frontend/app/middleware/auth_middleware.py` — `@login_required` decorator |
+| High | `frontend-admin/app/routes/auth.py` — admin/operator login + logout pages |
+| High | `frontend-admin/app/middleware/auth_middleware.py` — require admin/operator role |
 | Medium | `backend/routes/jobs.py`, `users.py`, `notifications.py` — add endpoints |
 | Medium | `backend/services/` — job, user, notification, email service modules |
-| Medium | `frontend/routes/` — auth, jobs, profile, admin page routes + templates |
-| Medium | `backend/middleware/rate_limiter.py` + `rbac.py` + `request_id.py` |
-| Low | `backend/validators/` — Marshmallow schemas for all resources |
+| Medium | `frontend/routes/` — auth, jobs, profile page routes + templates |
+| Medium | `frontend-admin/routes/` — dashboard, users, jobs management pages |
+| Medium | `backend/middleware/rate_limiter.py` + `request_id.py` |
 | Low | `backend/utils/` — helpers, decorators, constants |
 | Low | `backend/tasks/` — notification, reminder, cleanup task functions |
-| Low | Test files in `tests/unit/` and `tests/integration/` |
 
 ---
 
