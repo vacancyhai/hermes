@@ -101,22 +101,22 @@ class TestCreateJobSchema:
     def test_application_end_before_start_raises(self):
         with pytest.raises(ValidationError) as exc:
             self.schema.load(_base_payload(
-                application_start=date(2024, 6, 1),
-                application_end=date(2024, 5, 31),
+                application_start='2024-06-01',
+                application_end='2024-05-31',
             ))
         assert 'application_end' in exc.value.messages
 
     def test_application_same_start_end_valid(self):
         data = self.schema.load(_base_payload(
-            application_start=date(2024, 6, 1),
-            application_end=date(2024, 6, 1),
+            application_start='2024-06-01',
+            application_end='2024-06-01',
         ))
         assert data['application_start'] == date(2024, 6, 1)
 
     def test_application_end_after_start_valid(self):
         data = self.schema.load(_base_payload(
-            application_start=date(2024, 6, 1),
-            application_end=date(2024, 7, 31),
+            application_start='2024-06-01',
+            application_end='2024-07-31',
         ))
         assert data['application_end'] == date(2024, 7, 31)
 
@@ -193,8 +193,8 @@ class TestUpdateJobSchema:
     def test_cross_field_date_validation_still_applies(self):
         with pytest.raises(ValidationError) as exc:
             self.schema.load({
-                'application_start': date(2024, 6, 1),
-                'application_end': date(2024, 5, 1),
+                'application_start': '2024-06-01',
+                'application_end': '2024-05-01',
             })
         assert 'application_end' in exc.value.messages
 

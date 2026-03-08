@@ -241,7 +241,7 @@ class TestUniqueSlug:
 
         with patch('app.services.job_service.JobVacancy') as mock_model:
             # First call (base slug taken), second call (slug-2 free)
-            mock_model.query.filter_by.return_value.filter.return_value.first.side_effect = [
+            mock_model.query.filter_by.return_value.first.side_effect = [
                 MagicMock(),  # 'ssc-cgl' is taken
                 None,         # 'ssc-cgl-2' is free
             ]

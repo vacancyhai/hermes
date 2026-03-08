@@ -42,7 +42,8 @@ def register(data):
     if User.query.filter_by(email=email).first():
         raise ValueError('EMAIL_TAKEN')
 
-    pw_hash = bcrypt.hashpw(data['password'].encode(), bcrypt.gensalt()).decode()
+    rounds = current_app.config.get('BCRYPT_LOG_ROUNDS', 12)
+    pw_hash = bcrypt.hashpw(data['password'].encode(), bcrypt.gensalt(rounds=rounds)).decode()
 
     user = User(
         email=email,
@@ -147,7 +148,8 @@ def reset_password(token, new_password):
     if not user:
         raise ValueError('INVALID_OR_EXPIRED_TOKEN')
 
-    user.password_hash = bcrypt.hashpw(new_password.encode(), bcrypt.gensalt()).decode()
+    rounds = current_app.config.get('BCRYPT_LOG_ROUNDS', 12)
+    user.password_hash = bcrypt.hashpw(new_password.encode(), bcrypt.gensalt(rounds=rounds)).decode()
     db.session.commit()
     current_app.redis.delete(f'pwd_reset:{token}')
 

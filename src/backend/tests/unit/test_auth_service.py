@@ -27,6 +27,7 @@ def _make_app(fake_redis):
         JWT_SECRET_KEY='test-jwt-secret',
         JWT_ACCESS_TOKEN_EXPIRES=timedelta(minutes=15),
         JWT_REFRESH_TOKEN_EXPIRES=timedelta(days=7),
+        BCRYPT_LOG_ROUNDS=4,
     )
     JWTManager(app)
     app.redis = fake_redis
@@ -34,7 +35,7 @@ def _make_app(fake_redis):
 
 
 def _hashed(plain):
-    return bcrypt.hashpw(plain.encode(), bcrypt.gensalt()).decode()
+    return bcrypt.hashpw(plain.encode(), bcrypt.gensalt(rounds=4)).decode()
 
 
 def _mock_user(role='user', status='active', email='test@example.com'):
