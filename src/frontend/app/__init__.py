@@ -1,7 +1,7 @@
 """
 Frontend Flask Application Factory
 """
-from flask import Flask
+from flask import Flask, session
 from flask_login import LoginManager
 
 def create_app():
@@ -20,7 +20,11 @@ def create_app():
 
     @login_manager.user_loader
     def load_user(user_id):
-        # Stub: implement with real User model lookup in EPIC_03/EPIC_10
+        from app.models.user import User
+        from app.utils.session_manager import get_user_data
+        data = get_user_data(session)
+        if data and data.get("user_id") == user_id:
+            return User.from_session(data)
         return None
 
     # Register blueprints

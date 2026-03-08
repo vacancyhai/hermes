@@ -1,7 +1,7 @@
 """
 Admin Frontend Flask Application Factory
 """
-from flask import Flask
+from flask import Flask, session
 from flask_login import LoginManager
 
 
@@ -22,9 +22,11 @@ def create_app():
 
     @login_manager.user_loader
     def load_user(user_id):
-        # Stub: always returns None until Story 2 (Frontend Auth & API Client) is
-        # implemented. @login_required will redirect to auth.login (stub — 404 until
-        # Story 6 adds the login template route).
+        from app.models.user import User
+        from app.utils.session_manager import get_user_data
+        data = get_user_data(session)
+        if data and data.get("user_id") == user_id:
+            return User.from_session(data)
         return None
 
     # Register blueprints

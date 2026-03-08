@@ -1,6 +1,6 @@
 # Hermes — Development Roadmap
 
-> **Last updated**: 2026-03-08
+> **Last updated**: 2026-03-08 (Story 2 complete)
 > **Basis**: Actual code state + GitHub issues #100–#109. Nothing is assumed.
 
 ---
@@ -42,50 +42,69 @@
 
 **Tests**: 74 passing — 22 validator unit tests, 19 service unit tests, 33 route integration tests. All cover auth only.
 
-### User Frontend — Container Only
+### User Frontend — Auth Plumbing Complete (Story 2 ✅)
 - Docker runs on port 8080, health check at `/health` passes
-- Root `/` redirects to auth.login
+- Root `/` redirects to `auth.login`
 - `app/routes/errors.py` — renders error pages
 - `app/routes/main.py` — health + root only
-- `app/routes/auth.py` — empty stub (blueprint registered, zero routes)
 - `app/routes/jobs.py` — empty stub
 - `app/routes/profile.py` — empty stub
 - `app/routes/admin.py` — empty stub
-- **No templates exist** — `templates/` directory has empty subdirectories
-- **No static files** — `static/` directory has empty subdirectories
-- **No `api_client.py`** — no HTTP wrapper to call backend
-- **No `session_manager.py`** — no session/cookie helpers
-- **No `auth_middleware.py`** — no `@login_required` decorator
 
-### Admin Frontend — Container Only
+**Story 2 additions**:
+| File | Status |
+|---|---|
+| `app/models/user.py` | ✅ Flask-Login `UserMixin` proxy (session-backed, no DB) |
+| `app/utils/api_client.py` | ✅ `requests` wrapper; raises `APIError` on non-2xx; covers all 6 auth endpoints |
+| `app/utils/session_manager.py` | ✅ Save/read/clear tokens + user info; decodes JWT payload for user_id/role |
+| `app/middleware/auth_middleware.py` | ✅ `@login_required` decorator |
+| `app/__init__.py` | ✅ `load_user()` wired to session via `session_manager` |
+| `app/routes/auth.py` | ✅ login, register, logout, forgot-password, reset-password (GET+POST) |
+
+**Still missing** (Story 6):
+- Templates — `templates/` directory is still empty
+- Static files — `static/` directory is still empty
+
+### Admin Frontend — Auth Plumbing Complete (Story 2 ✅)
 - Docker runs on port 8081, health check at `/health` passes
-- Root `/` redirects to auth.login
+- Root `/` redirects to `auth.login`
 - `app/routes/errors.py` — renders error pages
 - `app/routes/main.py` — health + root only
-- `app/routes/auth.py` — empty stub
 - `app/routes/dashboard.py` — empty stub
 - `app/routes/jobs.py` — empty stub
 - `app/routes/users.py` — empty stub
-- **No templates** — empty directories
-- **No static files** — empty directories
-- **No `api_client.py`**, no `session_manager.py`, no `auth_middleware.py`
+
+**Story 2 additions**:
+| File | Status |
+|---|---|
+| `app/models/user.py` | ✅ Flask-Login `UserMixin` proxy; adds `is_admin()` / `is_operator()` helpers |
+| `app/utils/api_client.py` | ✅ Same as user frontend; admin-specific endpoints added in Stories 3/4 |
+| `app/utils/session_manager.py` | ✅ Same as user frontend |
+| `app/middleware/auth_middleware.py` | ✅ `@login_required` + `@role_required(*roles)`; enforces admin/operator on every protected route |
+| `app/__init__.py` | ✅ `load_user()` wired to session |
+| `app/routes/auth.py` | ✅ login + logout; role decoded from JWT before session save — regular users are rejected and their token is blocklisted |
+| `.env` | ✅ Created (was missing) |
+
+**Still missing** (Story 6):
+- Templates — `templates/` directory is still empty
+- Static files — `static/` directory is still empty
 
 ---
 
-## Open GitHub Issues (Stories 2–11)
+## GitHub Issues
 
-| Issue | Story | Priority | Area |
-|---|---|---|---|
-| #100 | Story 2: Frontend Auth & API Client | **HIGH** | User Frontend + Admin Frontend |
-| #101 | Story 3: Backend Job APIs | MEDIUM | Backend |
-| #102 | Story 4: Backend User Profile APIs | MEDIUM | Backend |
-| #103 | Story 5: Backend Notification APIs | MEDIUM | Backend |
-| #104 | Story 6: Frontend Page Routes & Jinja2 Templates | MEDIUM | User Frontend |
-| #105 | Story 7: Backend Security Middleware | MEDIUM | Backend |
-| #106 | Story 8: Marshmallow Input Validators | LOW | Backend |
-| #107 | Story 9: Backend Utilities | LOW | Backend |
-| #108 | Story 10: Celery Background Tasks | LOW | Backend + Celery |
-| #109 | Story 11: Test Suite Expansion | LOW | Backend tests (partially done) |
+| Issue | Story | Priority | Area | Status |
+|---|---|---|---|---|
+| #100 | Story 2: Frontend Auth & API Client | HIGH | User Frontend + Admin Frontend | ✅ **Done** |
+| #101 | Story 3: Backend Job APIs | MEDIUM | Backend | 🟡 Open |
+| #102 | Story 4: Backend User Profile APIs | MEDIUM | Backend | 🟡 Open |
+| #103 | Story 5: Backend Notification APIs | MEDIUM | Backend | 🟡 Open |
+| #104 | Story 6: Frontend Page Routes & Jinja2 Templates | MEDIUM | User Frontend | 🟡 Open |
+| #105 | Story 7: Backend Security Middleware | MEDIUM | Backend | 🟡 Open |
+| #106 | Story 8: Marshmallow Input Validators | LOW | Backend | 🟡 Open |
+| #107 | Story 9: Backend Utilities | LOW | Backend | 🟡 Open |
+| #108 | Story 10: Celery Background Tasks | LOW | Backend + Celery | 🟡 Open |
+| #109 | Story 11: Test Suite Expansion | LOW | Backend tests (partially done) | 🟡 Open |
 
 ---
 
@@ -111,31 +130,38 @@ Story 11 (tests) — runs alongside every story, not a blocker
 ```
 
 **Story 2 is the only HIGH priority item and does not depend on any pending stories.**
-It can start immediately because the auth backend is complete.
+~~It can start immediately because the auth backend is complete.~~ **✅ Completed 2026-03-08.**
 
 ---
 
 ## Recommended Implementation Order
 
-### Phase 1 — Foundation (no blockers, parallelizable)
+### Phase 1 — Foundation ✅ Partially done
 
-**Story 2** — Frontend Auth & API Client (Issue #100)
-- `src/frontend/app/api_client.py` — requests wrapper for all backend calls (auth, jobs, profile, notifications)
-- `src/frontend/app/session_manager.py` — server-side session via Flask-Login + cookie handling
-- `src/frontend/app/auth_middleware.py` — `@login_required` decorator redirects to login page
-- `src/frontend-admin/app/api_client.py` — same pattern, admin-specific (operator + admin roles only)
-- `src/frontend-admin/app/session_manager.py`
-- `src/frontend-admin/app/auth_middleware.py` — additionally checks role is admin or operator
-- `load_user()` in both `app/__init__.py` files must be implemented (currently returns None)
-- Enables Story 6; unblocks all frontend work
+**Story 2** — Frontend Auth & API Client (Issue #100) ✅ **DONE**
 
-**Story 9** — Backend Utilities (Issue #107)
+Implemented:
+- `src/frontend/app/models/user.py` — Flask-Login `UserMixin` proxy (session-backed)
+- `src/frontend/app/utils/api_client.py` — `requests` wrapper for all auth endpoints; raises `APIError` on non-2xx
+- `src/frontend/app/utils/session_manager.py` — save/read/clear tokens + user info; decodes JWT payload to extract `user_id`/`role`
+- `src/frontend/app/middleware/auth_middleware.py` — `@login_required` decorator
+- `src/frontend/app/__init__.py` — `load_user()` wired to session
+- `src/frontend/app/routes/auth.py` — login, register, logout, forgot-password, reset-password (GET + POST)
+- `src/frontend-admin/app/models/user.py` — same pattern; adds `is_admin()` / `is_operator()`
+- `src/frontend-admin/app/utils/api_client.py` — same; no register endpoint
+- `src/frontend-admin/app/utils/session_manager.py` — same pattern
+- `src/frontend-admin/app/middleware/auth_middleware.py` — `@login_required` + `@role_required(*roles)`
+- `src/frontend-admin/app/__init__.py` — `load_user()` wired to session
+- `src/frontend-admin/app/routes/auth.py` — login + logout; role checked from JWT before session save; regular-user tokens blocklisted immediately
+- `src/frontend-admin/.env` — created (was missing)
+
+**Story 9** — Backend Utilities (Issue #107) 🟡 **NEXT**
 - `app/utils/helpers.py` — pagination helper, response formatter, slugify
 - `app/utils/decorators.py` — `@admin_required`, `@operator_required` (wraps auth_middleware logic)
 - `app/utils/constants.py` — job types, role names, status values, error codes
 - Foundation code needed by Stories 3, 4, 5, 7
 
-**Story 8** — Marshmallow Input Validators (Issue #106)
+**Story 8** — Marshmallow Input Validators (Issue #106) 🟡 **NEXT**
 - `app/validators/user_validator.py` — profile update schema, notification preference schema
 - `app/validators/job_validator.py` — job create/update schema, job search/filter schema
 - Needed by Stories 3 and 4
@@ -234,18 +260,18 @@ It can start immediately because the auth backend is complete.
 
 ## Summary Table
 
-| Order | Story | Issue | Blocker for |
-|---|---|---|---|
-| 1 (parallel) | Story 2: Frontend Auth & API Client | #100 | Story 6 |
-| 1 (parallel) | Story 9: Backend Utilities | #107 | Stories 3, 4, 5, 7 |
-| 1 (parallel) | Story 8: Marshmallow Validators | #106 | Stories 3, 4 |
-| 2 | Story 7: Backend Security Middleware | #105 | Stories 3, 4, 5 |
-| 3 | Story 3: Backend Job APIs | #101 | Stories 5, 6, 10 |
-| 3 | Story 4: Backend User Profile APIs | #102 | Stories 5, 6, 10 |
-| 4 | Story 5: Backend Notification APIs | #103 | Story 10 |
-| 4 | Story 6: Frontend Page Routes + Templates | #104 | — |
-| 5 | Story 10: Celery Background Tasks | #108 | — |
-| ongoing | Story 11: Test Suite Expansion | #109 | — |
+| Order | Story | Issue | Status | Blocker for |
+|---|---|---|---|---|
+| 1 (parallel) | Story 2: Frontend Auth & API Client | #100 | ✅ **Done** | Story 6 |
+| 1 (parallel) | Story 9: Backend Utilities | #107 | 🟡 Next | Stories 3, 4, 5, 7 |
+| 1 (parallel) | Story 8: Marshmallow Validators | #106 | 🟡 Next | Stories 3, 4 |
+| 2 | Story 7: Backend Security Middleware | #105 | ⬜ Not started | Stories 3, 4, 5 |
+| 3 | Story 3: Backend Job APIs | #101 | ⬜ Not started | Stories 5, 6, 10 |
+| 3 | Story 4: Backend User Profile APIs | #102 | ⬜ Not started | Stories 5, 6, 10 |
+| 4 | Story 5: Backend Notification APIs | #103 | ⬜ Not started | Story 10 |
+| 4 | Story 6: Frontend Page Routes + Templates | #104 | ⬜ Not started | — |
+| 5 | Story 10: Celery Background Tasks | #108 | ⬜ Not started | — |
+| ongoing | Story 11: Test Suite Expansion | #109 | ⬜ In progress | — |
 
 ---
 
