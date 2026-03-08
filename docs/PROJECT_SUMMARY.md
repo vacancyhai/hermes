@@ -19,116 +19,113 @@
 
 ## 🏗️ Architecture Overview
 
-### Fully Decoupled Services Design (INDEPENDENT Backend + Frontend)
+### Three-Service Design (INDEPENDENT Backend + Two Frontends)
 
-**🎯 KEY CHANGE**: Backend and Frontend are **COMPLETELY SEPARATED** into different folders under `src/`. Each service runs independently with its own Docker Compose file. This allows replacing the frontend technology (Flask → React → iOS → Android) without touching the backend.
+Three completely separate services, each with its own Docker Compose file and Docker network. Backend is shared — both frontends call it via HTTP REST.
 
 ```
-┌────────────────────────────────────────────────────────────┐
-│                  SEPARATED SERVICES                         │
-└────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────┐
+│                        THREE INDEPENDENT SERVICES                         │
+└──────────────────────────────────────────────────────────────────────────┘
 
-┌─────────────────────────────┐      ┌─────────────────────────────┐
-│   BACKEND SERVICE           │      │   FRONTEND SERVICE          │
-│   (src/backend/)            │◄─────│   (src/frontend/)           │
-│                             │ HTTP │                             │
-│   Port: 5000                │ REST │   Port: 8080 (or any)       │
-│                             │ API  │                             │
-│   docker-compose.yml:       │      │   docker-compose.yml:       │
-│   - PostgreSQL              │      │   - Frontend only           │
-│   - Redis                   │      │                             │
-│   - Backend API             │      │   API calls via HTTP:       │
-│   - Celery Worker           │      │   http://backend:5000       │
-│   - Celery Beat             │      │   /api/v1/*                 │
-│                             │      │                             │
-│   Exposes: /api/v1/*        │      │   Serves: HTML/SPA          │
-│                             │      │                             │
-│   Can deploy independently! │      │   Can deploy independently! │
-│   Can scale independently!  │      │   Can scale independently!  │
-│   Technology: Flask         │      │   Technology: Flask/React/  │
-│   (Won't change)            │      │   Native iOS/Android        │
-│                             │      │   (Can change anytime!)     │
-└─────────────────────────────┘      └─────────────────────────────┘
-
-          ↑                                      ↑
-          │                                      │
-    Deploy on Server 1                     Deploy on Server 2
-    (or same server)                       (or same server)
+┌─────────────────────┐   ┌─────────────────────┐   ┌─────────────────────┐
+│   BACKEND SERVICE   │   │  USER FRONTEND      │   │  ADMIN FRONTEND     │
+│   (src/backend/)    │   │  (src/frontend/)    │   │  (src/frontend-     │
+│                     │◄──│                     │   │   admin/)           │
+│   Port: 5000        │HTTP│  Port: 8080        │   │                     │
+│                     │REST│                    │   │  Port: 8081         │
+│   docker-compose:   │API │  docker-compose:   │   │                     │
+│   - PostgreSQL      │   │  - frontend only   │◄──│  docker-compose:    │
+│   - Redis           │   │                    │HTTP│  - frontend-admin   │
+│   - Backend API     │   │  Serves:           │REST│    only             │
+│   - Celery Worker   │   │  - Register/Login  │API │                     │
+│   - Celery Beat     │   │  - Job browsing    │   │  Serves:            │
+│                     │   │  - User profile    │   │  - Admin login      │
+│   Exposes: /api/v1/ │   │  - Notifications   │   │  - Dashboard        │
+│                     │   │                    │   │  - User management  │
+│                     │   │  Audience:         │   │  - Job management   │
+│                     │   │  Public users      │   │                     │
+│                     │   │                    │   │  Audience:          │
+│                     │   │                    │   │  admin + operator   │
+└─────────────────────┘   └─────────────────────┘   └─────────────────────┘
 ```
 
 **Architecture Benefits:**
-- ✅ **Complete Separation**: Backend and frontend live in separate folders (`src/backend/`, `src/frontend/`)
-- ✅ **Independent Deployment**: Deploy backend without restarting frontend (and vice versa)
-- ✅ **Independent Scaling**: Scale backend and frontend separately based on load
-- ✅ **Tech Stack Flexibility**: Replace frontend (Flask → React → Mobile) WITHOUT touching backend
+- ✅ **Complete Separation**: Each service in its own folder with independent Docker Compose
+- ✅ **Security isolation**: Admin interface on a separate port/container — can be firewalled from public internet
+- ✅ **Independent Deployment**: Deploy backend without restarting either frontend (and vice versa)
+- ✅ **Independent Scaling**: Scale backend and each frontend separately based on load
+- ✅ **Tech Stack Flexibility**: Replace any frontend (Flask → React → Mobile) WITHOUT touching backend
 - ✅ **API Versioning**: All endpoints use `/api/v1/` for future compatibility
-- ✅ **Multiple Frontends**: Run Flask web + React Admin + iOS app ALL calling same backend API
 - ✅ **Separated Celery**: Beat (scheduler = 1 instance) and Workers (executors = scalable)
-- ✅ **Different Servers**: Deploy backend on powerful server, frontend on edge servers closer to users
+- ✅ **Different Servers**: Deploy backend on a private server, user frontend on edge, admin frontend on internal network
 
 ---
 
-## 📁 Project Structure (NEW: src/ Separation)
+## 📁 Project Structure (Three Independent Services)
 
 ```
 hermes/
 ├── src/                              # 🚀 All source code
 │   │
-│   ├── backend/                      # 🔧 BACKEND SERVICE (INDEPENDENT)
-│   │   ├── docker-compose.yml        # Backend: PostgreSQL, Redis, API, Celery
+│   ├── backend/                      # 🔧 BACKEND SERVICE (port 5000)
+│   │   ├── docker-compose.yml        # PostgreSQL, Redis, API, Celery Worker, Celery Beat
 │   │   ├── Dockerfile
 │   │   ├── requirements.txt
-│   │   ├── .env.example              # Backend environment variables
+│   │   ├── .env.example
 │   │   ├── run.py
 │   │   ├── app/
 │   │   │   ├── routes/               # API endpoints (/api/v1/*)
 │   │   │   ├── models/               # SQLAlchemy ORM models (PostgreSQL)
-│   │   │   ├── services/             # Business logic
+│   │   │   ├── services/             # Business logic (auth_service ✅)
+│   │   │   ├── middleware/           # JWT auth, RBAC, error handlers
+│   │   │   ├── validators/           # Marshmallow schemas (auth ✅)
 │   │   │   └── tasks/                # Celery background tasks
 │   │   ├── config/
-│   │   ├── tests/
-│   │   └── logs/
+│   │   └── tests/                    # 74 tests passing ✅
 │   │
-│   └── frontend/                     # 🎨 FRONTEND SERVICE (INDEPENDENT)
-│       ├── docker-compose.yml        # Frontend only
-│       ├── Dockerfile
-│       ├── requirements.txt          # Flask deps (or package.json for React)
-│       ├── .env.example              # Frontend environment variables
-│       ├── run.py
-│       ├── app/
-│       │   ├── routes/               # Page routes (/, /jobs, /profile)
-│       │   ├── templates/            # Jinja2 HTML (Flask only)
-│       │   ├── static/               # CSS, JS, images (Flask only)
-│       │   └── utils/
-│       │       └── api_client.py     # Calls backend: http://backend:5000/api/v1/*
-│       ├── config/
-│       └── tests/
+│   ├── frontend/                     # 🎨 USER FRONTEND SERVICE (port 8080)
+│   │   ├── docker-compose.yml        # User frontend only
+│   │   ├── Dockerfile
+│   │   ├── .env.example
+│   │   ├── run.py
+│   │   ├── app/
+│   │   │   ├── routes/               # Page routes (/, /auth, /jobs, /profile)
+│   │   │   ├── templates/            # Jinja2 HTML
+│   │   │   ├── static/               # CSS, JS, images
+│   │   │   └── utils/                # api_client.py (calls backend)
+│   │   └── config/
+│   │
+│   ├── frontend-admin/               # 👨‍💼 ADMIN FRONTEND SERVICE (port 8081)
+│   │   ├── docker-compose.yml        # Admin frontend only
+│   │   ├── Dockerfile
+│   │   ├── .env.example
+│   │   ├── run.py
+│   │   ├── app/
+│   │   │   ├── routes/               # Page routes (/auth, /dashboard, /users, /jobs)
+│   │   │   ├── templates/            # Jinja2 HTML (admin/operator views)
+│   │   │   ├── static/               # CSS, JS, images
+│   │   │   └── utils/                # api_client.py (calls backend)
+│   │   └── config/
+│   │
+│   └── nginx/                        # 🌐 REVERSE PROXY (ports 80/443)
+│       ├── docker-compose.yml        # References backend + frontend + frontend-admin networks
+│       └── nginx.conf                # Routes /api/* → backend, /* → frontend, /admin/* → frontend-admin
 │
-├── docs/                             # Documentation
-├── epic/                             # Feature planning
-├── config/                           # Environment configs (reference)
-│   ├── development/
-│   │   ├── .env.backend.dev
-│   │   └── .env.frontend.dev
-│   ├── staging/
-│   └── production/
+├── docs/
+├── config/                           # Env templates per environment
 ├── scripts/
-│   └── deployment/
-│       ├── deploy_backend.sh
-│       ├── deploy_frontend.sh
-│       └── deploy_all.sh
 └── README.md
 ```
 
 **Key Points:**
-- ✅ Backend lives in `src/backend/` with its own docker-compose.yml
-- ✅ Frontend lives in `src/frontend/` with its own docker-compose.yml
-- ✅ Each service has its own .env file
-- ✅ Each service can be git repository on its own
-- ✅ Frontend calls backend via HTTP REST API
-- ✅ Can run backend only: `cd src/backend && docker-compose up`
-- ✅ Can run frontend only: `cd src/frontend && docker-compose up`
-- ✅ Can replace frontend entirely without touching backend code!
+- ✅ Backend lives in `src/backend/` — shared API for both frontends
+- ✅ User frontend lives in `src/frontend/` — public users only (register, login, jobs, profile)
+- ✅ Admin frontend lives in `src/frontend-admin/` — admin + operator only (dashboard, user mgmt, job mgmt)
+- ✅ Each service has its own `.env` file, Docker Compose file, and Docker network
+- ✅ Both frontends call the backend via HTTP REST API (`BACKEND_API_URL`)
+- ✅ Can run any service independently: `cd src/<service> && docker-compose up`
+- ✅ Can replace any frontend without touching backend code
 
 ---
 
@@ -210,7 +207,7 @@ curl http://localhost:5000/api/v1/health
 # Should return: {"status":"healthy"}
 ```
 
-**5. Deploy Frontend**
+**5. Deploy User Frontend**
 ```bash
 cd ../frontend
 
@@ -234,32 +231,63 @@ SECRET_KEY=your-frontend-secret-key
 SESSION_TIMEOUT=3600
 ```
 
-**6. Start Frontend Service**
+**6. Start User Frontend Service**
 ```bash
 # From src/frontend/
 docker-compose up -d --build
 ```
 
 This starts:
-- ✅ Frontend UI (Flask + Jinja2 on port 8080)
+- ✅ User Frontend (Flask + Jinja2 on port 8080)
 
-**7. Verify Frontend**
+**7. Deploy Admin Frontend**
 ```bash
-# Check frontend container
-docker-compose ps
+cd ../frontend-admin
 
-# View frontend logs
-docker-compose logs -f frontend
-
-# Test frontend
-curl http://localhost:8080
-# Should return HTML homepage
+# Configure admin frontend environment
+cp .env.example .env
+nano .env
 ```
 
-**8. Access Application**
+Required admin frontend environment variables:
+```env
+# Backend API URL
+BACKEND_API_URL=http://localhost:5000/api/v1
+
+# Admin Frontend Port
+FRONTEND_ADMIN_PORT=8081
+
+# Flask Secret (must differ from user frontend secret)
+SECRET_KEY=your-admin-frontend-secret-key
+
+# Session Configuration
+SESSION_TIMEOUT=3600
+```
+
+**8. Start Admin Frontend Service**
+```bash
+# From src/frontend-admin/
+docker-compose up -d --build
+```
+
+This starts:
+- ✅ Admin Frontend (Flask + Jinja2 on port 8081)
+
+**9. Verify Both Frontends**
+```bash
+# Test user frontend
+curl http://localhost:8080/health
+# Returns: {"status":"healthy","service":"frontend"}
+
+# Test admin frontend
+curl http://localhost:8081/health
+# Returns: {"status":"healthy","service":"frontend-admin"}
+```
+
+**10. Access Application**
 - Backend API: `http://localhost:5000/api/v1/`
-- Frontend Website: `http://localhost:8080`
-- Admin panel: `http://localhost:8080/admin`
+- User Website: `http://localhost:8080`
+- Admin Panel: `http://localhost:8081`
 
 **Note:** Database name is `hermes_db` (changed from `sarkari_path`)
 
@@ -279,19 +307,22 @@ docker-compose up -d --build
 # Backend API: http://192.168.1.10:5000/api/v1/
 ```
 
-**Frontend Server (e.g., 192.168.1.20)**
+**User Frontend Server (e.g., 192.168.1.20)**
 ```bash
-# On frontend server
 cd hermes/src/frontend
 cp .env.example .env
-
-# Set BACKEND_API_URL to backend server
-nano .env
 # BACKEND_API_URL=http://192.168.1.10:5000/api/v1
-
 docker-compose up -d --build
+# User Frontend: http://192.168.1.20:8080
+```
 
-# Frontend: http://192.168.1.20:8080
+**Admin Frontend Server (e.g., 192.168.1.30 — internal network recommended)**
+```bash
+cd hermes/src/frontend-admin
+cp .env.example .env
+# BACKEND_API_URL=http://192.168.1.10:5000/api/v1
+docker-compose up -d --build
+# Admin Frontend: http://192.168.1.30:8081
 ```
 
 ---
@@ -305,11 +336,18 @@ docker-compose up -d --build
 # Backend running on port 5000
 ```
 
-**Deploy Frontend**
+**Deploy User Frontend**
 ```bash
 cd src/frontend
 docker-compose up -d --build
-# Frontend running on port 8080
+# User Frontend running on port 8080
+```
+
+**Deploy Admin Frontend**
+```bash
+cd src/frontend-admin
+docker-compose up -d --build
+# Admin Frontend running on port 8081
 ```
 
 **Setup Nginx Reverse Proxy**
@@ -325,17 +363,29 @@ sudo nano /etc/nginx/sites-available/hermes
 server {
     listen 80;
     server_name yourdomain.com;
-    
-    # Frontend
+
+    # User Frontend
     location / {
         proxy_pass http://localhost:8080;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
     }
-    
+
     # Backend API
     location /api/ {
         proxy_pass http://localhost:5000/api/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
+
+# Admin Frontend — separate server block or subdomain recommended
+server {
+    listen 80;
+    server_name admin.yourdomain.com;
+
+    location / {
+        proxy_pass http://localhost:8081;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
     }
@@ -431,76 +481,73 @@ docker-compose down -v
 
 ---
 
-### Frontend Management (src/frontend/)
+### User Frontend Management (src/frontend/)
 
 **View Logs**
 ```bash
 cd src/frontend
-
-# Frontend logs
-docker-compose logs -f
-
-# Specific service
 docker-compose logs -f frontend
 ```
 
-**Restart Frontend**
+**Restart / Update**
 ```bash
 cd src/frontend
-
-# Restart frontend
-docker-compose restart
-
-# Or just restart specific service
-docker-compose restart frontend
-```
-
-**Update Frontend Code**
-```bash
-cd src/frontend
-
-# Pull latest code
 git pull origin main
-
-# Rebuild and restart
 docker-compose up -d --build
 ```
 
-**Stop & Clean Up Frontend**
+**Stop**
 ```bash
 cd src/frontend
-
-# Stop frontend container
 docker-compose down
 ```
 
 ---
 
-### Both Services Management
+### Admin Frontend Management (src/frontend-admin/)
 
-**Update Both**
+**View Logs**
 ```bash
-# Backend
-cd src/backend && git pull && docker-compose up -d --build && cd ../..
-
-# Frontend
-cd src/frontend && git pull && docker-compose up -d --build && cd ../..
+cd src/frontend-admin
+docker-compose logs -f frontend-admin
 ```
 
-**Stop Both**
+**Restart / Update**
 ```bash
-# Backend
-cd src/backend && docker-compose down && cd ../..
+cd src/frontend-admin
+git pull origin main
+docker-compose up -d --build
+```
 
-# Frontend
+**Stop**
+```bash
+cd src/frontend-admin
+docker-compose down
+```
+
+---
+
+### All Services Management
+
+**Update All**
+```bash
+cd src/backend && git pull && docker-compose up -d --build && cd ../..
+cd src/frontend && git pull && docker-compose up -d --build && cd ../..
+cd src/frontend-admin && git pull && docker-compose up -d --build && cd ../..
+```
+
+**Stop All**
+```bash
+cd src/backend && docker-compose down && cd ../..
 cd src/frontend && docker-compose down && cd ../..
+cd src/frontend-admin && docker-compose down && cd ../..
 ```
 
 **Clean Everything**
 ```bash
-# Remove all containers, volumes, images
 cd src/backend && docker-compose down -v && cd ../..
 cd src/frontend && docker-compose down -v && cd ../..
+cd src/frontend-admin && docker-compose down -v && cd ../..
 docker system prune -a
 ```
 
@@ -821,9 +868,18 @@ pip install -r requirements.txt
 python run.py
 ```
 
-**Frontend:**
+**User Frontend:**
 ```bash
-cd frontend
+cd src/frontend
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+python run.py
+```
+
+**Admin Frontend:**
+```bash
+cd src/frontend-admin
 python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
@@ -1125,7 +1181,7 @@ After deployment:
    - See code examples in role management section
 
 3. **Post Test Job**
-   - Login to admin panel: `/admin`
+   - Login to admin frontend: `http://localhost:8081/auth/login`
    - Create a test job vacancy
 
 3. **Test Notifications**

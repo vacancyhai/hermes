@@ -2,11 +2,11 @@
 
 ## 1. Overall System Architecture (SEPARATED MICROSERVICES)
 
-**🎯 MAJOR CHANGE**: Backend and Frontend are now **COMPLETELY SEPARATED** services with their own Docker Compose files. They communicate via HTTP REST API.
+**🎯 MAJOR CHANGE**: Backend, User Frontend, and Admin Frontend are now **COMPLETELY SEPARATED** services with their own Docker Compose files. They communicate via HTTP REST API.
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│        HERMES - SEPARATED MICROSERVICES (6 Containers, 2 Services)           │
+│        HERMES - SEPARATED MICROSERVICES (8 Containers, 3 Services)           │
 └──────────────────────────────────────────────────────────────────────────────┘
 
                               ┌──────────────┐
@@ -16,104 +16,75 @@
                                      │
                     ┌────────────────┼────────────────┐
                     │                │                │
-            ┌───────▼──────┐  ┌──────▼───────┐  ┌────▼────────┐
-            │   Web Users  │  │ Mobile Users │  │   Admin     │
-            └───────┬──────┘  └──────┬───────┘  └────┬────────┘
+            ┌───────▼──────┐  ┌──────▼───────┐  ┌────▼──────────┐
+            │   Web Users  │  │ Mobile Users │  │Admin/Operator  │
+            └───────┬──────┘  └──────┬───────┘  └────┬───────────┘
                     │                │                │
                     └────────────────┼────────────────┘
                                      │
-         ┌───────────────────────────┼───────────────────────────┐
-         │                           │                           │
-         │  Option 1: Same Server    │   Option 2: Different     │
-         │  (Development)            │   Servers (Production)    │
-         │                           │                           │
-         ↓                           ↓                           ↓
-┌────────────────────────┐   ┌──────────────────────┐   ┌───────────────────────┐
-│  FRONTEND SERVICE      │   │  Nginx Reverse Proxy │   │  BACKEND SERVICE      │
-│  (src/frontend/)       │   │  (Optional)          │   │  (src/backend/)       │
-│                        │   │                      │   │                       │
-│  docker-compose.yml    │   │  Routes:             │   │  docker-compose.yml   │
-│  ┌──────────────────┐  │   │  /api/* → Backend   │   │  ┌─────────────────┐  │
-│  │  Frontend        │  │   │  /*     → Frontend  │   │  │  1. PostgreSQL     │  │
-│  │  - Flask/Jinja2  │  │   └──────────────────────┘   │  │  Database       │  │
-│  │  - Port 8080     │  │            │                 │  │  Port 5432           │  │
-│  │  - Renders HTML  │  │            │                 │  │  Persistent     │  │
-│  │                  │  │            │                 │  │                 │  │
-│  │  Calls Backend:  │──┼────────────┘                 │  └────────┬────────┘  │
-│  │  HTTP API        │  │         HTTP REST API        │           │           │
-│  │  http://backend  │  │         /api/v1/*            │  ┌────────▼────────┐  │
-│  │  :5000/api/v1/*  │  │                              │  │  2. Redis       │  │
-│  │                  │  │    ┌─────────────────────┐   │  │  Cache + Queue  │  │
-│  │  Future: Replace │  │    │  Can deploy on      │   │  │  Port 6379      │  │
-│  │  with React/iOS/ │  │    │  different servers: │   │  │  AOF Persist    │  │
-│  │  Android WITHOUT │  │    │                     │   │  │                 │  │
-│  │  touching backend│  │    │  Frontend: Server 1 │   │  └────────┬────────┘  │
-│  │                  │  │    │  Backend:  Server 2 │   │           │           │
-│  └──────────────────┘  │    │                     │   │  ┌────────▼────────┐  │
-│                        │    └─────────────────────┘   │  │  3. Backend API │  │
-│  Environment:          │                              │  │  Flask REST     │  │
-│  BACKEND_API_URL=      │                              │  │  Port 5000      │  │
-│  http://backend:5000   │                              │  │  /api/v1/*      │  │
-│  /api/v1/              │                              │  │  JWT Auth       │  │
-│                        │                              │  │  CORS Enabled   │  │
-└────────────────────────┘                              │  │  RBAC           │  │
-                                                        │  └────────┬────────┘  │
-         Deploy Separately!                             │           │           │
-         Can scale independently!                       │  ┌────────▼────────┐  │
-         Can change tech stack anytime!                 │  │ 4. Celery Worker│  │
-                                                        │  │  Background     │  │
-                                                        │  │  Tasks (1-N)    │  │
-                                                        │  │  - Emails       │  │
-                                                        │  │  - Notifications│  │
-                                                        │  │  - Matching     │  │
-                                                        │  └─────────────────┘  │
-                                                        │                       │
-                                                        │  ┌─────────────────┐  │
-                                                        │  │ 5. Celery Beat  │  │
-                                                        │  │  Task Scheduler │  │
-                                                        │  │  (Always 1)     │  │
-                                                        │  │  - Daily tasks  │  │
-                                                        │  │  - Reminders    │  │
-                                                        │  │  - Cleanup      │  │
-                                                        │  └─────────────────┘  │
-                                                        │                       │
-                                                        │  Exposes: /api/v1/*   │
-                                                        │  on port 5000         │
-                                                        │                       │
-                                                        └───────────────────────┘
-                                                                 │
-                                                        Deploy Separately!
-                                                        Can scale independently!
-                                                        Technology won't change!
-                                                                 │
-                                                                 ↓
-                                              ┌──────────────────────────────┐
-                                              │  External Services           │
-                                              │  ┌────────────┐             │
-                                              │  │  Email     │             │
-                                              │  │  (SMTP)    │             │
-                                              │  └────────────┘             │
-                                              │  ┌────────────┐             │
-                                              │  │  Firebase  │             │
-                                              │  │  FCM (Push)│             │
-                                              │  └────────────┘             │
-                                              └──────────────────────────────┘
+                            ┌────────▼─────────┐
+                            │  Nginx (Optional) │
+                            │  /*   → Port 8080 │
+                            │  /admin/* → 8081  │
+                            │  /api/* → 5000    │
+                            └────────┬──────────┘
+                                     │
+              ┌──────────────────────┼──────────────────────┐
+              │                      │                      │
+              ▼                      ▼                      ▼
+┌─────────────────────┐  ┌─────────────────────┐  ┌────────────────────────┐
+│  USER FRONTEND      │  │  ADMIN FRONTEND     │  │  BACKEND SERVICE       │
+│  src/frontend/      │  │  src/frontend-admin/│  │  src/backend/          │
+│                     │  │                     │  │                        │
+│  1 container        │  │  1 container        │  │  5 containers:         │
+│  Port: 8080         │  │  Port: 8081         │  │  1. PostgreSQL (5432)  │
+│  Flask/Jinja2       │  │  Flask/Jinja2       │  │  2. Redis (6379)       │
+│                     │  │                     │  │  3. Backend API (5000) │
+│  Public users:      │  │  Staff only:        │  │  4. Celery Worker      │
+│  - Register         │  │  - Admin login      │  │  5. Celery Beat        │
+│  - Login            │  │  - Operator login   │  │                        │
+│  - Browse jobs      │  │  - Manage jobs      │  │  JWT Auth + RBAC       │
+│                     │  │  - Manage users     │  │  /api/v1/* endpoints   │
+│  Calls backend via  │  │                     │  │                        │
+│  BACKEND_API_URL    │  │  Calls backend via  │  │  Persistent storage:   │
+│                     │  │  BACKEND_API_URL    │  │  PostgreSQL + Redis    │
+│  Network:           │  │                     │  │  AOF persistence       │
+│  src_frontend_      │  │  Network:           │  └────────────────────────┘
+│  network            │  │  src_frontend_      │           │
+└─────────────────────┘  │  admin_network      │           ▼
+                         │                     │  ┌──────────────────────┐
+         Deploy          │  Firewall port 8081 │  │  External Services   │
+         Separately!     │  from public        │  │  - Email (SMTP)      │
+         Can scale       │  internet!          │  │  - Firebase FCM      │
+         independently!  └─────────────────────┘  └──────────────────────┘
+
+┌────────────────────────────────────────────────────────────────────┐
+│  Can deploy on same server (dev) or different servers (prod)        │
+│  Frontends: Server 1       Backend: Server 2                       │
+│  Each service has independent docker-compose.yml                    │
+└────────────────────────────────────────────────────────────────────┘
 
 **Key Architecture Changes**:
-✅ Backend and Frontend in separate folders (src/backend/, src/frontend/)
-✅ Each has its own docker-compose.yml
-✅ Frontend calls Backend via HTTP (not internal Docker network)
+✅ Three separated services: User Frontend (8080), Admin Frontend (8081), Backend (5000)
+✅ Each service has its own docker-compose.yml and Docker network
+✅ Both frontends call Backend via HTTP REST API (not internal Docker network)
 ✅ Can deploy on same server OR different servers
-✅ Can replace Frontend (Flask → React → Mobile) WITHOUT touching Backend
+✅ Admin Frontend isolated at port 8081 — can be firewalled from public internet
+✅ Can replace frontend tech (Flask → React → Mobile) WITHOUT touching Backend
 ✅ Backend technology is stable and won't change
-✅ Frontend technology can evolve based on requirements
 
 **Communication Flow**:
-User → Frontend (HTML/SPA/Mobile)  
+Public User → User Frontend (port 8080)
      → HTTP Request to Backend API (http://backend:5000/api/v1/*)
      → Backend processes request
      → Returns JSON response
-     → Frontend renders result to user
+     → User Frontend renders result to user
+
+Admin/Operator → Admin Frontend (port 8081)
+     → HTTP Request to Backend API (http://backend:5000/api/v1/*)
+     → Backend processes request (RBAC role checks applied)
+     → Returns JSON response
+     → Admin Frontend renders result
 ```
 
 ## 2. User Registration & Profile Setup Flow
@@ -228,10 +199,11 @@ User → Frontend (HTML/SPA/Mobile)
 └────┬────┘
      │
      ▼
-┌──────────────────────┐
-│ Admin logs in        │
-│ (role: "admin")      │
-└────┬─────────────────┘
+┌──────────────────────────────────────┐
+│ Admin logs in                        │
+│ via src/frontend-admin/ (port 8081)  │
+│ (role: "admin")                      │
+└────┬─────────────────────────────────┘
      │
      ▼
 ┌────────────────────────┐
@@ -830,9 +802,11 @@ User → Frontend (HTML/SPA/Mobile)
 └────┬────┘
      │
      ▼
-┌──────────────────────┐
-│ Admin Login          │
-└────┬─────────────────┘
+┌──────────────────────────────────────┐
+│ Admin Login                          │
+│ src/frontend-admin/ (port 8081)      │
+│ http://localhost:8081/auth/login     │
+└────┬─────────────────────────────────┘
      │
      ▼
 ┌────────────────────────────────────────────────────┐
@@ -1702,7 +1676,8 @@ User Request
          │
          ▼
 ┌────────────────────────────────────┐
-│ Frontend Flask                     │
+│ User/Admin Frontend Flask          │
+│ (src/frontend/ or frontend-admin/) │
 │ @before_request:                   │
 │   g.request_id = get_header(       │
 │     'X-Request-ID')                │
@@ -1774,7 +1749,7 @@ SEARCHING LOGS BY REQUEST ID:
 $ grep "abc123-def456-ghi789" /var/log/nginx/access.log
 [2026-03-05 10:30:00] GET /jobs abc123-def456-ghi789 200
 
-$ grep "abc123-def456-ghi789" /app/frontend/logs/app.log
+$ grep "abc123-def456-ghi789" /app/frontend/logs/app.log  # or /app/frontend-admin/
 [abc123-def456-ghi789] Page load: /jobs
 [abc123-def456-ghi789] Calling API: GET /api/v1/jobs
 [abc123-def456-ghi789] API call complete: 200
@@ -2364,4 +2339,4 @@ job = get_job_by_id('507f1f77bcf86cd799439011')
 
 **End of Workflow Diagrams**
 
-*These ASCII diagrams provide a comprehensive visual representation of all major flows in the Hermes application system, including the 8-container microservices architecture, JWT token rotation with 15-minute access tokens and 7-day refresh tokens, RBAC enforcement with three roles (User, Operator, Admin), request ID tracing for distributed debugging, API v1 versioning, health checks, connection pooling, error handling with graceful degradation (5x retry with exponential backoff), Redis cache-aside pattern with TTL strategy, and production-ready resilience features.*
+*These ASCII diagrams provide a comprehensive visual representation of all major flows in the Hermes application system, including the 8-container / 3-service microservices architecture (User Frontend port 8080, Admin Frontend port 8081, Backend port 5000), JWT token rotation with 15-minute access tokens and 7-day refresh tokens, RBAC enforcement with three roles (User, Operator, Admin), request ID tracing for distributed debugging, API v1 versioning, health checks, connection pooling, error handling with graceful degradation (5x retry with exponential backoff), Redis cache-aside pattern with TTL strategy, and production-ready resilience features.*

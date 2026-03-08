@@ -7,16 +7,19 @@ This folder contains environment configuration templates for different deploymen
 ```
 config/
 ├── development/        # Development environment
-│   ├── .env.backend.development      # Backend dev config template
-│   └── .env.frontend.development     # Frontend dev config template
+│   ├── .env.backend.development           # Backend dev config template
+│   ├── .env.frontend.development          # User frontend dev config template
+│   └── .env.frontend-admin.development    # Admin frontend dev config template
 │
 ├── staging/           # Staging environment
-│   ├── .env.backend.staging          # Backend staging config template
-│   └── .env.frontend.staging         # Frontend staging config template
+│   ├── .env.backend.staging               # Backend staging config template
+│   ├── .env.frontend.staging              # User frontend staging config template
+│   └── .env.frontend-admin.staging        # Admin frontend staging config template
 │
 └── production/        # Production environment
-    ├── .env.backend.production       # Backend prod config template
-    └── .env.frontend.production      # Frontend prod config template
+    ├── .env.backend.production            # Backend prod config template
+    ├── .env.frontend.production           # User frontend prod config template
+    └── .env.frontend-admin.production     # Admin frontend prod config template
 ```
 
 ## 🔧 How to Use
@@ -38,19 +41,26 @@ nano src/backend/.env
 # - MAIL_SERVER, MAIL_USERNAME, MAIL_PASSWORD
 ```
 
-3. **Copy frontend configuration:**
+3. **Copy user frontend configuration:**
 ```bash
 cp config/development/.env.frontend.development src/frontend/.env
 ```
 
-4. **Edit if needed:**
+4. **Copy admin frontend configuration:**
 ```bash
-nano src/frontend/.env
-# Usually main setting is:
-# BACKEND_API_URL=http://localhost:5000/api/v1
+cp config/development/.env.frontend-admin.development src/frontend-admin/.env
 ```
 
-5. **Start services:**
+5. **Edit if needed:**
+```bash
+nano src/frontend/.env
+# Key setting: BACKEND_API_URL=http://localhost:5000/api/v1
+
+nano src/frontend-admin/.env
+# Key setting: BACKEND_API_URL=http://localhost:5000/api/v1
+```
+
+6. **Start services:**
 ```bash
 ./scripts/deployment/deploy_all.sh development
 ```
@@ -63,6 +73,7 @@ nano src/frontend/.env
 ```bash
 cp config/staging/.env.backend.staging src/backend/.env
 cp config/staging/.env.frontend.staging src/frontend/.env
+cp config/staging/.env.frontend-admin.staging src/frontend-admin/.env
 ```
 
 2. **Edit with staging values:**
@@ -73,12 +84,15 @@ nano src/backend/.env
 # - DB_PASSWORD (strong value)
 # - REDIS_PASSWORD (strong value)
 # - SECRET_KEY (strong random value)
-# - CORS_ORIGINS (staging domain)
+# - CORS_ORIGINS (staging domains for both frontends)
 
-# Frontend
+# User Frontend
 nano src/frontend/.env
-# Update:
-# - BACKEND_API_URL (staging backend URL)
+# Update: BACKEND_API_URL (staging backend URL)
+
+# Admin Frontend
+nano src/frontend-admin/.env
+# Update: BACKEND_API_URL (staging backend URL)
 ```
 
 3. **Deploy:**
@@ -96,6 +110,7 @@ nano src/frontend/.env
 ```bash
 cp config/production/.env.backend.production src/backend/.env
 cp config/production/.env.frontend.production src/frontend/.env
+cp config/production/.env.frontend-admin.production src/frontend-admin/.env
 ```
 
 2. **Update all sensitive values:**
@@ -109,30 +124,41 @@ nano src/backend/.env
 ✓ JWT_SECRET_KEY - Strong random string, 32+ characters
 ✓ MAIL_PASSWORD - SendGrid API key or equivalent
 ✓ FIREBASE_CREDENTIALS_PATH - Path to Firebase config
-✓ CORS_ORIGINS - Your production domain ONLY
+✓ CORS_ORIGINS - Include both frontend origins (yourdomain.com + admin.yourdomain.com)
 
 # Recommendation: Use HashiCorp Vault or cloud secrets manager
 # instead of .env file for production
 ```
 
-3. **Frontend production config:**
+3. **User frontend production config:**
 ```bash
 nano src/frontend/.env
 
 # MUST UPDATE:
-✓ BACKEND_API_URL - Production backend (HTTPS)
+✓ BACKEND_API_URL - Production backend (HTTPS): https://api.yourdomain.com/api/v1
 ✓ SECRET_KEY - Strong random string
 ✓ SESSION_COOKIE_SECURE=True (for HTTPS)
-
-# Example:
-BACKEND_API_URL=https://api.yourdomain.com/api/v1
 ```
 
-4. **Secure the .env files:**
+4. **Admin frontend production config:**
+```bash
+nano src/frontend-admin/.env
+
+# MUST UPDATE:
+✓ BACKEND_API_URL - Production backend (HTTPS): https://api.yourdomain.com/api/v1
+✓ SECRET_KEY - Strong random string (different from user frontend!)
+✓ SESSION_COOKIE_SECURE=True (for HTTPS)
+
+# ⚠️  SECURITY: Firewall port 8081 — restrict to trusted IPs only!
+# Admin frontend should NOT be publicly accessible
+```
+
+5. **Secure the .env files:**
 ```bash
 # Restrict access to .env (current user only)
 chmod 600 src/backend/.env
 chmod 600 src/frontend/.env
+chmod 600 src/frontend-admin/.env
 
 # Do NOT commit .env to git
 # .gitignore should have: /.env
@@ -215,8 +241,10 @@ python3 -c "import secrets; print(secrets.token_urlsafe(32))"
 | **DB_POOL_SIZE** | 20 | 30 | 50 |
 | **RATE_LIMIT_PER_IP** | 100 | 200 | 500 |
 | **SESSION_COOKIE_SECURE** | False | False | True |
-| **CORS_ORIGINS** | localhost:8080 | staging domain | yourdomain.com |
-| **BACKEND_API_URL** | http://localhost | http://staging-url | https://yourdomain |
+| **CORS_ORIGINS** | localhost:8080 + localhost:8081 | staging domain + admin.staging | yourdomain.com + admin.yourdomain.com |
+| **User Frontend URL** | http://localhost:8080 | http://staging-url:8080 | https://yourdomain.com |
+| **Admin Frontend URL** | http://localhost:8081 | http://staging-admin:8081 | https://admin.yourdomain.com |
+| **BACKEND_API_URL** | http://localhost:5000 | http://staging-backend:5000 | https://api.yourdomain.com |
 | **LOG_LEVEL** | DEBUG | INFO | WARNING |
 
 ---
@@ -263,12 +291,14 @@ nano src/backend/.env
 # Update all sensitive values from vault/secrets manager
 
 cp config/production/.env.frontend.production src/frontend/.env
-nano src/frontend/.env
-# Update BACKEND_API_URL to production
+cp config/production/.env.frontend-admin.production src/frontend-admin/.env
+nano src/frontend/.env            # Update BACKEND_API_URL
+nano src/frontend-admin/.env     # Update BACKEND_API_URL
 
 # 3. Secure files
 chmod 600 src/backend/.env
 chmod 600 src/frontend/.env
+chmod 600 src/frontend-admin/.env
 
 # 4. Deploy
 ./scripts/deployment/deploy_all.sh production
@@ -276,10 +306,12 @@ chmod 600 src/frontend/.env
 # 5. Verify
 curl https://yourdomain.com/api/v1/health
 curl https://yourdomain.com/health
+curl https://admin.yourdomain.com/health
 
 # 6. Check logs
 docker-compose -f src/backend/docker-compose.yml logs -f
 docker-compose -f src/frontend/docker-compose.yml logs -f
+docker-compose -f src/frontend-admin/docker-compose.yml logs -f
 ```
 
 ---
@@ -305,8 +337,11 @@ docker-compose ps postgresql
 ### Frontend can't reach backend
 **Solution:** Check BACKEND_API_URL
 ```bash
-# Verify in frontend .env
+# Verify in user frontend .env
 grep BACKEND_API_URL src/frontend/.env
+
+# Verify in admin frontend .env
+grep BACKEND_API_URL src/frontend-admin/.env
 
 # Test connection
 curl http://localhost:5000/api/v1/health

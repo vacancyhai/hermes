@@ -1,4 +1,4 @@
-.PHONY: help install dev-install test clean backend-build backend-up backend-down backend-logs frontend-build frontend-up frontend-down frontend-logs backend-run frontend-run nginx-up nginx-down nginx-logs all-up all-down all-logs all-status
+.PHONY: help install dev-install test clean backend-build backend-up backend-down backend-logs frontend-build frontend-up frontend-down frontend-logs backend-run frontend-run frontend-admin-build frontend-admin-up frontend-admin-down frontend-admin-logs frontend-admin-run nginx-up nginx-down nginx-logs all-up all-down all-logs all-status
 
 help:
 	@echo "Hermes - Separated Microservices Architecture"
@@ -11,12 +11,19 @@ help:
 	@echo "  make backend-logs    - View backend logs"
 	@echo "  make backend-run     - Run backend locally (without Docker)"
 	@echo ""
-	@echo "🎨 FRONTEND COMMANDS (src/frontend/)"
-	@echo "  make frontend-build  - Build frontend Docker image"
-	@echo "  make frontend-up     - Start frontend service"
-	@echo "  make frontend-down   - Stop frontend service"
-	@echo "  make frontend-logs   - View frontend logs"
-	@echo "  make frontend-run    - Run frontend locally (without Docker)"
+	@echo "🎨 USER FRONTEND COMMANDS (src/frontend/)"
+	@echo "  make frontend-build  - Build user frontend Docker image"
+	@echo "  make frontend-up     - Start user frontend service (port 8080)"
+	@echo "  make frontend-down   - Stop user frontend service"
+	@echo "  make frontend-logs   - View user frontend logs"
+	@echo "  make frontend-run    - Run user frontend locally (without Docker)"
+	@echo ""
+	@echo "🔐 ADMIN FRONTEND COMMANDS (src/frontend-admin/)"
+	@echo "  make frontend-admin-build  - Build admin frontend Docker image"
+	@echo "  make frontend-admin-up     - Start admin frontend service (port 8081)"
+	@echo "  make frontend-admin-down   - Stop admin frontend service"
+	@echo "  make frontend-admin-logs   - View admin frontend logs"
+	@echo "  make frontend-admin-run    - Run admin frontend locally (without Docker)"
 	@echo ""
 	@echo "🌐 NGINX COMMANDS (src/nginx/)"
 	@echo "  make nginx-up        - Start Nginx reverse proxy"
@@ -35,13 +42,14 @@ help:
 	@echo "  make test           - Run all tests (backend + frontend)"
 	@echo "  make clean          - Clean temporary files (__pycache__, .pyc, etc)"
 	@echo ""
-	@echo "💡 QUICK START (3-step deployment)"
-	@echo "  make backend-up && make frontend-up && make nginx-up"
+	@echo "💡 QUICK START (4-step deployment)"
+	@echo "  make backend-up && make frontend-up && make frontend-admin-up && make nginx-up"
 	@echo "  OR use: make all-up"
 	@echo ""
 	@echo "📌 SERVICE STATUS AFTER STARTUP"
-	@echo "  Backend API: http://localhost:5001/api/v1/"
-	@echo "  Frontend: http://localhost/  (via Nginx proxy)"
+	@echo "  Backend API:      http://localhost:5000/api/v1/"
+	@echo "  User Frontend:    http://localhost:8080"
+	@echo "  Admin Frontend:   http://localhost:8081"
 	@echo ""
 
 # ============================================
@@ -99,6 +107,33 @@ frontend-run:
 	cd src/frontend && python run.py
 
 # ============================================
+# ADMIN FRONTEND COMMANDS (src/frontend-admin/)
+# ============================================
+
+frontend-admin-build:
+	@echo "🔨 Building admin frontend Docker image..."
+	cd src/frontend-admin && docker-compose build
+
+frontend-admin-up:
+	@echo "🚀 Starting admin frontend service..."
+	cd src/frontend-admin && docker-compose up -d --build
+	@echo "✅ Admin frontend service started!"
+	@echo "   Admin Frontend: http://localhost:8081"
+	@echo "   Admin Login:    http://localhost:8081/auth/login"
+
+frontend-admin-down:
+	@echo "⛔ Stopping admin frontend service..."
+	cd src/frontend-admin && docker-compose down
+
+frontend-admin-logs:
+	@echo "📋 Admin frontend logs (Ctrl+C to exit)..."
+	cd src/frontend-admin && docker-compose logs -f
+
+frontend-admin-run:
+	@echo "🐍 Starting admin frontend server (local, no Docker)..."
+	cd src/frontend-admin && python run.py
+
+# ============================================
 # DEVELOPMENT COMMANDS
 # ============================================
 
@@ -106,8 +141,10 @@ install:
 	@echo "📦 Installing dependencies..."
 	@echo "   Installing backend dependencies..."
 	cd src/backend && pip install -r requirements.txt
-	@echo "   Installing frontend dependencies..."
+	@echo "   Installing user frontend dependencies..."
 	cd src/frontend && pip install -r requirements.txt
+	@echo "   Installing admin frontend dependencies..."
+	cd src/frontend-admin && pip install -r requirements.txt
 	@echo "✅ Dependencies installed!"
 
 dev-install:
@@ -119,8 +156,10 @@ test:
 	@echo "🧪 Running tests..."
 	@echo "   Running backend tests..."
 	cd src/backend && pytest tests/ -v
-	@echo "   Running frontend tests..."
+	@echo "   Running user frontend tests..."
 	cd src/frontend && pytest tests/ -v
+	@echo "   Running admin frontend tests..."
+	cd src/frontend-admin && pytest tests/ -v
 	@echo "✅ All tests completed!"
 
 clean:
@@ -157,17 +196,17 @@ nginx-logs:
 # FULL STACK COMMANDS
 # ============================================
 
-all-up: backend-up frontend-up nginx-up
+all-up: backend-up frontend-up frontend-admin-up nginx-up
 	@echo ""
-	@echo "🎉 FULL PLATFORM STARTED!"
+	@echo "🎉 FULL PLATFORM STARTED! (8 containers)"
 	@echo ""
 	@echo "📌 Access Your Services:"
-	@echo "   Frontend: http://localhost"
-	@echo "   Backend API: http://localhost/api/v1/"
-	@echo "   Direct Backend: http://localhost:5001/api/v1/"
+	@echo "   User Frontend:  http://localhost:8080"
+	@echo "   Admin Frontend: http://localhost:8081"
+	@echo "   Backend API:    http://localhost:5000/api/v1/"
 	@echo ""
 
-all-down: backend-down frontend-down nginx-down
+all-down: backend-down frontend-down frontend-admin-down nginx-down
 	@echo "✅ All services stopped!"
 
 all-logs:
@@ -175,6 +214,7 @@ all-logs:
 	@echo "💡 You can run individual logs:"
 	@echo "   make backend-logs"
 	@echo "   make frontend-logs"
+	@echo "   make frontend-admin-logs"
 	@echo "   make nginx-logs"
 
 all-status:
@@ -184,8 +224,11 @@ all-status:
 	@echo "Backend Services:"
 	@cd src/backend && docker-compose ps || true
 	@echo ""
-	@echo "Frontend Services:"
+	@echo "User Frontend Services:"
 	@cd src/frontend && docker-compose ps || true
+	@echo ""
+	@echo "Admin Frontend Services:"
+	@cd src/frontend-admin && docker-compose ps || true
 	@echo ""
 	@echo "Nginx Service:"
 	@cd src/nginx && docker-compose ps || true
