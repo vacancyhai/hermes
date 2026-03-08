@@ -7,13 +7,11 @@ POST   /api/v1/jobs              — create job (operator / admin)
 PUT    /api/v1/jobs/<job_id>     — update job (operator / admin)
 DELETE /api/v1/jobs/<job_id>     — soft delete job (admin only)
 """
-from datetime import datetime, timezone
-
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify
 from flask_jwt_extended import get_jwt_identity, jwt_required
-from marshmallow import ValidationError
 
 from app.middleware.rate_limiter import limiter
+from app.routes._helpers import _err, _flatten, _load_args, _load_json, _ok
 from app.services import job_service
 from app.utils.constants import ErrorCode
 from app.utils.decorators import admin_required, operator_required
@@ -116,55 +114,6 @@ def delete_job(job_id):
 # ---------------------------------------------------------------------------
 # Private helpers
 # ---------------------------------------------------------------------------
-
-def _load_args(schema):
-    """Parse + validate query-string args. Returns (data, None) or (None, err)."""
-    try:
-        return schema.load(request.args.to_dict()), None
-    except ValidationError as e:
-        return None, _err(ErrorCode.VALIDATION_ERROR, 'Invalid query parameters.', 400,
-                          details=_flatten(e.messages))
-
-
-def _load_json(schema):
-    """Parse + validate request JSON. Returns (data, None) or (None, err)."""
-    try:
-        return schema.load(request.get_json(silent=True) or {}), None
-    except ValidationError as e:
-        return None, _err(ErrorCode.VALIDATION_ERROR, 'Invalid request data.', 400,
-                          details=_flatten(e.messages))
-
-
-def _ok(data, status=200, meta=None):
-    body = {'success': True, 'data': data}
-    if meta:
-        body.update(meta)
-    return jsonify(body), status
-
-
-def _err(code, message, status, details=None):
-    return jsonify({
-        'success': False,
-        'error': {
-            'code': code,
-            'message': message,
-            'details': details or [],
-            'timestamp': datetime.now(timezone.utc).isoformat(),
-            'request_id': request.headers.get('X-Request-ID', ''),
-        },
-    }), status
-
-
-def _flatten(messages):
-    result = []
-    for field, errors in messages.items():
-        if isinstance(errors, list):
-            for e in errors:
-                result.append(f'{field}: {e}')
-        else:
-            result.append(f'{field}: {errors}')
-    return result
-
 
 def _serialize_job(job) -> dict:
     """Convert JobVacancy ORM instance to a JSON-safe dict."""

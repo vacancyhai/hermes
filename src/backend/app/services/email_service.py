@@ -22,19 +22,14 @@ Environment variables (set via config/settings.py):
 from __future__ import annotations
 
 from flask import current_app
-from flask_mail import Mail, Message
+from flask_mail import Message
 
-_mail: Mail | None = None
-
-
-def get_mail() -> Mail:
+def get_mail():
     """Return the Flask-Mail instance attached to the current app."""
-    global _mail
-    if _mail is None:
-        _mail = current_app.extensions.get("mail")
-        if _mail is None:
-            _mail = Mail(current_app)
-    return _mail
+    mail = current_app.extensions.get("mail")
+    if mail is None:
+        raise RuntimeError("Flask-Mail is not initialized on this app.")
+    return mail
 
 
 # ---------------------------------------------------------------------------

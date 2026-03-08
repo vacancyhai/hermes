@@ -95,7 +95,7 @@ def apply_to_job(user_id: str, job_id: str) -> UserJobApplication:
         ValueError('ALREADY_APPLIED')               — duplicate application.
     """
     job = db.session.get(JobVacancy, job_id)
-    if not job or job.status != 'active':
+    if not job or job.status != JobStatus.ACTIVE:
         raise ValueError(ErrorCode.NOT_FOUND_JOB)
 
     existing = UserJobApplication.query.filter_by(

@@ -16,7 +16,7 @@ Tasks defined here:
         — Set any active job whose application_end < today to status='closed'.
 """
 import logging
-from datetime import datetime, date, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 
 from app.tasks.celery_app import celery_app
 
@@ -92,7 +92,7 @@ def close_expired_job_listings() -> dict:
     from app.models.job import JobVacancy
     from app.utils.constants import JobStatus
 
-    today = date.today()
+    today = datetime.now(timezone.utc).date()
     updated = (
         db.session.query(JobVacancy)
         .filter(

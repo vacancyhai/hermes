@@ -104,19 +104,20 @@ def auth_header(access_token_for):
 @pytest.fixture
 def db_session(app):
     """
-    Yields a SQLAlchemy session bound to a transaction that is always
-    rolled back at the end of the test, leaving the DB unmodified.
+    Yields a SQLAlchemy session scoped to a savepoint that is rolled back
+    at the end of every test, leaving the DB unmodified.
 
     Requires a real PostgreSQL connection (DATABASE_URL must be set).
     Integration tests that only mock the service layer do not need this.
     Mark such tests with @pytest.mark.integration to keep them opt-in.
+
+    Uses begin_nested() (SAVEPOINT) which is SQLAlchemy 2.x compatible.
+    Any commit() calls inside the test only release the savepoint; the
+    outer transaction is always rolled back when the fixture tears down.
     """
     with app.app_context():
         from app.extensions import db as _db
-        connection = _db.engine.connect()
-        transaction = connection.begin()
-        _db.session.bind = connection
+        _db.session.begin_nested()
         yield _db.session
+        _db.session.rollback()
         _db.session.remove()
-        transaction.rollback()
-        connection.close()

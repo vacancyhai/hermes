@@ -11,7 +11,7 @@ The task is registered in celery_app.beat_schedule in celery_app.py
 (or can be configured via django-celery-beat / redbeat).
 """
 import logging
-from datetime import date, timedelta
+from datetime import datetime, timedelta, timezone
 
 from app.tasks.celery_app import celery_app
 
@@ -34,11 +34,11 @@ def send_deadline_reminders() -> dict:
     """
     from app.extensions import db
     from app.models.job import JobVacancy, UserJobApplication
-    from app.models.user import User
+    from app.models.user import User, UserProfile
     from app.services.email_service import send_deadline_reminder_email
-    from app.utils.constants import JobStatus, ApplicationStatus
+    from app.utils.constants import ApplicationStatus, JobStatus, UserStatus
 
-    today = date.today()
+    today = datetime.now(timezone.utc).date()
     emails_sent = 0
 
     for days_left in _REMINDER_DAYS:
@@ -55,23 +55,21 @@ def send_deadline_reminders() -> dict:
         )
 
         for job in jobs:
-            # Users who have applied and have not withdrawn
-            applications = (
-                UserJobApplication.query
+            # Join User and UserProfile into the applications query to avoid N+1
+            rows = (
+                db.session.query(UserJobApplication, User, UserProfile)
+                .join(User, User.id == UserJobApplication.user_id)
+                .outerjoin(UserProfile, UserProfile.user_id == User.id)
                 .filter(
                     UserJobApplication.job_id == job.id,
                     UserJobApplication.status != ApplicationStatus.WITHDRAWN,
+                    User.status == UserStatus.ACTIVE,
                 )
                 .all()
             )
 
-            for application in applications:
-                user = User.query.get(application.user_id)
-                if not user or user.status != "active":
-                    continue
-
+            for application, user, profile in rows:
                 # Respect per-user reminder preference
-                profile = user.profile
                 if profile:
                     prefs = profile.notification_preferences or {}
                     if not prefs.get("email_reminders", True):

@@ -47,11 +47,12 @@ def _rate_limit_key() -> str:
     """
     try:
         from flask_jwt_extended import get_jwt_identity, verify_jwt_in_request
+        from flask_jwt_extended.exceptions import JWTExtendedException
         verify_jwt_in_request(optional=True)
         user_id = get_jwt_identity()
         if user_id:
             return f'user:{user_id}'
-    except Exception:
+    except JWTExtendedException:
         pass
     return get_remote_address()
 

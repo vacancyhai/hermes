@@ -66,7 +66,7 @@ def mark_read(notification_id: str, user_id: str) -> Notification:
     """
     notif = Notification.query.filter_by(id=notification_id, user_id=user_id).first()
     if not notif:
-        raise ValueError(ErrorCode.NOT_FOUND_JOB)  # reuse closest constant; acts as 404
+        raise ValueError(ErrorCode.NOT_FOUND_NOTIFICATION)
 
     if not notif.is_read:
         notif.is_read = True
@@ -100,7 +100,7 @@ def delete_notification(notification_id: str, user_id: str) -> None:
     """
     notif = Notification.query.filter_by(id=notification_id, user_id=user_id).first()
     if not notif:
-        raise ValueError(ErrorCode.NOT_FOUND_JOB)
+        raise ValueError(ErrorCode.NOT_FOUND_NOTIFICATION)
     db.session.delete(notif)
     db.session.commit()
 
@@ -195,9 +195,9 @@ _QUAL_RANK = {
     "10th": 1,
     "12th": 2,
     "diploma": 3,
-    "graduation": 4,
-    "post_graduation": 5,
-    "phd": 6,
+    "graduate": 4,
+    "postgraduate": 5,
+    "doctorate": 6,
 }
 
 

@@ -26,10 +26,10 @@ def flush_job_views() -> dict:
     """
     Flush buffered view counts from Redis into PostgreSQL.
 
-    Uses a Redis pipeline + GETDEL to read and clear each counter atomically
-    so we never lose counts if the DB write fails (we just re-accumulate on
-    the next cycle — the loss window is at most 5 minutes of counts for the
-    job that caused the exception, and the remaining jobs are committed).
+    Uses GETDEL to read and clear each counter atomically. Note: counts
+    removed from Redis before a failed DB commit are lost for that cycle.
+    For a view counter this is an acceptable trade-off; the remaining jobs
+    are still committed.
 
     Returns:
         {"jobs_updated": int, "total_views_flushed": int}

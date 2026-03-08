@@ -15,6 +15,7 @@ the route layer can map it to the right HTTP status without leaking details.
 from datetime import datetime, timezone
 
 from flask import current_app
+from sqlalchemy.exc import IntegrityError
 
 from app.extensions import db
 from app.models.job import JobVacancy
@@ -88,9 +89,9 @@ def get_job_by_slug(slug: str) -> JobVacancy:
     try:
         current_app.redis.incr(f"job:views:{job.id}")
     except Exception:
-        # Redis unavailable — fall back to direct DB write so views aren't lost.
-        job.views = (job.views or 0) + 1
-        db.session.commit()
+        # Redis unavailable — log and skip; sacrificing this view count is
+        # preferable to flooding PostgreSQL with writes under Redis failure.
+        current_app.logger.warning("get_job_by_slug: Redis unavailable, skipping view increment for job %s", job.id)
 
     return job
 
@@ -169,7 +170,14 @@ def create_job(data: dict, created_by: str) -> JobVacancy:
         published_at=published_at,
     )
     db.session.add(job)
-    db.session.commit()
+    try:
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        # Concurrent insert took the slug — pick the next available suffix.
+        job.slug = _unique_slug(base_slug)
+        db.session.add(job)
+        db.session.commit()
     return job
 
 

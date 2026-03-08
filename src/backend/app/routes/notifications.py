@@ -7,12 +7,11 @@ PUT    /api/v1/notifications/<id>/read    — mark single notification read
 PUT    /api/v1/notifications/read-all     — mark all notifications read
 DELETE /api/v1/notifications/<id>         — delete a notification
 """
-from datetime import datetime, timezone
-
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from app.middleware.rate_limiter import limiter
+from app.routes._helpers import _err, _ok
 from app.services import notification_service
 from app.utils.constants import ErrorCode
 
@@ -60,7 +59,7 @@ def mark_read(notification_id):
     try:
         notif = notification_service.mark_read(notification_id, user_id)
     except ValueError:
-        return _err(ErrorCode.NOT_FOUND_JOB, 'Notification not found.', 404)
+        return _err(ErrorCode.NOT_FOUND_NOTIFICATION, 'Notification not found.', 404)
     return _ok(_serialize(notif))
 
 
@@ -81,7 +80,7 @@ def delete_notification(notification_id):
     try:
         notification_service.delete_notification(notification_id, user_id)
     except ValueError:
-        return _err(ErrorCode.NOT_FOUND_JOB, 'Notification not found.', 404)
+        return _err(ErrorCode.NOT_FOUND_NOTIFICATION, 'Notification not found.', 404)
     return _ok({'message': 'Notification deleted.'})
 
 
@@ -105,21 +104,3 @@ def _serialize(notif) -> dict:
     }
 
 
-def _ok(data, status=200, meta=None):
-    body = {'success': True, 'data': data}
-    if meta is not None:
-        body['meta'] = meta
-    return jsonify(body), status
-
-
-def _err(code, message, status, details=None):
-    return jsonify({
-        'success': False,
-        'error': {
-            'code': code,
-            'message': message,
-            'details': details or [],
-            'timestamp': datetime.now(timezone.utc).isoformat(),
-            'request_id': request.headers.get('X-Request-ID', ''),
-        }
-    }), status

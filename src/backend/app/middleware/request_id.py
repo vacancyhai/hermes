@@ -19,9 +19,12 @@ Accessing the ID in a request handler or other middleware:
     from flask import g
     request_id = g.request_id
 """
+import re
 import uuid
 
 from flask import g, request
+
+_REQUEST_ID_RE = re.compile(r'^[a-zA-Z0-9\-]{1,128}$')
 
 
 def register_request_id(app):
@@ -33,7 +36,7 @@ def register_request_id(app):
     @app.before_request
     def _assign_request_id():
         incoming = request.headers.get('X-Request-ID', '').strip()
-        g.request_id = incoming if incoming else str(uuid.uuid4())
+        g.request_id = incoming if _REQUEST_ID_RE.match(incoming) else str(uuid.uuid4())
 
     @app.after_request
     def _echo_request_id(response):
