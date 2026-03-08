@@ -2,6 +2,8 @@
 Admin Frontend Configuration Settings
 """
 import os
+from datetime import timedelta
+
 
 class Config:
     """Base configuration"""
@@ -15,10 +17,10 @@ class Config:
     # Backend API
     BACKEND_API_URL = os.getenv('BACKEND_API_URL', 'http://localhost:5000/api/v1')
 
-    # Session
-    SESSION_TYPE = 'filesystem'
-    PERMANENT_SESSION_LIFETIME = 3600  # 1 hour
+    # Session — cookie-based (JWT tokens stored in Flask session cookie)
+    PERMANENT_SESSION_LIFETIME = timedelta(seconds=int(os.getenv('SESSION_TIMEOUT', 3600)))
+
 
 def get_config():
-    """Get configuration object"""
+    """Get configuration object (used by run.py for dev server)"""
     return Config()

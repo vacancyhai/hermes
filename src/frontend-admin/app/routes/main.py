@@ -1,7 +1,7 @@
 """
 Main Routes
 """
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, redirect, url_for
 
 bp = Blueprint('main', __name__)
 
@@ -13,4 +13,4 @@ def health():
 
 @bp.route('/', methods=['GET'])
 def index():
-    return jsonify({"message": "Hermes Admin Frontend", "status": "running"}), 200
+    return redirect(url_for('auth.login'))

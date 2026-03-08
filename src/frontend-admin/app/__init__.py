@@ -22,7 +22,9 @@ def create_app():
 
     @login_manager.user_loader
     def load_user(user_id):
-        # Stub: implement with real User model lookup in future stories
+        # Stub: always returns None until Story 2 (Frontend Auth & API Client) is
+        # implemented. @login_required will redirect to auth.login (stub — 404 until
+        # Story 6 adds the login template route).
         return None
 
     # Register blueprints

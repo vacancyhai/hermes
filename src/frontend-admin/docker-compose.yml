@@ -10,16 +10,19 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+    # Dev hot-reload mounts — remove in production (bake code into image via COPY)
     volumes:
       - ./app:/app/app
       - ./templates:/app/templates
       - ./static:/app/static
+    # NOTE: container always binds to port 8081 (set in Dockerfile CMD).
+    # FRONTEND_ADMIN_PORT only changes the host-side port.
     ports:
       - "${FRONTEND_ADMIN_PORT:-8081}:8081"
     networks:
       - frontend_admin_network
     healthcheck:
-      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8081/health', timeout=5)"]
+      test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
       interval: 30s
       timeout: 10s
       start_period: 20s
