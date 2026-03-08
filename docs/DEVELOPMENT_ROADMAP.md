@@ -61,6 +61,8 @@
 | `app/__init__.py` | ✅ `load_user()` wired to session via `session_manager` |
 | `app/routes/auth.py` | ✅ login, register, logout, forgot-password, reset-password (GET+POST) |
 
+**Tests**: 62 passing — `tests/unit/test_session_manager.py` (27), `tests/unit/test_api_client.py` (15), `tests/integration/test_auth_routes.py` (20)
+
 **Still missing** (Story 6):
 - Templates — `templates/` directory is still empty
 - Static files — `static/` directory is still empty
@@ -84,6 +86,8 @@
 | `app/__init__.py` | ✅ `load_user()` wired to session |
 | `app/routes/auth.py` | ✅ login + logout; role decoded from JWT before session save — regular users are rejected and their token is blocklisted |
 | `.env` | ✅ Created (was missing) |
+
+**Tests**: 49 passing — `tests/unit/test_session_manager.py`, `tests/unit/test_api_client.py`, `tests/unit/test_auth_middleware.py` (role enforcement), `tests/integration/test_auth_routes.py` (admin/operator accept, user reject + token blocklist, logout)
 
 **Still missing** (Story 6):
 - Templates — `templates/` directory is still empty
