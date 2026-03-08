@@ -41,7 +41,7 @@ class TestLoginGet:
         with patch(f"{_PATCH_BASE}.render_template", return_value="<html/>") as mock_rt:
             resp = client.get("/auth/login")
             assert resp.status_code == 200
-            mock_rt.assert_called_once_with("auth/login.html")
+            mock_rt.assert_called_once_with("pages/auth/login.html")
 
 
 # ---------------------------------------------------------------------------
@@ -136,7 +136,7 @@ class TestRegisterGet:
         with patch(f"{_PATCH_BASE}.render_template", return_value="<html/>") as mock_rt:
             resp = client.get("/auth/register")
             assert resp.status_code == 200
-            mock_rt.assert_called_once_with("auth/register.html")
+            mock_rt.assert_called_once_with("pages/auth/register.html")
 
 
 # ---------------------------------------------------------------------------
@@ -250,7 +250,7 @@ class TestForgotPasswordGet:
         with patch(f"{_PATCH_BASE}.render_template", return_value="<html/>") as mock_rt:
             resp = client.get("/auth/forgot-password")
             assert resp.status_code == 200
-            mock_rt.assert_called_once_with("auth/forgot_password.html")
+            mock_rt.assert_called_once_with("pages/auth/forgot_password.html")
 
 
 # ---------------------------------------------------------------------------

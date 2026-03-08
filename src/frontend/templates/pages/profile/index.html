@@ -1,0 +1,51 @@
+{% extends 'layouts/base.html' %}
+
+{% block title %}My Profile — Hermes{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="profile-layout">
+    <!-- Sidebar -->
+    <aside class="profile-sidebar">
+      <div class="profile-sidebar__avatar">
+        <div class="avatar avatar--lg">{{ current_user.full_name[0] | upper if current_user.full_name else '?' }}</div>
+        <p class="profile-sidebar__name">{{ current_user.full_name or current_user.email }}</p>
+        <p class="profile-sidebar__email">{{ current_user.email }}</p>
+      </div>
+      <nav class="profile-sidebar__nav">
+        <a class="profile-sidebar__link profile-sidebar__link--active" href="{{ url_for('profile.index') }}">My Profile</a>
+        <a class="profile-sidebar__link" href="{{ url_for('profile.applications') }}">My Applications</a>
+        <a class="profile-sidebar__link" href="{{ url_for('profile.edit') }}">Edit Profile</a>
+      </nav>
+    </aside>
+
+    <!-- Main content -->
+    <main class="profile-main">
+      <h1 class="page-title">My Profile</h1>
+
+      {% if profile %}
+      <div class="profile-grid">
+        <div class="profile-section">
+          <h2 class="profile-section__title">Personal Information</h2>
+          <dl class="profile-dl">
+            <dt>Full Name</dt><dd>{{ user.full_name or '—' }}</dd>
+            <dt>Email</dt><dd>{{ user.email }}</dd>
+            <dt>Date of Birth</dt><dd>{{ profile.date_of_birth | format_date if profile.date_of_birth else '—' }}</dd>
+            <dt>Gender</dt><dd>{{ profile.gender | title if profile.gender else '—' }}</dd>
+            <dt>Category</dt><dd>{{ profile.category | upper if profile.category else '—' }}</dd>
+            <dt>State</dt><dd>{{ profile.state or '—' }}</dd>
+            <dt>City</dt><dd>{{ profile.city or '—' }}</dd>
+          </dl>
+          <a href="{{ url_for('profile.edit') }}" class="btn btn--outline btn--sm">Edit Profile</a>
+        </div>
+      </div>
+      {% else %}
+        <div class="empty-state">
+          <p>Complete your profile to get personalised job notifications.</p>
+          <a href="{{ url_for('profile.edit') }}" class="btn btn--primary">Complete Profile</a>
+        </div>
+      {% endif %}
+    </main>
+  </div>
+</div>
+{% endblock %}

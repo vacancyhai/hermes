@@ -13,11 +13,14 @@ from datetime import datetime, timezone
 
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt, get_jwt_identity, jwt_required
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
 from marshmallow import ValidationError
 
+from app.middleware.rate_limiter import limiter
 from app.services import auth_service
+from app.tasks.notification_tasks import (
+    send_password_reset_email_task,
+    send_verification_email_task,
+)
 from app.validators.auth_validator import (
     LoginSchema,
     PasswordResetRequestSchema,
@@ -26,9 +29,6 @@ from app.validators.auth_validator import (
 )
 
 bp = Blueprint('auth', __name__, url_prefix='/api/v1/auth')
-
-# Per-blueprint limiter (storage URI resolved from app config at request time)
-limiter = Limiter(key_func=get_remote_address)
 
 # Schema instances (marshmallow schemas are stateless — safe to reuse)
 _register_schema = RegisterSchema()
@@ -55,7 +55,7 @@ def register():
             return _err('VALIDATION_EMAIL_EXISTS', 'An account with this email already exists.', 400)
         return _err('SERVER_ERROR', 'Registration failed.', 500)
 
-    # TODO Story 10: enqueue send_verification_email_task(user.id, _verify_token)
+    send_verification_email_task.delay(str(user.id), _verify_token)
     return _ok({
         'user': _serialize_user(user),
         'access_token': access_token,
@@ -111,7 +111,8 @@ def forgot_password():
         return err
 
     _user, _reset_token = auth_service.request_password_reset(data['email'])
-    # TODO Story 10: if _user: enqueue send_password_reset_task(_user.id, _reset_token)
+    if _user and _reset_token:
+        send_password_reset_email_task.delay(str(_user.id), _reset_token)
 
     # Always return the same response — do not reveal whether the email exists
     return _ok({'message': 'If an account exists for this email, a reset link has been sent.'})

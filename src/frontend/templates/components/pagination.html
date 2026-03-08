@@ -1,0 +1,49 @@
+{% if pagination and pagination.pages > 1 %}
+<nav class="pagination" aria-label="Page navigation">
+  <ul class="pagination__list">
+
+    {# Previous #}
+    <li class="pagination__item {% if pagination.page == 1 %}pagination__item--disabled{% endif %}">
+      {% if pagination.page > 1 %}
+        <a class="pagination__link" href="{{ request.path }}?{{ request.args | replace_arg('page', pagination.page - 1) }}" aria-label="Previous">&laquo;</a>
+      {% else %}
+        <span class="pagination__link">&laquo;</span>
+      {% endif %}
+    </li>
+
+    {# Page numbers — show at most 7: 1 … prev cur next … last #}
+    {% set show_start = [1, pagination.page - 2] | max %}
+    {% set show_end   = [pagination.pages, pagination.page + 2] | min %}
+
+    {% if show_start > 1 %}
+      <li class="pagination__item"><a class="pagination__link" href="{{ request.path }}?{{ request.args | replace_arg('page', 1) }}">1</a></li>
+      {% if show_start > 2 %}<li class="pagination__item pagination__item--ellipsis"><span>&hellip;</span></li>{% endif %}
+    {% endif %}
+
+    {% for p in range(show_start, show_end + 1) %}
+      <li class="pagination__item {% if p == pagination.page %}pagination__item--active{% endif %}">
+        <a class="pagination__link" href="{{ request.path }}?{{ request.args | replace_arg('page', p) }}" {% if p == pagination.page %}aria-current="page"{% endif %}>{{ p }}</a>
+      </li>
+    {% endfor %}
+
+    {% if show_end < pagination.pages %}
+      {% if show_end < pagination.pages - 1 %}<li class="pagination__item pagination__item--ellipsis"><span>&hellip;</span></li>{% endif %}
+      <li class="pagination__item"><a class="pagination__link" href="{{ request.path }}?{{ request.args | replace_arg('page', pagination.pages) }}">{{ pagination.pages }}</a></li>
+    {% endif %}
+
+    {# Next #}
+    <li class="pagination__item {% if pagination.page == pagination.pages %}pagination__item--disabled{% endif %}">
+      {% if pagination.page < pagination.pages %}
+        <a class="pagination__link" href="{{ request.path }}?{{ request.args | replace_arg('page', pagination.page + 1) }}" aria-label="Next">&raquo;</a>
+      {% else %}
+        <span class="pagination__link">&raquo;</span>
+      {% endif %}
+    </li>
+
+  </ul>
+  <p class="pagination__info">
+    Showing {{ ((pagination.page - 1) * pagination.per_page) + 1 }}–{{ [pagination.page * pagination.per_page, pagination.total] | min }}
+    of {{ pagination.total | format_number }} results
+  </p>
+</nav>
+{% endif %}

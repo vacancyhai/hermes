@@ -62,10 +62,16 @@ def create_app():
     # Import models so Flask-Migrate can detect schema changes
     from app import models  # noqa: F401
 
+    # Rate limiting (shared limiter across all blueprints)
+    from app.middleware.rate_limiter import init_limiter
+    init_limiter(app)
+
+    # Request ID propagation
+    from app.middleware.request_id import register_request_id
+    register_request_id(app)
+
     # Register blueprints
     from app.routes import auth, jobs, users, notifications, admin, health
-    from app.routes.auth import limiter as auth_limiter
-    auth_limiter.init_app(app)
     app.register_blueprint(auth.bp)
     app.register_blueprint(jobs.bp)
     app.register_blueprint(users.bp)

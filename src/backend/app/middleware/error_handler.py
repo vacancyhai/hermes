@@ -13,12 +13,14 @@ All errors follow the standardized format defined in README.md:
     }
 }
 """
-from flask import jsonify, request
 from datetime import datetime, timezone
+
+from flask import g, jsonify, request
 
 
 def _error_response(code, message, http_status, details=None):
-    request_id = request.headers.get('X-Request-ID', '')
+    # Prefer g.request_id (set by request_id middleware); fall back to header
+    request_id = getattr(g, 'request_id', None) or request.headers.get('X-Request-ID', '')
     body = {
         'success': False,
         'error': {

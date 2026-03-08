@@ -1,0 +1,46 @@
+<article class="job-card {% if job.is_urgent %}job-card--urgent{% elif job.is_featured %}job-card--featured{% endif %}">
+  <div class="job-card__header">
+    {% if job.is_urgent %}
+      <span class="badge badge--urgent">Urgent</span>
+    {% elif job.is_featured %}
+      <span class="badge badge--featured">Featured</span>
+    {% endif %}
+    <span class="badge badge--type">{{ job.job_type | job_type_label }}</span>
+  </div>
+
+  <h2 class="job-card__title">
+    <a href="{{ url_for('jobs.job_detail', slug=job.slug) }}">{{ job.job_title }}</a>
+  </h2>
+
+  <p class="job-card__org">{{ job.organization }}</p>
+
+  {% if job.short_description %}
+    <p class="job-card__desc">{{ job.short_description | truncate_text(120) }}</p>
+  {% endif %}
+
+  <div class="job-card__meta">
+    {% if job.total_vacancies %}
+      <span class="meta-item">
+        <span class="meta-label">Vacancies:</span>
+        <strong>{{ job.total_vacancies | format_number }}</strong>
+      </span>
+    {% endif %}
+    {% if job.qualification_level %}
+      <span class="meta-item">
+        <span class="meta-label">Qualification:</span>
+        {{ job.qualification_level | qualification_label }}
+      </span>
+    {% endif %}
+    {% if job.application_end %}
+      <span class="meta-item deadline {% if job.application_end | days_remaining == 'Closed' %}deadline--closed{% elif 'day' in (job.application_end | days_remaining) and (job.application_end | days_remaining).split()[0] | int <= 3 %}deadline--soon{% endif %}">
+        <span class="meta-label">Last Date:</span>
+        {{ job.application_end | format_date }} &mdash; <em>{{ job.application_end | days_remaining }}</em>
+      </span>
+    {% endif %}
+  </div>
+
+  <div class="job-card__footer">
+    <a href="{{ url_for('jobs.job_detail', slug=job.slug) }}" class="btn btn--primary btn--sm">View Details</a>
+    <span class="job-card__posted">Posted {{ job.created_at | time_ago }}</span>
+  </div>
+</article>

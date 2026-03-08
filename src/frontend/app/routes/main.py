@@ -1,9 +1,13 @@
 """
-Main Routes - Stub (implement in EPIC_10)
+Main Routes
 """
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, redirect, render_template, session, url_for
+
+from app.utils.api_client import APIClient, APIError
+from app.utils.session_manager import get_access_token, is_authenticated
 
 bp = Blueprint('main', __name__)
+_api = APIClient()
 
 
 @bp.route('/health', methods=['GET'])
@@ -13,4 +17,14 @@ def health():
 
 @bp.route('/', methods=['GET'])
 def index():
-    return jsonify({"message": "Hermes Frontend", "status": "running"}), 200
+    access_token = get_access_token(session)
+    try:
+        data = _api.get_jobs(access_token=access_token, per_page=6)
+        featured_jobs = data.get('jobs', [])
+    except APIError:
+        featured_jobs = []
+
+    return render_template('pages/index.html',
+                           featured_jobs=featured_jobs,
+                           is_authenticated=is_authenticated(session))
+

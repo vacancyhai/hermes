@@ -1,0 +1,29 @@
+{% extends 'layouts/base.html' %}
+
+{% block title %}Hermes — Government Job Portal{% endblock %}
+
+{% block content %}
+<div class="container">
+  <section class="hero">
+    <h1 class="hero__title">Find Your Government Job</h1>
+    <p class="hero__subtitle">Latest Sarkari Naukri notifications — central &amp; state government vacancies in one place.</p>
+    <a href="{{ url_for('jobs.list_jobs') }}" class="btn btn--primary btn--lg">Browse All Jobs</a>
+  </section>
+
+  {% if featured_jobs %}
+  <section class="featured-section">
+    <div class="section-header">
+      <h2 class="section-title">Latest Vacancies</h2>
+      <a href="{{ url_for('jobs.list_jobs') }}" class="section-link">View all &rarr;</a>
+    </div>
+    <div class="job-grid">
+      {% for job in featured_jobs %}
+        {% with job=job %}
+          {% include 'components/job_card.html' %}
+        {% endwith %}
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+</div>
+{% endblock %}

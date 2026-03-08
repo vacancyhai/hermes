@@ -24,7 +24,7 @@ class TestLoginGet:
         with patch(f"{_PATCH_BASE}.render_template", return_value="<html/>") as mock_rt:
             resp = client.get("/auth/login")
             assert resp.status_code == 200
-            mock_rt.assert_called_once_with("auth/login.html")
+            mock_rt.assert_called_once_with("pages/auth/login.html")
 
 
 # ---------------------------------------------------------------------------

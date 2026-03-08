@@ -38,6 +38,43 @@ class APIClient:
         return self._post("/auth/refresh", {}, access_token=refresh_token)
 
     # ------------------------------------------------------------------
+    # Jobs endpoints
+    # ------------------------------------------------------------------
+
+    def get_jobs(self, access_token: str, **params) -> dict:
+        """GET /api/v1/jobs — paginated job list."""
+        return self._get("/jobs", access_token=access_token, params=params or None)
+
+    def get_job(self, slug: str, access_token: str) -> dict:
+        """GET /api/v1/jobs/<slug>"""
+        return self._get(f"/jobs/{slug}", access_token=access_token)
+
+    def create_job(self, access_token: str, payload: dict) -> dict:
+        """POST /api/v1/jobs"""
+        return self._post("/jobs", payload, access_token=access_token)
+
+    def update_job(self, access_token: str, job_id: str, payload: dict) -> dict:
+        """PUT /api/v1/jobs/<id>"""
+        return self._put(f"/jobs/{job_id}", payload, access_token=access_token)
+
+    def delete_job(self, access_token: str, job_id: str) -> dict:
+        """DELETE /api/v1/jobs/<id>"""
+        return self._delete(f"/jobs/{job_id}", access_token=access_token)
+
+    # ------------------------------------------------------------------
+    # Users endpoints (admin)
+    # ------------------------------------------------------------------
+
+    def get_users(self, access_token: str, page: int = 1, **params) -> dict:
+        """GET /api/v1/users — list all users (admin)."""
+        p = {'page': page, **params}
+        return self._get("/users", access_token=access_token, params=p)
+
+    def update_user_status(self, access_token: str, user_id: str, status: str) -> dict:
+        """PUT /api/v1/users/<id>/status"""
+        return self._put(f"/users/{user_id}/status", {"status": status}, access_token=access_token)
+
+    # ------------------------------------------------------------------
     # Private HTTP helpers
     # ------------------------------------------------------------------
 

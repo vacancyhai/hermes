@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Admin Panel{% endblock %} — Hermes Admin</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+  {% block extra_css %}{% endblock %}
+</head>
+<body class="admin-body">
+
+  <!-- ── Sidebar ──────────────────────────────────────────────────── -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar__brand">
+      <span class="sidebar__brand-icon">H</span>
+      <span class="sidebar__brand-text">Hermes Admin</span>
+    </div>
+
+    <nav class="sidebar__nav" aria-label="Admin navigation">
+      <ul class="sidebar__list">
+        <li class="sidebar__item">
+          <a href="{{ url_for('dashboard.index') }}"
+             class="sidebar__link {% if request.endpoint == 'dashboard.index' %}sidebar__link--active{% endif %}">
+            <span class="sidebar__icon">&#9632;</span> Dashboard
+          </a>
+        </li>
+        <li class="sidebar__item">
+          <a href="{{ url_for('jobs.list_jobs') }}"
+             class="sidebar__link {% if request.blueprint == 'jobs' %}sidebar__link--active{% endif %}">
+            <span class="sidebar__icon">&#128196;</span> Jobs
+          </a>
+        </li>
+        <li class="sidebar__item">
+          <a href="{{ url_for('users.list_users') }}"
+             class="sidebar__link {% if request.blueprint == 'users' %}sidebar__link--active{% endif %}">
+            <span class="sidebar__icon">&#128100;</span> Users
+          </a>
+        </li>
+      </ul>
+    </nav>
+
+    <div class="sidebar__footer">
+      {% if current_user.is_authenticated %}
+        <span class="sidebar__user">{{ current_user.full_name or current_user.email }}</span>
+        <form action="{{ url_for('auth.logout') }}" method="post" class="sidebar__logout-form">
+          <button type="submit" class="sidebar__logout-btn">Logout</button>
+        </form>
+      {% endif %}
+    </div>
+  </aside>
+
+  <!-- ── Main content ─────────────────────────────────────────────── -->
+  <div class="admin-main">
+
+    <!-- Top bar -->
+    <header class="admin-topbar">
+      <button class="admin-topbar__toggle" id="sidebar-toggle" aria-label="Toggle sidebar">&#9776;</button>
+      <div class="admin-topbar__right">
+        {% if current_user.is_authenticated %}
+          <span class="admin-topbar__role badge badge--{{ current_user.role }}">
+            {{ current_user.role | capitalize }}
+          </span>
+        {% endif %}
+      </div>
+    </header>
+
+    <!-- Flash messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="flash" role="alert">
+          {% for category, message in messages %}
+            <div class="flash__item flash__item--{{ category }}">
+              {{ message }}
+              <button class="flash__close" aria-label="Dismiss">&times;</button>
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <!-- Page content -->
+    <main class="admin-content">
+      {% block content %}{% endblock %}
+    </main>
+
+  </div><!-- /.admin-main -->
+
+  <script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

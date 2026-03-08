@@ -1,0 +1,120 @@
+"""
+Application-wide string constants.
+
+Import from here instead of scattering magic strings across service/route files.
+
+Usage:
+    from app.utils.constants import UserRole, JobStatus, ErrorCode
+"""
+
+
+class UserRole:
+    USER = 'user'
+    ADMIN = 'admin'
+    OPERATOR = 'operator'
+
+    ALL = (USER, ADMIN, OPERATOR)
+    STAFF_ROLES = (ADMIN, OPERATOR)
+
+
+class UserStatus:
+    ACTIVE = 'active'
+    SUSPENDED = 'suspended'
+    DELETED = 'deleted'
+
+    ALL = (ACTIVE, SUSPENDED, DELETED)
+    INACTIVE = (SUSPENDED, DELETED)
+
+
+class JobStatus:
+    ACTIVE = 'active'
+    CLOSED = 'closed'
+    DRAFT = 'draft'
+    ARCHIVED = 'archived'
+
+    ALL = (ACTIVE, CLOSED, DRAFT, ARCHIVED)
+
+
+class JobType:
+    LATEST_JOB = 'latest_job'
+    RESULT = 'result'
+    ADMIT_CARD = 'admit_card'
+    ANSWER_KEY = 'answer_key'
+    ADMISSION = 'admission'
+    YOJANA = 'yojana'
+
+    ALL = (LATEST_JOB, RESULT, ADMIT_CARD, ANSWER_KEY, ADMISSION, YOJANA)
+
+
+class ApplicationStatus:
+    APPLIED = 'applied'
+    SHORTLISTED = 'shortlisted'
+    SELECTED = 'selected'
+    REJECTED = 'rejected'
+    WITHDRAWN = 'withdrawn'
+
+    ALL = (APPLIED, SHORTLISTED, SELECTED, REJECTED, WITHDRAWN)
+
+
+class NotificationType:
+    NEW_JOB = 'new_job'
+    DEADLINE_REMINDER = 'deadline_reminder'
+    RESULT = 'result'
+    ADMIT_CARD = 'admit_card'
+    ANSWER_KEY = 'answer_key'
+    GENERAL = 'general'
+
+    ALL = (NEW_JOB, DEADLINE_REMINDER, RESULT, ADMIT_CARD, ANSWER_KEY, GENERAL)
+
+
+class QualificationLevel:
+    TENTH = '10th'
+    TWELFTH = '12th'
+    DIPLOMA = 'diploma'
+    GRADUATE = 'graduate'
+    POSTGRADUATE = 'postgraduate'
+    DOCTORATE = 'doctorate'
+
+    ALL = (TENTH, TWELFTH, DIPLOMA, GRADUATE, POSTGRADUATE, DOCTORATE)
+
+
+class ErrorCode:
+    # Authentication (401)
+    AUTH_INVALID_CREDENTIALS = 'AUTH_INVALID_CREDENTIALS'
+    AUTH_TOKEN_EXPIRED = 'AUTH_TOKEN_EXPIRED'
+    AUTH_TOKEN_REVOKED = 'AUTH_TOKEN_REVOKED'
+    AUTH_REFRESH_FAILED = 'AUTH_REFRESH_FAILED'
+    AUTH_EMAIL_NOT_VERIFIED = 'AUTH_EMAIL_NOT_VERIFIED'
+    AUTH_ACCOUNT_SUSPENDED = 'AUTH_ACCOUNT_SUSPENDED'
+    AUTH_UNAUTHORIZED = 'AUTH_UNAUTHORIZED'
+    AUTH_MFA_REQUIRED = 'AUTH_MFA_REQUIRED'
+
+    # Validation (400)
+    VALIDATION_EMAIL_EXISTS = 'VALIDATION_EMAIL_EXISTS'
+    VALIDATION_EMAIL_INVALID = 'VALIDATION_EMAIL_INVALID'
+    VALIDATION_PASSWORD_WEAK = 'VALIDATION_PASSWORD_WEAK'
+    VALIDATION_MISSING_FIELD = 'VALIDATION_MISSING_FIELD'
+    VALIDATION_INVALID_FORMAT = 'VALIDATION_INVALID_FORMAT'
+    VALIDATION_FILE_TOO_LARGE = 'VALIDATION_FILE_TOO_LARGE'
+    VALIDATION_ERROR = 'VALIDATION_ERROR'
+
+    # Authorization (403)
+    FORBIDDEN_PERMISSION_DENIED = 'FORBIDDEN_PERMISSION_DENIED'
+    FORBIDDEN_ADMIN_ONLY = 'FORBIDDEN_ADMIN_ONLY'
+    FORBIDDEN_OWN_RESOURCE_ONLY = 'FORBIDDEN_OWN_RESOURCE_ONLY'
+
+    # Not Found (404)
+    NOT_FOUND_USER = 'NOT_FOUND_USER'
+    NOT_FOUND_JOB = 'NOT_FOUND_JOB'
+    NOT_FOUND_APPLICATION = 'NOT_FOUND_APPLICATION'
+    NOT_FOUND_ENDPOINT = 'NOT_FOUND_ENDPOINT'
+
+    # Rate Limiting (429)
+    RATE_LIMIT_EXCEEDED = 'RATE_LIMIT_EXCEEDED'
+    RATE_LIMIT_LOGIN = 'RATE_LIMIT_LOGIN'
+
+    # Server (500)
+    SERVER_ERROR = 'SERVER_ERROR'
+    SERVER_DATABASE_ERROR = 'SERVER_DATABASE_ERROR'
+    SERVER_EXTERNAL_SERVICE_ERROR = 'SERVER_EXTERNAL_SERVICE_ERROR'
+    SERVER_CELERY_ERROR = 'SERVER_CELERY_ERROR'

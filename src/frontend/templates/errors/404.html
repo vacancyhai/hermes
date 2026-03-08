@@ -1,0 +1,15 @@
+{% extends 'layouts/base.html' %}
+
+{% block title %}Page Not Found — Hermes{% endblock %}
+
+{% block content %}
+<div class="container error-page">
+  <div class="error-page__code">404</div>
+  <h1 class="error-page__title">Page not found</h1>
+  <p class="error-page__message">The page you're looking for doesn't exist or has been moved.</p>
+  <div class="error-page__actions">
+    <a href="{{ url_for('main.index') }}" class="btn btn--primary">Go Home</a>
+    <a href="{{ url_for('jobs.list_jobs') }}" class="btn btn--outline">Browse Jobs</a>
+  </div>
+</div>
+{% endblock %}

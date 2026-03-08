@@ -8,7 +8,9 @@ def create_app():
     """
     Application factory pattern for Flask
     """
-    app = Flask(__name__)
+    import os
+    _base = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+    app = Flask(__name__, template_folder=os.path.join(_base, 'templates'), static_folder=os.path.join(_base, 'static'))
     
     # Load configuration
     app.config.from_object('config.settings.Config')
@@ -35,5 +37,9 @@ def create_app():
     app.register_blueprint(profile.bp)
     app.register_blueprint(admin.bp)
     app.register_blueprint(errors.bp)
-    
+
+    # Register Jinja2 template filters / helpers
+    from app.utils.helpers import register_template_helpers
+    register_template_helpers(app)
+
     return app

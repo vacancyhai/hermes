@@ -50,27 +50,27 @@ def _decode_jwt_role(token: str) -> str:
 @bp.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'GET':
-        return render_template('auth/login.html')
+        return render_template('pages/auth/login.html')
 
     email = request.form.get('email', '').strip()
     password = request.form.get('password', '')
 
     if not email or not password:
         flash('Email and password are required.', 'error')
-        return render_template('auth/login.html', email=email)
+        return render_template('pages/auth/login.html', email=email)
 
     try:
         data = _api.login(email, password)
     except APIError as e:
         flash(e.message, 'error')
-        return render_template('auth/login.html', email=email)
+        return render_template('pages/auth/login.html', email=email)
 
     # Decode role from JWT before saving session — reject non-admin/operator
     try:
         role = _decode_jwt_role(data['access_token'])
     except (ValueError, KeyError):
         flash('Authentication failed. Please try again.', 'error')
-        return render_template('auth/login.html', email=email)
+        return render_template('pages/auth/login.html', email=email)
 
     if role not in _ALLOWED_ROLES:
         # Blocklist the issued token so it cannot be reused
@@ -79,7 +79,7 @@ def login():
         except APIError:
             pass
         flash('Access denied. This portal is for administrators and operators only.', 'error')
-        return render_template('auth/login.html', email=email)
+        return render_template('pages/auth/login.html', email=email)
 
     save_login_session(session, data)
     user_data = {'user_id': session['user_id'], 'email': session['email'],

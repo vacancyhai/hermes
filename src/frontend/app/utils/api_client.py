@@ -88,6 +88,62 @@ class APIClient:
         })
 
     # ------------------------------------------------------------------
+    # Jobs endpoints
+    # ------------------------------------------------------------------
+
+    def get_jobs(self, access_token: str | None = None, **params) -> dict:
+        """GET /api/v1/jobs — paginated + filtered job list."""
+        return self._get("/jobs", access_token=access_token, params=params or None)
+
+    def get_job(self, slug: str, access_token: str | None = None) -> dict:
+        """GET /api/v1/jobs/<slug> — job detail."""
+        return self._get(f"/jobs/{slug}", access_token=access_token)
+
+    # ------------------------------------------------------------------
+    # User / profile endpoints
+    # ------------------------------------------------------------------
+
+    def get_profile(self, access_token: str) -> dict:
+        """GET /api/v1/users/profile"""
+        return self._get("/users/profile", access_token=access_token)
+
+    def update_profile(self, access_token: str, payload: dict) -> dict:
+        """PUT /api/v1/users/profile"""
+        return self._put("/users/profile", payload, access_token=access_token)
+
+    def get_applications(self, access_token: str, page: int = 1) -> dict:
+        """GET /api/v1/users/applications"""
+        return self._get("/users/applications", access_token=access_token, params={"page": page})
+
+    def apply_to_job(self, access_token: str, job_id: str) -> dict:
+        """POST /api/v1/users/applications"""
+        return self._post("/users/applications", {"job_id": job_id}, access_token=access_token)
+
+    def withdraw_application(self, access_token: str, application_id: str) -> dict:
+        """DELETE /api/v1/users/applications/<id>"""
+        return self._delete(f"/users/applications/{application_id}", access_token=access_token)
+
+    # ------------------------------------------------------------------
+    # Notifications endpoints
+    # ------------------------------------------------------------------
+
+    def get_notifications(self, access_token: str, page: int = 1) -> dict:
+        """GET /api/v1/notifications"""
+        return self._get("/notifications", access_token=access_token, params={"page": page})
+
+    def get_notification_count(self, access_token: str) -> dict:
+        """GET /api/v1/notifications/count"""
+        return self._get("/notifications/count", access_token=access_token)
+
+    def mark_notification_read(self, access_token: str, notification_id: str) -> dict:
+        """PUT /api/v1/notifications/<id>/read"""
+        return self._put(f"/notifications/{notification_id}/read", {}, access_token=access_token)
+
+    def mark_all_read(self, access_token: str) -> dict:
+        """PUT /api/v1/notifications/read-all"""
+        return self._put("/notifications/read-all", {}, access_token=access_token)
+
+    # ------------------------------------------------------------------
     # Private HTTP helpers
     # ------------------------------------------------------------------
 

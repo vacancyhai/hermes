@@ -51,11 +51,21 @@ def app(fake_redis):
     register_jwt_error_handlers(jwt)
     register_token_rotation(flask_app)
 
-    # Attach limiter (disabled via config above)
-    from app.routes.auth import limiter
+    # Attach shared limiter (disabled via RATELIMIT_ENABLED=False above)
+    from app.middleware.rate_limiter import limiter
     limiter.init_app(flask_app)
 
+    # Request ID middleware
+    from app.middleware.request_id import register_request_id
+    register_request_id(flask_app)
+
     flask_app.register_blueprint(auth_bp)
+
+    from app.routes.jobs import bp as jobs_bp
+    from app.routes.users import bp as users_bp
+    flask_app.register_blueprint(jobs_bp)
+    flask_app.register_blueprint(users_bp)
+
     return flask_app
 
 
@@ -89,3 +99,24 @@ def refresh_token_for(app):
 def auth_header(access_token_for):
     """Returns Authorization header dict for a regular user."""
     return {'Authorization': f'Bearer {access_token_for()}'}
+
+
+@pytest.fixture
+def db_session(app):
+    """
+    Yields a SQLAlchemy session bound to a transaction that is always
+    rolled back at the end of the test, leaving the DB unmodified.
+
+    Requires a real PostgreSQL connection (DATABASE_URL must be set).
+    Integration tests that only mock the service layer do not need this.
+    Mark such tests with @pytest.mark.integration to keep them opt-in.
+    """
+    with app.app_context():
+        from app.extensions import db as _db
+        connection = _db.engine.connect()
+        transaction = connection.begin()
+        _db.session.bind = connection
+        yield _db.session
+        _db.session.remove()
+        transaction.rollback()
+        connection.close()

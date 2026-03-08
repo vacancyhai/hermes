@@ -1,0 +1,89 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Jobs{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-header__title">Jobs</h1>
+  <a href="{{ url_for('jobs.create_job') }}" class="btn btn--primary">+ New Job</a>
+</div>
+
+<div class="card">
+  <!-- Filter bar -->
+  <div class="card__toolbar">
+    <form method="GET" action="{{ url_for('jobs.list_jobs') }}" class="filter-form">
+      <input class="form-control" type="search" name="q" value="{{ filters.q | default('') }}" placeholder="Search…" />
+      <select class="form-control" name="type">
+        <option value="">All Types</option>
+        {% for val, label in job_types %}
+          <option value="{{ val }}" {% if filters.type == val %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+      <select class="form-control" name="status">
+        <option value="">All Statuses</option>
+        <option value="active"   {% if filters.status == 'active' %}selected{% endif %}>Active</option>
+        <option value="draft"    {% if filters.status == 'draft' %}selected{% endif %}>Draft</option>
+        <option value="archived" {% if filters.status == 'archived' %}selected{% endif %}>Archived</option>
+      </select>
+      <button type="submit" class="btn btn--outline">Filter</button>
+    </form>
+  </div>
+
+  <div class="card__body">
+    {% if jobs %}
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Title</th>
+          <th>Organization</th>
+          <th>Type</th>
+          <th>Vacancies</th>
+          <th>Last Date</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for job in jobs %}
+        <tr>
+          <td><a href="{{ url_for('jobs.edit_job', slug=job.slug) }}">{{ job.job_title }}</a></td>
+          <td>{{ job.organization }}</td>
+          <td>{{ job.job_type }}</td>
+          <td>{{ job.total_vacancies | default('—') }}</td>
+          <td>{{ job.application_end | default('—') }}</td>
+          <td><span class="badge badge--{{ job.status }}">{{ job.status }}</span></td>
+          <td class="actions">
+            <a href="{{ url_for('jobs.edit_job', slug=job.slug) }}" class="btn btn--outline btn--xs">Edit</a>
+            <form method="POST" action="{{ url_for('jobs.delete_job', job_id=job.id) }}" style="display:inline"
+                  onsubmit="return confirm('Delete this job?')">
+              <button type="submit" class="btn btn--danger btn--xs">Delete</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    {% if meta.pages and meta.pages > 1 %}
+    <nav class="pagination">
+      <ul class="pagination__list">
+        {% if meta.page > 1 %}
+          <li><a class="pagination__link" href="{{ url_for('jobs.list_jobs', page=meta.page-1) }}">&laquo;</a></li>
+        {% endif %}
+        {% for p in range(1, meta.pages + 1) %}
+          <li class="pagination__item {% if p == meta.page %}pagination__item--active{% endif %}">
+            <a class="pagination__link" href="{{ url_for('jobs.list_jobs', page=p) }}">{{ p }}</a>
+          </li>
+        {% endfor %}
+        {% if meta.page < meta.pages %}
+          <li><a class="pagination__link" href="{{ url_for('jobs.list_jobs', page=meta.page+1) }}">&raquo;</a></li>
+        {% endif %}
+      </ul>
+    </nav>
+    {% endif %}
+    {% else %}
+      <p class="text-muted">No jobs found.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -29,20 +29,20 @@ _api = APIClient()
 @bp.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'GET':
-        return render_template('auth/login.html')
+        return render_template('pages/auth/login.html')
 
     email = request.form.get('email', '').strip()
     password = request.form.get('password', '')
 
     if not email or not password:
         flash('Email and password are required.', 'error')
-        return render_template('auth/login.html', email=email)
+        return render_template('pages/auth/login.html', email=email)
 
     try:
         data = _api.login(email, password)
     except APIError as e:
         flash(e.message, 'error')
-        return render_template('auth/login.html', email=email)
+        return render_template('pages/auth/login.html', email=email)
 
     save_login_session(session, data)
     user_data = {'user_id': session['user_id'], 'email': session['email'],
@@ -62,7 +62,7 @@ def login():
 @bp.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'GET':
-        return render_template('auth/register.html')
+        return render_template('pages/auth/register.html')
 
     full_name = request.form.get('full_name', '').strip()
     email = request.form.get('email', '').strip()
@@ -71,17 +71,17 @@ def register():
 
     if not full_name or not email or not password:
         flash('All fields are required.', 'error')
-        return render_template('auth/register.html', full_name=full_name, email=email)
+        return render_template('pages/auth/register.html', full_name=full_name, email=email)
 
     if password != confirm_password:
         flash('Passwords do not match.', 'error')
-        return render_template('auth/register.html', full_name=full_name, email=email)
+        return render_template('pages/auth/register.html', full_name=full_name, email=email)
 
     try:
         data = _api.register(full_name, email, password)
     except APIError as e:
         flash(e.message, 'error')
-        return render_template('auth/register.html', full_name=full_name, email=email)
+        return render_template('pages/auth/register.html', full_name=full_name, email=email)
 
     save_login_session(session, data)
     user_data = {'user_id': session['user_id'], 'email': session['email'],
@@ -121,23 +121,23 @@ def logout():
 @bp.route('/forgot-password', methods=['GET', 'POST'])
 def forgot_password():
     if request.method == 'GET':
-        return render_template('auth/forgot_password.html')
+        return render_template('pages/auth/forgot_password.html')
 
     email = request.form.get('email', '').strip()
     if not email:
         flash('Email is required.', 'error')
-        return render_template('auth/forgot_password.html')
+        return render_template('pages/auth/forgot_password.html')
 
     try:
         _api.forgot_password(email)
     except APIError as e:
         flash(e.message, 'error')
-        return render_template('auth/forgot_password.html', email=email)
+        return render_template('pages/auth/forgot_password.html', email=email)
 
     # Always show the same success message regardless of whether the email exists
     # (backend already follows this pattern — prevents email enumeration)
     flash('If an account exists for this email, a password reset link has been sent.', 'success')
-    return render_template('auth/forgot_password.html')
+    return render_template('pages/auth/forgot_password.html')
 
 
 # ---------------------------------------------------------------------------
@@ -152,7 +152,7 @@ def reset_password():
         if not token:
             flash('Invalid or missing reset token.', 'error')
             return redirect(url_for('auth.forgot_password'))
-        return render_template('auth/reset_password.html', token=token)
+        return render_template('pages/auth/reset_password.html', token=token)
 
     token = request.form.get('token', '').strip()
     new_password = request.form.get('new_password', '')
@@ -160,17 +160,17 @@ def reset_password():
 
     if not token or not new_password:
         flash('All fields are required.', 'error')
-        return render_template('auth/reset_password.html', token=token)
+        return render_template('pages/auth/reset_password.html', token=token)
 
     if new_password != confirm_password:
         flash('Passwords do not match.', 'error')
-        return render_template('auth/reset_password.html', token=token)
+        return render_template('pages/auth/reset_password.html', token=token)
 
     try:
         _api.reset_password(token, new_password)
     except APIError as e:
         flash(e.message, 'error')
-        return render_template('auth/reset_password.html', token=token)
+        return render_template('pages/auth/reset_password.html', token=token)
 
     flash('Password reset successfully. Please log in.', 'success')
     return redirect(url_for('auth.login'))
