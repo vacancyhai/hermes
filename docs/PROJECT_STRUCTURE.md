@@ -137,31 +137,36 @@ hermes/
     │   ├── docker-compose.yml         ✅  single frontend container, port 8080
     │   ├── Dockerfile                 ✅  python:3.11-slim → gunicorn (2 workers)
     │   ├── requirements.txt           ✅
+    │   ├── pytest.ini                 ✅  testpaths = tests, pythonpath = .
     │   ├── run.py                     ✅
     │   ├── .env / .env.example        ✅
     │   ├── .dockerignore              ✅
     │   │
     │   ├── app/
-    │   │   ├── __init__.py            ✅  app factory: LoginManager, all blueprints registered
+    │   │   ├── __init__.py            ✅  app factory: LoginManager, load_user wired to session_manager
+    │   │   │
+    │   │   ├── models/                ✅  session-backed, no DB
+    │   │   │   ├── __init__.py        ✅
+    │   │   │   └── user.py            ✅  Flask-Login UserMixin proxy; User.from_session(data)
     │   │   │
     │   │   ├── routes/
     │   │   │   ├── __init__.py        ✅
     │   │   │   ├── main.py            ✅  GET /health + GET / → JSON responses
     │   │   │   ├── errors.py          ✅  404 + 500 JSON error handlers
-    │   │   │   ├── auth.py            🟡  blueprint at /auth — no routes yet
+    │   │   │   ├── auth.py            ✅  login, register, logout, forgot-password, reset-password (GET + POST)
     │   │   │   ├── jobs.py            🟡  blueprint at /jobs — no routes yet
     │   │   │   ├── profile.py         🟡  blueprint at /profile — no routes yet
     │   │   │   └── admin.py           🟡  blueprint at /admin — no routes yet
     │   │   │
-    │   │   ├── utils/                 🟡  __init__.py only — modules to be added
+    │   │   ├── utils/                 ✅
     │   │   │   ├── __init__.py
-    │   │   │   ├── api_client.py      ❌  HTTP client wrapping requests to BACKEND_API_URL
-    │   │   │   ├── session_manager.py ❌  helpers to read/write flask-login session data
+    │   │   │   ├── api_client.py      ✅  APIClient + APIError; register, login, logout, refresh, forgot/reset-password
+    │   │   │   ├── session_manager.py ✅  save_login_session, clear_session, is_authenticated, get_user_data, _decode_jwt_payload
     │   │   │   └── helpers.py         ❌  Jinja2 template helpers, date formatters, etc.
     │   │   │
-    │   │   └── middleware/            🟡  __init__.py only — modules to be added
+    │   │   └── middleware/            ✅
     │   │       ├── __init__.py
-    │   │       ├── auth_middleware.py ❌  @login_required decorator + redirect to /login
+    │   │       ├── auth_middleware.py ✅  @login_required decorator → redirects to auth.login
     │   │       └── error_handler.py   ❌  render error templates for 404/500 pages
     │   │
     │   ├── config/
@@ -195,45 +200,62 @@ hermes/
     │   │           ├── users.html     ❌  user management table
     │   │           └── jobs.html      ❌  job management table
     │   │
-    │   └── static/                    📁  directories exist, no asset files yet
-    │       ├── css/
-    │       │   ├── main.css           ❌  global styles and variables
-    │       │   ├── auth.css           ❌  login/register page styles
-    │       │   ├── jobs.css           ❌  job listing and detail styles
-    │       │   └── admin.css          ❌  admin dashboard styles
-    │       ├── js/
-    │       │   ├── main.js            ❌  global scripts (flash dismiss, nav)
-    │       │   ├── jobs.js            ❌  job search filters and apply form
-    │       │   ├── notifications.js   ❌  real-time notification polling
-    │       │   └── admin.js           ❌  admin table interactions
-    │       ├── images/                📁  logo, favicon, placeholders
-    │       └── fonts/                 📁  custom web fonts
+    │   ├── static/                    📁  directories exist, no asset files yet
+    │   │   ├── css/
+    │   │   │   ├── main.css           ❌  global styles and variables
+    │   │   │   ├── auth.css           ❌  login/register page styles
+    │   │   │   ├── jobs.css           ❌  job listing and detail styles
+    │   │   │   └── admin.css          ❌  admin dashboard styles
+    │   │   ├── js/
+    │   │   │   ├── main.js            ❌  global scripts (flash dismiss, nav)
+    │   │   │   ├── jobs.js            ❌  job search filters and apply form
+    │   │   │   ├── notifications.js   ❌  real-time notification polling
+    │   │   │   └── admin.js           ❌  admin table interactions
+    │   │   ├── images/                📁  logo, favicon, placeholders
+    │   │   └── fonts/                 📁  custom web fonts
+    │   │
+    │   └── tests/                     ✅  62 tests passing
+    │       ├── conftest.py            ✅  app, client, app_ctx, fake_login_data, fake_register_data fixtures
+    │       ├── unit/
+    │       │   ├── test_session_manager.py  ✅  27 tests — JWT decode, save/clear/read session
+    │       │   └── test_api_client.py       ✅  15 tests — all 6 API methods, error/transport handling
+    │       └── integration/
+    │           └── test_auth_routes.py      ✅  20 tests — all auth routes end-to-end
     │
     ├── frontend-admin/                ✅  Docker container starts and runs
     │   ├── docker-compose.yml         ✅  single admin-frontend container, port 8081
     │   ├── Dockerfile                 ✅  python:3.11-slim → gunicorn (2 workers)
     │   ├── requirements.txt           ✅
+    │   ├── pytest.ini                 ✅  testpaths = tests, pythonpath = .
     │   ├── run.py                     ✅
+    │   ├── .env                       ✅  BACKEND_API_URL=http://hermes_api:5000/api/v1 (created Story 2)
     │   ├── .env.example               ✅
     │   ├── .dockerignore              ✅
     │   │
     │   ├── app/
-    │   │   ├── __init__.py            ✅  app factory: LoginManager, admin blueprints registered
+    │   │   ├── __init__.py            ✅  app factory: LoginManager, load_user wired to session_manager
+    │   │   │
+    │   │   ├── models/                ✅  session-backed, no DB
+    │   │   │   ├── __init__.py        ✅
+    │   │   │   └── user.py            ✅  Flask-Login UserMixin proxy; is_admin() / is_operator() helpers
     │   │   │
     │   │   ├── routes/
     │   │   │   ├── __init__.py        ✅
     │   │   │   ├── main.py            ✅  GET /health + GET / → JSON responses
     │   │   │   ├── errors.py          ✅  404 + 500 JSON error handlers
-    │   │   │   ├── auth.py            🟡  blueprint at /auth — admin/operator login (no routes yet)
-    │   │   │   ├── dashboard.py       🟡  blueprint at /dashboard — overview stats (no routes yet)
+    │   │   │   ├── auth.py            ✅  login + logout; JWT role checked before session save; user-role tokens blocklisted
+    │   │   │   ├── dashboard.py       🟡  GET /dashboard/ → stub JSON; full dashboard in Story 6
     │   │   │   ├── users.py           🟡  blueprint at /users — user management (no routes yet)
     │   │   │   └── jobs.py            🟡  blueprint at /jobs — job management (no routes yet)
     │   │   │
-    │   │   ├── utils/                 🟡  __init__.py only — modules to be added
-    │   │   │   └── __init__.py
+    │   │   ├── utils/                 ✅
+    │   │   │   ├── __init__.py
+    │   │   │   ├── api_client.py      ✅  APIClient + APIError; login, logout, refresh_tokens (no register)
+    │   │   │   └── session_manager.py ✅  identical to user frontend; kept separate for future admin-specific keys
     │   │   │
-    │   │   └── middleware/            🟡  __init__.py only — modules to be added
-    │   │       └── __init__.py
+    │   │   └── middleware/            ✅
+    │   │       ├── __init__.py
+    │   │       └── auth_middleware.py ✅  @login_required (role enforced) + @role_required(*roles)
     │   │
     │   ├── config/
     │   │   └── settings.py            ✅  BACKEND_API_URL, session config, port 8081
@@ -252,9 +274,14 @@ hermes/
     │   │   ├── js/                    📁
     │   │   └── images/                📁
     │   │
-    │   └── tests/
-    │       ├── unit/                  📁  empty
-    │       └── integration/           📁  empty
+    │   └── tests/                     ✅  49 tests passing
+    │       ├── conftest.py            ✅  app, client, app_ctx, fake_login_data, fake_operator_data, fake_user_data
+    │       ├── unit/
+    │       │   ├── test_session_manager.py  ✅  18 tests — same coverage as user frontend
+    │       │   ├── test_api_client.py       ✅  11 tests — login/logout/refresh_tokens, error handling
+    │       │   └── test_auth_middleware.py  ✅   8 tests — @login_required, @role_required
+    │       └── integration/
+    │           └── test_auth_routes.py      ✅  12 tests — role acceptance, user rejection + token blocklist, logout
     │
     └── nginx/                         ✅  fully configured
         ├── docker-compose.yml         ✅  external network references to backend + frontend + frontend-admin
@@ -324,19 +351,23 @@ Alembic wired up. `0001_initial_schema.py` contains full DDL for all tables. Run
 
 Serves public users: registration, login, job browsing, profile. Runs a single Gunicorn container on port 8080.
 
+### `app/models/`
+`user.py` — Flask-Login `UserMixin` proxy populated from the server-side session (no database access). Provides `get_id()`, `is_authenticated`, and `User.from_session(data)` factory method.
+
 ### `app/routes/`
-`main.py` serves `GET /` and `GET /health` (JSON only — no template rendered yet). `errors.py` handles 404/500. All other blueprints are registered but have no routes.
+`main.py` serves `GET /` and `GET /health` (JSON only — no template rendered yet). `errors.py` handles 404/500. `auth.py` is fully implemented (Story 2) — login, register, logout, forgot-password, reset-password with GET+POST handlers. `jobs.py`, `profile.py`, `admin.py` are registered stubs with no routes.
 
 ### `app/utils/`
-Three modules planned:
-- `api_client.py` — wraps `requests` calls to `BACKEND_API_URL`; handles token passing and error propagation
-- `session_manager.py` — helpers to read/write flask-login session data and JWT tokens
-- `helpers.py` — Jinja2 template helpers, date formatters, URL builders
+- `api_client.py` — ✅ `requests` wrapper for all 6 auth endpoints (`register`, `login`, `logout`, `refresh_tokens`, `forgot_password`, `reset_password`); raises `APIError` on non-2xx; `ConnectionError` → 503, `Timeout` → 504
+- `session_manager.py` — ✅ save/read/clear JWT tokens + user info in Flask server-side session; decodes JWT payload (base64url) without signature verification to extract `user_id`/`role`
+- `helpers.py` — ❌ Jinja2 template helpers, date formatters, URL builders (Story 6)
 
 ### `app/middleware/`
-Two modules planned:
-- `auth_middleware.py` — `@login_required` decorator redirecting unauthenticated users to `/login`
-- `error_handler.py` — renders HTML error templates (404.html, 500.html) instead of JSON
+- `auth_middleware.py` — ✅ `@login_required` decorator; checks `is_authenticated(session)` and redirects to `url_for('auth.login')` if not
+- `error_handler.py` — ❌ renders HTML error templates for 404/500 pages (Story 6)
+
+### `tests/`
+62 tests passing. Unit: `test_session_manager.py` (27 — JWT decode, save/clear/read), `test_api_client.py` (15 — all 6 API methods, error/transport handling). Integration: `test_auth_routes.py` (20 — all auth routes end-to-end).
 
 ### `templates/`
 Directory scaffolding exists. Templates follow a three-tier layout:
@@ -358,10 +389,23 @@ Directories exist. Assets planned:
 
 ## Admin Frontend (`src/frontend-admin/`)
 
-Serves admin and operator users only: login, dashboard, job management, user management. Completely separate Docker container on port 8081. Users registered via `src/frontend/` with `role = admin` or `role = operator` log in here.
+Serves admin and operator users only: login, dashboard, job management, user management. Completely separate Docker container on port 8081.
+
+### `app/models/`
+`user.py` — ✅ Same pattern as user frontend `UserMixin`; adds `is_admin()` and `is_operator()` convenience methods. `ALLOWED_ROLES = ('admin', 'operator')`.
 
 ### `app/routes/`
-`main.py` serves `GET /` and `GET /health`. `errors.py` handles 404/500. All other blueprints are registered stubs with no routes yet.
+`main.py` serves `GET /` and `GET /health`. `errors.py` handles 404/500. `auth.py` is fully implemented (Story 2) — login with JWT role enforcement (admin/operator only; plain users rejected and their token is immediately blocklisted) + logout. `dashboard.py`, `users.py`, `jobs.py` are registered stubs.
+
+### `app/utils/`
+- `api_client.py` — ✅ Same HTTP machinery as user frontend; exposes only `login`, `logout`, `refresh_tokens` (no register). Admin-specific endpoints added in Stories 3/4.
+- `session_manager.py` — ✅ Identical to user frontend session manager; kept separate for future admin-specific session keys.
+
+### `app/middleware/`
+- `auth_middleware.py` — ✅ `@login_required` checks both `is_authenticated(session)` AND that `role in ('admin', 'operator')` — guards against stale sessions from downgraded accounts. `@role_required(*roles)` restricts individual routes to specific roles; redirects to `dashboard.index` on mismatch.
+
+### `tests/`
+49 tests passing. Unit: `test_session_manager.py`, `test_api_client.py`, `test_auth_middleware.py` (role enforcement). Integration: `test_auth_routes.py` covers admin/operator login → dashboard redirect, plain user → access denied + token blocklisted, logout + session clearing.
 
 ### `config/settings.py`
 Same structure as user frontend `settings.py` but defaults to port 8081.
@@ -376,22 +420,22 @@ Same structure as user frontend `settings.py` but defaults to port 8081.
 - Database schema is fully defined — run `flask db upgrade` to apply it.
 - All SQLAlchemy models are wired and ready for use.
 - 74 backend tests passing (22 validator + 19 service + 33 route).
+- Frontend auth is fully implemented (Story 2): session manager, API client, `@login_required`/`@role_required` decorators, auth routes — both user and admin frontends.
+- 111 frontend tests passing — 62 (user frontend) + 49 (admin frontend).
 
 ## What's next
 
 | Priority | Work |
 |---|---|
-| High | `frontend/app/utils/api_client.py` — HTTP client to backend API |
-| High | `frontend/app/middleware/auth_middleware.py` — `@login_required` decorator |
-| High | `frontend-admin/app/routes/auth.py` — admin/operator login + logout pages |
-| High | `frontend-admin/app/middleware/auth_middleware.py` — require admin/operator role |
-| Medium | `backend/routes/jobs.py`, `users.py`, `notifications.py` — add endpoints |
-| Medium | `backend/services/` — job, user, notification, email service modules |
-| Medium | `frontend/routes/` — auth, jobs, profile page routes + templates |
-| Medium | `frontend-admin/routes/` — dashboard, users, jobs management pages |
-| Medium | `backend/middleware/rate_limiter.py` + `request_id.py` |
-| Low | `backend/utils/` — helpers, decorators, constants |
-| Low | `backend/tasks/` — notification, reminder, cleanup task functions |
+| High | `backend/routes/jobs.py` + `backend/services/job_service.py` — Job CRUD + search (Story 3) |
+| High | `backend/routes/users.py` + `backend/services/user_service.py` — Profile + applications (Story 4) |
+| Medium | `backend/routes/notifications.py` + `backend/services/notification_service.py` (Story 5) |
+| Medium | `frontend/` + `frontend-admin/` — Jinja2 templates + static assets (Story 6) |
+| Medium | `backend/middleware/rate_limiter.py` + `request_id.py` (Story 7) |
+| Medium | `backend/validators/` — `user_validator.py` + `job_validator.py` (Story 8) |
+| Low | `backend/utils/` — `helpers.py` (pagination), `decorators.py` (`@admin_required`), `constants.py` (Story 9) |
+| Low | `backend/tasks/` — notification, reminder, cleanup task functions (Story 10) |
+| Low | Move `pytest`/`pytest-mock` to `requirements-dev.txt` in both frontends (PR #112 review item) |
 
 ---
 
@@ -414,5 +458,5 @@ All issues identified during code review have been resolved. What changed and wh
 
 ---
 
-**Last Updated**: March 2026
-**Version**: 2.0
+**Last Updated**: 2026-03-08 (Story 2 complete — PR #112)
+**Version**: 2.1
