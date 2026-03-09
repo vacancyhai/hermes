@@ -14,6 +14,8 @@ significant reduction in write amplification on the jobs table.
 """
 import logging
 
+from sqlalchemy.exc import SQLAlchemyError
+
 from app.tasks.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
@@ -79,7 +81,7 @@ def flush_job_views() -> dict:
     if jobs_updated:
         try:
             db.session.commit()
-        except Exception as exc:
+        except SQLAlchemyError as exc:
             db.session.rollback()
             logger.error("flush_job_views: DB commit failed: %s", exc)
             return {"jobs_updated": 0, "total_views_flushed": 0}

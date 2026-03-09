@@ -13,10 +13,12 @@ Public API:
 All functions raise ValueError with an ErrorCode constant on failure so the
 route layer can map it cleanly to the right HTTP status without leaking details.
 """
+from sqlalchemy import update as sa_update
+
 from app.extensions import db
 from app.models.job import JobVacancy, UserJobApplication
 from app.models.user import User, UserProfile
-from app.utils.constants import ApplicationStatus, ErrorCode, UserStatus
+from app.utils.constants import ApplicationStatus, ErrorCode, JobStatus, UserStatus
 from app.utils.helpers import paginate
 
 
@@ -102,12 +104,17 @@ def apply_to_job(user_id: str, job_id: str) -> UserJobApplication:
         user_id=user_id, job_id=job_id
     ).first()
     if existing:
-        raise ValueError('ALREADY_APPLIED')
+        raise ValueError(ErrorCode.ALREADY_APPLIED)
 
     application = UserJobApplication(user_id=user_id, job_id=job_id)
     db.session.add(application)
 
-    job.applications_count = (job.applications_count or 0) + 1
+    # Atomic server-side increment avoids lost updates under concurrent requests.
+    db.session.execute(
+        sa_update(JobVacancy)
+        .where(JobVacancy.id == job_id)
+        .values(applications_count=JobVacancy.applications_count + 1)
+    )
     db.session.commit()
     return application
 
@@ -131,10 +138,12 @@ def withdraw_application(user_id: str, app_id: str) -> UserJobApplication:
     if application.status != ApplicationStatus.WITHDRAWN:
         application.status = ApplicationStatus.WITHDRAWN
 
-        job = db.session.get(JobVacancy, application.job_id)
-        if job and job.applications_count and job.applications_count > 0:
-            job.applications_count -= 1
-
+        # Atomic server-side decrement; only decrements when count is already > 0.
+        db.session.execute(
+            sa_update(JobVacancy)
+            .where(JobVacancy.id == application.job_id, JobVacancy.applications_count > 0)
+            .values(applications_count=JobVacancy.applications_count - 1)
+        )
         db.session.commit()
 
     return application

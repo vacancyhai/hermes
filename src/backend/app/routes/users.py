@@ -90,8 +90,8 @@ def apply_to_job():
         code = str(e)
         if code == ErrorCode.NOT_FOUND_JOB:
             return _err(ErrorCode.NOT_FOUND_JOB, 'Job not found or no longer active.', 404)
-        if code == 'ALREADY_APPLIED':
-            return _err('ALREADY_APPLIED', 'You have already applied to this job.', 409)
+        if code == ErrorCode.ALREADY_APPLIED:
+            return _err(ErrorCode.ALREADY_APPLIED, 'You have already applied to this job.', 409)
         return _err(ErrorCode.SERVER_ERROR, 'Could not process application.', 500)
 
     return _ok(_serialize_application(application), 201)

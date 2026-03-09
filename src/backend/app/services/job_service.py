@@ -15,6 +15,7 @@ the route layer can map it to the right HTTP status without leaking details.
 from datetime import datetime, timezone
 
 from flask import current_app
+from redis.exceptions import RedisError
 from sqlalchemy.exc import IntegrityError
 
 from app.extensions import db
@@ -88,10 +89,10 @@ def get_job_by_slug(slug: str) -> JobVacancy:
     # Buffer view increment in Redis; flush task writes deltas to DB in bulk.
     try:
         current_app.redis.incr(f"job:views:{job.id}")
-    except Exception:
+    except RedisError as exc:
         # Redis unavailable — log and skip; sacrificing this view count is
         # preferable to flooding PostgreSQL with writes under Redis failure.
-        current_app.logger.warning("get_job_by_slug: Redis unavailable, skipping view increment for job %s", job.id)
+        current_app.logger.warning("get_job_by_slug: Redis unavailable, skipping view increment for job %s: %s", job.id, exc)
 
     return job
 
