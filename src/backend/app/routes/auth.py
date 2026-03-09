@@ -9,13 +9,11 @@ POST   /api/v1/auth/forgot-password   — request password-reset email
 POST   /api/v1/auth/reset-password    — submit new password with reset token
 GET    /api/v1/auth/verify-email/<t>  — verify email address
 """
-from datetime import datetime, timezone
-
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, request
 from flask_jwt_extended import get_jwt, get_jwt_identity, jwt_required
-from marshmallow import ValidationError
 
 from app.middleware.rate_limiter import limiter
+from app.routes._helpers import _err, _flatten, _load_json, _ok
 from app.services import auth_service
 from app.tasks.notification_tasks import (
     send_password_reset_email_task,
@@ -44,7 +42,7 @@ _reset_schema = PasswordResetSchema()
 @bp.route('/register', methods=['POST'])
 @limiter.limit('5 per minute')
 def register():
-    data, err = _load(_register_schema)
+    data, err = _load_json(_register_schema)
     if err:
         return err
 
@@ -66,7 +64,7 @@ def register():
 @bp.route('/login', methods=['POST'])
 @limiter.limit('5 per minute')
 def login():
-    data, err = _load(_login_schema)
+    data, err = _load_json(_login_schema)
     if err:
         return err
 
@@ -111,7 +109,7 @@ def refresh():
 @bp.route('/forgot-password', methods=['POST'])
 @limiter.limit('3 per minute')
 def forgot_password():
-    data, err = _load(_reset_req_schema)
+    data, err = _load_json(_reset_req_schema)
     if err:
         return err
 
@@ -125,7 +123,7 @@ def forgot_password():
 
 @bp.route('/reset-password', methods=['POST'])
 def reset_password():
-    data, err = _load(_reset_schema)
+    data, err = _load_json(_reset_schema)
     if err:
         return err
 
@@ -151,14 +149,6 @@ def verify_email(token):
 # Private helpers
 # ---------------------------------------------------------------------------
 
-def _load(schema):
-    """Load + validate request JSON. Returns (data, None) or (None, error_response)."""
-    try:
-        return schema.load(request.get_json(silent=True) or {}), None
-    except ValidationError as e:
-        return None, _err('VALIDATION_ERROR', 'Invalid request data.', 400, details=_flatten(e.messages))
-
-
 def _serialize_user(user):
     """Return safe user dict — never includes password_hash."""
     return {
@@ -169,32 +159,3 @@ def _serialize_user(user):
         'is_email_verified': user.is_email_verified,
         'created_at': user.created_at.isoformat() if user.created_at else None,
     }
-
-
-def _ok(data, status=200):
-    return jsonify({'success': True, 'data': data}), status
-
-
-def _err(code, message, status, details=None):
-    return jsonify({
-        'success': False,
-        'error': {
-            'code': code,
-            'message': message,
-            'details': details or [],
-            'timestamp': datetime.now(timezone.utc).isoformat(),
-            'request_id': request.headers.get('X-Request-ID', ''),
-        }
-    }), status
-
-
-def _flatten(messages):
-    """Convert marshmallow error dict to a flat list of 'field: message' strings."""
-    result = []
-    for field, errors in messages.items():
-        if isinstance(errors, list):
-            for e in errors:
-                result.append(f'{field}: {e}')
-        else:
-            result.append(f'{field}: {errors}')
-    return result

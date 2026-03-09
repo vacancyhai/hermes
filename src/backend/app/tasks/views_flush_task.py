@@ -36,11 +36,31 @@ def flush_job_views() -> dict:
         {"jobs_updated": int, "total_views_flushed": int}
     """
     from flask import current_app
-    from app.extensions import db
-    from app.models.job import JobVacancy
 
     redis_client = current_app.redis
     pattern = f"{_VIEWS_KEY_PREFIX}*"
+
+    # Acquire a distributed lock so concurrent Celery Beat instances don't
+    # double-count the same Redis values.  blocking=False means a second
+    # runner skips gracefully rather than queuing behind the first.
+    lock = redis_client.lock("flush_job_views:lock", timeout=120)
+    if not lock.acquire(blocking=False):
+        logger.info("flush_job_views: another instance holds the lock, skipping this run")
+        return {"jobs_updated": 0, "total_views_flushed": 0}
+
+    try:
+        return _flush(redis_client, pattern)
+    finally:
+        try:
+            lock.release()
+        except Exception:
+            pass
+
+
+def _flush(redis_client, pattern: str) -> dict:
+    """Inner flush logic, called while holding the distributed lock."""
+    from app.extensions import db
+    from app.models.job import JobVacancy
 
     # Scan for all buffered view keys
     keys = list(redis_client.scan_iter(pattern))

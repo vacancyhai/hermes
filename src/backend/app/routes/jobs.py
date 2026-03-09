@@ -103,6 +103,7 @@ def update_job(job_id):
 @bp.route('/<job_id>', methods=['DELETE'])
 @jwt_required()
 @admin_required
+@limiter.limit('10 per minute')
 def delete_job(job_id):
     try:
         job_service.delete_job(job_id)

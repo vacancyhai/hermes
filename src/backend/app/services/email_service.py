@@ -115,7 +115,7 @@ def send_job_notification_email(
     """
     Notify a matched user about a new job vacancy.
     """
-    subject = f"New Job Alert: {job_title} — {organization}"
+    subject = f"New Job Alert: {job_title.replace(chr(10), '').replace(chr(13), '')} — {organization.replace(chr(10), '').replace(chr(13), '')}"
     body = f"""Hi {full_name},
 
 A new government job vacancy matching your profile is now available:
@@ -149,7 +149,7 @@ def send_deadline_reminder_email(
     """
     Reminder sent 7, 3, or 1 day(s) before an application deadline.
     """
-    subject = f"Reminder: {days_left} day(s) left to apply — {job_title}"
+    subject = f"Reminder: {days_left} day(s) left to apply — {job_title.replace(chr(10), '').replace(chr(13), '')}"
     body = f"""Hi {full_name},
 
 This is a reminder that the application deadline for the following job

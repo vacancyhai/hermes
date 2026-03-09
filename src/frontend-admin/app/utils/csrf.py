@@ -13,6 +13,7 @@ In templates:
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 """
 import hashlib
+import hmac
 import os
 
 from flask import abort, request, session
@@ -32,7 +33,7 @@ def validate_csrf_token() -> bool:
     """Return True if the token in the form matches the one in the session."""
     session_token = session.get(_CSRF_SESSION_KEY)
     form_token = request.form.get('csrf_token', '')
-    return bool(session_token and form_token and session_token == form_token)
+    return bool(session_token and form_token and hmac.compare_digest(session_token, form_token))
 
 
 def check_csrf() -> None:

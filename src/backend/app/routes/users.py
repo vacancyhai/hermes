@@ -13,6 +13,7 @@ PUT    /api/v1/users/<user_id>/status          — change user status  (admin)
 from flask import Blueprint, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
+from app.middleware.rate_limiter import limiter
 from app.routes._helpers import _err, _flatten, _load_json, _ok
 from app.services import user_service
 from app.utils.constants import ErrorCode
@@ -33,6 +34,7 @@ _update_status_schema = UpdateUserStatusSchema()
 
 @bp.route('/profile', methods=['GET'])
 @jwt_required()
+@limiter.limit('60 per minute')
 def get_profile():
     try:
         user, profile = user_service.get_profile(get_jwt_identity())
@@ -43,6 +45,7 @@ def get_profile():
 
 @bp.route('/profile', methods=['PUT'])
 @jwt_required()
+@limiter.limit('20 per minute')
 def update_profile():
     data, err = _load_json(_profile_schema)
     if err:
@@ -57,6 +60,7 @@ def update_profile():
 
 @bp.route('/profile/phone', methods=['PUT'])
 @jwt_required()
+@limiter.limit('10 per minute')
 def update_phone():
     data, err = _load_json(_phone_schema)
     if err:
@@ -75,6 +79,7 @@ def update_phone():
 
 @bp.route('/applications', methods=['GET'])
 @jwt_required()
+@limiter.limit('60 per minute')
 def list_applications():
     try:
         page = max(1, int(request.args.get('page', 1)))
@@ -96,6 +101,7 @@ def list_applications():
 
 @bp.route('/applications', methods=['POST'])
 @jwt_required()
+@limiter.limit('5 per minute')
 def apply_to_job():
     data, err = _load_json(_apply_schema)
     if err:
@@ -116,6 +122,7 @@ def apply_to_job():
 
 @bp.route('/applications/<app_id>', methods=['DELETE'])
 @jwt_required()
+@limiter.limit('20 per minute')
 def withdraw_application(app_id):
     try:
         application = user_service.withdraw_application(get_jwt_identity(), app_id)
@@ -131,6 +138,7 @@ def withdraw_application(app_id):
 @bp.route('', methods=['GET'])
 @jwt_required()
 @admin_required
+@limiter.limit('60 per minute')
 def list_users():
     try:
         page = max(1, int(request.args.get('page', 1)))
@@ -153,6 +161,7 @@ def list_users():
 @bp.route('/<user_id>/status', methods=['PUT'])
 @jwt_required()
 @admin_required
+@limiter.limit('30 per minute')
 def update_user_status(user_id):
     if user_id == get_jwt_identity():
         return _err(ErrorCode.FORBIDDEN_OWN_RESOURCE_ONLY, 'Admins cannot modify their own status.', 403)
@@ -167,6 +176,8 @@ def update_user_status(user_id):
         code = str(e)
         if code == ErrorCode.NOT_FOUND_USER:
             return _err(ErrorCode.NOT_FOUND_USER, 'User not found.', 404)
+        if code == 'INVALID_STATUS':
+            return _err(ErrorCode.VALIDATION_INVALID_FORMAT, 'Invalid status value.', 400)
         return _err(ErrorCode.SERVER_ERROR, 'Could not update user status.', 500)
     return _ok(_serialize_user(user))
 

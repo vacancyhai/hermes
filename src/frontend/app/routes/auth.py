@@ -16,7 +16,7 @@ from flask_login import login_user, logout_user
 
 from app.models.user import User
 from app.utils.api_client import APIClient, APIError
-from app.utils.session_manager import clear_session, save_login_session
+from app.utils.session_manager import clear_session, get_user_data, save_login_session
 
 bp = Blueprint('auth', __name__, url_prefix='/auth')
 _api = APIClient()
@@ -45,9 +45,7 @@ def login():
         return render_template('pages/auth/login.html', email=email)
 
     save_login_session(session, data)
-    user_data = {'user_id': session['user_id'], 'email': session['email'],
-                 'full_name': session.get('full_name', ''), 'role': session['role']}
-    login_user(User.from_session(user_data))
+    login_user(User.from_session(get_user_data(session)))
 
     next_page = request.args.get('next')
     if next_page and next_page.startswith('/'):
@@ -84,9 +82,7 @@ def register():
         return render_template('pages/auth/register.html', full_name=full_name, email=email)
 
     save_login_session(session, data)
-    user_data = {'user_id': session['user_id'], 'email': session['email'],
-                 'full_name': session.get('full_name', ''), 'role': session['role']}
-    login_user(User.from_session(user_data))
+    login_user(User.from_session(get_user_data(session)))
 
     flash('Account created successfully. Please verify your email.', 'success')
     return redirect(url_for('main.index'))

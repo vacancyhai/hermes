@@ -153,12 +153,17 @@ hermes/
     │   ├── docker-compose.yml         ✅  single frontend container, port 8080
     │   ├── Dockerfile                 ✅  python:3.11-slim → gunicorn (2 workers)
     │   ├── requirements.txt           ✅
+    │   ├── pytest.ini                 ✅  testpaths = tests, pythonpath = .
     │   ├── run.py                     ✅
     │   ├── .env / .env.example        ✅
     │   ├── .dockerignore              ✅
     │   │
     │   ├── app/
-    │   │   ├── __init__.py            ✅  app factory: LoginManager, all blueprints registered
+    │   │   ├── __init__.py            ✅  app factory: LoginManager, load_user wired to session_manager
+    │   │   │
+    │   │   ├── models/                ✅  session-backed, no DB
+    │   │   │   ├── __init__.py        ✅
+    │   │   │   └── user.py            ✅  Flask-Login UserMixin proxy; User.from_session(data)
     │   │   │
     │   │   ├── routes/
     │   │   │   ├── __init__.py        ✅
@@ -239,7 +244,9 @@ hermes/
     │   ├── docker-compose.yml         ✅  single admin-frontend container, port 8081
     │   ├── Dockerfile                 ✅  python:3.11-slim → gunicorn (2 workers)
     │   ├── requirements.txt           ✅
+    │   ├── pytest.ini                 ✅  testpaths = tests, pythonpath = .
     │   ├── run.py                     ✅
+    │   ├── .env                       ✅  BACKEND_API_URL=http://hermes_api:5000/api/v1 (created Story 2)
     │   ├── .env.example               ✅
     │   ├── .dockerignore              ✅
     │   │
@@ -372,6 +379,9 @@ Alembic wired up. `0001_initial_schema.py` contains full DDL for all tables. Run
 ## User Frontend (`src/frontend/`)
 
 Serves public users: registration, login, job browsing, profile. Runs a single Gunicorn container on port 8080.
+
+### `app/models/`
+`user.py` — Flask-Login `UserMixin` proxy populated from the server-side session (no database access). Provides `get_id()`, `is_authenticated`, and `User.from_session(data)` factory method.
 
 ### `app/routes/`
 `main.py` serves `GET /` (homepage with featured jobs) and `GET /health`. `errors.py` renders HTML error templates. `auth.py` handles login/register/logout/password reset. `jobs.py` has list, detail, and apply endpoints. `profile.py` has index, edit, applications, and withdraw endpoints.

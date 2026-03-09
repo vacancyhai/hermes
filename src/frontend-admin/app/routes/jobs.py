@@ -28,7 +28,7 @@ _JOB_TYPES = [
 ]
 _QUALIFICATIONS = [
     ('10th', '10th Pass'), ('12th', '12th Pass'), ('diploma', 'Diploma'),
-    ('graduation', 'Graduate'), ('post_graduation', 'Post Graduate'), ('phd', 'PhD'),
+    ('graduate', 'Graduate'), ('postgraduate', 'Post Graduate'), ('doctorate', 'PhD'),
 ]
 
 

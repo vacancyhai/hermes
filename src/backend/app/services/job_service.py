@@ -173,7 +173,11 @@ def create_job(data: dict, created_by: str) -> JobVacancy:
         # Concurrent insert took the slug — pick the next available suffix.
         job.slug = _unique_slug(base_slug)
         db.session.add(job)
-        db.session.commit()
+        try:
+            db.session.commit()
+        except IntegrityError:
+            db.session.rollback()
+            raise ValueError(ErrorCode.SERVER_ERROR)
     return job
 
 
@@ -206,7 +210,7 @@ def update_job(job_id: str, data: dict) -> JobVacancy:
     )
     for field in _UPDATABLE:
         value = data.get(field)
-        if value is not None:
+        if value is not None and value != '':
             setattr(job, field, value)
 
     # Set published_at if the job is being activated for the first time

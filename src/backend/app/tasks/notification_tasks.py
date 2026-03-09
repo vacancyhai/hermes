@@ -39,12 +39,23 @@ def send_new_job_notifications(self, job_id: str) -> dict:
     Returns:
         {"matched": int, "created": int, "emails_queued": int}
     """
+    from sqlalchemy.exc import OperationalError
+
     from app.extensions import db
     from app.models.job import JobVacancy
     from app.services.notification_service import create_notification, match_job_to_users
     from app.utils.constants import NotificationType
 
-    job = db.session.get(JobVacancy, job_id)
+    try:
+        job = db.session.get(JobVacancy, job_id)
+    except OperationalError as exc:
+        retry_index = min(self.request.retries, len(_RETRY_BACKOFF) - 1)
+        logger.warning(
+            "send_new_job_notifications: DB unavailable for job %s (attempt %d), retrying: %s",
+            job_id, self.request.retries + 1, exc,
+        )
+        raise self.retry(exc=exc, countdown=_RETRY_BACKOFF[retry_index])
+
     if not job:
         logger.warning("send_new_job_notifications: job %s not found", job_id)
         return {"matched": 0, "created": 0, "emails_queued": 0}
