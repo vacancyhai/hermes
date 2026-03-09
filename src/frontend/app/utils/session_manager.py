@@ -39,8 +39,7 @@ def save_login_session(flask_session, api_data: dict) -> None:
     login or registration API call.
 
     ``api_data`` is the ``data`` dict from the backend response:
-      - For login:    {"access_token": "...", "refresh_token": "..."}
-                      (no user field — decode claims from JWT)
+      - For login:    {"user": {...}, "access_token": "...", "refresh_token": "..."}
       - For register: {"user": {...}, "access_token": "...", "refresh_token": "..."}
     """
     access_token = api_data["access_token"]

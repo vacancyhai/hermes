@@ -156,68 +156,39 @@ class APIClient:
             h["Authorization"] = f"Bearer {access_token}"
         return h
 
-    def _post(self, path: str, payload: dict, access_token: str | None = None) -> dict:
+    def _request(
+        self,
+        method: str,
+        path: str,
+        access_token: str | None = None,
+        payload: dict | None = None,
+        params: dict | None = None,
+    ) -> dict:
         url = f"{self._base_url()}{path}"
+        kwargs: dict = {"headers": self._headers(access_token), "timeout": 10}
+        if payload is not None:
+            kwargs["json"] = payload
+        if params is not None:
+            kwargs["params"] = params
         try:
-            resp = requests.post(
-                url,
-                json=payload,
-                headers=self._headers(access_token),
-                timeout=10,
-            )
+            resp = requests.request(method, url, **kwargs)
         except requests.exceptions.ConnectionError:
             raise APIError(503, "SERVICE_UNAVAILABLE", "Cannot reach the server. Please try again later.")
         except requests.exceptions.Timeout:
             raise APIError(504, "GATEWAY_TIMEOUT", "The server took too long to respond. Please try again.")
-
         return self._handle_response(resp)
+
+    def _post(self, path: str, payload: dict, access_token: str | None = None) -> dict:
+        return self._request("POST", path, access_token=access_token, payload=payload)
 
     def _get(self, path: str, access_token: str | None = None, params: dict | None = None) -> dict:
-        url = f"{self._base_url()}{path}"
-        try:
-            resp = requests.get(
-                url,
-                params=params,
-                headers=self._headers(access_token),
-                timeout=10,
-            )
-        except requests.exceptions.ConnectionError:
-            raise APIError(503, "SERVICE_UNAVAILABLE", "Cannot reach the server. Please try again later.")
-        except requests.exceptions.Timeout:
-            raise APIError(504, "GATEWAY_TIMEOUT", "The server took too long to respond. Please try again.")
-
-        return self._handle_response(resp)
+        return self._request("GET", path, access_token=access_token, params=params)
 
     def _put(self, path: str, payload: dict, access_token: str | None = None) -> dict:
-        url = f"{self._base_url()}{path}"
-        try:
-            resp = requests.put(
-                url,
-                json=payload,
-                headers=self._headers(access_token),
-                timeout=10,
-            )
-        except requests.exceptions.ConnectionError:
-            raise APIError(503, "SERVICE_UNAVAILABLE", "Cannot reach the server. Please try again later.")
-        except requests.exceptions.Timeout:
-            raise APIError(504, "GATEWAY_TIMEOUT", "The server took too long to respond. Please try again.")
-
-        return self._handle_response(resp)
+        return self._request("PUT", path, access_token=access_token, payload=payload)
 
     def _delete(self, path: str, access_token: str | None = None) -> dict:
-        url = f"{self._base_url()}{path}"
-        try:
-            resp = requests.delete(
-                url,
-                headers=self._headers(access_token),
-                timeout=10,
-            )
-        except requests.exceptions.ConnectionError:
-            raise APIError(503, "SERVICE_UNAVAILABLE", "Cannot reach the server. Please try again later.")
-        except requests.exceptions.Timeout:
-            raise APIError(504, "GATEWAY_TIMEOUT", "The server took too long to respond. Please try again.")
-
-        return self._handle_response(resp)
+        return self._request("DELETE", path, access_token=access_token)
 
     @staticmethod
     def _handle_response(resp: requests.Response) -> dict:

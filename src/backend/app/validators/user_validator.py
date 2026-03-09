@@ -10,6 +10,8 @@ The schemas enforce:
 """
 from marshmallow import Schema, fields, validate, RAISE
 
+from app.utils.constants import Category, Gender, QualificationLevel
+
 
 class UpdateProfileSchema(Schema):
     class Meta:
@@ -19,12 +21,12 @@ class UpdateProfileSchema(Schema):
     gender = fields.String(
         required=False,
         load_default=None,
-        validate=validate.OneOf(['male', 'female', 'other']),
+        validate=validate.OneOf(Gender.ALL),
     )
     category = fields.String(
         required=False,
         load_default=None,
-        validate=validate.OneOf(['general', 'obc', 'sc', 'st']),
+        validate=validate.OneOf(Category.ALL),
     )
     is_pwd = fields.Boolean(required=False, load_default=None)
     is_ex_serviceman = fields.Boolean(required=False, load_default=None)
@@ -46,9 +48,7 @@ class UpdateProfileSchema(Schema):
     highest_qualification = fields.String(
         required=False,
         load_default=None,
-        validate=validate.OneOf(
-            ['10th', '12th', 'diploma', 'graduate', 'postgraduate', 'doctorate'],
-        ),
+        validate=validate.OneOf(QualificationLevel.ALL),
     )
     education = fields.Dict(required=False, load_default=None)
     physical_details = fields.Dict(required=False, load_default=None)

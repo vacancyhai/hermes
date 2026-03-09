@@ -238,11 +238,15 @@ def delete_job(job_id: str) -> None:
 # Private helpers
 # ---------------------------------------------------------------------------
 
+_MAX_SLUG_ATTEMPTS = 50
+
+
 def _unique_slug(base_slug: str, exclude_id=None) -> str:
     """
     Return a slug that does not already exist in job_vacancies.
 
     If base_slug is taken, appends '-2', '-3', etc. until unique.
+    Raises RuntimeError if no unique slug is found within _MAX_SLUG_ATTEMPTS.
     exclude_id: UUID of the job being updated — its own slug is not treated as
     a conflict, preventing a no-op update from incrementing the suffix.
     """
@@ -257,9 +261,9 @@ def _unique_slug(base_slug: str, exclude_id=None) -> str:
     if not _taken(slug):
         return slug
 
-    counter = 2
-    while True:
+    for counter in range(2, _MAX_SLUG_ATTEMPTS + 2):
         candidate = f'{slug}-{counter}'
         if not _taken(candidate):
             return candidate
-        counter += 1
+
+    raise RuntimeError(f"Could not generate a unique slug for base '{base_slug}' after {_MAX_SLUG_ATTEMPTS} attempts")

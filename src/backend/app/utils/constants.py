@@ -8,6 +8,23 @@ Usage:
 """
 
 
+class Gender:
+    MALE = 'male'
+    FEMALE = 'female'
+    OTHER = 'other'
+
+    ALL = (MALE, FEMALE, OTHER)
+
+
+class Category:
+    GENERAL = 'general'
+    OBC = 'obc'
+    SC = 'sc'
+    ST = 'st'
+
+    ALL = (GENERAL, OBC, SC, ST)
+
+
 class UserRole:
     USER = 'user'
     ADMIN = 'admin'

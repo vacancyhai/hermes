@@ -28,8 +28,7 @@ def save_login_session(flask_session, api_data: dict) -> None:
     Persist tokens and user info into the Flask session after a successful
     admin login.
 
-    Login response: {"access_token": "...", "refresh_token": "..."}
-    (role and email are decoded from the JWT payload)
+    Login response: {"user": {...}, "access_token": "...", "refresh_token": "..."}
     """
     access_token = api_data["access_token"]
     refresh_token = api_data["refresh_token"]

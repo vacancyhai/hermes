@@ -42,13 +42,20 @@ def create_notification(
 
     Returns the saved Notification instance.
     """
+    entity_uuid = None
+    if entity_id:
+        try:
+            entity_uuid = UUID(entity_id)
+        except ValueError:
+            raise ValueError(f"Invalid entity_id: {entity_id!r} is not a valid UUID")
+
     notif = Notification(
         user_id=user_id,
         type=notification_type,
         title=title,
         message=message,
         entity_type=entity_type,
-        entity_id=UUID(entity_id) if entity_id else None,
+        entity_id=entity_uuid,
         action_url=action_url,
         priority=priority,
     )

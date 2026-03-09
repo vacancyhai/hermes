@@ -10,9 +10,6 @@ the backend or via a future admin creation endpoint.
 Templates expected (Story 6):
   auth/login.html
 """
-import base64
-import json
-
 from flask import Blueprint, flash, redirect, render_template, request, session, url_for
 from flask_login import login_user, logout_user
 
@@ -24,23 +21,6 @@ bp = Blueprint('auth', __name__, url_prefix='/auth')
 _api = APIClient()
 
 _ALLOWED_ROLES = ('admin', 'operator')
-
-
-def _decode_jwt_role(token: str) -> str:
-    """
-    Decode the JWT payload to read the role claim without signature
-    verification. Safe because the token was just issued by our own
-    backend in the same request.
-    """
-    parts = token.split('.')
-    if len(parts) != 3:
-        raise ValueError('Malformed JWT')
-    payload = parts[1]
-    padding = 4 - len(payload) % 4
-    if padding != 4:
-        payload += '=' * padding
-    claims = json.loads(base64.urlsafe_b64decode(payload))
-    return claims.get('role', '')
 
 
 # ---------------------------------------------------------------------------
@@ -65,12 +45,9 @@ def login():
         flash(e.message, 'error')
         return render_template('pages/auth/login.html', email=email)
 
-    # Decode role from JWT before saving session — reject non-admin/operator
-    try:
-        role = _decode_jwt_role(data['access_token'])
-    except (ValueError, KeyError):
-        flash('Authentication failed. Please try again.', 'error')
-        return render_template('pages/auth/login.html', email=email)
+    # Read role from the API response — avoids unsafe JWT decoding without
+    # signature verification on the frontend.
+    role = data.get('user', {}).get('role', '')
 
     if role not in _ALLOWED_ROLES:
         # Blocklist the issued token so it cannot be reused

@@ -29,6 +29,11 @@ def create_app():
             return User.from_session(data)
         return None
 
+    # Register CSRF protection
+    from app.utils.csrf import check_csrf, generate_csrf_token
+    app.before_request(check_csrf)
+    app.jinja_env.globals['csrf_token'] = generate_csrf_token
+
     # Register blueprints
     from app.routes import main, auth, jobs, profile, admin, errors
     app.register_blueprint(main.bp)

@@ -74,8 +74,10 @@ def send_new_job_notifications(self, job_id: str) -> dict:
             created += 1
 
             # Queue the email delivery as a separate task so one failure
-            # doesn't abort the entire batch.
+            # doesn't abort the entire batch. Pass notification_id so the task
+            # can mark sent_via and skip re-delivery on retry.
             deliver_notification_email.delay(
+                notification_id=str(notif.id),
                 to_email=user_info["email"],
                 full_name=user_info["full_name"],
                 job_title=job.job_title,
@@ -102,6 +104,7 @@ def send_new_job_notifications(self, job_id: str) -> dict:
 @celery_app.task(bind=True, max_retries=_MAX_RETRIES, name="notification_tasks.deliver_notification_email")
 def deliver_notification_email(
     self,
+    notification_id: str,
     to_email: str,
     full_name: str,
     job_title: str,
@@ -112,9 +115,21 @@ def deliver_notification_email(
     """
     Send a job-alert email to a single user.
 
+    Checks the notification's sent_via field before sending to ensure
+    idempotency — if this task retries after a partial success, the email
+    is not sent a second time.
+
     Retries up to 5 times with exponential backoff on SMTP failure.
     """
+    from app.extensions import db
+    from app.models.notification import Notification
     from app.services.email_service import send_job_notification_email
+
+    # Idempotency check: skip if email was already delivered
+    notif = db.session.get(Notification, notification_id)
+    if notif and notif.sent_via and 'email' in (notif.sent_via or []):
+        logger.info("deliver_notification_email: already sent to %s, skipping", to_email)
+        return
 
     try:
         send_job_notification_email(
@@ -125,6 +140,10 @@ def deliver_notification_email(
             application_end=application_end,
             job_url=job_url,
         )
+        # Mark as sent so retries are idempotent
+        if notif:
+            notif.sent_via = list(notif.sent_via or []) + ['email']
+            db.session.commit()
         logger.info("deliver_notification_email: sent to %s", to_email)
     except Exception as exc:
         retry_index = min(self.request.retries, len(_RETRY_BACKOFF) - 1)

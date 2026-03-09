@@ -62,7 +62,7 @@ def list_applications():
         page = max(1, int(request.args.get('page', 1)))
         per_page = min(100, max(1, int(request.args.get('per_page', 20))))
     except (TypeError, ValueError):
-        page, per_page = 1, 20
+        return _err(ErrorCode.VALIDATION_INVALID_FORMAT, "'page' and 'per_page' must be positive integers.", 400)
 
     result = user_service.get_applications(get_jwt_identity(), page=page, per_page=per_page)
     return _ok(
@@ -119,7 +119,7 @@ def list_users():
         page = max(1, int(request.args.get('page', 1)))
         per_page = min(100, max(1, int(request.args.get('per_page', 50))))
     except (TypeError, ValueError):
-        page, per_page = 1, 50
+        return _err(ErrorCode.VALIDATION_INVALID_FORMAT, "'page' and 'per_page' must be positive integers.", 400)
 
     result = user_service.get_all_users(page=page, per_page=per_page)
     return _ok(

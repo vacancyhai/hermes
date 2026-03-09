@@ -18,6 +18,8 @@ Tasks defined here:
 import logging
 from datetime import datetime, timedelta, timezone
 
+from sqlalchemy.exc import SQLAlchemyError
+
 from app.tasks.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
@@ -28,15 +30,19 @@ def purge_expired_notifications() -> dict:
     """Delete notifications past their expires_at TTL."""
     from app.extensions import db
     from app.models.notification import Notification
-    from sqlalchemy import text
 
     now = datetime.now(timezone.utc)
-    deleted = (
-        db.session.query(Notification)
-        .filter(Notification.expires_at < now)
-        .delete(synchronize_session=False)
-    )
-    db.session.commit()
+    try:
+        deleted = (
+            db.session.query(Notification)
+            .filter(Notification.expires_at < now)
+            .delete(synchronize_session=False)
+        )
+        db.session.commit()
+    except SQLAlchemyError as exc:
+        db.session.rollback()
+        logger.error("purge_expired_notifications: DB error: %s", exc)
+        return {"deleted": 0}
     logger.info("purge_expired_notifications: deleted=%d", deleted)
     return {"deleted": deleted}
 
@@ -48,12 +54,17 @@ def purge_expired_admin_logs() -> dict:
     from app.models.admin import AdminLog
 
     now = datetime.now(timezone.utc)
-    deleted = (
-        db.session.query(AdminLog)
-        .filter(AdminLog.expires_at < now)
-        .delete(synchronize_session=False)
-    )
-    db.session.commit()
+    try:
+        deleted = (
+            db.session.query(AdminLog)
+            .filter(AdminLog.expires_at < now)
+            .delete(synchronize_session=False)
+        )
+        db.session.commit()
+    except SQLAlchemyError as exc:
+        db.session.rollback()
+        logger.error("purge_expired_admin_logs: DB error: %s", exc)
+        return {"deleted": 0}
     logger.info("purge_expired_admin_logs: deleted=%d", deleted)
     return {"deleted": deleted}
 
@@ -70,15 +81,20 @@ def purge_soft_deleted_jobs() -> dict:
     from app.utils.constants import JobStatus
 
     cutoff = datetime.now(timezone.utc) - timedelta(days=90)
-    deleted = (
-        db.session.query(JobVacancy)
-        .filter(
-            JobVacancy.status == JobStatus.ARCHIVED,
-            JobVacancy.updated_at < cutoff,
+    try:
+        deleted = (
+            db.session.query(JobVacancy)
+            .filter(
+                JobVacancy.status == JobStatus.ARCHIVED,
+                JobVacancy.updated_at < cutoff,
+            )
+            .delete(synchronize_session=False)
         )
-        .delete(synchronize_session=False)
-    )
-    db.session.commit()
+        db.session.commit()
+    except SQLAlchemyError as exc:
+        db.session.rollback()
+        logger.error("purge_soft_deleted_jobs: DB error: %s", exc)
+        return {"deleted": 0}
     logger.info("purge_soft_deleted_jobs: deleted=%d", deleted)
     return {"deleted": deleted}
 
@@ -93,14 +109,19 @@ def close_expired_job_listings() -> dict:
     from app.utils.constants import JobStatus
 
     today = datetime.now(timezone.utc).date()
-    updated = (
-        db.session.query(JobVacancy)
-        .filter(
-            JobVacancy.status == JobStatus.ACTIVE,
-            JobVacancy.application_end < today,
+    try:
+        updated = (
+            db.session.query(JobVacancy)
+            .filter(
+                JobVacancy.status == JobStatus.ACTIVE,
+                JobVacancy.application_end < today,
+            )
+            .update({"status": JobStatus.CLOSED}, synchronize_session=False)
         )
-        .update({"status": JobStatus.CLOSED}, synchronize_session=False)
-    )
-    db.session.commit()
+        db.session.commit()
+    except SQLAlchemyError as exc:
+        db.session.rollback()
+        logger.error("close_expired_job_listings: DB error: %s", exc)
+        return {"closed": 0}
     logger.info("close_expired_job_listings: updated=%d", updated)
     return {"closed": updated}

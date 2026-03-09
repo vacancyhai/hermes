@@ -16,6 +16,7 @@ from flask_jwt_extended import get_jwt, get_jwt_identity, jwt_required
 from marshmallow import ValidationError
 
 from app.middleware.rate_limiter import limiter
+from app.models.user import User
 from app.services import auth_service
 from app.tasks.notification_tasks import (
     send_password_reset_email_task,
@@ -80,7 +81,12 @@ def login():
             return _err('AUTH_ACCOUNT_SUSPENDED', 'Your account has been suspended.', 401)
         return _err('SERVER_ERROR', 'Login failed.', 500)
 
-    return _ok({'access_token': access_token, 'refresh_token': refresh_token})
+    user = User.query.filter_by(email=data['email'].lower().strip()).first()
+    return _ok({
+        'user': _serialize_user(user),
+        'access_token': access_token,
+        'refresh_token': refresh_token,
+    })
 
 
 @bp.route('/logout', methods=['POST'])

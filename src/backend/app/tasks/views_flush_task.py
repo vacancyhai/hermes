@@ -6,8 +6,8 @@ How it works:
        increments a Redis counter at key "job:views:<job_id>" instead of
        writing to PostgreSQL on every request.
     2. This task runs periodically, reads every "job:views:*" key in Redis,
-       applies the accumulated delta to the JobVacancy.views column, and
-       deletes the Redis key atomically.
+       applies the accumulated delta to the JobVacancy.views column, then
+       deletes the Redis keys only after a successful DB commit.
 
 This approach trades a small amount of accuracy (±5 min lag) for a
 significant reduction in write amplification on the jobs table.
@@ -28,10 +28,9 @@ def flush_job_views() -> dict:
     """
     Flush buffered view counts from Redis into PostgreSQL.
 
-    Uses GETDEL to read and clear each counter atomically. Note: counts
-    removed from Redis before a failed DB commit are lost for that cycle.
-    For a view counter this is an acceptable trade-off; the remaining jobs
-    are still committed.
+    Reads all view counters first (MGET), commits them to DB, then deletes
+    the Redis keys. This ordering ensures counts are never lost: if the DB
+    commit fails the keys remain in Redis and will be picked up next cycle.
 
     Returns:
         {"jobs_updated": int, "total_views_flushed": int}
@@ -48,13 +47,14 @@ def flush_job_views() -> dict:
     if not keys:
         return {"jobs_updated": 0, "total_views_flushed": 0}
 
+    # Read all values before touching the DB — keys stay in Redis until commit succeeds
+    raw_values = redis_client.mget(keys)
+
     jobs_updated = 0
     total_views = 0
+    committed_keys = []
 
-    for key in keys:
-        # GETDEL atomically returns the current value and removes the key.
-        # If the key was already deleted between scan and here, value is None.
-        raw = redis_client.getdel(key)
+    for key, raw in zip(keys, raw_values):
         if raw is None:
             continue
 
@@ -68,23 +68,32 @@ def flush_job_views() -> dict:
             continue
 
         job_id = key[len(_VIEWS_KEY_PREFIX):]
+        if isinstance(job_id, bytes):
+            job_id = job_id.decode()
 
         job = db.session.get(JobVacancy, job_id)
         if not job:
             logger.debug("flush_job_views: job %s not found, discarding %d views", job_id, delta)
+            # Key is stale — safe to delete even without a DB update
+            committed_keys.append(key)
             continue
 
         job.views = (job.views or 0) + delta
         jobs_updated += 1
         total_views += delta
+        committed_keys.append(key)
 
     if jobs_updated:
         try:
             db.session.commit()
         except SQLAlchemyError as exc:
             db.session.rollback()
-            logger.error("flush_job_views: DB commit failed: %s", exc)
+            logger.error("flush_job_views: DB commit failed — view counts preserved in Redis: %s", exc)
             return {"jobs_updated": 0, "total_views_flushed": 0}
+
+    # Delete keys only after a successful commit so counts survive failures
+    if committed_keys:
+        redis_client.delete(*committed_keys)
 
     logger.info(
         "flush_job_views: jobs_updated=%d total_views_flushed=%d",

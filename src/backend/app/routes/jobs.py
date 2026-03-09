@@ -13,7 +13,8 @@ from flask_jwt_extended import get_jwt_identity, jwt_required
 from app.middleware.rate_limiter import limiter
 from app.routes._helpers import _err, _flatten, _load_args, _load_json, _ok
 from app.services import job_service
-from app.utils.constants import ErrorCode
+from app.tasks.notification_tasks import send_new_job_notifications
+from app.utils.constants import ErrorCode, JobStatus
 from app.utils.decorators import admin_required, operator_required
 from app.validators.job_validator import CreateJobSchema, JobSearchSchema, UpdateJobSchema
 
@@ -73,9 +74,7 @@ def create_job():
     job = job_service.create_job(data, created_by=get_jwt_identity())
 
     # Dispatch job-notification task for newly published jobs
-    from app.utils.constants import JobStatus
     if job.status == JobStatus.ACTIVE:
-        from app.tasks.notification_tasks import send_new_job_notifications
         send_new_job_notifications.delay(str(job.id))
 
     return _ok(_serialize_job(job), 201)

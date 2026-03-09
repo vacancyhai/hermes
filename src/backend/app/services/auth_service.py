@@ -15,6 +15,7 @@ from datetime import datetime, timezone
 import bcrypt
 from flask import current_app
 from flask_jwt_extended import create_access_token, create_refresh_token
+from sqlalchemy.exc import IntegrityError
 
 from app.extensions import db
 from app.models.user import User, UserProfile
@@ -51,10 +52,13 @@ def register(data):
         full_name=data['full_name'].strip(),
     )
     db.session.add(user)
-    db.session.flush()  # populate user.id before profile FK insert
-
-    db.session.add(UserProfile(user_id=user.id))
-    db.session.commit()
+    try:
+        db.session.flush()  # populate user.id before profile FK insert
+        db.session.add(UserProfile(user_id=user.id))
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        raise ValueError('EMAIL_TAKEN')
 
     verify_token = _store_redis_token('email_verify', str(user.id), _EMAIL_VERIFY_TTL)
     access_token, refresh_token = _issue_tokens(user)
