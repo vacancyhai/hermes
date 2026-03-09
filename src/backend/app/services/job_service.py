@@ -2,29 +2,49 @@
 Job service — all job-vacancy business logic.
 
 Public API:
-    get_jobs(filters)              — paginated list with optional filters
-    get_job_by_slug(slug)          — public detail view; increments views counter
-    get_job_by_id(job_id)          — admin/staff lookup by UUID
-    create_job(data, created_by)   — create a new vacancy (slug auto-generated)
-    update_job(job_id, data)       — partial update; regenerates slug if title changes
-    delete_job(job_id)             — soft delete (sets status → 'archived')
+    get_jobs(filters: dict) -> dict
+        — paginated list with optional filters
+    
+    get_job_by_slug(slug: str) -> JobVacancy
+        — public detail view; increments views counter via Redis
+    
+    get_job_by_id(job_id: str | UUID) -> JobVacancy
+        — admin/staff lookup by UUID
+    
+    create_job(data: dict, created_by: str) -> JobVacancy
+        — create a new vacancy (slug auto-generated)
+    
+    update_job(job_id: str | UUID, data: dict) -> JobVacancy
+        — partial update; regenerates slug if title changes
+    
+    delete_job(job_id: str | UUID) -> JobVacancy
+        — soft delete (sets status → 'archived')
 
 All functions raise ValueError with a constant from ErrorCode on failure so
 the route layer can map it to the right HTTP status without leaking details.
+
+Redis Resilience:
+    - View counter increments are buffered in Redis with graceful fallback.
+    - If Redis is unavailable, a warning is logged and views are not counted
+      (preferable to flooding PostgreSQL with writes during Redis outage).
 """
 from datetime import datetime, timezone
+from typing import Dict, Optional
 import uuid as _uuid_mod
+import logging
 
 from flask import current_app
 from redis.exceptions import RedisError
 from sqlalchemy import or_, update as sa_update
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.orm import joinedload
 
 from app.extensions import db
 from app.models.job import JobVacancy, UserJobApplication
 from app.utils.constants import ApplicationStatus, ErrorCode, JobStatus
 from app.utils.helpers import paginate, slugify
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------

@@ -28,8 +28,11 @@ Recommended limits (mirrors settings.py constants):
   - Authenticated endpoints: 1000 per minute (RATE_LIMIT_USER_PER_MINUTE)
   - Login / register       : 5 per minute    (RATE_LIMIT_LOGIN_ATTEMPTS)
 """
+import logging
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+
+logger = logging.getLogger(__name__)
 
 
 def _rate_limit_key() -> str:
@@ -52,8 +55,8 @@ def _rate_limit_key() -> str:
         user_id = get_jwt_identity()
         if user_id:
             return f'user:{user_id}'
-    except JWTExtendedException:
-        pass
+    except JWTExtendedException as e:
+        logger.debug(f"Rate limit JWT extraction failed, falling back to IP: {type(e).__name__}")
     return get_remote_address()
 
 

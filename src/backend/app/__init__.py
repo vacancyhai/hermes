@@ -70,6 +70,10 @@ def create_app():
     from app.middleware.request_id import register_request_id
     register_request_id(app)
 
+    # CSRF protection (requires Redis)
+    from app.middleware.csrf import register_csrf_protection
+    register_csrf_protection(app)
+
     # Register blueprints
     from app.routes import auth, jobs, users, notifications, admin, health
     app.register_blueprint(auth.bp)

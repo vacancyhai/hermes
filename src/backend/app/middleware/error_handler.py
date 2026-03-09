@@ -12,10 +12,57 @@ All errors follow the standardized format defined in README.md:
         "request_id": "req_abc123"
     }
 }
+
+Custom Error Classes (for service layer):
+  - ServiceError: base exception with error_code, message, http_status
+  - ValidationError: input validation failed (400)
+  - PermissionError: authorization failed (403)
+  - NotFoundError: resource not found (404)
+  - ConflictError: resource conflict (409)
+  - ExternalServiceError: third-party service failed (503)
 """
+import logging
 from datetime import datetime, timezone
 
 from flask import g, jsonify, request
+
+logger = logging.getLogger(__name__)
+
+
+class ServiceError(Exception):
+    """Base exception for service-layer errors. Automatically converts to JSON response."""
+    def __init__(self, code, message, http_status=500):
+        self.code = code
+        self.message = message
+        self.http_status = http_status
+        super().__init__(message)
+
+
+class ValidationError(ServiceError):
+    def __init__(self, message):
+        super().__init__('VALIDATION_ERROR', message, 400)
+
+
+class PermissionError(ServiceError):
+    def __init__(self, message):
+        super().__init__('FORBIDDEN_PERMISSION_DENIED', message, 403)
+
+
+class NotFoundError(ServiceError):
+    def __init__(self, message):
+        super().__init__('NOT_FOUND', message, 404)
+
+
+class ConflictError(ServiceError):
+    def __init__(self, message):
+        super().__init__('CONFLICT', message, 409)
+
+
+class ExternalServiceError(ServiceError):
+    def __init__(self, service_name, cause=None):
+        msg = f"{service_name} service temporarily unavailable. Please try again later."
+        super().__init__('EXTERNAL_SERVICE_ERROR', msg, 503)
+        self.cause = cause
 
 
 def _error_response(code, message, http_status, details=None):
@@ -35,6 +82,10 @@ def _error_response(code, message, http_status, details=None):
 
 
 def register_error_handlers(app):
+    @app.errorhandler(ServiceError)
+    def handle_service_error(e):
+        return _error_response(e.code, e.message, e.http_status)
+
     @app.errorhandler(400)
     def bad_request(e):
         return _error_response('VALIDATION_ERROR', str(e), 400)
@@ -57,4 +108,5 @@ def register_error_handlers(app):
 
     @app.errorhandler(500)
     def internal_error(e):
+        logger.error(f"Unhandled exception: {e}", exc_info=True)
         return _error_response('SERVER_ERROR', 'An internal server error occurred.', 500)

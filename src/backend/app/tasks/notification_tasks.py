@@ -7,12 +7,21 @@ Tasks defined here:
           Fetches all eligible users, creates in-app Notification rows,
           and sends email alerts via email_service.
 
-    deliver_notification(notification_id)
-        — Sends a single queued notification (email + optional push).
-          Called by send_new_job_notifications but can also be called
-          directly for one-off notifications.
+    deliver_notification_email(notification_id, to_email, ...)
+        — Sends a single email notification.
+          Checks notification.sent_via field for idempotency
+          (skips if email was already sent on retry).
 
-Both tasks retry up to 5 times with exponential backoff on failure.
+Idempotency:
+    - Notification creation is DB-guarded (id is UUID primary key)
+    - Email delivery checks notification.sent_via before sending
+    - Retries up to 5 times with exponential backoff on SMTP failures
+    - Email not resent if notification.sent_via already contains 'email'
+
+Redis + DB Coordination:
+    - Notification created and flushed to DB before email task is enqueued
+    - If email task fails after enqueue but before DB commit, task will
+      retry and skip (idempotent), preventing duplicate emails
 """
 import logging
 
