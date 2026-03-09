@@ -109,6 +109,15 @@ class CreateJobSchema(Schema):
                 field_name='application_end',
             )
 
+        # Exam date range validation
+        exam_start = data.get('exam_start')
+        exam_end = data.get('exam_end')
+        if exam_start and exam_end and exam_end < exam_start:
+            raise ValidationError(
+                'exam_end must be on or after exam_start.',
+                field_name='exam_end',
+            )
+
         sal_min = data.get('salary_initial')
         sal_max = data.get('salary_max')
         if sal_min is not None and sal_max is not None and sal_max < sal_min:

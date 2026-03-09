@@ -41,7 +41,8 @@ logger = logging.getLogger(__name__)
 
 # Pre-computed dummy hash used in login() to ensure bcrypt runs even when
 # the email doesn't exist, preventing timing-based user enumeration.
-_DUMMY_HASH = bcrypt.hashpw(b'dummy-timing-guard', bcrypt.gensalt(rounds=4)).decode()
+# Uses the same default rounds (12) as real passwords to avoid timing leaks.
+_DUMMY_HASH = bcrypt.hashpw(b'dummy-timing-guard', bcrypt.gensalt(rounds=12)).decode()
 
 from app.extensions import db
 from app.models.user import User, UserProfile

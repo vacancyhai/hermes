@@ -122,6 +122,7 @@ def forgot_password():
 
 
 @bp.route('/reset-password', methods=['POST'])
+@limiter.limit('5 per minute')
 def reset_password():
     data, err = _load_json(_reset_schema)
     if err:
