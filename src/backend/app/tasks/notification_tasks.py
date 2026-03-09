@@ -69,6 +69,10 @@ def send_new_job_notifications(self, job_id: str) -> dict:
 
     for user_info in matched_users:
         try:
+            # Flush (don't commit yet) so we can get the notification ID before
+            # enqueueing the email task.  The notification is only committed after
+            # the task is successfully enqueued, preventing orphaned notifications
+            # when the broker is temporarily unavailable.
             notif = create_notification(
                 user_id=user_info["user_id"],
                 notification_type=NotificationType.NEW_JOB,
@@ -81,8 +85,8 @@ def send_new_job_notifications(self, job_id: str) -> dict:
                 entity_id=str(job.id),
                 action_url=action_url,
                 priority="high" if job.is_urgent else "medium",
+                commit=False,  # flush only — commit after email is enqueued
             )
-            created += 1
 
             # Queue the email delivery as a separate task so one failure
             # doesn't abort the entire batch. Pass notification_id so the task
@@ -96,9 +100,13 @@ def send_new_job_notifications(self, job_id: str) -> dict:
                 application_end=app_end,
                 job_url=action_url,
             )
+
+            db.session.commit()  # commit only after task is successfully enqueued
+            created += 1
             emails_queued += 1
 
         except Exception as exc:
+            db.session.rollback()
             logger.error(
                 "send_new_job_notifications: failed for user %s: %s",
                 user_info["user_id"],

@@ -10,6 +10,8 @@ DELETE /api/v1/users/applications/<app_id>     — withdraw            (JWT)
 GET    /api/v1/users                           — list all users      (admin)
 PUT    /api/v1/users/<user_id>/status          — change user status  (admin)
 """
+import uuid
+
 from flask import Blueprint, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
@@ -115,6 +117,8 @@ def apply_to_job():
             return _err(ErrorCode.NOT_FOUND_JOB, 'Job not found or no longer active.', 404)
         if code == ErrorCode.ALREADY_APPLIED:
             return _err(ErrorCode.ALREADY_APPLIED, 'You have already applied to this job.', 409)
+        if code == ErrorCode.JOB_FULL:
+            return _err(ErrorCode.JOB_FULL, 'This job has reached its application limit.', 409)
         return _err(ErrorCode.SERVER_ERROR, 'Could not process application.', 500)
 
     return _ok(_serialize_application(application), 201)
@@ -163,6 +167,9 @@ def list_users():
 @admin_required
 @limiter.limit('30 per minute')
 def update_user_status(user_id):
+    if not _is_valid_uuid(user_id):
+        return _err(ErrorCode.NOT_FOUND_USER, 'User not found.', 404)
+
     if user_id == get_jwt_identity():
         return _err(ErrorCode.FORBIDDEN_OWN_RESOURCE_ONLY, 'Admins cannot modify their own status.', 403)
 
@@ -176,15 +183,42 @@ def update_user_status(user_id):
         code = str(e)
         if code == ErrorCode.NOT_FOUND_USER:
             return _err(ErrorCode.NOT_FOUND_USER, 'User not found.', 404)
-        if code == 'INVALID_STATUS':
+        if code == ErrorCode.VALIDATION_INVALID_FORMAT:
             return _err(ErrorCode.VALIDATION_INVALID_FORMAT, 'Invalid status value.', 400)
         return _err(ErrorCode.SERVER_ERROR, 'Could not update user status.', 500)
+
+    # Compliance: record every admin-initiated status change with full context.
+    try:
+        log = AdminLog(
+            admin_id=get_jwt_identity(),
+            action='update_user_status',
+            resource_type='user',
+            resource_id=uuid.UUID(user_id),
+            changes={'new_status': data['status']},
+            ip_address=request.remote_addr,
+            user_agent=request.headers.get('User-Agent', ''),
+        )
+        db.session.add(log)
+        db.session.commit()
+    except Exception as audit_exc:
+        current_app.logger.error(
+            "update_user_status: audit log failed for user %s: %s", user_id, audit_exc
+        )
+
     return _ok(_serialize_user(user))
 
 
 # ---------------------------------------------------------------------------
 # Private helpers
 # ---------------------------------------------------------------------------
+
+def _is_valid_uuid(value: str) -> bool:
+    try:
+        uuid.UUID(value)
+        return True
+    except (ValueError, AttributeError):
+        return False
+
 
 def _serialize_user(user) -> dict:
     return {
@@ -195,8 +229,8 @@ def _serialize_user(user) -> dict:
         'role': user.role,
         'status': user.status,
         'is_email_verified': user.is_email_verified,
-        'last_login': user.last_login.isoformat() if user.last_login else None,
-        'created_at': user.created_at.isoformat() if user.created_at else None,
+        'last_login': _d(user.last_login),
+        'created_at': _d(user.created_at),
     }
 
 
@@ -204,7 +238,7 @@ def _serialize_profile(user, profile) -> dict:
     return {
         'user': _serialize_user(user),
         'profile': {
-            'date_of_birth': profile.date_of_birth.isoformat() if profile.date_of_birth else None,
+            'date_of_birth': _d(profile.date_of_birth),
             'gender': profile.gender,
             'category': profile.category,
             'is_pwd': profile.is_pwd,
@@ -216,7 +250,7 @@ def _serialize_profile(user, profile) -> dict:
             'education': profile.education,
             'physical_details': profile.physical_details,
             'notification_preferences': profile.notification_preferences,
-            'updated_at': profile.updated_at.isoformat() if profile.updated_at else None,
+            'updated_at': _d(profile.updated_at),
         },
     }
 
@@ -231,5 +265,5 @@ def _serialize_application(application) -> dict:
         'application_number': application.application_number,
         'exam_center': application.exam_center,
         'notes': application.notes,
-        'applied_on': application.applied_on.isoformat() if application.applied_on else None,
+        'applied_on': _d(application.applied_on),
     }

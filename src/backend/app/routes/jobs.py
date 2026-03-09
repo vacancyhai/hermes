@@ -11,7 +11,7 @@ from flask import Blueprint
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from app.middleware.rate_limiter import limiter
-from app.routes._helpers import _err, _flatten, _load_args, _load_json, _ok
+from app.routes._helpers import _d, _err, _flatten, _load_args, _load_json, _ok
 from app.services import job_service
 from app.tasks.notification_tasks import send_new_job_notifications
 from app.utils.constants import ErrorCode, JobStatus
@@ -118,9 +118,6 @@ def delete_job(job_id):
 
 def _serialize_job(job) -> dict:
     """Convert JobVacancy ORM instance to a JSON-safe dict."""
-    def _d(val):
-        return val.isoformat() if val else None
-
     return {
         'id': str(job.id),
         'job_title': job.job_title,

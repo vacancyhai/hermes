@@ -129,6 +129,7 @@ class ErrorCode:
 
     # Conflict (409)
     ALREADY_APPLIED = 'ALREADY_APPLIED'
+    JOB_FULL = 'JOB_FULL'
 
     # Rate Limiting (429)
     RATE_LIMIT_EXCEEDED = 'RATE_LIMIT_EXCEEDED'

@@ -12,6 +12,11 @@ from marshmallow import ValidationError
 from app.utils.constants import ErrorCode
 
 
+def _d(val) -> str | None:
+    """Serialize a date or datetime to ISO-format string, or None if absent."""
+    return val.isoformat() if val else None
+
+
 def _ok(data, status=200, meta=None):
     """Build a success JSON response. meta fields are spread into the top level."""
     body = {'success': True, 'data': data}

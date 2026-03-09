@@ -10,6 +10,7 @@ Note: 'slug' is intentionally absent from Create/UpdateJobSchema.
       the client to prevent arbitrary slug injection.
 """
 from marshmallow import Schema, fields, validate, validates_schema, ValidationError, RAISE
+from datetime import date
 
 from app.utils.constants import JobStatus, JobType, QualificationLevel
 
@@ -88,8 +89,20 @@ class CreateJobSchema(Schema):
 
     @validates_schema
     def validate_date_and_salary_ranges(self, data, **kwargs):
+        today = date.today()
         app_start = data.get('application_start')
         app_end = data.get('application_end')
+
+        if app_start and app_start < today:
+            raise ValidationError(
+                'application_start must not be in the past.',
+                field_name='application_start',
+            )
+        if app_end and app_end < today:
+            raise ValidationError(
+                'application_end must not be in the past.',
+                field_name='application_end',
+            )
         if app_start and app_end and app_end < app_start:
             raise ValidationError(
                 'application_end must be on or after application_start.',
@@ -147,7 +160,7 @@ class JobSearchSchema(Schema):
     featured = fields.Boolean(required=False, load_default=None)
     urgent = fields.Boolean(required=False, load_default=None)
     page = fields.Integer(
-        required=False, load_default=1, validate=validate.Range(min=1),
+        required=False, load_default=1, validate=validate.Range(min=1, max=9999),
     )
     per_page = fields.Integer(
         required=False, load_default=20, validate=validate.Range(min=1, max=100),

@@ -24,7 +24,12 @@ import uuid
 
 from flask import g, request
 
-_REQUEST_ID_RE = re.compile(r'^[a-zA-Z0-9\-]{1,128}$')
+# Accept only canonical UUID4 strings (case-insensitive) to prevent
+# log-confusion attacks via crafted X-Request-ID headers.
+_REQUEST_ID_RE = re.compile(
+    r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+    re.IGNORECASE,
+)
 
 
 def register_request_id(app):

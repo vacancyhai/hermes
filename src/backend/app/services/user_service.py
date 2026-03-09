@@ -117,6 +117,10 @@ def apply_to_job(user_id: str, job_id: str) -> UserJobApplication:
     if not job or job.status != JobStatus.ACTIVE:
         raise ValueError(ErrorCode.NOT_FOUND_JOB)
 
+    # Enforce vacancy quota: reject applications once all slots are filled.
+    if job.total_vacancies is not None and job.applications_count >= job.total_vacancies:
+        raise ValueError(ErrorCode.JOB_FULL)
+
     application = UserJobApplication(user_id=user_id, job_id=job_id)
     db.session.add(application)
 
@@ -182,11 +186,11 @@ def update_user_status(user_id: str, status: str) -> User:
     Change a user's status (active / suspended / deleted).
 
     Raises:
-        ValueError(ErrorCode.NOT_FOUND_USER)     — user not found.
-        ValueError('INVALID_STATUS')             — status not in UserStatus.ALL.
+        ValueError(ErrorCode.NOT_FOUND_USER)             — user not found.
+        ValueError(ErrorCode.VALIDATION_INVALID_FORMAT)  — status not in UserStatus.ALL.
     """
     if status not in UserStatus.ALL:
-        raise ValueError('INVALID_STATUS')
+        raise ValueError(ErrorCode.VALIDATION_INVALID_FORMAT)
 
     user = db.session.get(User, user_id)
     if not user:

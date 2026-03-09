@@ -13,15 +13,17 @@ All functions raise ValueError with a constant from ErrorCode on failure so
 the route layer can map it to the right HTTP status without leaking details.
 """
 from datetime import datetime, timezone
+import uuid as _uuid_mod
 
 from flask import current_app
 from redis.exceptions import RedisError
-from sqlalchemy import or_
+from sqlalchemy import or_, update as sa_update
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import joinedload
 
 from app.extensions import db
-from app.models.job import JobVacancy
-from app.utils.constants import ErrorCode, JobStatus
+from app.models.job import JobVacancy, UserJobApplication
+from app.utils.constants import ApplicationStatus, ErrorCode, JobStatus
 from app.utils.helpers import paginate, slugify
 
 
@@ -37,7 +39,11 @@ def get_jobs(filters: dict) -> dict:
     Only 'active' jobs are ever returned — non-active status values are not
     accepted from the public API (status was removed from JobSearchSchema).
     """
-    query = JobVacancy.query.filter(JobVacancy.status == JobStatus.ACTIVE)
+    query = (
+        JobVacancy.query
+        .options(joinedload(JobVacancy.created_by_user))
+        .filter(JobVacancy.status == JobStatus.ACTIVE)
+    )
 
     if filters.get('job_type'):
         query = query.filter(JobVacancy.job_type == filters['job_type'])
@@ -46,7 +52,8 @@ def get_jobs(filters: dict) -> dict:
         query = query.filter(JobVacancy.qualification_level == filters['qualification_level'])
 
     if filters.get('organization'):
-        query = query.filter(JobVacancy.organization.ilike(f"%{filters['organization']}%"))
+        org = _escape_ilike(filters['organization'])
+        query = query.filter(JobVacancy.organization.ilike(f"%{org}%", escape='\\'))
 
     if filters.get('featured') is True:
         query = query.filter(JobVacancy.is_featured.is_(True))
@@ -55,11 +62,11 @@ def get_jobs(filters: dict) -> dict:
         query = query.filter(JobVacancy.is_urgent.is_(True))
 
     if filters.get('q'):
-        term = f"%{filters['q']}%"
+        term = f"%{_escape_ilike(filters['q'])}%"
         query = query.filter(or_(
-            JobVacancy.job_title.ilike(term),
-            JobVacancy.organization.ilike(term),
-            JobVacancy.short_description.ilike(term),
+            JobVacancy.job_title.ilike(term, escape='\\'),
+            JobVacancy.organization.ilike(term, escape='\\'),
+            JobVacancy.short_description.ilike(term, escape='\\'),
         ))
 
     query = query.order_by(JobVacancy.priority.desc(), JobVacancy.created_at.desc())
@@ -170,14 +177,10 @@ def create_job(data: dict, created_by: str) -> JobVacancy:
         db.session.commit()
     except IntegrityError:
         db.session.rollback()
-        # Concurrent insert took the slug — pick the next available suffix.
-        job.slug = _unique_slug(base_slug)
+        # Concurrent insert took the slug — use a UUID suffix for guaranteed uniqueness.
+        job.slug = _unique_slug_fallback(base_slug)
         db.session.add(job)
-        try:
-            db.session.commit()
-        except IntegrityError:
-            db.session.rollback()
-            raise ValueError(ErrorCode.SERVER_ERROR)
+        db.session.commit()
     return job
 
 
@@ -225,11 +228,24 @@ def delete_job(job_id: str) -> None:
     """
     Soft-delete a job by setting its status to 'archived'.
 
+    Also cascades to close all pending applications so users no longer see
+    open applications against an archived vacancy.
+
     Raises:
         ValueError(ErrorCode.NOT_FOUND_JOB) if job does not exist.
     """
     job = get_job_by_id(job_id)
     job.status = JobStatus.ARCHIVED
+    # Close all pending applications — prevents users from seeing ghost-open
+    # applications against a vacancy that no longer accepts them.
+    db.session.execute(
+        sa_update(UserJobApplication)
+        .where(
+            UserJobApplication.job_id == job.id,
+            UserJobApplication.status == ApplicationStatus.APPLIED,
+        )
+        .values(status=ApplicationStatus.REJECTED)
+    )
     db.session.commit()
 
 
@@ -240,29 +256,34 @@ def delete_job(job_id: str) -> None:
 _MAX_SLUG_ATTEMPTS = 50
 
 
+def _escape_ilike(value: str) -> str:
+    """Escape ILIKE wildcard characters so user input is treated as literal text."""
+    return value.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')
+
+
 def _unique_slug(base_slug: str, exclude_id=None) -> str:
     """
-    Return a slug that does not already exist in job_vacancies.
+    Return a candidate slug for a new or updated job.
 
-    If base_slug is taken, appends '-2', '-3', etc. until unique.
-    Raises RuntimeError if no unique slug is found within _MAX_SLUG_ATTEMPTS.
-    exclude_id: UUID of the job being updated — its own slug is not treated as
-    a conflict, preventing a no-op update from incrementing the suffix.
+    For creates (exclude_id is None): returns the base slug without any DB
+    lookup — the DB unique constraint is the true uniqueness guard.  The caller
+    must catch IntegrityError and retry with _unique_slug_fallback().
+
+    For updates (exclude_id set): performs a single point-lookup to detect
+    conflicts with *other* jobs and returns a UUID-suffixed slug when one is
+    found, avoiding an unnecessary suffix on a no-op title update.
     """
     slug = base_slug or 'job'
+    if exclude_id:
+        conflict = JobVacancy.query.filter(
+            JobVacancy.slug == slug,
+            JobVacancy.id != exclude_id,
+        ).first()
+        if conflict:
+            slug = _unique_slug_fallback(slug)
+    return slug
 
-    def _taken(candidate):
-        q = JobVacancy.query.filter_by(slug=candidate)
-        if exclude_id:
-            q = q.filter(JobVacancy.id != exclude_id)
-        return q.first() is not None
 
-    if not _taken(slug):
-        return slug
-
-    for counter in range(2, _MAX_SLUG_ATTEMPTS + 2):
-        candidate = f'{slug}-{counter}'
-        if not _taken(candidate):
-            return candidate
-
-    raise RuntimeError(f"Could not generate a unique slug for base '{base_slug}' after {_MAX_SLUG_ATTEMPTS} attempts")
+def _unique_slug_fallback(base_slug: str) -> str:
+    """Return a slug suffixed with an 8-hex UUID fragment; effectively collision-free."""
+    return f"{base_slug or 'job'}-{_uuid_mod.uuid4().hex[:8]}"

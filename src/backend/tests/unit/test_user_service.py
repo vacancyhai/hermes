@@ -258,9 +258,10 @@ class TestUpdateUserStatus:
 
     def test_raises_invalid_status_for_unknown_value(self):
         from app.services import user_service
+        from app.utils.constants import ErrorCode
         with pytest.raises(ValueError) as exc:
             user_service.update_user_status('uid', 'banned')
-        assert str(exc.value) == 'INVALID_STATUS'
+        assert str(exc.value) == ErrorCode.VALIDATION_INVALID_FORMAT
 
     def test_raises_not_found_for_missing_user(self):
         from app.services import user_service

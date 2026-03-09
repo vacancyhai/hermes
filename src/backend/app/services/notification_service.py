@@ -14,6 +14,7 @@ All functions raise ValueError on bad input so the route layer can map
 to the correct HTTP status without leaking internals.
 """
 from datetime import datetime, timezone
+import logging
 from uuid import UUID
 
 from app.extensions import db
@@ -36,9 +37,14 @@ def create_notification(
     entity_id: str = None,
     action_url: str = None,
     priority: str = "medium",
+    commit: bool = True,
 ) -> Notification:
     """
     Insert a new notification row for `user_id`.
+
+    When commit=False the row is flushed (ID assigned) but the transaction is
+    left open so the caller can enqueue dependent tasks before committing.
+    This prevents orphaned notifications when broker enqueue fails after commit.
 
     Returns the saved Notification instance.
     """
@@ -60,7 +66,10 @@ def create_notification(
         priority=priority,
     )
     db.session.add(notif)
-    db.session.commit()
+    if commit:
+        db.session.commit()
+    else:
+        db.session.flush()  # assigns the primary key without committing
     return notif
 
 
@@ -138,6 +147,10 @@ def get_unread_count(user_id: str) -> int:
 # ---------------------------------------------------------------------------
 
 _MATCH_CHUNK_SIZE = 500
+# Safety cap: with 500 users/chunk this covers 100 000 users per notification run.
+_MAX_MATCH_PAGES = 200
+
+_logger = logging.getLogger(__name__)
 
 
 def match_job_to_users(job) -> list[dict]:
@@ -166,7 +179,15 @@ def match_job_to_users(job) -> list[dict]:
     job_type = getattr(job, "job_type", None)
 
     offset = 0
+    pages_fetched = 0
     while True:
+        if pages_fetched >= _MAX_MATCH_PAGES:
+            _logger.warning(
+                "match_job_to_users: page limit (%d) reached for job %s; "
+                "stopping after ~%d users matched.",
+                _MAX_MATCH_PAGES, getattr(job, 'id', '?'), len(eligible),
+            )
+            break
         rows = (
             db.session.query(User, UserProfile)
             .join(UserProfile, UserProfile.user_id == User.id)
@@ -203,6 +224,7 @@ def match_job_to_users(job) -> list[dict]:
                 "full_name": user.full_name,
             })
 
+        pages_fetched += 1
         offset += len(rows)
 
     return eligible

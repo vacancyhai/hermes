@@ -60,6 +60,8 @@ class JobVacancy(db.Model):
     updated_at = db.Column(db.DateTime(timezone=True), nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     applications = db.relationship('UserJobApplication', back_populates='job', cascade='all, delete-orphan')
+    # Relationship to the user who created this job; used for eager loading to avoid N+1 queries.
+    created_by_user = db.relationship('User', foreign_keys=[created_by])
 
     def __repr__(self):
         return f'<JobVacancy {self.job_title}>'
