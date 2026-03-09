@@ -7,7 +7,7 @@ POST   /api/v1/jobs              — create job (operator / admin)
 PUT    /api/v1/jobs/<job_id>     — update job (operator / admin)
 DELETE /api/v1/jobs/<job_id>     — soft delete job (admin only)
 """
-from flask import Blueprint, jsonify
+from flask import Blueprint
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from app.middleware.rate_limiter import limiter
@@ -83,6 +83,7 @@ def create_job():
 @bp.route('/<job_id>', methods=['PUT'])
 @jwt_required()
 @operator_required
+@limiter.limit('60 per minute')
 def update_job(job_id):
     data, err = _load_json(_update_schema)
     if err:
@@ -156,7 +157,6 @@ def _serialize_job(job) -> dict:
         'priority': job.priority,
         'views': job.views,
         'applications_count': job.applications_count,
-        'created_by': str(job.created_by) if job.created_by else None,
         'published_at': _d(job.published_at),
         'created_at': _d(job.created_at),
         'updated_at': _d(job.updated_at),

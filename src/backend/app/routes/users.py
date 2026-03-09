@@ -3,6 +3,7 @@ User Profile & Application Routes
 
 GET    /api/v1/users/profile                   — get own profile     (JWT)
 PUT    /api/v1/users/profile                   — update own profile  (JWT)
+PUT    /api/v1/users/profile/phone             — update phone number (JWT)
 GET    /api/v1/users/applications              — list own apps       (JWT, paginated)
 POST   /api/v1/users/applications              — apply to a job      (JWT)
 DELETE /api/v1/users/applications/<app_id>     — withdraw            (JWT)
@@ -16,11 +17,12 @@ from app.routes._helpers import _err, _flatten, _load_json, _ok
 from app.services import user_service
 from app.utils.constants import ErrorCode
 from app.utils.decorators import admin_required
-from app.validators.user_validator import ApplyToJobSchema, UpdateProfileSchema, UpdateUserStatusSchema
+from app.validators.user_validator import ApplyToJobSchema, UpdatePhoneSchema, UpdateProfileSchema, UpdateUserStatusSchema
 
 bp = Blueprint('users', __name__, url_prefix='/api/v1/users')
 
 _profile_schema = UpdateProfileSchema()
+_phone_schema = UpdatePhoneSchema()
 _apply_schema = ApplyToJobSchema()
 _update_status_schema = UpdateUserStatusSchema()
 
@@ -51,6 +53,20 @@ def update_profile():
     except ValueError:
         return _err(ErrorCode.NOT_FOUND_USER, 'User not found.', 404)
     return _ok(_serialize_profile(user, profile))
+
+
+@bp.route('/profile/phone', methods=['PUT'])
+@jwt_required()
+def update_phone():
+    data, err = _load_json(_phone_schema)
+    if err:
+        return err
+
+    try:
+        user = user_service.update_phone(get_jwt_identity(), data['phone'])
+    except ValueError:
+        return _err(ErrorCode.NOT_FOUND_USER, 'User not found.', 404)
+    return _ok(_serialize_user(user))
 
 
 # ---------------------------------------------------------------------------
@@ -194,15 +210,15 @@ def _serialize_profile(user, profile) -> dict:
     }
 
 
-def _serialize_application(app) -> dict:
+def _serialize_application(application) -> dict:
     return {
-        'id': str(app.id),
-        'user_id': str(app.user_id),
-        'job_id': str(app.job_id),
-        'status': app.status,
-        'is_priority': app.is_priority,
-        'application_number': app.application_number,
-        'exam_center': app.exam_center,
-        'notes': app.notes,
-        'applied_on': app.applied_on.isoformat() if app.applied_on else None,
+        'id': str(application.id),
+        'user_id': str(application.user_id),
+        'job_id': str(application.job_id),
+        'status': application.status,
+        'is_priority': application.is_priority,
+        'application_number': application.application_number,
+        'exam_center': application.exam_center,
+        'notes': application.notes,
+        'applied_on': application.applied_on.isoformat() if application.applied_on else None,
     }

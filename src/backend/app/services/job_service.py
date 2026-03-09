@@ -16,6 +16,7 @@ from datetime import datetime, timezone
 
 from flask import current_app
 from redis.exceptions import RedisError
+from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
 
 from app.extensions import db
@@ -33,15 +34,10 @@ def get_jobs(filters: dict) -> dict:
     Return a paginate() dict for the job list.
 
     filters is the already-validated output from JobSearchSchema.load().
-    Public callers always see only 'active' jobs unless an explicit status
-    filter is supplied (staff can pass status='draft' etc.).
+    Only 'active' jobs are ever returned — non-active status values are not
+    accepted from the public API (status was removed from JobSearchSchema).
     """
-    from sqlalchemy import or_
-
-    query = JobVacancy.query
-
-    status = filters.get('status')
-    query = query.filter(JobVacancy.status == (status if status else JobStatus.ACTIVE))
+    query = JobVacancy.query.filter(JobVacancy.status == JobStatus.ACTIVE)
 
     if filters.get('job_type'):
         query = query.filter(JobVacancy.job_type == filters['job_type'])
@@ -60,13 +56,11 @@ def get_jobs(filters: dict) -> dict:
 
     if filters.get('q'):
         term = f"%{filters['q']}%"
-        query = query.filter(
-            or_(
-                JobVacancy.job_title.ilike(term),
-                JobVacancy.organization.ilike(term),
-                JobVacancy.short_description.ilike(term),
-            )
-        )
+        query = query.filter(or_(
+            JobVacancy.job_title.ilike(term),
+            JobVacancy.organization.ilike(term),
+            JobVacancy.short_description.ilike(term),
+        ))
 
     query = query.order_by(JobVacancy.priority.desc(), JobVacancy.created_at.desc())
     per_page = min(filters.get('per_page', 20), 100)

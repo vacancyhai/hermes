@@ -15,14 +15,14 @@ from datetime import datetime, timezone
 
 import bcrypt
 from flask import current_app
+from flask_jwt_extended import create_access_token, create_refresh_token
+from sqlalchemy.exc import IntegrityError
 
 logger = logging.getLogger(__name__)
 
 # Pre-computed dummy hash used in login() to ensure bcrypt runs even when
 # the email doesn't exist, preventing timing-based user enumeration.
 _DUMMY_HASH = bcrypt.hashpw(b'dummy-timing-guard', bcrypt.gensalt(rounds=4)).decode()
-from flask_jwt_extended import create_access_token, create_refresh_token
-from sqlalchemy.exc import IntegrityError
 
 from app.extensions import db
 from app.models.user import User, UserProfile
@@ -74,10 +74,10 @@ def register(data):
 
 def login(email, password):
     """
-    Verify credentials and return a fresh token pair.
+    Verify credentials and return the user plus a fresh token pair.
 
     Returns:
-        tuple: (access_token, refresh_token)
+        tuple: (user, access_token, refresh_token)
 
     Raises:
         ValueError('INVALID_CREDENTIALS') on bad email/password.
@@ -100,7 +100,8 @@ def login(email, password):
     db.session.commit()
     logger.info("login: success user_id=%s", user.id)
 
-    return _issue_tokens(user)
+    access_token, refresh_token = _issue_tokens(user)
+    return user, access_token, refresh_token
 
 
 def logout(jti):

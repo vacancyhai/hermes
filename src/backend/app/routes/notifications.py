@@ -117,4 +117,3 @@ def _serialize(notif) -> dict:
         'read_at': notif.read_at.isoformat() if notif.read_at else None,
     }
 
-

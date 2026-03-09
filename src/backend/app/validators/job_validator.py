@@ -144,11 +144,6 @@ class JobSearchSchema(Schema):
         load_default=None,
         validate=validate.OneOf(JobType.ALL, error='Invalid job_type.'),
     )
-    status = fields.String(
-        required=False,
-        load_default=None,
-        validate=validate.OneOf(JobStatus.ALL, error='Invalid status.'),
-    )
     featured = fields.Boolean(required=False, load_default=None)
     urgent = fields.Boolean(required=False, load_default=None)
     page = fields.Integer(

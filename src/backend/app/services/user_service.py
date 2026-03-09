@@ -47,6 +47,22 @@ def get_profile(user_id: str) -> tuple:
     return user, user.profile
 
 
+def update_phone(user_id: str, phone: str) -> User:
+    """
+    Update the phone number on the User row.
+
+    Raises:
+        ValueError(ErrorCode.NOT_FOUND_USER) if user doesn't exist.
+    """
+    user = db.session.get(User, user_id)
+    if not user or user.status in UserStatus.INACTIVE:
+        raise ValueError(ErrorCode.NOT_FOUND_USER)
+
+    user.phone = phone
+    db.session.commit()
+    return user
+
+
 def update_profile(user_id: str, data: dict) -> tuple:
     """
     Apply non-None fields from UpdateProfileSchema output to UserProfile.
