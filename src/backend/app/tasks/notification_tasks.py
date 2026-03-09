@@ -146,6 +146,9 @@ def deliver_notification_email(
     Checks the notification's sent_via field before sending to ensure
     idempotency — if this task retries after a partial success, the email
     is not sent a second time.
+    
+    Also skips if the user has already read the notification (no point
+    sending an email about something they've already seen).
 
     Retries up to 5 times with exponential backoff on SMTP failure.
     """
@@ -157,6 +160,11 @@ def deliver_notification_email(
     notif = db.session.get(Notification, notification_id)
     if notif and notif.sent_via and 'email' in (notif.sent_via or []):
         logger.info("deliver_notification_email: already sent to %s, skipping", to_email)
+        return
+    
+    # Skip if user has already read the notification
+    if notif and notif.is_read:
+        logger.info("deliver_notification_email: notification already read, skipping email to %s", to_email)
         return
 
     try:

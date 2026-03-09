@@ -22,6 +22,17 @@ celery_app.conf.update(
     timezone=os.getenv('CELERY_TIMEZONE', 'UTC'),
     enable_utc=True,
     task_track_started=True,
+    # Task reliability — prevent data loss
+    task_acks_late=True,  # Acknowledge only after successful completion
+    task_reject_on_worker_lost=True,  # Re-queue if worker dies
+    worker_prefetch_multiplier=1,  # Fetch one task at a time (fair distribution)
+    # Result expiration — prevent Redis from filling up
+    result_expires=3600,  # Results cleaned up after 1 hour
+    # Deadletter queue — capture permanently failed tasks
+    task_protocol=2,  # Required for exchange routing
+    # Enable task events for monitoring (Flower, custom dashboards)
+    worker_send_task_events=True,
+    task_send_sent_event=True,
     # Celery Beat periodic schedule
     beat_schedule={
         # Deadline reminders — daily at 08:00 UTC

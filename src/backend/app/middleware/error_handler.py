@@ -106,6 +106,27 @@ def register_error_handlers(app):
     def rate_limit_exceeded(e):
         return _error_response('RATE_LIMIT_EXCEEDED', str(e), 429)
 
+    # Database errors
+    from sqlalchemy.exc import IntegrityError, OperationalError
+    
+    @app.errorhandler(IntegrityError)
+    def handle_integrity_error(e):
+        logger.warning(f"Database integrity error: {e}")
+        return _error_response('CONFLICT', 'Resource already exists or constraint violation.', 409)
+    
+    @app.errorhandler(OperationalError)
+    def handle_operational_error(e):
+        logger.error(f"Database operational error: {e}", exc_info=True)
+        return _error_response('SERVICE_UNAVAILABLE', 'Database temporarily unavailable.', 503)
+    
+    # Redis errors
+    from redis.exceptions import RedisError
+    
+    @app.errorhandler(RedisError)
+    def handle_redis_error(e):
+        logger.error(f"Redis error: {e}", exc_info=True)
+        return _error_response('SERVICE_UNAVAILABLE', 'Cache service temporarily unavailable.', 503)
+
     @app.errorhandler(500)
     def internal_error(e):
         logger.error(f"Unhandled exception: {e}", exc_info=True)

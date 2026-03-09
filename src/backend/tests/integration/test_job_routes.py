@@ -55,6 +55,7 @@ def _mock_job(**kwargs):
     job.published_at = None
     job.created_at = None
     job.updated_at = None
+    job.version = 1
     return job
 
 
@@ -130,14 +131,14 @@ class TestGetJob:
         assert data['slug'] == 'ssc-cgl-2024'
 
     def test_returns_404_for_missing_slug(self, client):
-        from app.utils.constants import ErrorCode
+        from app.middleware.error_handler import NotFoundError
 
         with patch('app.routes.jobs.job_service.get_job_by_slug',
-                   side_effect=ValueError(ErrorCode.NOT_FOUND_JOB)):
+                   side_effect=NotFoundError("Job not found")):
             resp = client.get('/api/v1/jobs/no-such-slug')
 
         assert resp.status_code == 404
-        assert resp.get_json()['error']['code'] == ErrorCode.NOT_FOUND_JOB
+        assert resp.get_json()['error']['code'] == 'NOT_FOUND'
 
 
 # ---------------------------------------------------------------------------
@@ -219,11 +220,11 @@ class TestUpdateJob:
         assert resp.status_code == 200
 
     def test_not_found_returns_404(self, client, access_token_for):
-        from app.utils.constants import ErrorCode
+        from app.middleware.error_handler import NotFoundError
         headers = {'Authorization': f'Bearer {access_token_for(role="admin")}'}
 
         with patch('app.routes.jobs.job_service.update_job',
-                   side_effect=ValueError(ErrorCode.NOT_FOUND_JOB)):
+                   side_effect=NotFoundError("Job not found")):
             resp = client.put(f'/api/v1/jobs/{uuid.uuid4()}',
                               json={'status': 'closed'}, headers=headers)
 
@@ -234,6 +235,20 @@ class TestUpdateJob:
         resp = client.put(f'/api/v1/jobs/{uuid.uuid4()}',
                           json={'status': 'closed'}, headers=headers)
         assert resp.status_code == 403
+
+    def test_version_conflict_returns_409(self, client, access_token_for):
+        from app.middleware.error_handler import ConflictError
+        job = _mock_job()
+        job_id = str(job.id)
+        headers = {'Authorization': f'Bearer {access_token_for(role="admin")}'}
+
+        with patch('app.routes.jobs.job_service.update_job',
+                   side_effect=ConflictError("Job was modified by another user")):
+            resp = client.put(f'/api/v1/jobs/{job_id}',
+                              json={'status': 'closed', 'version': 1}, headers=headers)
+
+        assert resp.status_code == 409
+        assert 'modified by another user' in resp.get_json()['error']['message']
 
 
 # ---------------------------------------------------------------------------
@@ -256,11 +271,11 @@ class TestDeleteJob:
         assert resp.status_code == 403
 
     def test_not_found_returns_404(self, client, access_token_for):
-        from app.utils.constants import ErrorCode
+        from app.middleware.error_handler import NotFoundError
         headers = {'Authorization': f'Bearer {access_token_for(role="admin")}'}
 
         with patch('app.routes.jobs.job_service.delete_job',
-                   side_effect=ValueError(ErrorCode.NOT_FOUND_JOB)):
+                   side_effect=NotFoundError("Job not found")):
             resp = client.delete(f'/api/v1/jobs/{uuid.uuid4()}', headers=headers)
 
         assert resp.status_code == 404

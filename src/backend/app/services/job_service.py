@@ -20,8 +20,8 @@ Public API:
     delete_job(job_id: str | UUID) -> JobVacancy
         — soft delete (sets status → 'archived')
 
-All functions raise ValueError with a constant from ErrorCode on failure so
-the route layer can map it to the right HTTP status without leaking details.
+All functions raise custom exceptions (NotFoundError, ConflictError, etc.) which
+are automatically converted to appropriate HTTP responses by the error handler middleware.
 
 Redis Resilience:
     - View counter increments are buffered in Redis with graceful fallback.
@@ -40,9 +40,11 @@ from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.orm import joinedload
 
 from app.extensions import db
+from app.middleware.error_handler import NotFoundError, ConflictError, ExternalServiceError
 from app.models.job import JobVacancy, UserJobApplication
 from app.utils.constants import ApplicationStatus, ErrorCode, JobStatus
 from app.utils.helpers import paginate, slugify
+from app.utils.db_helpers import get_or_raise
 
 logger = logging.getLogger(__name__)
 
@@ -102,11 +104,11 @@ def get_job_by_slug(slug: str) -> JobVacancy:
     periodically flushed to PostgreSQL by views_flush_task.flush_job_views.
 
     Raises:
-        ValueError(ErrorCode.NOT_FOUND_JOB) if not found or not active.
+        NotFoundError: if not found or not active.
     """
     job = JobVacancy.query.filter_by(slug=slug, status=JobStatus.ACTIVE).first()
     if not job:
-        raise ValueError(ErrorCode.NOT_FOUND_JOB)
+        raise NotFoundError("Job not found")
 
     # Buffer view increment in Redis; flush task writes deltas to DB in bulk.
     try:
@@ -124,11 +126,11 @@ def get_job_by_id(job_id: str) -> JobVacancy:
     Fetch a job by UUID regardless of status (used by admin/staff routes).
 
     Raises:
-        ValueError(ErrorCode.NOT_FOUND_JOB) if not found.
+        NotFoundError: if not found.
     """
     job = db.session.get(JobVacancy, job_id)
     if not job:
-        raise ValueError(ErrorCode.NOT_FOUND_JOB)
+        raise NotFoundError("Job not found")
     return job
 
 
@@ -210,11 +212,24 @@ def update_job(job_id: str, data: dict) -> JobVacancy:
 
     Only non-None values from UpdateJobSchema are applied.
     Slug is regenerated when job_title is provided.
+    Version is incremented by 1 on every successful update.
+
+    If the request includes a 'version' field and it doesn't match the current
+    database version, raises ConflictError (optimistic locking).
 
     Raises:
-        ValueError(ErrorCode.NOT_FOUND_JOB) if job does not exist.
+        NotFoundError: if job does not exist.
+        ConflictError: if versions don't match (concurrent edit detected).
     """
     job = get_job_by_id(job_id)
+
+    # Optimistic locking: if version is provided in request, verify it matches
+    request_version = data.get('version')
+    if request_version is not None and request_version != job.version:
+        raise ConflictError(
+            f"Job was modified by another user. Current version: {job.version}, "
+            f"expected: {request_version}. Please reload and try again."
+        )
 
     # Regenerate slug if title is being changed
     if data.get('job_title') and data['job_title'] != job.job_title:
@@ -239,6 +254,9 @@ def update_job(job_id: str, data: dict) -> JobVacancy:
     # Set published_at if the job is being activated for the first time
     if data.get('status') == JobStatus.ACTIVE and job.published_at is None:
         job.published_at = datetime.now(timezone.utc)
+
+    # Increment version for optimistic locking
+    job.version += 1
 
     db.session.commit()
     return job

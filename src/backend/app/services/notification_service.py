@@ -10,14 +10,15 @@ Public API:
     match_job_to_users(job)                                  — returns list of (user_id, notification payload)
                                                                used by notification_tasks
 
-All functions raise ValueError on bad input so the route layer can map
-to the correct HTTP status without leaking internals.
+All functions raise custom exceptions (NotFoundError, ValidationError, etc.)
+which are automatically converted to appropriate HTTP responses by the error handler middleware.
 """
 from datetime import datetime, timezone
 import logging
 from uuid import UUID
 
 from app.extensions import db
+from app.middleware.error_handler import NotFoundError, ValidationError
 from app.models.notification import Notification
 from app.models.user import User, UserProfile
 from app.utils.constants import ErrorCode, NotificationType
@@ -53,7 +54,7 @@ def create_notification(
         try:
             entity_uuid = UUID(entity_id)
         except ValueError:
-            raise ValueError(f"Invalid entity_id: {entity_id!r} is not a valid UUID")
+            raise ValidationError(f"Invalid entity ID format")
 
     notif = Notification(
         user_id=user_id,

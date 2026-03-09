@@ -37,6 +37,8 @@ from flask_jwt_extended import create_access_token, create_refresh_token
 from sqlalchemy.exc import IntegrityError, OperationalError
 import redis.exceptions
 
+from app.middleware.error_handler import ConflictError, ValidationError, NotFoundError, ExternalServiceError
+
 logger = logging.getLogger(__name__)
 
 # Pre-computed dummy hash used in login() to ensure bcrypt runs even when
@@ -68,7 +70,7 @@ def register(data):
     email = data['email'].lower().strip()
 
     if User.query.filter_by(email=email).first():
-        raise ValueError('EMAIL_TAKEN')
+        raise ConflictError("Email already registered")
 
     rounds = current_app.config.get('BCRYPT_LOG_ROUNDS', 12)
     pw_hash = bcrypt.hashpw(data['password'].encode(), bcrypt.gensalt(rounds=rounds)).decode()
@@ -85,7 +87,7 @@ def register(data):
         db.session.commit()
     except IntegrityError:
         db.session.rollback()
-        raise ValueError('EMAIL_TAKEN')
+        raise ConflictError("Email already registered")
 
     verify_token = _store_redis_token('email_verify', str(user.id), _EMAIL_VERIFY_TTL)
     access_token, refresh_token = _issue_tokens(user)
@@ -111,10 +113,10 @@ def login(email, password):
 
     if not user or not password_ok:
         logger.warning("login: failed attempt for email=%s", email.lower().strip())
-        raise ValueError('INVALID_CREDENTIALS')
+        raise ValidationError("Invalid email or password")
 
     if user.status != 'active':
-        raise ValueError('ACCOUNT_SUSPENDED')
+        raise ValidationError("Account is suspended or inactive")
 
     user.last_login = datetime.now(timezone.utc)
     db.session.commit()
@@ -168,7 +170,7 @@ def refresh(user_id: str, old_jti: str) -> Tuple[str, str]:
     user = db.session.get(User, user_id)
     if not user or user.status != 'active':
         logger.warning(f"refresh: User not found or suspended: {user_id}")
-        raise ValueError('USER_NOT_FOUND')
+        raise NotFoundError("User not found or inactive")
 
     try:
         ttl = int(current_app.config['JWT_REFRESH_TOKEN_EXPIRES'].total_seconds())
@@ -233,12 +235,12 @@ def reset_password(token: str, new_password: str) -> User:
     user_id = current_app.redis.get(f'pwd_reset:{token}')
     if not user_id:
         logger.warning(f"reset_password: Invalid or expired token")
-        raise ValueError('INVALID_OR_EXPIRED_TOKEN')
+        raise ValidationError("Reset token is invalid or has expired")
 
     user = db.session.get(User, user_id)
     if not user:
         logger.error(f"reset_password: User {user_id} not found (token was valid)")
-        raise ValueError('INVALID_OR_EXPIRED_TOKEN')
+        raise ValidationError("Reset token is invalid or has expired")
 
     try:
         rounds = current_app.config.get('BCRYPT_LOG_ROUNDS', 12)
@@ -271,12 +273,12 @@ def verify_email(token: str) -> User:
     user_id = current_app.redis.get(f'email_verify:{token}')
     if not user_id:
         logger.warning(f"verify_email: Invalid or expired token")
-        raise ValueError('INVALID_OR_EXPIRED_TOKEN')
+        raise ValidationError("Verification token is invalid or has expired")
 
     user = db.session.get(User, user_id)
     if not user:
         logger.error(f"verify_email: User {user_id} not found (token was valid)")
-        raise ValueError('INVALID_OR_EXPIRED_TOKEN')
+        raise ValidationError("Verification token is invalid or has expired")
 
     user.is_email_verified = True
     db.session.commit()

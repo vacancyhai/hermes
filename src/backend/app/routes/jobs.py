@@ -51,10 +51,7 @@ def list_jobs():
 @bp.route('/<slug>', methods=['GET'])
 @limiter.limit('200 per minute')
 def get_job(slug):
-    try:
-        job = job_service.get_job_by_slug(slug)
-    except ValueError:
-        return _err(ErrorCode.NOT_FOUND_JOB, 'Job not found.', 404)
+    job = job_service.get_job_by_slug(slug)
     return _ok(_serialize_job(job))
 
 
@@ -89,10 +86,7 @@ def update_job(job_id):
     if err:
         return err
 
-    try:
-        job = job_service.update_job(job_id, data)
-    except ValueError:
-        return _err(ErrorCode.NOT_FOUND_JOB, 'Job not found.', 404)
+    job = job_service.update_job(job_id, data)
     return _ok(_serialize_job(job))
 
 
@@ -158,4 +152,5 @@ def _serialize_job(job) -> dict:
         'published_at': _d(job.published_at),
         'created_at': _d(job.created_at),
         'updated_at': _d(job.updated_at),
+        'version': job.version,
     }

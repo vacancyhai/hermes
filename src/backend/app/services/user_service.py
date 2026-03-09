@@ -10,13 +10,14 @@ Public API:
     get_all_users(page, per_page)           — admin: paginated user list
     update_user_status(user_id, status)     — admin: change user status
 
-All functions raise ValueError with an ErrorCode constant on failure so the
-route layer can map it cleanly to the right HTTP status without leaking details.
+All functions raise custom exceptions (NotFoundError, ConflictError, etc.)
+which are automatically converted to appropriate HTTP responses by the error handler middleware.
 """
 from sqlalchemy import update as sa_update
 from sqlalchemy.exc import IntegrityError
 
 from app.extensions import db
+from app.middleware.error_handler import NotFoundError, ConflictError, ValidationError
 from app.models.job import JobVacancy, UserJobApplication
 from app.models.user import User, UserProfile
 from app.utils.constants import ApplicationStatus, ErrorCode, JobStatus, UserStatus
@@ -32,11 +33,11 @@ def get_profile(user_id: str) -> tuple:
     Return (User, UserProfile) for the given user_id.
 
     Raises:
-        ValueError(ErrorCode.NOT_FOUND_USER) if user doesn't exist or is inactive.
+        NotFoundError: if user doesn't exist or is inactive.
     """
     user = db.session.get(User, user_id)
     if not user or user.status in UserStatus.INACTIVE:
-        raise ValueError(ErrorCode.NOT_FOUND_USER)
+        raise NotFoundError("User not found or inactive")
 
     # Profile is always created at registration; guard in case it's missing.
     if not user.profile:
@@ -52,11 +53,11 @@ def update_phone(user_id: str, phone: str) -> User:
     Update the phone number on the User row.
 
     Raises:
-        ValueError(ErrorCode.NOT_FOUND_USER) if user doesn't exist.
+        NotFoundError: if user doesn't exist.
     """
     user = db.session.get(User, user_id)
     if not user or user.status in UserStatus.INACTIVE:
-        raise ValueError(ErrorCode.NOT_FOUND_USER)
+        raise NotFoundError("User not found or inactive")
 
     user.phone = phone
     db.session.commit()
@@ -115,11 +116,11 @@ def apply_to_job(user_id: str, job_id: str) -> UserJobApplication:
     """
     job = db.session.get(JobVacancy, job_id)
     if not job or job.status != JobStatus.ACTIVE:
-        raise ValueError(ErrorCode.NOT_FOUND_JOB)
+        raise NotFoundError("Job not found or inactive")
 
     # Enforce vacancy quota: reject applications once all slots are filled.
     if job.total_vacancies is not None and job.applications_count >= job.total_vacancies:
-        raise ValueError(ErrorCode.JOB_FULL)
+        raise ConflictError("All vacancies for this job have been filled")
 
     application = UserJobApplication(user_id=user_id, job_id=job_id)
     db.session.add(application)
@@ -134,7 +135,7 @@ def apply_to_job(user_id: str, job_id: str) -> UserJobApplication:
         db.session.commit()
     except IntegrityError:
         db.session.rollback()
-        raise ValueError(ErrorCode.ALREADY_APPLIED)
+        raise ConflictError("You have already applied for this job")
     return application
 
 
@@ -152,7 +153,7 @@ def withdraw_application(user_id: str, app_id: str) -> UserJobApplication:
         id=app_id, user_id=user_id
     ).first()
     if not application:
-        raise ValueError(ErrorCode.NOT_FOUND_APPLICATION)
+        raise NotFoundError("Application not found or does not belong to you")
 
     if application.status != ApplicationStatus.WITHDRAWN:
         application.status = ApplicationStatus.WITHDRAWN
@@ -186,15 +187,15 @@ def update_user_status(user_id: str, status: str) -> User:
     Change a user's status (active / suspended / deleted).
 
     Raises:
-        ValueError(ErrorCode.NOT_FOUND_USER)             — user not found.
-        ValueError(ErrorCode.VALIDATION_INVALID_FORMAT)  — status not in UserStatus.ALL.
+        NotFoundError: if user not found.
+        ValidationError: if status not in UserStatus.ALL.
     """
     if status not in UserStatus.ALL:
-        raise ValueError(ErrorCode.VALIDATION_INVALID_FORMAT)
+        raise ValidationError("Invalid status value")
 
     user = db.session.get(User, user_id)
     if not user:
-        raise ValueError(ErrorCode.NOT_FOUND_USER)
+        raise NotFoundError("User not found")
 
     user.status = status
     db.session.commit()

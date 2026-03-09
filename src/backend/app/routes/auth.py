@@ -146,6 +146,23 @@ def verify_email(token):
     return _ok({'message': 'Email verified successfully.'})
 
 
+@bp.route('/csrf-token', methods=['GET'])
+@limiter.limit('60 per minute')
+def get_csrf_token():
+    """
+    Generate and return a fresh CSRF token for form submissions.
+    
+    The token is stored in Redis (1-hour TTL) and must be included in the
+    'csrf_token' form field for POST/PUT/PATCH/DELETE requests.
+    
+    Returns:
+        {"success": true, "token": "<token>"}
+    """
+    from app.middleware.csrf import generate_csrf_token
+    token = generate_csrf_token()
+    return _ok({'token': token})
+
+
 # ---------------------------------------------------------------------------
 # Private helpers
 # ---------------------------------------------------------------------------

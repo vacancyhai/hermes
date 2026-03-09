@@ -54,10 +54,11 @@ class JobVacancy(db.Model):
     views = db.Column(db.Integer, nullable=False, default=0)
     applications_count = db.Column(db.Integer, nullable=False, default=0)
     shares_count = db.Column(db.Integer, nullable=False, default=0)
-    created_by = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'))
+    created_by = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id', ondelete='SET NULL'))
     published_at = db.Column(db.DateTime(timezone=True))
     created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime(timezone=True), nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    version = db.Column(db.Integer, nullable=False, default=1)
 
     applications = db.relationship('UserJobApplication', back_populates='job', cascade='all, delete-orphan')
     # Relationship to the user who created this job; used for eager loading to avoid N+1 queries.
