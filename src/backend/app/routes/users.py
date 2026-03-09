@@ -14,13 +14,15 @@ from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from app.routes._helpers import _err, _flatten, _load_json, _ok
 from app.services import user_service
-from app.utils.constants import ErrorCode, UserStatus
+from app.utils.constants import ErrorCode
 from app.utils.decorators import admin_required
-from app.validators.user_validator import UpdateProfileSchema
+from app.validators.user_validator import ApplyToJobSchema, UpdateProfileSchema, UpdateUserStatusSchema
 
 bp = Blueprint('users', __name__, url_prefix='/api/v1/users')
 
 _profile_schema = UpdateProfileSchema()
+_apply_schema = ApplyToJobSchema()
+_update_status_schema = UpdateUserStatusSchema()
 
 
 # ---------------------------------------------------------------------------
@@ -79,13 +81,12 @@ def list_applications():
 @bp.route('/applications', methods=['POST'])
 @jwt_required()
 def apply_to_job():
-    body = request.get_json(silent=True) or {}
-    job_id = body.get('job_id', '').strip() if isinstance(body.get('job_id'), str) else ''
-    if not job_id:
-        return _err(ErrorCode.VALIDATION_MISSING_FIELD, "'job_id' is required.", 400)
+    data, err = _load_json(_apply_schema)
+    if err:
+        return err
 
     try:
-        application = user_service.apply_to_job(get_jwt_identity(), job_id)
+        application = user_service.apply_to_job(get_jwt_identity(), str(data['job_id']))
     except ValueError as e:
         code = str(e)
         if code == ErrorCode.NOT_FOUND_JOB:
@@ -137,17 +138,15 @@ def list_users():
 @jwt_required()
 @admin_required
 def update_user_status(user_id):
-    body = request.get_json(silent=True) or {}
-    status = body.get('status', '').strip() if isinstance(body.get('status'), str) else ''
+    if user_id == get_jwt_identity():
+        return _err(ErrorCode.FORBIDDEN_OWN_RESOURCE_ONLY, 'Admins cannot modify their own status.', 403)
 
-    if not status:
-        return _err(ErrorCode.VALIDATION_MISSING_FIELD, "'status' is required.", 400)
-    if status not in UserStatus.ALL:
-        return _err(ErrorCode.VALIDATION_INVALID_FORMAT,
-                    f"status must be one of: {', '.join(UserStatus.ALL)}.", 400)
+    data, err = _load_json(_update_status_schema)
+    if err:
+        return err
 
     try:
-        user = user_service.update_user_status(user_id, status)
+        user = user_service.update_user_status(user_id, data['status'])
     except ValueError as e:
         code = str(e)
         if code == ErrorCode.NOT_FOUND_USER:

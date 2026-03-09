@@ -111,6 +111,7 @@ def refresh():
 
 
 @bp.route('/forgot-password', methods=['POST'])
+@limiter.limit('3 per minute')
 def forgot_password():
     data, err = _load(_reset_req_schema)
     if err:

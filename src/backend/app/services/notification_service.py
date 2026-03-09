@@ -137,6 +137,9 @@ def get_unread_count(user_id: str) -> int:
 # Job matching
 # ---------------------------------------------------------------------------
 
+_MATCH_CHUNK_SIZE = 500
+
+
 def match_job_to_users(job) -> list[dict]:
     """
     Find all active users whose profile is eligible for `job`.
@@ -147,6 +150,9 @@ def match_job_to_users(job) -> list[dict]:
       3. category vacancy available for profile.category (if job.eligibility has category_vacancies)
       4. User notification_preferences does not explicitly exclude this job_type
 
+    Users are fetched in chunks of _MATCH_CHUNK_SIZE to avoid loading the full
+    user table into memory at once.
+
     Returns a list of dicts:
         [{"user_id": str, "email": str, "full_name": str}, ...]
     """
@@ -155,41 +161,49 @@ def match_job_to_users(job) -> list[dict]:
 
     eligible: list[dict] = []
 
-    # Fetch all active users with their profiles in one query
-    rows = (
-        db.session.query(User, UserProfile)
-        .join(UserProfile, UserProfile.user_id == User.id)
-        .filter(User.status == UserStatus.ACTIVE)
-        .all()
-    )
-
     job_qual = getattr(job, "qualification_level", None)
     job_eligibility = getattr(job, "eligibility", {}) or {}
     job_type = getattr(job, "job_type", None)
 
-    for user, profile in rows:
-        # 1. Qualification check
-        if job_qual and profile.highest_qualification:
-            if not _qualification_meets(profile.highest_qualification, job_qual):
+    offset = 0
+    while True:
+        rows = (
+            db.session.query(User, UserProfile)
+            .join(UserProfile, UserProfile.user_id == User.id)
+            .filter(User.status == UserStatus.ACTIVE)
+            .order_by(User.id)
+            .limit(_MATCH_CHUNK_SIZE)
+            .offset(offset)
+            .all()
+        )
+        if not rows:
+            break
+
+        for user, profile in rows:
+            # 1. Qualification check
+            if job_qual and profile.highest_qualification:
+                if not _qualification_meets(profile.highest_qualification, job_qual):
+                    continue
+
+            # 2. Category vacancy check
+            category_vacancies = job_eligibility.get("category_vacancies", {})
+            if category_vacancies and profile.category:
+                if profile.category not in category_vacancies:
+                    continue
+
+            # 3. Notification preference check — user may have opted out of a job_type
+            prefs = profile.notification_preferences or {}
+            disabled_types = prefs.get("disabled_job_types", [])
+            if job_type and job_type in disabled_types:
                 continue
 
-        # 2. Category vacancy check
-        category_vacancies = job_eligibility.get("category_vacancies", {})
-        if category_vacancies and profile.category:
-            if profile.category not in category_vacancies:
-                continue
+            eligible.append({
+                "user_id": str(user.id),
+                "email": user.email,
+                "full_name": user.full_name,
+            })
 
-        # 3. Notification preference check — user may have opted out of a job_type
-        prefs = profile.notification_preferences or {}
-        disabled_types = prefs.get("disabled_job_types", [])
-        if job_type and job_type in disabled_types:
-            continue
-
-        eligible.append({
-            "user_id": str(user.id),
-            "email": user.email,
-            "full_name": user.full_name,
-        })
+        offset += len(rows)
 
     return eligible
 

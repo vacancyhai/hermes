@@ -7,6 +7,8 @@ PUT    /api/v1/notifications/<id>/read    — mark single notification read
 PUT    /api/v1/notifications/read-all     — mark all notifications read
 DELETE /api/v1/notifications/<id>         — delete a notification
 """
+import uuid
+
 from flask import Blueprint, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
@@ -16,6 +18,14 @@ from app.services import notification_service
 from app.utils.constants import ErrorCode
 
 bp = Blueprint('notifications', __name__, url_prefix='/api/v1/notifications')
+
+
+def _is_valid_uuid(value: str) -> bool:
+    try:
+        uuid.UUID(value)
+        return True
+    except (ValueError, AttributeError):
+        return False
 
 
 # ---------------------------------------------------------------------------
@@ -55,6 +65,8 @@ def unread_count():
 @jwt_required()
 @limiter.limit('60 per minute')
 def mark_read(notification_id):
+    if not _is_valid_uuid(notification_id):
+        return _err(ErrorCode.NOT_FOUND_NOTIFICATION, 'Notification not found.', 404)
     user_id = get_jwt_identity()
     try:
         notif = notification_service.mark_read(notification_id, user_id)
@@ -76,6 +88,8 @@ def mark_all_read():
 @jwt_required()
 @limiter.limit('60 per minute')
 def delete_notification(notification_id):
+    if not _is_valid_uuid(notification_id):
+        return _err(ErrorCode.NOT_FOUND_NOTIFICATION, 'Notification not found.', 404)
     user_id = get_jwt_identity()
     try:
         notification_service.delete_notification(notification_id, user_id)

@@ -69,7 +69,8 @@ def get_jobs(filters: dict) -> dict:
         )
 
     query = query.order_by(JobVacancy.priority.desc(), JobVacancy.created_at.desc())
-    return paginate(query, page=filters.get('page', 1), per_page=filters.get('per_page', 20))
+    per_page = min(filters.get('per_page', 20), 100)
+    return paginate(query, page=filters.get('page', 1), per_page=per_page)
 
 
 def get_job_by_slug(slug: str) -> JobVacancy:

@@ -183,5 +183,7 @@ def _send(to_email: str, subject: str, body: str) -> None:
     """
     mail = get_mail()
     sender = current_app.config.get("MAIL_DEFAULT_SENDER") or current_app.config.get("MAIL_USERNAME")
+    if not sender:
+        raise RuntimeError("Email sender is not configured. Set MAIL_DEFAULT_SENDER or MAIL_USERNAME.")
     msg = Message(subject=subject, recipients=[to_email], body=body, sender=sender)
     mail.send(msg)

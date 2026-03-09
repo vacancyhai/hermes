@@ -14,6 +14,7 @@ All functions raise ValueError with an ErrorCode constant on failure so the
 route layer can map it cleanly to the right HTTP status without leaking details.
 """
 from sqlalchemy import update as sa_update
+from sqlalchemy.exc import IntegrityError
 
 from app.extensions import db
 from app.models.job import JobVacancy, UserJobApplication
@@ -100,12 +101,6 @@ def apply_to_job(user_id: str, job_id: str) -> UserJobApplication:
     if not job or job.status != JobStatus.ACTIVE:
         raise ValueError(ErrorCode.NOT_FOUND_JOB)
 
-    existing = UserJobApplication.query.filter_by(
-        user_id=user_id, job_id=job_id
-    ).first()
-    if existing:
-        raise ValueError(ErrorCode.ALREADY_APPLIED)
-
     application = UserJobApplication(user_id=user_id, job_id=job_id)
     db.session.add(application)
 
@@ -115,7 +110,11 @@ def apply_to_job(user_id: str, job_id: str) -> UserJobApplication:
         .where(JobVacancy.id == job_id)
         .values(applications_count=JobVacancy.applications_count + 1)
     )
-    db.session.commit()
+    try:
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        raise ValueError(ErrorCode.ALREADY_APPLIED)
     return application
 
 

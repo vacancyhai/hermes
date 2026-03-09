@@ -9,11 +9,18 @@ Token storage strategy:
 
 No extra DB tables are needed; Redis TTL handles expiry automatically.
 """
+import logging
 import secrets
 from datetime import datetime, timezone
 
 import bcrypt
 from flask import current_app
+
+logger = logging.getLogger(__name__)
+
+# Pre-computed dummy hash used in login() to ensure bcrypt runs even when
+# the email doesn't exist, preventing timing-based user enumeration.
+_DUMMY_HASH = bcrypt.hashpw(b'dummy-timing-guard', bcrypt.gensalt(rounds=4)).decode()
 from flask_jwt_extended import create_access_token, create_refresh_token
 from sqlalchemy.exc import IntegrityError
 
@@ -78,7 +85,12 @@ def login(email, password):
     """
     user = User.query.filter_by(email=email.lower().strip()).first()
 
-    if not user or not bcrypt.checkpw(password.encode(), user.password_hash.encode()):
+    # Always run bcrypt to prevent timing-based user enumeration.
+    password_hash = user.password_hash.encode() if user else _DUMMY_HASH.encode()
+    password_ok = bcrypt.checkpw(password.encode(), password_hash)
+
+    if not user or not password_ok:
+        logger.warning("login: failed attempt for email=%s", email.lower().strip())
         raise ValueError('INVALID_CREDENTIALS')
 
     if user.status != 'active':
@@ -86,6 +98,7 @@ def login(email, password):
 
     user.last_login = datetime.now(timezone.utc)
     db.session.commit()
+    logger.info("login: success user_id=%s", user.id)
 
     return _issue_tokens(user)
 
@@ -200,5 +213,9 @@ def _issue_tokens(user):
 def _store_redis_token(prefix, user_id, ttl):
     """Generate a secure URL-safe token, store it in Redis, and return it."""
     token = secrets.token_urlsafe(32)
-    current_app.redis.setex(f'{prefix}:{token}', ttl, user_id)
+    try:
+        current_app.redis.setex(f'{prefix}:{token}', ttl, user_id)
+    except Exception as exc:
+        current_app.logger.error("_store_redis_token: Redis unavailable prefix=%s: %s", prefix, exc)
+        raise RuntimeError("Token storage is temporarily unavailable. Please try again.") from exc
     return token

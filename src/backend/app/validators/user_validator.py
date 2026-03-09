@@ -10,7 +10,7 @@ The schemas enforce:
 """
 from marshmallow import Schema, fields, validate, RAISE
 
-from app.utils.constants import Category, Gender, QualificationLevel
+from app.utils.constants import Category, Gender, QualificationLevel, UserStatus
 
 
 class UpdateProfileSchema(Schema):
@@ -53,6 +53,23 @@ class UpdateProfileSchema(Schema):
     education = fields.Dict(required=False, load_default=None)
     physical_details = fields.Dict(required=False, load_default=None)
     notification_preferences = fields.Dict(required=False, load_default=None)
+
+
+class ApplyToJobSchema(Schema):
+    class Meta:
+        unknown = RAISE
+
+    job_id = fields.UUID(required=True)
+
+
+class UpdateUserStatusSchema(Schema):
+    class Meta:
+        unknown = RAISE
+
+    status = fields.String(
+        required=True,
+        validate=validate.OneOf(UserStatus.ALL, error=f"status must be one of: {', '.join(UserStatus.ALL)}."),
+    )
 
 
 class UpdatePhoneSchema(Schema):

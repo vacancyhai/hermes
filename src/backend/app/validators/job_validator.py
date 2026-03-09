@@ -132,8 +132,8 @@ class JobSearchSchema(Schema):
     class Meta:
         unknown = RAISE
 
-    q = fields.String(required=False, load_default=None)
-    organization = fields.String(required=False, load_default=None)
+    q = fields.String(required=False, load_default=None, validate=validate.Length(max=100))
+    organization = fields.String(required=False, load_default=None, validate=validate.Length(max=100))
     qualification_level = fields.String(
         required=False,
         load_default=None,
