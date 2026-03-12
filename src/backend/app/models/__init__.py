@@ -5,7 +5,7 @@ from .user import User, UserProfile
 from .job import JobVacancy, UserJobApplication
 from .notification import Notification
 from .content import Result, AdmitCard, AnswerKey, Admission, Yojana, BoardResult
-from .admin import AdminLog, RolePermission, AccessAuditLog
+from .admin import AdminUser, AdminLog, RolePermission, AccessAuditLog
 from .analytics import Category, PageView, SearchLog
 
 __all__ = [
@@ -13,6 +13,6 @@ __all__ = [
     'JobVacancy', 'UserJobApplication',
     'Notification',
     'Result', 'AdmitCard', 'AnswerKey', 'Admission', 'Yojana', 'BoardResult',
-    'AdminLog', 'RolePermission', 'AccessAuditLog',
+    'AdminUser', 'AdminLog', 'RolePermission', 'AccessAuditLog',
     'Category', 'PageView', 'SearchLog',
 ]

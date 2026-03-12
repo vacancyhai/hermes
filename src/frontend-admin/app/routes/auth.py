@@ -40,24 +40,26 @@ def login():
     email = request.form.get('email', '').strip()
     password = request.form.get('password', '')
 
-    if not email or not password:
-        flash('Email and password are required.', 'error')
+    # Admin login uses username (which can be email or username)
+    username = email  # Frontend still uses 'email' field name for simplicity
+
+    if not username or not password:
+        flash('Email/Username and password are required.', 'error')
         return render_template('pages/auth/login.html', email=email)
 
     try:
-        data = _api.login(email, password)
+        data = _api.admin_login(username, password)
     except APIError as e:
         flash(e.message, 'error')
         return render_template('pages/auth/login.html', email=email)
 
-    # Read role from the API response — avoids unsafe JWT decoding without
-    # signature verification on the frontend.
-    role = data.get('user', {}).get('role', '')
+    # Read role from the admin object in the API response
+    role = data.get('admin', {}).get('role', '')
 
     if role not in _ALLOWED_ROLES:
         # Blocklist the issued token so it cannot be reused
         try:
-            _api.logout(data['access_token'], data.get('refresh_token', ''))
+            _api.admin_logout(data['access_token'], data.get('refresh_token', ''))
         except APIError:
             pass
         flash('Access denied. This portal is for administrators and operators only.', 'error')
@@ -82,7 +84,7 @@ def logout():
 
     if access_token:
         try:
-            _api.logout(access_token, session.get('refresh_token', ''))
+            _api.admin_logout(access_token, session.get('refresh_token', ''))
         except APIError:
             pass
 

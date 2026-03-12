@@ -22,6 +22,15 @@ def index():
 
     jobs_data = {}
     users_data = {}
+    stats = {}
+
+    # Try to get admin stats (new endpoint)
+    try:
+        stats_response = _api.get_admin_stats(access_token)
+        stats = stats_response.get('data', {}).get('stats', {})
+    except APIError:
+        # Fall back to fetching data manually if stats endpoint not available
+        pass
 
     try:
         jobs_data = _api.get_jobs(access_token, per_page=5, page=1)
@@ -44,5 +53,6 @@ def index():
         jobs_meta=jobs_meta,
         recent_users=recent_users,
         users_meta=users_meta,
+        stats=stats,
     )
 

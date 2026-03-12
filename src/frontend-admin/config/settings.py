@@ -17,8 +17,22 @@ class Config:
     # Backend API
     BACKEND_API_URL = os.getenv('BACKEND_API_URL', 'http://localhost:5000/api/v1')
 
-    # Session — cookie-based (JWT tokens stored in Flask session cookie)
-    PERMANENT_SESSION_LIFETIME = timedelta(seconds=int(os.getenv('SESSION_TIMEOUT', 3600)))
+    # Session configuration (Redis-backed)
+    SESSION_TYPE = 'redis'
+    SESSION_PERMANENT = True
+    SESSION_USE_SIGNER = True
+    SESSION_KEY_PREFIX = 'admin_session:'
+    PERMANENT_SESSION_LIFETIME = timedelta(hours=12)  # Admin sessions expire after 12 hours
+    SESSION_COOKIE_SECURE = os.getenv('FLASK_ENV') == 'production'
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = 'Lax'
+    
+    # Redis
+    REDIS_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
+    
+    # Error tracking
+    SENTRY_DSN = os.getenv('SENTRY_DSN')
+    SENTRY_ENVIRONMENT = os.getenv('SENTRY_ENVIRONMENT', os.getenv('FLASK_ENV', 'development'))
 
 
 def get_config():

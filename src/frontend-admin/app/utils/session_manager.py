@@ -28,12 +28,20 @@ def save_login_session(flask_session, api_data: dict) -> None:
     Persist tokens and user info into the Flask session after a successful
     admin login.
 
-    Login response: {"user": {...}, "access_token": "...", "refresh_token": "..."}
+    Login response: {"admin": {...}, "access_token": "...", "refresh_token": "..."}
     """
     access_token = api_data["access_token"]
     refresh_token = api_data["refresh_token"]
 
-    if "user" in api_data:
+    # Admin login returns 'admin' key, not 'user' key
+    if "admin" in api_data:
+        admin = api_data["admin"]
+        user_id = admin["id"]
+        email = admin["email"]
+        full_name = admin.get("full_name", "")
+        role = admin["role"]
+    elif "user" in api_data:
+        # Fallback for legacy endpoint (should not be used)
         user = api_data["user"]
         user_id = user["id"]
         email = user["email"]

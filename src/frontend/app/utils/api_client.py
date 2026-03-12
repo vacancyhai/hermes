@@ -176,7 +176,27 @@ class APIClient:
             raise APIError(503, "SERVICE_UNAVAILABLE", "Cannot reach the server. Please try again later.")
         except requests.exceptions.Timeout:
             raise APIError(504, "GATEWAY_TIMEOUT", "The server took too long to respond. Please try again.")
+        
+        # Check for token rotation header before handling response
+        self._check_token_rotation(resp)
+        
         return self._handle_response(resp)
+    
+    def _check_token_rotation(self, resp: requests.Response) -> None:
+        """
+        Check if backend rotated the access token (X-New-Access-Token header).
+        If present, update the session automatically.
+        """
+        new_token = resp.headers.get('X-New-Access-Token')
+        if new_token:
+            try:
+                from flask import session
+                if 'access_token' in session:
+                    session['access_token'] = new_token
+                    current_app.logger.info("Access token automatically rotated")
+            except RuntimeError:
+                # Not in request context (e.g., background task)
+                pass
 
     def _post(self, path: str, payload: dict, access_token: str | None = None) -> dict:
         return self._request("POST", path, access_token=access_token, payload=payload)

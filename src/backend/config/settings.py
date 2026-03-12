@@ -44,7 +44,7 @@ _validate_env()
 
 class Config:
     """Base configuration"""
-
+    
     # Flask
     SECRET_KEY = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
     DEBUG = os.getenv('DEBUG', 'False') == 'True'
@@ -86,6 +86,32 @@ class Config:
         for o in os.getenv('CORS_ORIGINS', 'http://localhost:8080,http://localhost:3000').split(',')
         if o.strip()
     ]
+    
+    # Validate CORS in production
+    @staticmethod
+    def validate_cors():
+        """Validate CORS configuration in production"""
+        if os.getenv('FLASK_ENV') == 'production':
+            if not Config.CORS_ORIGINS or Config.CORS_ORIGINS == ['']:
+                raise ValueError("CORS_ORIGINS must be explicitly set in production")
+            # Warn if localhost is in production CORS
+            for origin in Config.CORS_ORIGINS:
+                if 'localhost' in origin or '127.0.0.1' in origin:
+                    print(f"[WARNING] localhost origin '{origin}' found in production CORS config", file=sys.stderr)
+
+    # Session configuration (Flask-Session with Redis backend)
+    SESSION_TYPE = 'redis'
+    SESSION_PERMANENT = True
+    SESSION_USE_SIGNER = True
+    SESSION_KEY_PREFIX = 'session:'
+    PERMANENT_SESSION_LIFETIME = timedelta(days=7)
+    SESSION_COOKIE_SECURE = os.getenv('FLASK_ENV') == 'production'
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = 'Lax'
+    
+    # HTTPS/Security enforcement
+    FORCE_HTTPS = os.getenv('FORCE_HTTPS', 'False') == 'True'
+    SECURITY_HEADERS_ENABLED = os.getenv('SECURITY_HEADERS_ENABLED', 'True') == 'True'
 
     # Email (Flask-Mail)
     MAIL_SERVER = os.getenv('MAIL_SERVER', 'smtp.gmail.com')

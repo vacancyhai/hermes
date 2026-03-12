@@ -36,6 +36,14 @@
             <span class="sidebar__icon">&#128100;</span> Users
           </a>
         </li>
+        {% if current_user.is_authenticated and current_user.role == 'admin' %}
+        <li class="sidebar__item">
+          <a href="{{ url_for('admin_users.list_admin_users') }}"
+             class="sidebar__link {% if request.blueprint == 'admin_users' %}sidebar__link--active{% endif %}">
+            <span class="sidebar__icon">&#128272;</span> Admin Users
+          </a>
+        </li>
+        {% endif %}
       </ul>
     </nav>
 

@@ -43,6 +43,11 @@ class ValidationError(ServiceError):
         super().__init__('VALIDATION_ERROR', message, 400)
 
 
+class UnauthorizedError(ServiceError):
+    def __init__(self, message):
+        super().__init__('UNAUTHORIZED', message, 401)
+
+
 class PermissionError(ServiceError):
     def __init__(self, message):
         super().__init__('FORBIDDEN_PERMISSION_DENIED', message, 403)

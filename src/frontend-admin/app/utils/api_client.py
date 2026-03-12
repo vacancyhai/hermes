@@ -24,17 +24,97 @@ class APIClient:
     """Thin wrapper around ``requests`` targeting the backend API."""
 
     # ------------------------------------------------------------------
-    # Auth endpoints
+    # Admin Auth endpoints (NEW - uses separate admin endpoints)
+    # ------------------------------------------------------------------
+
+    def admin_login(self, username: str, password: str) -> dict:
+        """POST /api/v1/admin/auth/login → {"admin": {...}, "access_token": ..., "refresh_token": ...}"""
+        return self._post("/admin/auth/login", {"username": username, "password": password})
+
+    def admin_logout(self, access_token: str, refresh_token: str) -> None:
+        self._post("/admin/auth/logout", {}, access_token=access_token)
+
+    def admin_refresh_tokens(self, refresh_token: str) -> dict:
+        return self._post("/admin/auth/refresh", {}, access_token=refresh_token)
+
+    def admin_change_password(self, access_token: str, current_password: str, new_password: str) -> dict:
+        """POST /api/v1/admin/auth/change-password"""
+        return self._post(
+            "/admin/auth/change-password",
+            {"current_password": current_password, "new_password": new_password},
+            access_token=access_token
+        )
+
+    def admin_get_me(self, access_token: str) -> dict:
+        """GET /api/v1/admin/auth/me"""
+        return self._get("/admin/auth/me", access_token=access_token)
+
+    # ------------------------------------------------------------------
+    # Admin User Management endpoints (NEW)
+    # ------------------------------------------------------------------
+
+    def get_admin_users(self, access_token: str, **params) -> dict:
+        """GET /api/v1/admin/users — list all admin users."""
+        return self._get("/admin/users", access_token=access_token, params=params or None)
+
+    def get_admin_user(self, access_token: str, admin_id: str) -> dict:
+        """GET /api/v1/admin/users/<id>"""
+        return self._get(f"/admin/users/{admin_id}", access_token=access_token)
+
+    def create_admin_user(self, access_token: str, payload: dict) -> dict:
+        """POST /api/v1/admin/users"""
+        return self._post("/admin/users", payload, access_token=access_token)
+
+    def update_admin_user(self, access_token: str, admin_id: str, payload: dict) -> dict:
+        """PUT /api/v1/admin/users/<id>"""
+        return self._put(f"/admin/users/{admin_id}", payload, access_token=access_token)
+
+    def delete_admin_user(self, access_token: str, admin_id: str) -> dict:
+        """DELETE /api/v1/admin/users/<id>"""
+        return self._delete(f"/admin/users/{admin_id}", access_token=access_token)
+
+    def update_admin_permissions(self, access_token: str, admin_id: str, permissions: dict) -> dict:
+        """PUT /api/v1/admin/users/<id>/permissions"""
+        return self._put(f"/admin/users/{admin_id}/permissions", {"permissions": permissions}, access_token=access_token)
+
+    def update_admin_role(self, access_token: str, admin_id: str, role: str) -> dict:
+        """PUT /api/v1/admin/users/<id>/role"""
+        return self._put(f"/admin/users/{admin_id}/role", {"role": role}, access_token=access_token)
+
+    # ------------------------------------------------------------------
+    # Admin Audit endpoints (NEW)
+    # ------------------------------------------------------------------
+
+    def get_admin_audit_logs(self, access_token: str, **params) -> dict:
+        """GET /api/v1/admin/audit/logs"""
+        return self._get("/admin/audit/logs", access_token=access_token, params=params or None)
+
+    def get_admin_access_logs(self, access_token: str, **params) -> dict:
+        """GET /api/v1/admin/audit/access"""
+        return self._get("/admin/audit/access", access_token=access_token, params=params or None)
+
+    # ------------------------------------------------------------------
+    # Admin Dashboard endpoints (NEW)
+    # ------------------------------------------------------------------
+
+    def get_admin_stats(self, access_token: str) -> dict:
+        """GET /api/v1/admin/stats"""
+        return self._get("/admin/stats", access_token=access_token)
+
+    # ------------------------------------------------------------------
+    # LEGACY: Auth endpoints (kept for compatibility, but admin should use admin_* methods)
     # ------------------------------------------------------------------
 
     def login(self, email: str, password: str) -> dict:
-        """POST /api/v1/auth/login → {"access_token": ..., "refresh_token": ...}"""
+        """DEPRECATED: Use admin_login() instead. POST /api/v1/auth/login → {"access_token": ..., "refresh_token": ...}"""
         return self._post("/auth/login", {"email": email, "password": password})
 
     def logout(self, access_token: str, refresh_token: str) -> None:
+        """DEPRECATED: Use admin_logout() instead."""
         self._post("/auth/logout", {}, access_token=access_token)
 
     def refresh_tokens(self, refresh_token: str) -> dict:
+        """DEPRECATED: Use admin_refresh_tokens() instead."""
         return self._post("/auth/refresh", {}, access_token=refresh_token)
 
     # ------------------------------------------------------------------

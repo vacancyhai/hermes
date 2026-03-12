@@ -1,0 +1,102 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Admin Users{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-header__title">Admin Users</h1>
+  <a href="{{ url_for('admin_users.create_admin_user') }}" class="btn btn--primary">Create New Admin</a>
+</div>
+
+<div class="card">
+  <div class="card__toolbar">
+    <form method="GET" action="{{ url_for('admin_users.list_admin_users') }}" class="filter-form">
+      <select class="form-control" name="role">
+        <option value="">All Roles</option>
+        <option value="admin" {% if filters.role == 'admin' %}selected{% endif %}>Admin</option>
+        <option value="operator" {% if filters.role == 'operator' %}selected{% endif %}>Operator</option>
+      </select>
+      <select class="form-control" name="status">
+        <option value="">All Statuses</option>
+        <option value="active" {% if filters.status == 'active' %}selected{% endif %}>Active</option>
+        <option value="inactive" {% if filters.status == 'inactive' %}selected{% endif %}>Inactive</option>
+        <option value="suspended" {% if filters.status == 'suspended' %}selected{% endif %}>Suspended</option>
+      </select>
+      <button type="submit" class="btn btn--outline">Filter</button>
+    </form>
+  </div>
+
+  <div class="card__body">
+    {% if admins %}
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Username</th>
+          <th>Full Name</th>
+          <th>Email</th>
+          <th>Role</th>
+          <th>Status</th>
+          <th>Last Login</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for admin in admins %}
+        <tr>
+          <td><strong>{{ admin.username }}</strong></td>
+          <td>{{ admin.full_name }}</td>
+          <td>{{ admin.email }}</td>
+          <td>
+            <span class="badge badge--{{ admin.role }}">{{ admin.role | upper }}</span>
+          </td>
+          <td>
+            <span class="badge badge--{{ admin.status }}">{{ admin.status | title }}</span>
+          </td>
+          <td>{{ admin.last_login | default('Never') }}</td>
+          <td class="actions">
+            <a href="{{ url_for('admin_users.edit_admin_user', admin_id=admin.id) }}" 
+               class="btn btn--outline btn--xs">Edit</a>
+            
+            <form method="POST" action="{{ url_for('admin_users.update_admin_role', admin_id=admin.id) }}" 
+                  class="inline-form" style="display: inline;">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <select name="role" class="form-control form-control--xs" onchange="this.form.submit()">
+                <option value="admin" {% if admin.role == 'admin' %}selected{% endif %}>Admin</option>
+                <option value="operator" {% if admin.role == 'operator' %}selected{% endif %}>Operator</option>
+              </select>
+            </form>
+            
+            {% if admin.status == 'active' %}
+            <form method="POST" action="{{ url_for('admin_users.delete_admin_user', admin_id=admin.id) }}" 
+                  class="inline-form" style="display: inline;"
+                  onsubmit="return confirm('Are you sure you want to deactivate this admin user?');">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn--danger btn--xs">Deactivate</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    {% if pagination %}
+    <div class="pagination">
+      {% if pagination.page > 1 %}
+        <a href="{{ url_for('admin_users.list_admin_users', page=pagination.page-1, role=filters.role, status=filters.status) }}" 
+           class="pagination__link">Previous</a>
+      {% endif %}
+      <span class="pagination__info">Page {{ pagination.page }} of {{ pagination.total_pages }}</span>
+      {% if pagination.page < pagination.total_pages %}
+        <a href="{{ url_for('admin_users.list_admin_users', page=pagination.page+1, role=filters.role, status=filters.status) }}" 
+           class="pagination__link">Next</a>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <p class="empty-state">No admin users found.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

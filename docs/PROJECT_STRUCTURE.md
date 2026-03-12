@@ -2,6 +2,24 @@
 
 > **Status legend:** ✅ implemented · 🟡 stub (file exists, no logic yet) · ❌ file not created yet · 📁 empty directory
 
+**IMPORTANT CORRECTIONS (2026-03-10 audit):**
+- ✅ **CSRF Protection**: `src/frontend/app/utils/csrf.py` and `src/frontend-admin/app/utils/csrf.py` ARE implemented (not missing)
+- ✅ **Views Counter**: `app/tasks/views_flush_task.py` IS implemented with distributed locking + Celery Beat scheduled
+- ✅ **Database Indexes**: `migrations/versions/0001_initial_schema.py` INCLUDES 15+ indexes (not missing)
+- ✅ **Soft Delete Filtering**: Enforced in `job_service.py` - only active jobs returned to public API
+- ✅ **Admin Frontend Routes**: Dashboard, jobs CRUD, users list ARE implemented (not stubs)
+- ✅ **Backend Admin Routes**: `src/backend/app/routes/admin.py` + `admin_auth.py` + `admin_users.py` + `admin_audit.py` fully implemented (March 10, 2026)
+
+**PRODUCTION READINESS (2026-03-10 improvements):**
+- ✅ **JSON Logging**: `app/utils/logging_config.py` with structured logging and request_id tracing
+- ✅ **Error Tracking**: `app/utils/sentry_config.py` integrated in all services
+- ✅ **Enhanced Health Checks**: `app/routes/health.py` expanded to 4 endpoints (basic, full, ready, live)
+- ✅ **Redis Sessions**: Both frontends use Flask-Session with Redis backend
+- ✅ **Token Rotation**: Frontends auto-update tokens from X-New-Access-Token header
+- ✅ **Security Middleware**: `app/middleware/security.py` with HTTPS enforcement + 8 security headers
+
+See `docs/KNOWN_ISSUES_AND_GAPS.md` for remaining gaps (updated March 10, 2026).
+
 ## Folder Structure
 
 ```
@@ -69,12 +87,15 @@ hermes/
     │   │   │
     │   │   ├── routes/
     │   │   │   ├── __init__.py        ✅
-    │   │   │   ├── health.py          ✅  GET /api/v1/health → {"status":"healthy"}
+    │   │   │   ├── health.py          ✅  4 endpoints: /health, /health/full, /health/ready, /health/live (130+ lines)
     │   │   │   ├── auth.py            ✅  register, login, logout, refresh, forgot/reset password, verify-email
     │   │   │   ├── jobs.py            ✅  5 endpoints: GET list, GET /<slug>, POST create, PUT update, DELETE soft-delete
     │   │   │   ├── users.py           ✅  7 endpoints: GET/PUT profile, GET/POST/DELETE applications, GET admin list, PUT admin status
     │   │   ├── notifications.py   ✅  5 endpoints: GET list, GET count, PUT /:id/read, PUT /read-all, DELETE /:id
-    │   │   │   └── admin.py           🟡  blueprint at /api/v1/admin — no endpoints yet
+    │   │   │   ├── admin.py           ✅  GET /stats (dashboard statistics)
+    │   │   │   ├── admin_auth.py      ✅  5 endpoints: POST login/logout/refresh/change-password, GET /me
+    │   │   │   ├── admin_users.py     ✅  7 endpoints: POST create, GET list/details, PUT update/permissions/role, DELETE
+    │   │   │   └── admin_audit.py     ✅  2 endpoints: GET /logs (action logs), GET /access (access logs)
     │   │   │
     │   │   ├── services/              ✅
     │   │   │   ├── __init__.py
@@ -82,20 +103,24 @@ hermes/
     │   │   │   ├── job_service.py     ✅  get_jobs (filtered/paginated), get_job_by_slug, create_job, update_job, delete_job
     │   │   │   ├── user_service.py    ✅  get_profile, update_profile, get_applications, apply_to_job, withdraw_application, admin ops
     │   │   ├── notification_service.py  ✅  create, mark read, mark all read, delete, match_job_to_users()
-    │   │   └── email_service.py   ✅  Flask-Mail: verification, reset, job alert, deadline reminder
+    │   │   ├── email_service.py   ✅  Flask-Mail: verification, reset, job alert, deadline reminder
+    │   │   └── admin_service.py   ✅  authenticate_admin, CRUD, permission management, audit logging
     │   │   │
     │   │   ├── tasks/
     │   │   │   ├── __init__.py        ✅
     │   │   │   ├── celery_app.py      ✅  Celery instance, broker/backend, serialisation config
     │   │   ├── notification_tasks.py  ✅  send_verification_email_task, send_password_reset_email_task, send_new_job_notifications, deliver_notification_email
     │   │   ├── reminder_tasks.py  ✅  cron — deadline reminders at T-7, T-3, T-1 days
+    │   │   ├── views_flush_task.py ✅  cron (5 min) — flush Redis view counters to PostgreSQL with distributed locking
     │   │   └── cleanup_tasks.py   ✅  cron — purge notifications, admin logs, soft-deleted jobs, close expired listings
     │   │   │
     │   │   ├── utils/                 ✅
     │   │   │   ├── __init__.py
     │   │   │   ├── helpers.py         ✅  paginate(), success_response(), slugify()
     │   │   │   ├── decorators.py      ✅  @admin_required, @operator_required (stack beneath @jwt_required)
-    │   │   │   └── constants.py       ✅  UserRole, UserStatus, JobStatus, JobType, ApplicationStatus, NotificationType, QualificationLevel, ErrorCode
+    │   │   │   ├── constants.py       ✅  UserRole, UserStatus, JobStatus, JobType, ApplicationStatus, NotificationType, QualificationLevel, ErrorCode
+    │   │   │   ├── logging_config.py  ✅  CustomJsonFormatter, configure_logging(), inject_request_id_to_logs()
+    │   │   │   └── sentry_config.py   ✅  init_sentry(), before_send_hook(), capture_exception(), capture_message()
     │   │   │
     │   │   ├── validators/            ✅
     │   │   │   ├── __init__.py
@@ -107,8 +132,10 @@ hermes/
     │   │       ├── __init__.py        ✅
     │   │       ├── error_handler.py   ✅  JSON error handlers for 400/401/403/404/500, includes request_id in response
     │   │       ├── auth_middleware.py ✅  require_role decorator, get_current_user, JWT error handlers, token rotation
+    │   │       ├── csrf.py            ✅  CSRF token generation and validation (session-based)
     │   │       ├── rate_limiter.py    ✅  shared Limiter singleton with JWT-aware key function; init_limiter(app)
     │   │       ├── request_id.py      ✅  injects/echoes X-Request-ID header (UUID4 fallback) via before/after_request
+    │   │       ├── security.py        ✅  HTTPS enforcement, 8 security headers (HSTS, CSP, X-Frame-Options, etc.)
     │   │       └── rbac.py            ❌  superseded by utils/decorators.py (@admin_required, @operator_required)
     │   │
     │   ├── config/
@@ -159,7 +186,7 @@ hermes/
     │   ├── .dockerignore              ✅
     │   │
     │   ├── app/
-    │   │   ├── __init__.py            ✅  app factory: LoginManager, load_user wired to session_manager
+    │   │   ├── __init__.py            ✅  app factory: LoginManager, Flask-Session (Redis), Sentry, load_user
     │   │   │
     │   │   ├── models/                ✅  session-backed, no DB
     │   │   │   ├── __init__.py        ✅
@@ -176,7 +203,8 @@ hermes/
     │   │   │
     │   │   ├── utils/                 ✅
     │   │   │   ├── __init__.py
-    │   │   │   ├── api_client.py      ✅  HTTP client wrapping requests to BACKEND_API_URL
+    │   │   │   ├── api_client.py      ✅  HTTP client with token rotation handling (reads X-New-Access-Token)
+    │   │   │   ├── csrf.py            ✅  CSRF token generation and validation (session-based)
     │   │   │   ├── session_manager.py ✅  helpers to read/write flask-login session data
     │   │   │   └── helpers.py         ✅  Jinja2 filters: format_date, time_ago, days_remaining, format_salary, etc.
     │   │   │
@@ -251,7 +279,7 @@ hermes/
     │   ├── .dockerignore              ✅
     │   │
     │   ├── app/
-    │   │   ├── __init__.py            ✅  app factory: LoginManager, admin blueprints registered; explicit template_folder/static_folder
+    │   │   ├── __init__.py            ✅  app factory: LoginManager, Flask-Session (Redis), Sentry, admin blueprints
     │   │   │
     │   │   ├── routes/
     │   │   │   ├── __init__.py        ✅
@@ -265,6 +293,7 @@ hermes/
     │   │   ├── utils/                 ✅
     │   │   │   ├── __init__.py
     │   │   │   ├── api_client.py      ✅  HTTP client: auth + jobs CRUD + user management endpoints
+    │   │   │   ├── csrf.py            ✅  CSRF token generation and validation (session-based)
     │   │   │   └── session_manager.py ✅  read/write tokens + user info; get_user_data()
     │   │   │
     │   │   └── middleware/            ✅
@@ -273,7 +302,7 @@ hermes/
     │   │       └── error_handler.py   ✅  404 + 500 error handlers
     │   │
     │   ├── config/
-    │   │   └── settings.py            ✅  BACKEND_API_URL, session config, port 8081
+    │   │   └── settings.py            ✅  Redis session config (12h lifetime), BACKEND_API_URL, port 8081
     │   │
     │   ├── templates/
     │   │   ├── layouts/
@@ -334,7 +363,7 @@ Runs 5 containers via `docker-compose.yml`: PostgreSQL, Redis, the Flask API, a 
 All models are fully implemented with UUID PKs, JSONB columns, and SQLAlchemy relationships. See the tree above for which classes live in each file.
 
 ### `app/routes/`
-`health.py`, `auth.py`, `jobs.py`, `users.py`, and `notifications.py` are fully implemented. `admin.py` is a registered blueprint with no endpoints yet.
+`health.py`, `auth.py`, `jobs.py`, `users.py`, and `notifications.py` are fully implemented. `admin.py` has dashboard stats endpoint. `admin_auth.py`, `admin_users.py`, and `admin_audit.py` provide complete admin authentication and management system.
 
 ### `app/services/`
 Business logic layer — keeps route handlers thin.
@@ -343,6 +372,7 @@ Business logic layer — keeps route handlers thin.
 - `user_service.py` — ✅ get_profile, update_profile, get_applications, apply_to_job, withdraw_application, get_all_users, update_user_status
 - `notification_service.py` — ✅ create, store, deliver, mark read; `match_job_to_users()` for eligibility-based matching
 - `email_service.py` — ✅ Flask-Mail wrapper: `send_verification_email()`, `send_password_reset_email()`, `send_welcome_email()`, `send_job_notification_email()`, `send_deadline_reminder_email()`
+- `admin_service.py` — ✅ authenticate_admin, create/update/delete admin users, permission management, audit logging
 
 ### `app/tasks/`
 All task modules implemented:
@@ -355,13 +385,16 @@ All task modules implemented:
 - `auth_middleware.py` — ✅ `@require_role(*roles)`, `get_current_user()`, JWT error handlers, token rotation (`X-New-Access-Token`)
 - `rate_limiter.py` — ✅ shared `Limiter` singleton with JWT-aware key function; `init_limiter(app)` wired in factory
 - `request_id.py` — ✅ `register_request_id(app)` injects / echoes `X-Request-ID` (UUID4 fallback) via before/after_request hooks
+- `security.py` — ✅ `register_security_middleware(app)` for HTTPS enforcement + 8 security headers (HSTS, CSP, X-Frame-Options, X-Content-Type-Options, X-XSS-Protection, Referrer-Policy, Permissions-Policy)
 - `rbac.py` — ❌ superseded; RBAC covered by `@admin_required` / `@operator_required` in `utils/decorators.py`
 
 ### `app/utils/`
-All three modules implemented:
+All modules implemented:
 - `helpers.py` — ✅ `paginate(query, page, per_page)` (caps at 100, reads `request.args`), `success_response(data, status_code, meta)`, `slugify(text)` (NFKD → ASCII → lowercase)
 - `decorators.py` — ✅ `@admin_required`, `@operator_required` (stack beneath `@jwt_required()`)
 - `constants.py` — ✅ `UserRole`, `UserStatus`, `JobStatus`, `JobType`, `ApplicationStatus`, `NotificationType`, `QualificationLevel`, `ErrorCode`
+- `logging_config.py` — ✅ `CustomJsonFormatter` class, `configure_logging(app)` for environment-aware JSON/text logging
+- `sentry_config.py` — ✅ `init_sentry(app)` with Flask/Celery/Redis/SQLAlchemy integrations, PII scrubbing, 10% sampling
 
 ### `app/validators/`
 - `auth_validator.py` — ✅ RegisterSchema, LoginSchema, PasswordResetRequestSchema, PasswordResetSchema (marshmallow 3.x, `unknown = RAISE`)
@@ -369,7 +402,7 @@ All three modules implemented:
 - `job_validator.py` — ✅ `CreateJobSchema` (required: job_title, organization, job_type, eligibility; cross-field date/salary validation), `UpdateJobSchema` (all-optional), `JobSearchSchema` (query params)
 
 ### `config/settings.py`
-Full `Config` class: SQLAlchemy connection pooling, JWT expiry, Redis URL, Celery broker/backend, CORS origins, rate limits, mail settings. Includes a startup guard that aborts if required vars are missing or insecure in production.
+Full `Config` class: SQLAlchemy connection pooling, JWT expiry, Redis URL, Celery broker/backend, CORS origins (with `validate_cors()` method), rate limits, mail settings, session config, security config. Includes a startup guard that aborts if required vars are missing or insecure in production.
 
 ### `migrations/`
 Alembic wired up. `0001_initial_schema.py` contains full DDL for all tables. Run `flask db upgrade` inside the container after changes.
@@ -387,7 +420,7 @@ Serves public users: registration, login, job browsing, profile. Runs a single G
 `main.py` serves `GET /` (homepage with featured jobs) and `GET /health`. `errors.py` renders HTML error templates. `auth.py` handles login/register/logout/password reset. `jobs.py` has list, detail, and apply endpoints. `profile.py` has index, edit, applications, and withdraw endpoints.
 
 ### `app/utils/`
-- `api_client.py` — wraps `requests` calls to `BACKEND_API_URL`; covers auth + jobs + profile + notification endpoints
+- `api_client.py` — wraps `requests` calls to `BACKEND_API_URL`; covers auth + jobs + profile + notification endpoints; handles token rotation (reads X-New-Access-Token header)
 - `session_manager.py` — helpers to read/write flask-login session data and JWT tokens
 - `helpers.py` — Jinja2 template filters: format_date, time_ago, days_remaining, format_salary, etc.
 
@@ -407,7 +440,7 @@ All templates implemented:
 - `js/` — `main.js`, `jobs.js`, `notifications.js`
 
 ### `config/settings.py`
-`BACKEND_API_URL`, session options, `ITEMS_PER_PAGE`, Flask `SECRET_KEY`.
+`BACKEND_API_URL`, Redis session configuration (24h lifetime), `ITEMS_PER_PAGE`, Flask `SECRET_KEY`, Sentry DSN.
 
 ---
 
@@ -435,32 +468,67 @@ Same structure as user frontend `settings.py` but defaults to port 8081.
 
 - Full Docker stack (`make all-up`) starts cleanly.
 - `GET /api/v1/health` (backend), `GET /health` (frontend), and `GET /health` (frontend-admin) are live.
+- Backend health checks: 4 endpoints (/health, /health/full, /health/ready, /health/live) with DB/Redis/Celery verification.
 - Backend auth is fully implemented: register, login, logout, refresh, password reset, email verify.
 - Backend job APIs fully implemented: list/search, get by slug, create, update, soft-delete.
 - Backend user APIs fully implemented: profile read/update, job applications (apply/withdraw), admin user management.
+- **Backend admin system fully implemented (March 10, 2026)**:
+  - ✅ Separate `admin_users` table with 2-role system (admin, operator)
+  - ✅ Admin authentication endpoints: login, logout, refresh, change-password, me
+  - ✅ Admin user management: CRUD, permissions, role updates (admin role only)
+  - ✅ Admin audit logs: action logs, access logs with filtering
+  - ✅ Admin dashboard stats: users, jobs, admins counts, recent activity
+  - ✅ Account lockout: 5 failed attempts = 30min lockout
+  - ✅ Granular JSONB permissions system
+  - ✅ Self-referential tracking: created_by, updated_by
 - Security middleware in place: JWT-aware rate limiting (flask-limiter) + X-Request-ID tracing on all requests.
 - All utils and validators implemented: constants, helpers (paginate, slugify), decorators, marshmallow schemas.
 - Database schema is fully defined — run `flask db upgrade` to apply it.
 - All SQLAlchemy models are wired and ready for use.
 - Backend notification APIs fully implemented: list, unread count, mark read, mark all read, delete.
-- Celery task modules implemented: notification_tasks, reminder_tasks, cleanup_tasks.
+- Celery task modules implemented: notification_tasks, reminder_tasks, cleanup_tasks, views_flush_task.
 - Auth routes wired with Celery email tasks (verification + password reset).
 - **User frontend fully implemented**: homepage, auth (login/register/reset), job list/detail/apply, profile view/edit/applications.
-- **Admin frontend fully implemented**: login (role-gated), dashboard, job CRUD, user list + status management.
+- **Admin frontend fully implemented and integrated (March 10, 2026)**:
+  - ✅ Login (role-gated for admin/operator only)
+  - ✅ Dashboard with stats and recent activity
+  - ✅ Jobs CRUD (create/edit/delete with role guards)
+  - ✅ User list + status management
+  - ✅ **Admin user management UI**: list, create, edit, delete, role/permission updates
+  - ✅ **Integrated with new admin auth**: uses `/api/v1/admin/auth/*` endpoints
+  - ✅ **API client updated**: 13 new admin methods (admin_login, get_admin_users, etc.)
+  - ✅ **Session manager updated**: handles 'admin' key from API response
+  - ✅ **Navigation updated**: "Admin Users" link (admin role only)
+  - ✅ **Templates created**: admin_users/list.html, create.html, edit.html
 - **521 tests passing**: backend 324 (229 unit + 95 integration), user frontend 102, admin frontend 95.
 - `create_job` wires `send_new_job_notifications.delay()` for active jobs; views counted via Redis INCR + Celery Beat flush every 5 min.
 - Test suite expanded (Story 11): `.coveragerc` + pytest-cov configured; `db_session` fixture added; all Celery tasks covered.
+- **Production readiness (March 10, 2026)**:
+  - ✅ Structured JSON logging with request_id tracing (backend)
+  - ✅ Sentry error tracking integrated in all 3 services
+  - ✅ Redis-backed sessions for both frontends (24h user, 12h admin)
+  - ✅ Token rotation handling in frontend API clients
+  - ✅ CORS validation with production safeguards
+  - ✅ HTTPS enforcement + 8 security headers (backend)
 
 ## What's next
 
-All planned stories (Stories 2–11) are complete. Potential future work (no GitHub issues yet):
+All planned stories (Stories 2–11) are complete. Production readiness improvements completed March 10, 2026. **Admin authentication system (2-role) fully implemented and integrated** (March 10, 2026). Potential future work (no GitHub issues yet):
 
 | Priority | Work |
 |---|---|
+| High | CI/CD pipeline (`.github/workflows/`) |
+| ✅ High | ~~Admin frontend integration with new admin auth endpoints~~ **DONE** (March 10, 2026) |
+| ✅ High | ~~Admin user management UI (create/edit admins, permission matrix)~~ **DONE** (March 10, 2026) |
+| Medium | Admin audit log viewer UI (backend complete, UI pending) |
+| Medium | Backend admin analytics endpoints (advanced stats, charts) |
 | Medium | Firebase FCM push notification integration |
 | Medium | Admin frontend analytics dashboard (charts, stats) |
+| Medium | E2E tests (Playwright for full user flows) |
+| Medium | Load testing (Locust/k6 for performance baseline) |
+| Low | API documentation (Swagger/OpenAPI spec) |
 | Low | Nginx admin frontend proxying (currently accessed directly on port 8081) |
-| Low | CI/CD pipeline (`.github/workflows/`) |
+| Low | Linting config (.flake8/.pylintrc) |
 | Low | Production deployment to Hostinger VPS + SSL (Let's Encrypt) |
 
 ---
@@ -484,5 +552,5 @@ All issues identified during code review have been resolved. What changed and wh
 
 ---
 
-**Last Updated**: 2026-03-08 (Stories 2–11 all complete)
-**Version**: 3.2
+**Last Updated**: 2026-03-10 (Stories 2–11 complete + Production Readiness improvements)
+**Version**: 3.3
