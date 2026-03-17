@@ -48,14 +48,14 @@ def get_logs():
 
     return _ok(
         data={
-            'logs': [_serialize_admin_log(log) for log in result['admins']],
+            'logs': [_serialize_admin_log(log) for log in result['items']],
         },
         meta={
             'pagination': {
                 'page': result['page'],
                 'per_page': result['per_page'],
-                'total_pages': result['total_pages'],
-                'total_items': result['total_items'],
+                'total_pages': result['pages'],
+                'total_items': result['total'],
             }
         }
     )
@@ -84,14 +84,14 @@ def get_access_logs():
 
     return _ok(
         data={
-            'logs': [_serialize_access_log(log) for log in result['admins']],
+            'logs': [_serialize_access_log(log) for log in result['items']],
         },
         meta={
             'pagination': {
                 'page': result['page'],
                 'per_page': result['per_page'],
-                'total_pages': result['total_pages'],
-                'total_items': result['total_items'],
+                'total_pages': result['pages'],
+                'total_items': result['total'],
             }
         }
     )

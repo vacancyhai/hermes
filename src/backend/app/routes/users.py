@@ -12,10 +12,12 @@ PUT    /api/v1/users/<user_id>/status          — change user status  (admin)
 """
 import uuid
 
-from flask import Blueprint, request
+from flask import Blueprint, current_app, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
+from app.extensions import db
 from app.middleware.rate_limiter import limiter
+from app.models.admin import AdminLog
 from app.routes._helpers import _err, _flatten, _load_json, _ok
 from app.services import user_service
 from app.utils.constants import ErrorCode
