@@ -1,8 +1,8 @@
 # Hermes - Known Issues and Gaps
 
-**Date**: March 10, 2026  
+**Date**: March 17, 2026  
 **Status**: CORRECTED after code audit - reflects actual implementation  
-**Latest Update**: March 10, 2026 - Production readiness improvements completed  
+**Latest Update**: March 17, 2026 - Gap fixes: content types, analytics, job matching, search  
 **Format**: This document consolidates all gaps found in honest technical review. Issues are categorized by severity and component.
 
 **IMPORTANT**: Initial review had significant inaccuracies. The following were FALSELY reported as missing but actually exist:
@@ -11,6 +11,14 @@
 - ✅ Database Indexes (15+ indexes in migration file)
 - ✅ Soft Delete Filtering (enforced in job service - only active jobs returned)
 - ✅ Admin Frontend (fully functional with dashboard, jobs CRUD, users management)
+
+**RECENTLY FIXED** (March 17, 2026):
+- ✅ 6 Missing Content Types — Result, AdmitCard, AnswerKey, Admission, Yojana, BoardResult: full service + 30 API routes
+- ✅ Admin Analytics stub replaced with real SQLAlchemy queries
+- ✅ Job Matching extended: age range, gender, domicile/state, ex-serviceman, PWD filters added
+- ✅ Search extended to include `description` column; `department` filter wired
+- ✅ `ErrorCode.NOT_IMPLEMENTED` added to constants
+- ✅ All test files removed (user request)
 
 **RECENTLY FIXED** (March 10, 2026):
 - ✅ Structured JSON Logging (backend)
@@ -46,36 +54,21 @@
 
 ---
 
-### 🚨 1. Backend Admin Routes Empty Stub ✅ MOSTLY NON-BLOCKING
+### ✅ 1. Backend Admin Analytics — RESOLVED (March 17, 2026)
 
-**Severity**: MEDIUM  
-**Component**: `src/backend/app/routes/admin.py`  
-**Problem**:
-- Backend admin routes blueprint exists but has no endpoints
-- Could add analytics aggregation endpoints (job stats, user stats, trending searches)
-- Currently admin functions are handled through existing routes with RBAC
+**Status**: FIXED — `src/backend/app/routes/admin.py`  
 
-**Current Code** (in `src/backend/app/routes/admin.py`):
-```python
-# Empty blueprint stub - only 6 lines
-from flask import Blueprint
-bp = Blueprint('admin', __name__, url_prefix='/api/v1/admin')
-```
+**Implemented endpoints**:
+- `GET /api/v1/admin/stats` — users, jobs, admins, recent activity counts
+- `GET /api/v1/admin/analytics?days=N` — real SQLAlchemy aggregation:
+  - Jobs by type and by status breakdowns
+  - Daily job posting trend (last N days)
+  - Daily user registration trend (last N days)
+  - Top 5 organizations by active job count
+  - Applications by status breakdown
+  - Notifications sent (last 7 days) + total unread count
 
-**Impact**: 
-- Admin-specific endpoints would need custom routes
-- Currently admins use same endpoints (jobs, users) with @admin_required decorator
-- Not critical since RBAC works, but dedicated admin analytics would be cleaner
-
-**Fix Required**:
-- Add dedicated admin analytics endpoints:
-  - GET /api/v1/admin/stats/jobs — job counts by status/type
-  - GET /api/v1/admin/stats/users — user counts by role/status  
-  - GET /api/v1/admin/stats/applications — application trends
-  - GET /api/v1/admin/audit-log — admin action history
-
-**Effort**: 3-4 hours (analytics + audit log endpoints)  
-**Note**: Admin frontend DOES work using existing job/user routes with RBAC
+**Conclusion**: Analytics endpoint fully implemented. No action required.
 
 ---
 

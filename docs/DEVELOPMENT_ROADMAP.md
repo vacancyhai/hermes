@@ -1,7 +1,7 @@
 # Hermes — Development Roadmap
 
-> **Last updated**: 2026-03-10 (Stories 2–11 complete + Production Readiness improvements)
-> **Basis**: Actual code state + GitHub issues #100–#109. Nothing is assumed.
+> **Last updated**: 2026-03-17 (Gap fixes — content types, analytics, job matching, search)
+> **Basis**: Actual code state. Nothing is assumed.
 
 ---
 
@@ -24,14 +24,16 @@
 | `app/routes/jobs.py` | ✅ 5 endpoints: GET list, GET /<slug>, POST create, PUT update, DELETE soft-delete |
 | `app/routes/users.py` | ✅ 7 endpoints: GET/PUT profile, GET/POST/DELETE applications, GET users (admin), PUT status (admin) |
 | `app/routes/notifications.py` | ✅ 5 endpoints: GET list, GET count, PUT /:id/read, PUT /read-all, DELETE /:id |
-- `app/routes/admin.py` — ✅ Dashboard stats endpoint (GET /stats)
+| `app/routes/admin.py` | ✅ Dashboard stats + full analytics endpoint (GET /stats, GET /analytics) |
 - `app/routes/admin_auth.py` — ✅ Admin authentication (login, logout, refresh, change-password, me)
 - `app/routes/admin_users.py` — ✅ Admin user management (CRUD, permissions, role updates)
 - `app/routes/admin_audit.py` — ✅ Audit logs (action logs, access logs)
+- `app/routes/content.py` — ✅ 30 CRUD endpoints for 6 content types (results, admit-cards, answer-keys, admissions, yojanas, board-results)
 | `app/services/auth_service.py` | ✅ Register, login, logout, token refresh, password reset, email verification |
-| `app/services/job_service.py` | ✅ get_jobs, get_job_by_slug, get_job_by_id, create_job, update_job, delete_job |
+| `app/services/job_service.py` | ✅ get_jobs (extended search: title+org+short_desc+description+department filter), get_job_by_slug, get_job_by_id, create_job, update_job, delete_job |
 | `app/services/user_service.py` | ✅ get_profile, update_profile, get_applications, apply_to_job, withdraw_application, get_all_users, update_user_status |
-| `app/services/notification_service.py` | ✅ create, mark read, mark all read, delete, match_job_to_users |
+| `app/services/notification_service.py` | ✅ create, mark read, mark all read, delete, match_job_to_users (qualification + category + age range + gender + domicile + ex-serviceman + PWD) |
+| `app/services/content_service.py` | ✅ Full CRUD for Result, AdmitCard, AnswerKey, Admission, Yojana, BoardResult |
 | `app/services/email_service.py` | ✅ Flask-Mail wrapper: verification, reset, job alert, deadline reminder |
 | `app/middleware/auth_middleware.py` | ✅ JWT decode, role check, token rotation |
 | `app/middleware/error_handler.py` | ✅ JSON error handlers (400, 401, 403, 404, 500); reads g.request_id |
@@ -43,7 +45,7 @@
 | `app/validators/auth_validator.py` | ✅ RegisterSchema, LoginSchema, PasswordResetRequestSchema, PasswordResetSchema |
 | `app/validators/user_validator.py` | ✅ UpdateProfileSchema, UpdatePhoneSchema |
 | `app/validators/job_validator.py` | ✅ CreateJobSchema, UpdateJobSchema, JobSearchSchema |
-| `app/utils/constants.py` | ✅ UserRole, UserStatus, JobStatus, JobType, ApplicationStatus, NotificationType, QualificationLevel, ErrorCode |
+| `app/utils/constants.py` | ✅ UserRole, UserStatus, JobStatus, JobType, ApplicationStatus, NotificationType, QualificationLevel, ErrorCode (incl. NOT_IMPLEMENTED) |
 | `app/utils/helpers.py` | ✅ paginate(), success_response(), slugify() |
 | `app/utils/decorators.py` | ✅ @admin_required, @operator_required |
 | `app/tasks/celery_app.py` | ✅ Celery configured |
@@ -51,7 +53,7 @@
 | `app/tasks/reminder_tasks.py` | ✅ deadline reminders at T-7, T-3, T-1 days |
 | `app/tasks/cleanup_tasks.py` | ✅ purge notifications, admin logs, soft-deleted jobs, expired listings |
 
-**Tests**: 324 passing — unit tests cover validators, helpers, services, rate_limiter, request_id, all Celery tasks (notification, reminder, views-flush, cleanup); integration tests cover auth + jobs + users + notification routes.
+**Tests**: All test files removed (2026-03-17).
 
 **VERIFIED IMPLEMENTATIONS** (2026-03-10 audit):
 - ✅ **CSRF Protection**: Fully implemented in `src/frontend/app/utils/csrf.py` and `src/frontend-admin/app/utils/csrf.py` with session-based tokens
@@ -342,34 +344,44 @@ Implemented:
 
 ---
 
-## What Remains To Be Done (Production-Ready Gaps)
+## Gap Fixes (March 17, 2026)
+
+**Completed:**
+1. ✅ **Content Types (6)** — `app/services/content_service.py` + `app/routes/content.py` — full CRUD for Result, AdmitCard, AnswerKey, Admission, Yojana, BoardResult (30 endpoints, registered in app factory)
+2. ✅ **Admin Analytics** — `app/routes/admin.py` — replaced stub with real SQLAlchemy queries: jobs by type/status, daily trends, top 5 orgs, application status breakdown, notification stats
+3. ✅ **Job Matching Algorithm** — `app/services/notification_service.py` — `match_job_to_users()` now checks: qualification ≥ required, category in vacancies, age range (min/max), gender restriction, domicile/state, ex-serviceman only, PWD only
+4. ✅ **Search** — `app/services/job_service.py` — ILIKE query now includes `description` column; `department` filter wired
+5. ✅ **Error Code** — `app/utils/constants.py` — added `NOT_IMPLEMENTED = 'NOT_IMPLEMENTED'` to `ErrorCode`
+6. ✅ **Tests** — All test files removed (user request 2026-03-17)
+
+---
+
+## What Remains To Be Done
 
 **High Priority:**
-1. **Backend Admin Analytics Endpoints** — `routes/admin.py` is empty stub; add stats/audit-log endpoints
-2. **CI/CD Pipeline** — No `.github/workflows/` exists; deployments are manual
+1. **CI/CD Pipeline** — No `.github/workflows/` exists; deployments are manual
+2. **Monitoring/Alerting** — No Prometheus/Grafana setup
 
 **Medium Priority:**
-1. **E2E Tests** — Only unit + integration tests exist; need Playwright for full user flows
+1. **E2E Tests** — No Playwright/Selenium for full user flows
 2. **Load Testing** — No performance baseline; add Locust/k6 tests
-3. **API Documentation** — No Swagger/OpenAPI spec; would help frontend developers
-4. **Deployment Verification** — Scripts start containers but don't verify migrations/health
+3. **API Documentation** — No Swagger/OpenAPI spec
+4. **Search** — Elasticsearch integration for ranking, suggestions, faceting (current: ILIKE)
+5. **Push Notifications** — Firebase FCM documented but not implemented (needs Firebase project)
 
 **Low Priority:**
-1. **Linting Config** — No .flake8/.pylintrc; code style varies
+1. **Linting Config** — No .flake8/.pylintrc
+2. **Automated SSL** — Certbot not configured; SSL setup is manual
+3. **Backup Scheduling** — Scripts exist but not scheduled (no cron/Celery Beat job)
 
-**See**: `docs/KNOWN_ISSUES_AND_GAPS.md` for full details on remaining gaps (updated March 10, 2026).
+**See**: `docs/KNOWN_ISSUES_AND_GAPS.md` for full details.
 
 ---
 
 ## What Is NOT In Scope (Future Work)
 
-These items appear in the README and workflow diagrams but have no corresponding GitHub issue yet:
-
-- Firebase FCM push notification integration (partially mentioned in Story 10)
-- Admin frontend analytics dashboard (charts, stats)
+- Firebase FCM push notification integration
 - Nginx admin frontend proxying (currently admin is accessed directly on port 8081)
 - Production deployment to Hostinger VPS (documented in README but no issue)
-- SSL certificate provisioning (Let's Encrypt)
+- SSL certificate provisioning (Let's Encrypt / Certbot automation)
 - CI/CD pipeline (no `.github/workflows/` exists)
-
-These will need separate issues before work begins.

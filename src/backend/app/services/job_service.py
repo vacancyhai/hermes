@@ -77,6 +77,10 @@ def get_jobs(filters: dict) -> dict:
         org = _escape_ilike(filters['organization'])
         query = query.filter(JobVacancy.organization.ilike(f"%{org}%", escape='\\'))
 
+    if filters.get('department'):
+        dept = _escape_ilike(filters['department'])
+        query = query.filter(JobVacancy.department.ilike(f"%{dept}%", escape='\\'))
+
     if filters.get('featured') is True:
         query = query.filter(JobVacancy.is_featured.is_(True))
 
@@ -89,6 +93,7 @@ def get_jobs(filters: dict) -> dict:
             JobVacancy.job_title.ilike(term, escape='\\'),
             JobVacancy.organization.ilike(term, escape='\\'),
             JobVacancy.short_description.ilike(term, escape='\\'),
+            JobVacancy.description.ilike(term, escape='\\'),
         ))
 
     query = query.order_by(JobVacancy.priority.desc(), JobVacancy.created_at.desc())

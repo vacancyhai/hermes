@@ -160,9 +160,18 @@ def match_job_to_users(job) -> list[dict]:
 
     Eligibility rules (all must pass):
       1. User status == 'active'
-      2. qualification_level matches profile.highest_qualification (if job specifies one)
-      3. category vacancy available for profile.category (if job.eligibility has category_vacancies)
-      4. User notification_preferences does not explicitly exclude this job_type
+      2. qualification_level: user's highest_qualification >= job's required level
+      3. category vacancy: user's category is listed in job.eligibility.category_vacancies
+      4. notification_preferences: user has not disabled this job_type
+      5. age_limit: user's age at application_end is within job.eligibility.age_limit
+                   {min_age: int, max_age: int} — skipped if job doesn't set this
+      6. gender: job.eligibility.gender (e.g. "Male") must match profile.gender
+                 — skipped if job doesn't restrict gender
+      7. domicile: profile.state must be in job.eligibility.domicile_states list
+                   — skipped if job doesn't restrict domicile
+      8. ex_serviceman_only: job.eligibility.ex_serviceman_only == True requires
+                             profile.is_ex_serviceman == True
+      9. pwd_only: job.eligibility.pwd_only == True requires profile.is_pwd == True
 
     Users are fetched in chunks of _MATCH_CHUNK_SIZE to avoid loading the full
     user table into memory at once.
@@ -170,7 +179,7 @@ def match_job_to_users(job) -> list[dict]:
     Returns a list of dicts:
         [{"user_id": str, "email": str, "full_name": str}, ...]
     """
-    from app.models.user import User, UserProfile
+    from datetime import date
     from app.utils.constants import UserStatus
 
     eligible: list[dict] = []
@@ -178,6 +187,18 @@ def match_job_to_users(job) -> list[dict]:
     job_qual = getattr(job, "qualification_level", None)
     job_eligibility = getattr(job, "eligibility", {}) or {}
     job_type = getattr(job, "job_type", None)
+    # Use application_end as the reference date for age calculations
+    age_ref_date = getattr(job, "application_end", None) or date.today()
+
+    # Pre-extract eligibility fields once (avoids repeated dict lookups per user)
+    age_limit = job_eligibility.get("age_limit") or {}
+    min_age = age_limit.get("min_age")
+    max_age = age_limit.get("max_age")
+    required_gender = job_eligibility.get("gender")           # e.g. "Male", "Female", None
+    domicile_states = job_eligibility.get("domicile_states")  # list of state names, or None
+    ex_serviceman_only = bool(job_eligibility.get("ex_serviceman_only", False))
+    pwd_only = bool(job_eligibility.get("pwd_only", False))
+    category_vacancies = job_eligibility.get("category_vacancies", {})
 
     offset = 0
     pages_fetched = 0
@@ -208,7 +229,6 @@ def match_job_to_users(job) -> list[dict]:
                     continue
 
             # 2. Category vacancy check
-            category_vacancies = job_eligibility.get("category_vacancies", {})
             if category_vacancies and profile.category:
                 if profile.category not in category_vacancies:
                     continue
@@ -217,6 +237,32 @@ def match_job_to_users(job) -> list[dict]:
             prefs = profile.notification_preferences or {}
             disabled_types = prefs.get("disabled_job_types", [])
             if job_type and job_type in disabled_types:
+                continue
+
+            # 4. Age range check (only if job specifies min or max age)
+            if (min_age is not None or max_age is not None) and profile.date_of_birth:
+                user_age = _age_at(profile.date_of_birth, age_ref_date)
+                if min_age is not None and user_age < min_age:
+                    continue
+                if max_age is not None and user_age > max_age:
+                    continue
+
+            # 5. Gender check (only if job restricts gender)
+            if required_gender and profile.gender:
+                if profile.gender.lower() != required_gender.lower():
+                    continue
+
+            # 6. Domicile/state check (only if job restricts to specific states)
+            if domicile_states and profile.state:
+                if profile.state not in domicile_states:
+                    continue
+
+            # 7. Ex-serviceman only check
+            if ex_serviceman_only and not profile.is_ex_serviceman:
+                continue
+
+            # 8. PWD only check
+            if pwd_only and not profile.is_pwd:
                 continue
 
             eligible.append({
@@ -250,3 +296,15 @@ def _qualification_meets(user_qual: str, required_qual: str) -> bool:
     user_rank = _QUAL_RANK.get(user_qual.lower(), 0)
     req_rank = _QUAL_RANK.get(required_qual.lower(), 0)
     return user_rank >= req_rank
+
+
+def _age_at(date_of_birth, reference_date) -> int:
+    """Return age in whole years at reference_date."""
+    from datetime import date as _date
+    if isinstance(reference_date, _date):
+        ref = reference_date
+    else:
+        ref = reference_date.date() if hasattr(reference_date, 'date') else _date.today()
+    dob = date_of_birth if isinstance(date_of_birth, _date) else date_of_birth
+    age = ref.year - dob.year - ((ref.month, ref.day) < (dob.month, dob.day))
+    return age

@@ -100,7 +100,7 @@ def create_app():
 
     # Register blueprints
     from app.routes import auth, jobs, users, notifications, admin, health
-    from app.routes import admin_auth, admin_users, admin_audit
+    from app.routes import admin_auth, admin_users, admin_audit, content
     
     # User-facing routes
     app.register_blueprint(auth.bp)
@@ -108,6 +108,7 @@ def create_app():
     app.register_blueprint(users.bp)
     app.register_blueprint(notifications.bp)
     app.register_blueprint(health.bp)
+    app.register_blueprint(content.bp)
     
     # Admin routes
     app.register_blueprint(admin.bp)  # Keep for future admin routes
