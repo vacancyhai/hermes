@@ -51,6 +51,7 @@ class JobVacancy(db.Model):
     meta_title = db.Column(db.String(500))
     meta_description = db.Column(db.Text)
     meta_keywords = db.Column(db.ARRAY(db.Text))
+    version = db.Column(db.Integer, nullable=False, default=1)
     views = db.Column(db.Integer, nullable=False, default=0)
     applications_count = db.Column(db.Integer, nullable=False, default=0)
     shares_count = db.Column(db.Integer, nullable=False, default=0)

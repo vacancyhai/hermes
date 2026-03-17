@@ -211,7 +211,6 @@ def request_password_reset(email: str) -> Tuple[Optional[User], Optional[str]]:
     reset_token = _store_redis_token('pwd_reset', str(user.id), _PWD_RESET_TTL)
     logger.info(f"request_password_reset: Token generated for user={user.id}")
     return user, reset_token
-    return user, reset_token
 
 
 def reset_password(token: str, new_password: str) -> User:

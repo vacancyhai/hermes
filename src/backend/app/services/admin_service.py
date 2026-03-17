@@ -5,8 +5,9 @@ Provides CRUD operations and authentication for admin_users table.
 This is separate from user_service.py to maintain strict separation
 between regular users and admin users.
 """
+import json
 from datetime import datetime, timedelta, timezone
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, Union
 import uuid as _uuid_mod
 import logging
 
@@ -395,18 +396,19 @@ def log_admin_action(
     action: str,
     resource_type: str = None,
     resource_id: str = None,
-    details: str = None,
+    details: Union[str, dict, None] = None,
     changes: Dict = None,
     ip_address: str = None,
     user_agent: str = None
 ) -> AdminLog:
     """Log an admin action for audit trail"""
+    _details = json.dumps(details) if isinstance(details, dict) else details
     log_entry = AdminLog(
-        admin_id=_uuid_mod.UUID(admin_id),
+        admin_id=_uuid_mod.UUID(str(admin_id)),
         action=action,
         resource_type=resource_type,
-        resource_id=_uuid_mod.UUID(resource_id) if resource_id else None,
-        details=details,
+        resource_id=_uuid_mod.UUID(str(resource_id)) if resource_id else None,
+        details=_details,
         changes=changes or {},
         ip_address=ip_address,
         user_agent=user_agent

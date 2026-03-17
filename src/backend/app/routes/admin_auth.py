@@ -72,7 +72,7 @@ def login():
 
     # Log successful login
     log_admin_action(
-        admin_id=admin.id,
+        admin_id=str(admin.id),
         action='login',
         resource_type='auth',
         details={'ip_address': ip_address},
@@ -108,7 +108,7 @@ def logout():
         ip_address = request.headers.get('X-Forwarded-For', request.remote_addr)
         user_agent = request.headers.get('User-Agent', '')
         log_admin_action(
-            admin_id=admin.id,
+            admin_id=str(admin.id),
             action='logout',
             resource_type='auth',
             ip_address=ip_address,
@@ -120,6 +120,7 @@ def logout():
 
 @bp.route('/refresh', methods=['POST'])
 @jwt_required(refresh=True)
+@require_admin()
 def refresh():
     """Issue new access and refresh tokens."""
     identity = get_jwt_identity()
@@ -174,7 +175,7 @@ def change_password():
     ip_address = request.headers.get('X-Forwarded-For', request.remote_addr)
     user_agent = request.headers.get('User-Agent', '')
     log_admin_action(
-        admin_id=admin.id,
+        admin_id=str(admin.id),
         action='change_password',
         resource_type='auth',
         ip_address=ip_address,
