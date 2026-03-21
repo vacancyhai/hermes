@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block title %}Hermes — Government Job Portal{% endblock %}
+
+{% block content %}
+<h1>Hermes — Government Job Vacancy Portal</h1>
+<p>Find and track government job vacancies matched to your profile.</p>
+
+<!-- TODO: Job listing with HTMX infinite scroll -->
+<div id="job-list"
+     hx-get="/jobs?page=1"
+     hx-trigger="load"
+     hx-swap="innerHTML">
+    <p>Loading jobs...</p>
+</div>
+{% endblock %}

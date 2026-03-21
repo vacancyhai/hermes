@@ -1,7 +1,4 @@
-version: '3.8'
-
 services:
-  # Frontend Application
   frontend:
     build:
       context: .
@@ -10,22 +7,21 @@ services:
     restart: unless-stopped
     env_file:
       - .env
-    volumes:
-      - ./app:/app/app
-      - ./templates:/app/templates
-      - ./static:/app/static
     ports:
       - "${FRONTEND_PORT:-8080}:8080"
-    networks:
-      - frontend_network
+    volumes:
+      - ./app:/app/app  # Hot-reload in development
     healthcheck:
-      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health', timeout=5)"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 30s
       timeout: 10s
-      start_period: 20s
       retries: 3
+      start_period: 10s
+    command: >
+      flask run --host=0.0.0.0 --port=8080 --reload
+    networks:
+      - frontend_network
 
 networks:
   frontend_network:
-    driver: bridge
     name: src_frontend_network

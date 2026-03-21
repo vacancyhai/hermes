@@ -1,85 +1,27 @@
-#!/bin/bash
+#!/usr/bin/env bash
+# restore_db.sh — Restore PostgreSQL from a backup file
+# Usage: ./restore_db.sh <backup_file.dump>
+set -euo pipefail
 
-# Restore PostgreSQL Database - Hermes Backend
-# This script restores a PostgreSQL database from backup
-# Usage: ./restore_db.sh <backup_file>
-# Example: ./restore_db.sh hermes_backup_20260305_120000.dump
-
-set -e  # Exit on error
-
-BACKEND_PATH="./src/backend"
-BACKUP_FILE=$1
-
-echo "================================"
-echo "PostgreSQL Database Restore"
-echo "================================"
-echo ""
-
-# Validate arguments
-if [ -z "$BACKUP_FILE" ]; then
-    echo "❌ Backup file not specified"
-    echo "Usage: $0 <backup_file>"
-    echo "Example: $0 hermes_backup_20260305_120000.dump"
+if [ $# -ne 1 ]; then
+    echo "Usage: $0 <backup_file.dump>"
     exit 1
 fi
 
-# Validate backup file exists
+BACKUP_FILE="$1"
+
 if [ ! -f "$BACKUP_FILE" ]; then
-    echo "❌ Backup file not found: $BACKUP_FILE"
+    echo "Error: Backup file not found: $BACKUP_FILE"
     exit 1
 fi
 
-# Validate backend directory exists
-if [ ! -d "$BACKEND_PATH" ]; then
-    echo "❌ Backend directory not found: $BACKEND_PATH"
-    exit 1
-fi
+echo "[$(date)] Restoring database from $BACKUP_FILE..."
 
-# Check if docker-compose is running in backend
-if ! docker-compose -f "$BACKEND_PATH/docker-compose.yml" ps postgresql &>/dev/null; then
-    echo "❌ PostgreSQL container is not running"
-    echo "   Start backend services first:"
-    echo "   cd $BACKEND_PATH && docker-compose up -d"
-    exit 1
-fi
+cat "$BACKUP_FILE" | docker exec -i hermes_postgresql pg_restore \
+    -U "${POSTGRES_USER:-hermes_user}" \
+    -d "${POSTGRES_DB:-hermes_db}" \
+    --clean \
+    --if-exists \
+    --no-owner
 
-echo "⚠️  WARNING: This will REPLACE the current database!"
-echo "   Database: hermes_db"
-echo "   Backup file: $BACKUP_FILE"
-echo ""
-read -p "Continue? (yes/no): " -r CONFIRM
-if [[ ! $CONFIRM =~ ^[Yy][Ee][Ss]$ ]]; then
-    echo "❌ Restore cancelled"
-    exit 1
-fi
-
-echo ""
-echo "📥 Restoring database..."
-
-# Copy backup file to container
-CONTAINER_ID=$(docker-compose -f "$BACKEND_PATH/docker-compose.yml" ps -q postgresql)
-docker cp "$BACKUP_FILE" "$CONTAINER_ID:/tmp/restore.dump"
-
-# Terminate all existing connections before dropping (prevents "database is being accessed" error)
-docker-compose -f "$BACKEND_PATH/docker-compose.yml" exec -T postgresql \
-    psql -U hermes_user -d postgres \
-    -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'hermes_db' AND pid <> pg_backend_pid();"
-
-# Drop and recreate database (clean slate)
-docker-compose -f "$BACKEND_PATH/docker-compose.yml" exec -T postgresql \
-    psql -U hermes_user -d postgres -c "DROP DATABASE IF EXISTS hermes_db;"
-
-docker-compose -f "$BACKEND_PATH/docker-compose.yml" exec -T postgresql \
-    psql -U hermes_user -d postgres -c "CREATE DATABASE hermes_db;"
-
-# Restore from backup
-docker-compose -f "$BACKEND_PATH/docker-compose.yml" exec -T postgresql \
-    pg_restore -U hermes_user -d hermes_db /tmp/restore.dump
-
-echo ""
-echo "✅ Restore successful!"
-echo "   Database: hermes_db"
-echo "   Status: Ready to use"
-echo ""
-echo "💡 Tip: Verify the restore with:"
-echo "   cd $BACKEND_PATH && docker-compose exec postgresql psql -U hermes_user -d hermes_db -c '\\dt'"
+echo "[$(date)] Restore complete."

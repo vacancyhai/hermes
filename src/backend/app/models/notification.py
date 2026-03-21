@@ -1,35 +1,32 @@
-"""
-Notification model
-"""
+"""Notification model — maps to `notifications` table."""
+
 import uuid
-from datetime import datetime, timedelta
-from sqlalchemy.dialects.postgresql import UUID, ARRAY
-from app.extensions import db
+from datetime import datetime
+
+from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, func
+from sqlalchemy.dialects.postgresql import ARRAY, UUID
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from app.models.base import Base
 
 
-class Notification(db.Model):
-    __tablename__ = 'notifications'
+class Notification(Base):
+    __tablename__ = "notifications"
 
-    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
-    entity_type = db.Column(db.String(50))
-    entity_id = db.Column(UUID(as_uuid=True))
-    type = db.Column(db.String(60), nullable=False)
-    title = db.Column(db.String(500), nullable=False)
-    message = db.Column(db.Text, nullable=False)
-    action_url = db.Column(db.Text)
-    is_read = db.Column(db.Boolean, nullable=False, default=False)
-    sent_via = db.Column(ARRAY(db.Text))
-    priority = db.Column(db.String(10), nullable=False, default='medium')
-    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=datetime.utcnow)
-    read_at = db.Column(db.DateTime(timezone=True))
-    expires_at = db.Column(
-        db.DateTime(timezone=True),
-        nullable=False,
-        default=lambda: datetime.utcnow() + timedelta(days=90)
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    entity_type: Mapped[str | None] = mapped_column(String(50))
+    entity_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    type: Mapped[str] = mapped_column(String(60), nullable=False)
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+    action_url: Mapped[str | None] = mapped_column(Text)
+    is_read: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    sent_via: Mapped[list | None] = mapped_column(ARRAY(String))
+    priority: Mapped[str] = mapped_column(String(10), nullable=False, default="medium")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.text("NOW() + INTERVAL '90 days'"))
 
-    user = db.relationship('User', back_populates='notifications')
-
-    def __repr__(self):
-        return f'<Notification {self.type} user={self.user_id}>'
+    # Relationships
+    user = relationship("User", back_populates="notifications")

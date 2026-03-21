@@ -1,41 +1,31 @@
-"""
-Admin Frontend Flask Application Factory
-"""
-from flask import Flask, session
-from flask_login import LoginManager
+"""Hermes Admin Frontend — Flask + Jinja2 + HTMX."""
+
+import os
+
+from flask import Flask, render_template
+
+from app.api_client import ApiClient
 
 
 def create_app():
-    """
-    Application factory pattern for Flask admin frontend.
-    Only admin and operator roles are permitted to log in here.
-    """
     app = Flask(__name__)
+    app.secret_key = os.environ.get("SECRET_KEY", "admin-dev-secret-key")
 
-    # Load configuration
-    app.config.from_object('config.settings.Config')
+    # API client for backend communication
+    app.api_client = ApiClient(
+        base_url=os.environ.get("BACKEND_API_URL", "http://localhost:8000/api/v1")
+    )
 
-    # Initialize extensions
-    login_manager = LoginManager()
-    login_manager.init_app(app)
-    login_manager.login_view = 'auth.login'
+    @app.route("/health")
+    def health():
+        return {"status": "ok", "service": "hermes-frontend-admin"}
 
-    @login_manager.user_loader
-    def load_user(user_id):
-        from app.models.user import User
-        from app.utils.session_manager import get_user_data
-        data = get_user_data(session)
-        if data and data.get("user_id") == user_id:
-            return User.from_session(data)
-        return None
-
-    # Register blueprints
-    from app.routes import main, auth, dashboard, users, jobs, errors
-    app.register_blueprint(main.bp)
-    app.register_blueprint(auth.bp)
-    app.register_blueprint(dashboard.bp)
-    app.register_blueprint(users.bp)
-    app.register_blueprint(jobs.bp)
-    app.register_blueprint(errors.bp)
+    @app.route("/")
+    def index():
+        return render_template("index.html")
 
     return app
+
+
+# Flask CLI entry point
+app = create_app()

@@ -1,42 +1,30 @@
 services:
-  # Nginx Reverse Proxy (SSL Termination, Load Balancing, Rate Limiting)
   nginx:
     image: nginx:alpine
-    container_name: hermes_nginx_proxy
+    container_name: hermes_nginx
     restart: unless-stopped
-    env_file:
-      - .env
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./ssl:/etc/nginx/ssl:ro
-      - nginx_logs:/var/log/nginx
     ports:
-      - "${NGINX_HTTP_PORT:-80}:80"
-      - "${NGINX_HTTPS_PORT:-443}:443"
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./static:/var/www/static:ro  # For sitemap.xml
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     networks:
       - backend_network
       - frontend_network
       - frontend_admin_network
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80/health"]
-      interval: 30s
-      timeout: 10s
-      start_period: 20s
-      retries: 3
-
-volumes:
-  nginx_logs:
 
 networks:
-  # Reference external networks from backend and frontend docker-compose
   backend_network:
-    external: true
     name: src_backend_network
-
+    external: true
   frontend_network:
-    external: true
     name: src_frontend_network
-
-  frontend_admin_network:
     external: true
+  frontend_admin_network:
     name: src_frontend_admin_network
+    external: true

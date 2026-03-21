@@ -1,61 +1,26 @@
-#!/bin/bash
+#!/usr/bin/env bash
+# backup_db.sh — Daily PostgreSQL backup
+# Run via cron: 0 2 * * * /path/to/hermes/scripts/backup/backup_db.sh
+set -euo pipefail
 
-# Backup PostgreSQL Database - Hermes Backend
-# This script creates a backup of the PostgreSQL database
-# Usage: ./backup_db.sh [output_directory]
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
+BACKUP_DIR="$PROJECT_DIR/backups"
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 
-BACKEND_PATH="./src/backend"
-OUTPUT_DIR=${1:-.}
-BACKUP_FILENAME="hermes_backup_$(date +%Y%m%d_%H%M%S).dump"
-BACKUP_PATH="$OUTPUT_DIR/$BACKUP_FILENAME"
+mkdir -p "$BACKUP_DIR"
 
-echo "================================"
-echo "PostgreSQL Database Backup"
-echo "================================"
-echo ""
+echo "[$(date)] Starting database backup..."
 
-# Validate backend directory exists
-if [ ! -d "$BACKEND_PATH" ]; then
-    echo "❌ Backend directory not found: $BACKEND_PATH"
-    exit 1
-fi
+docker exec hermes_postgresql pg_dump \
+    -U "${POSTGRES_USER:-hermes_user}" \
+    -d "${POSTGRES_DB:-hermes_db}" \
+    --format=custom \
+    --compress=9 \
+    > "$BACKUP_DIR/hermes_db_${TIMESTAMP}.dump"
 
-# Check if docker-compose is running in backend
-if ! docker-compose -f "$BACKEND_PATH/docker-compose.yml" ps postgresql &>/dev/null; then
-    echo "❌ PostgreSQL container is not running"
-    echo "   Start backend services first:"
-    echo "   cd $BACKEND_PATH && docker-compose up -d"
-    exit 1
-fi
+echo "[$(date)] Backup saved to $BACKUP_DIR/hermes_db_${TIMESTAMP}.dump"
 
-# Create output directory if it doesn't exist
-mkdir -p "$OUTPUT_DIR"
-
-echo "📦 Backing up database..."
-echo "   Database: hermes_db"
-echo "   User: hermes_user"
-echo "   Output: $BACKUP_PATH"
-echo ""
-
-# Create backup using pg_dump
-docker-compose -f "$BACKEND_PATH/docker-compose.yml" exec -T postgresql pg_dump \
-    -U hermes_user \
-    -d hermes_db \
-    -F c \
-    -f "/tmp/$BACKUP_FILENAME"
-
-# Copy backup from container to host
-docker cp "$(docker-compose -f "$BACKEND_PATH/docker-compose.yml" ps -q postgresql):/tmp/$BACKUP_FILENAME" \
-    "$BACKUP_PATH"
-
-# Verify backup was created
-if [ -f "$BACKUP_PATH" ]; then
-    FILESIZE=$(du -h "$BACKUP_PATH" | cut -f1)
-    echo "✅ Backup successful!"
-    echo "   File: $BACKUP_FILENAME"
-    echo "   Size: $FILESIZE"
-    echo "   Path: $BACKUP_PATH"
-else
-    echo "❌ Backup failed!"
-    exit 1
-fi
+# Keep only last 7 daily backups
+find "$BACKUP_DIR" -name "hermes_db_*.dump" -mtime +7 -delete
+echo "[$(date)] Old backups cleaned up."

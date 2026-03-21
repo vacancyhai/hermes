@@ -1,58 +1,21 @@
+# Environment files
+.env
+*.env
+
 # Python
 __pycache__/
 *.py[cod]
 *$py.class
-*.so
-.Python
-env/
-venv/
-ENV/
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
 *.egg-info/
-.installed.cfg
+dist/
+build/
+.eggs/
 *.egg
 
-# Virtual Environment
+# Virtual environments
 .venv/
 venv/
-ENV/
 env/
-
-# Flask
-instance/
-.webassets-cache
-
-# Logs
-*.log
-logs/
-backend/logs/
-frontend/logs/
-
-# Environment Variables
-.env
-.env.local
-.env.production
-.env.staging
-.env.development
-config/production/.env.production
-config/staging/.env.staging
-config/development/.env.development
-
-# Database
-*.db
-*.sqlite3
-*.sql
 
 # IDE
 .vscode/
@@ -60,45 +23,30 @@ config/development/.env.development
 *.swp
 *.swo
 *~
-.DS_Store
-
-# Testing
-.coverage
-.pytest_cache/
-htmlcov/
-.tox/
-.nox/
 
 # Docker
-*.log
 docker-compose.override.yml
 
-# Nginx
-src/nginx/ssl/*.key
-src/nginx/ssl/*.crt
-src/nginx/ssl/*.pem
-
-# Backup
-backups/
-*.backup
-*.bak
-
-# Temporary files
-tmp/
-temp/
-*.tmp
-
 # OS
-Thumbs.db
 .DS_Store
+Thumbs.db
 
-# Secrets
-secrets/
-*.pem
-*.key
-*.cert
+# Logs
+*.log
+logs/
 
-# Node modules (if using any frontend build tools)
-node_modules/
-package-lock.json
-yarn.lock
+# Database dumps
+*.sql
+*.dump
+backups/
+
+# Firebase credentials
+firebase-credentials.json
+
+# Coverage
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Alembic
+migrations/versions/*.pyc

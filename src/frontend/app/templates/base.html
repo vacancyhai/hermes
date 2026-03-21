@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Hermes — Government Job Portal{% endblock %}</title>
+    {% block meta %}{% endblock %}
+    <script src="https://unpkg.com/htmx.org@2.0.0" integrity="sha384-wS5l5IKJBvK6sPTKa2XN5W3A+nXFl30aKmSfEBR6drFQoAhRmCAMQPsKB84OOSL" crossorigin="anonymous"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.14.0/dist/cdn.min.js"></script>
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <header>
+        <nav>
+            <a href="/">Hermes</a>
+            <!-- Navigation links here -->
+        </nav>
+    </header>
+
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer>
+        <p>Hermes — Government Job Vacancy Portal</p>
+    </footer>
+</body>
+</html>

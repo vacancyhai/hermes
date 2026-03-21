@@ -1,7 +1,4 @@
-version: '3.8'
-
 services:
-  # Admin Frontend Application
   frontend-admin:
     build:
       context: .
@@ -10,25 +7,21 @@ services:
     restart: unless-stopped
     env_file:
       - .env
-    # Dev hot-reload mounts — remove in production (bake code into image via COPY)
-    volumes:
-      - ./app:/app/app
-      - ./templates:/app/templates
-      - ./static:/app/static
-    # NOTE: container always binds to port 8081 (set in Dockerfile CMD).
-    # FRONTEND_ADMIN_PORT only changes the host-side port.
     ports:
       - "${FRONTEND_ADMIN_PORT:-8081}:8081"
-    networks:
-      - frontend_admin_network
+    volumes:
+      - ./app:/app/app  # Hot-reload in development
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
       interval: 30s
       timeout: 10s
-      start_period: 20s
       retries: 3
+      start_period: 10s
+    command: >
+      flask run --host=0.0.0.0 --port=8081 --reload
+    networks:
+      - frontend_admin_network
 
 networks:
   frontend_admin_network:
-    driver: bridge
     name: src_frontend_admin_network
