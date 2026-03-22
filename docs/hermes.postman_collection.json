@@ -1,7 +1,7 @@
 {
 	"info": {
 		"name": "Hermes – Gov Job Portal",
-		"description": "API collection for Hermes Government Job Vacancy Portal.\n\nVariables:\n- `base_url` → http://localhost:8000/api/v1\n- `user_token` → set automatically after user login\n- `admin_token` → set automatically after admin login\n- `refresh_token` / `admin_refresh_token` → set after login",
+		"description": "API collection for Hermes Government Job Vacancy Portal.\n\nVariables:\n- `base_url` → http://localhost:8000/api/v1\n- `user_token` → set automatically after user login\n- `admin_token` → set automatically after admin login\n- `refresh_token` / `admin_refresh_token` → set after login\n- `notification_id` → set after listing notifications",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"variable": [
@@ -13,7 +13,8 @@
 		{ "key": "job_id", "value": "" },
 		{ "key": "job_slug", "value": "" },
 		{ "key": "user_id", "value": "" },
-		{ "key": "application_id", "value": "" }
+		{ "key": "application_id", "value": "" },
+		{ "key": "notification_id", "value": "" }
 	],
 	"item": [
 		{
@@ -346,7 +347,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"job_title\": \"SSC CGL 2026\",\n  \"organization\": \"Staff Selection Commission\",\n  \"job_type\": \"latest_job\",\n  \"qualification_level\": \"graduate\",\n  \"total_vacancies\": 8000,\n  \"description\": \"Combined Graduate Level Exam 2026 recruitment.\",\n  \"application_end\": \"2026-07-15\",\n  \"status\": \"draft\"\n}"
+							"raw": "{\n  \"job_title\": \"SSC CGL 2026\",\n  \"organization\": \"Staff Selection Commission\",\n  \"job_type\": \"latest_job\",\n  \"qualification_level\": \"graduate\",\n  \"total_vacancies\": 8000,\n  \"description\": \"Combined Graduate Level Exam 2026 recruitment.\",\n  \"application_end\": \"2026-07-15\",\n  \"fee_general\": 100,\n  \"fee_obc\": 100,\n  \"fee_sc_st\": 0,\n  \"fee_ews\": 0,\n  \"fee_female\": 0,\n  \"status\": \"draft\"\n}"
 						}
 					}
 				},
@@ -417,7 +418,8 @@
 							"query": [
 								{ "key": "limit", "value": "20" },
 								{ "key": "offset", "value": "0" },
-								{ "key": "search", "value": "", "disabled": true }
+								{ "key": "q", "value": "", "disabled": true },
+								{ "key": "status", "value": "", "disabled": true }
 							]
 						},
 						"header": [
@@ -449,6 +451,21 @@
 							"raw": "{\n  \"status\": \"suspended\"\n}"
 						}
 					}
+				},
+				{
+					"name": "Change User Role (Admin only)",
+					"request": {
+						"method": "PUT",
+						"url": "{{base_url}}/admin/users/{{user_id}}/role",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{admin_token}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"role\": \"operator\"\n}"
+						}
+					}
 				}
 			]
 		},
@@ -463,6 +480,17 @@
 						"header": [
 							{ "key": "Authorization", "value": "Bearer {{admin_token}}" }
 						]
+					}
+				},
+				{
+					"name": "Platform Analytics",
+					"request": {
+						"method": "GET",
+						"url": "{{base_url}}/admin/analytics",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{admin_token}}" }
+						],
+						"description": "Demographics, application trends, popular orgs, notification stats. Admin only."
 					}
 				},
 				{
@@ -664,46 +692,130 @@
 			]
 		},
 		{
-			"name": "Phase 6 — Admin Dashboard (enhanced)",
+			"name": "Notifications",
 			"item": [
 				{
-					"name": "Admin Stats (enhanced)",
-					"request": {
-						"method": "GET",
-						"url": "{{base_url}}/admin/stats",
-						"header": [
-							{ "key": "Authorization", "value": "Bearer {{admin_token}}" }
-						]
-					}
-				},
-				{
-					"name": "Create Job with Fees",
-					"request": {
-						"method": "POST",
-						"url": "{{base_url}}/admin/jobs",
-						"header": [
-							{ "key": "Authorization", "value": "Bearer {{admin_token}}" },
-							{ "key": "Content-Type", "value": "application/json" }
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"job_title\": \"SSC GD Constable 2026\",\n  \"organization\": \"Staff Selection Commission\",\n  \"job_type\": \"latest_job\",\n  \"qualification_level\": \"12th\",\n  \"total_vacancies\": 25000,\n  \"description\": \"GD Constable recruitment with fee details.\",\n  \"application_end\": \"2026-08-15\",\n  \"fee_general\": 100,\n  \"fee_obc\": 100,\n  \"fee_sc_st\": 0,\n  \"fee_ews\": 0,\n  \"fee_female\": 0,\n  \"status\": \"draft\"\n}"
-						}
-					},
+					"name": "List Notifications",
 					"event": [
 						{
 							"listen": "test",
 							"script": {
 								"exec": [
-									"if (pm.response.code === 201) {",
-									"    var data = pm.response.json();",
-									"    pm.collectionVariables.set('job_id', data.id);",
-									"    pm.collectionVariables.set('job_slug', data.slug);",
+									"var json = pm.response.json();",
+									"if (json.data && json.data.length > 0) {",
+									"    pm.collectionVariables.set('notification_id', json.data[0].id);",
 									"}"
 								]
 							}
 						}
-					]
+					],
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/notifications?limit=20&offset=0",
+							"host": ["{{base_url}}"],
+							"path": ["notifications"],
+							"query": [
+								{ "key": "limit", "value": "20" },
+								{ "key": "offset", "value": "0" },
+								{ "key": "type", "value": "", "disabled": true },
+								{ "key": "is_read", "value": "false", "disabled": true }
+							]
+						},
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{user_token}}" }
+						]
+					}
+				},
+				{
+					"name": "Unread Count",
+					"request": {
+						"method": "GET",
+						"url": "{{base_url}}/notifications/count",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{user_token}}" }
+						]
+					}
+				},
+				{
+					"name": "Mark Notification as Read",
+					"request": {
+						"method": "PUT",
+						"url": "{{base_url}}/notifications/{{notification_id}}/read",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{user_token}}" }
+						]
+					}
+				},
+				{
+					"name": "Mark All as Read",
+					"request": {
+						"method": "PUT",
+						"url": "{{base_url}}/notifications/read-all",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{user_token}}" }
+						]
+					}
+				},
+				{
+					"name": "Delete Notification",
+					"request": {
+						"method": "DELETE",
+						"url": "{{base_url}}/notifications/{{notification_id}}",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{user_token}}" }
+						]
+					}
+				}
+			]
+		},
+		{
+			"name": "FCM & Notification Preferences",
+			"item": [
+				{
+					"name": "Register FCM Token",
+					"request": {
+						"method": "POST",
+						"url": "{{base_url}}/users/me/fcm-token",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{user_token}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"token\": \"YOUR_FCM_DEVICE_TOKEN_HERE\",\n  \"device_name\": \"Chrome Desktop\"\n}"
+						}
+					}
+				},
+				{
+					"name": "Unregister FCM Token",
+					"request": {
+						"method": "DELETE",
+						"url": "{{base_url}}/users/me/fcm-token",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{user_token}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"token\": \"YOUR_FCM_DEVICE_TOKEN_HERE\"\n}"
+						}
+					}
+				},
+				{
+					"name": "Update Notification Preferences",
+					"request": {
+						"method": "PUT",
+						"url": "{{base_url}}/users/me/notification-preferences",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{user_token}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": true,\n  \"push\": true,\n  \"in_app\": true\n}"
+						}
+					}
 				}
 			]
 		}
