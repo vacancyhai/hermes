@@ -95,8 +95,8 @@ PostgreSQL and Redis are isolated inside Docker networks — never exposed to th
 | [docs/WORKFLOW_DIAGRAMS.md](docs/WORKFLOW_DIAGRAMS.md) | ASCII workflow diagrams for all major user and system flows |
 | [docs/API.md](docs/API.md) | Complete API endpoint reference with request/response examples |
 | [docs/hermes.postman_collection.json](docs/hermes.postman_collection.json) | Postman collection for all API endpoints |
-| [docs/hermes_project_context.md](docs/hermes_project_context.md) | Full project context reference |
-| [docs/SYSTEM_BRIEFING.md](docs/SYSTEM_BRIEFING.md) | AI assistant system briefing |
+| [docs/CONTEXT.md](docs/CONTEXT.md) | Unified session context — load at start of every new AI session |
+| [docs/TESTING.md](docs/TESTING.md) | Test coverage report for all three services |
 
 ## Development Quick Start
 
@@ -278,8 +278,8 @@ hermes/
 │   ├── WORKFLOW_DIAGRAMS.md
 │   ├── API.md
 │   ├── hermes.postman_collection.json
-│   ├── hermes_project_context.md
-│   └── SYSTEM_BRIEFING.md
+│   ├── CONTEXT.md
+│   ├── TESTING.md
 ├── .gitignore
 └── README.md
 ```
