@@ -22,7 +22,7 @@ Browser → Nginx (80/443)
 **Database**: PostgreSQL 16, 8 tables: `users`, `admin_users`, `user_profiles`, `job_vacancies`, `user_job_applications`, `notifications`, `admin_logs`, `alembic_version`. Has tsvector/GIN full-text search.
 
 ## Docker (8 services)
-`src/backend/docker-compose.yml` — 7 services: postgresql (16-alpine), redis (7-alpine), pgbouncer, backend, celery_worker, celery_beat, mailhog (dev email).
+`src/backend/docker-compose.yml` — 7 services: postgresql (16-alpine), redis (7-alpine), pgbouncer, backend, celery_worker, celery_beat, mailpit (dev email).
 `src/frontend/docker-compose.yml` — 1 service: hermes_frontend (port 8080), connected via `src_backend_network`.
 
 ### Critical Docker/DB Notes
@@ -110,7 +110,7 @@ src/frontend/app/
 - **Phase 2** (#121–#124) ✅: Job CRUD + FTS search, admin approve flow + audit logging, user profile endpoints, frontend job listing (HTMX)
 - **Phase 3** (#125–#126) ✅: Job matching/recommendations, org follow/unfollow, Celery notification on approve
 - **Phase 4** (#127–#129) ✅: Application tracking CRUD, deadline reminders, user dashboard + login
-- **Phase 5** (#130–#132) ✅: In-app notification endpoints, email via SMTP (MailHog dev), FCM push, notification preferences, frontend bell
+- **Phase 5** (#130–#132) ✅: In-app notification endpoints, email via SMTP (Mailpit dev), FCM push, notification preferences, frontend bell
 - **Phase 6–9**: Admin dashboard, SEO, PDF ingestion, tests, security, deployment, mobile app
 
 ## Docs
@@ -270,7 +270,7 @@ When something breaks (and it will):
 
 ### Phase 5 — Email, Push & In-App Notifications (commit `2c00666`)
 - In-app notification endpoints: GET /notifications (paginated, filterable), GET /notifications/count, PUT /notifications/{id}/read, PUT /notifications/read-all, DELETE /notifications/{id}. Route order: `/count` and `/read-all` before `/{id}` to avoid conflicts.
-- Email: `send_email_notification` Celery task using sync `smtplib` with 3x retry + exponential backoff. 6 Jinja2 HTML templates in `app/templates/email/`. MailHog in Docker for dev (`1025` SMTP, `8025` web UI). `MAIL_ENABLED` toggle in config.
+- Email: `send_email_notification` Celery task using sync `smtplib` with 3x retry + exponential backoff. 6 Jinja2 HTML templates in `app/templates/email/`. Mailpit in Docker for dev (`1025` SMTP, `8025` web UI). `MAIL_ENABLED` toggle in config.
 - Push: `send_push_notification` Celery task with `firebase-admin`. Graceful no-op if `FIREBASE_CREDENTIALS_PATH` not set. Checks `notification_preferences.push`. Cleans invalid tokens on `NotRegistered`.
 - FCM endpoints: POST/DELETE `/users/me/fcm-token` (max 10 devices), PUT `/users/me/notification-preferences`.
 - Migration 0004: `fcm_tokens` JSONB column on `user_profiles`.

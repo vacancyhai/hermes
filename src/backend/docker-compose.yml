@@ -137,9 +137,9 @@ services:
     networks:
       - backend_network
 
-  mailhog:
-    image: mailhog/mailhog:latest
-    container_name: hermes_mailhog
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: hermes_mailpit
     restart: unless-stopped
     ports:
       - "1025:1025"   # SMTP

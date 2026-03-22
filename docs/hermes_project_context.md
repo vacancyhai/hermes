@@ -36,7 +36,7 @@ Browser → Nginx (80/443)
 - Connected to backend via `src_backend_network` Docker network
 
 ## Docker Stack (`src/backend/docker-compose.yml`)
-7 backend services: postgresql (16-alpine), redis (7-alpine), pgbouncer (edoburu/pgbouncer:latest), backend, celery_worker, celery_beat, mailhog (dev email: SMTP 1025, Web UI 8025).
+7 backend services: postgresql (16-alpine), redis (7-alpine), pgbouncer (edoburu/pgbouncer:latest), backend, celery_worker, celery_beat, mailpit (dev email: SMTP 1025, Web UI 8025).
 1 frontend service: hermes_frontend (port 8080).
 
 ### Critical Config
@@ -55,6 +55,7 @@ PostgreSQL 16 with 8 tables: users, admin_users, user_profiles, job_vacancies, u
 - `0001_initial_schema.py` — 6 core tables + FTS
 - `0002_separate_admin_users.py` — Split users/admin_users
 - `0003_profile_preferences.py` — preferred_states, preferred_categories, followed_organizations
+- `0004_fcm_tokens.py` — fcm_tokens JSONB column on user_profiles
 - `0004_fcm_tokens.py` — fcm_tokens JSONB column on user_profiles
 
 ---
@@ -324,7 +325,7 @@ When something breaks (and it will):
 - Phase 2 (#121-#124): CLOSED — Job CRUD, search, user profile, frontend job listing
 - Phase 3 (#125-#126): CLOSED — Job matching + org follow + Celery notifications
 - Phase 4 (#127-#129): CLOSED — Application tracking, deadline reminders, user dashboard
-- Phase 5 (#130-#132): CLOSED — In-app notification endpoints, email (MailHog dev), FCM push, notification preferences, frontend bell
+- Phase 5 (#130-#132): CLOSED — In-app notification endpoints, email (Mailpit dev), FCM push, notification preferences, frontend bell
 - Phase 6 (#133-#135): OPEN — Admin dashboard, SEO, fee display
 - Phase 7 (#136-#138): OPEN — PDF ingestion, review workflow, PWA
 - Phase 8 (#139-#141): OPEN — Tests, security audit, deployment

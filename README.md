@@ -5,11 +5,12 @@ matched to their education, age, category, and preferences. Includes user
 authentication, profile-based job matching, application tracking, multi-channel
 notifications, and an admin panel.
 
-> **Status:** Phases 1–4 complete. Auth system, job CRUD, full-text search,
+> **Status:** Phases 1–5 complete. Auth system, job CRUD, full-text search,
 > user profiles, admin dashboard, job matching & recommendations, org follow
 > with Celery notifications, application tracking with deadline reminders,
-> and user dashboard — all implemented and tested. Separate `users` and
-> `admin_users` tables with complete RBAC isolation.
+> user dashboard, email notifications (Mailpit in dev), FCM push notifications,
+> in-app notification endpoints, and notification preferences — all implemented
+> and tested. Separate `users` and `admin_users` tables with complete RBAC isolation.
 
 ## Tech Stack
 
@@ -157,10 +158,11 @@ hermes/
 │   │   │   │   ├── notification.py
 │   │   │   │   └── admin_log.py
 │   │   │   ├── schemas/                  # Pydantic request/response models
-│   │   │   ├── auth.py
-│   │   │   ├── jobs.py
-│   │   │   ├── users.py
-│   │   │   └── applications.py
+│   │   │   │   ├── auth.py
+│   │   │   │   ├── jobs.py
+│   │   │   │   ├── users.py
+│   │   │   │   ├── applications.py
+│   │   │   │   └── notifications.py
 │   │   │   ├── services/                 # Business logic
 │   │   │   │   └── matching.py           # Job recommendation scoring engine
 │   │   │   └── tasks/                    # Celery tasks
@@ -174,7 +176,8 @@ hermes/
 │   │   │   └── versions/
 │   │   │       ├── 0001_initial_schema.py  # 6 core tables + FTS
 │   │   │       ├── 0002_separate_admin_users.py  # Split users/admin_users
-│   │   │       └── 0003_profile_preferences.py   # Matching prefs + org follows
+│   │   │       ├── 0003_profile_preferences.py   # Matching prefs + org follows
+│   │   │       └── 0004_fcm_tokens.py            # FCM tokens for push notifications
 │   │   └── tests/
 │   ├── frontend/                         # User Frontend (port 8080)
 │   │   ├── Dockerfile
@@ -189,8 +192,7 @@ hermes/
 │   │           ├── _job_cards.html       # HTMX partial (load more)
 │   │           ├── job_detail.html       # Job detail page
 │   │           ├── dashboard.html       # Application tracking dashboard
-│   │           ├── _application_rows.html # HTMX partial (load more apps)
-│   │           ├── login.html           # Login form
+│   │           ├── _application_rows.html # HTMX partial (load more apps)│   │           ├── notifications.html   # Notification center│   │           ├── login.html           # Login form
 │   │           └── 404.html
 │   ├── frontend-admin/                   # Admin Frontend (port 8081)
 │   │   ├── Dockerfile
@@ -241,7 +243,7 @@ hermes/
 | 2     | Job vacancy CRUD, full-text search, user profile, admin dashboard, frontend job listing | Done |
 | 3     | Job matching algorithm, recommendations, org follow + alerts | Done |
 | 4     | Application tracking, deadline reminders, user dashboard | Done |
-| 5     | Notification engine (email, push, in-app, future: Telegram + WhatsApp) | Open |
+| 5     | Notification engine (email, push, in-app, future: Telegram + WhatsApp) | Done |
 | 6     | Admin dashboard analytics, SEO (sitemap, meta, schema.org) | Open |
 | 7     | PDF ingestion (AI extraction + operator review), PWA | Open |
 | 8     | Testing, security audit, production deployment | Open |
