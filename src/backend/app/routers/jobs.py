@@ -1,6 +1,7 @@
 """Job vacancy endpoints (public).
 
 GET    /api/v1/jobs              — List (filterable, paginated, full-text search)
+GET    /api/v1/jobs/recommended  — Personalized recommendations based on profile
 GET    /api/v1/jobs/:slug        — Detail by slug
 """
 
@@ -10,9 +11,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.dependencies import get_db
+from app.dependencies import get_current_user, get_db
 from app.models.job_vacancy import JobVacancy
 from app.schemas.jobs import JobListItem, JobResponse
+from app.services.matching import get_recommended_jobs
 
 router = APIRouter(prefix="/api/v1/jobs", tags=["jobs"])
 
@@ -80,6 +82,28 @@ async def list_jobs(
     query = query.offset(offset).limit(limit)
     result = await db.execute(query)
     jobs = result.scalars().all()
+
+    return {
+        "data": [JobListItem.model_validate(j).model_dump() for j in jobs],
+        "pagination": {
+            "limit": limit,
+            "offset": offset,
+            "total": total,
+            "has_more": (offset + limit) < total,
+        },
+    }
+
+
+@router.get("/recommended")
+async def recommended_jobs(
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Personalized job recommendations based on user profile preferences."""
+    user, _ = current_user
+    jobs, total = await get_recommended_jobs(user.id, db, limit=limit, offset=offset)
 
     return {
         "data": [JobListItem.model_validate(j).model_dump() for j in jobs],

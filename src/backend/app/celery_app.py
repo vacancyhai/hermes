@@ -22,8 +22,15 @@ celery.conf.update(
     worker_prefetch_multiplier=1,
 )
 
-# Autodiscover tasks from app/tasks/
-celery.autodiscover_tasks(["app.tasks"])
+# Explicitly include task modules for reliable registration
+celery.conf.update(
+    include=[
+        "app.tasks.notifications",
+        "app.tasks.cleanup",
+        "app.tasks.jobs",
+        "app.tasks.seo",
+    ],
+)
 
 # Beat schedule — matches DESIGN.md
 celery.conf.beat_schedule = {

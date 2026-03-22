@@ -26,6 +26,9 @@ class UserProfile(Base):
     highest_qualification: Mapped[str | None] = mapped_column(String(50))
     education: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default="{}")
     notification_preferences: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default="{}")
+    preferred_states: Mapped[list] = mapped_column(JSONB, nullable=False, server_default="[]")
+    preferred_categories: Mapped[list] = mapped_column(JSONB, nullable=False, server_default="[]")
+    followed_organizations: Mapped[list] = mapped_column(JSONB, nullable=False, server_default="[]")
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
 
     # Relationships

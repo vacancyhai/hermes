@@ -237,6 +237,10 @@ async def approve_job(
     await _log_action(db, admin, "approve_job", "job_vacancy", job.id,
                       details=f"Approved: {job.job_title}", request=request)
 
+    # Trigger notification to org followers (async Celery task)
+    from app.tasks.notifications import send_new_job_notifications
+    send_new_job_notifications.delay(str(job.id))
+
     return JobResponse.model_validate(job).model_dump()
 
 

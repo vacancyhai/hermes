@@ -20,6 +20,9 @@ class ProfileResponse(BaseModel):
     highest_qualification: str | None
     education: dict
     notification_preferences: dict
+    preferred_states: list
+    preferred_categories: list
+    followed_organizations: list
     updated_at: datetime
 
     model_config = {"from_attributes": True}
@@ -37,6 +40,8 @@ class ProfileUpdateRequest(BaseModel):
     highest_qualification: str | None = None
     education: dict | None = None
     notification_preferences: dict | None = None
+    preferred_states: list | None = None
+    preferred_categories: list | None = None
 
 
 class PhoneUpdateRequest(BaseModel):
