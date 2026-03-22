@@ -3,7 +3,7 @@
 > **Status:** Phases 1–7.5 complete. Auth, job CRUD, full-text search,
 > user profiles, job matching, org follow, application tracking, notifications
 > (email, push, in-app), admin panel, SEO, PDF AI extraction, PWA, test suite
-> (80 tests), and security audit — all implemented. Phase 8 (deployment) next.
+> (406 tests — 91/100/97% coverage), and security audit — all implemented. Phase 8 (OCI deployment) next.
 
 ---
 

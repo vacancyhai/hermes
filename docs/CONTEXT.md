@@ -16,7 +16,7 @@ A **Government Job Vacancy Portal** (India-focused). Users register, browse jobs
 
 - **Path**: `/home/sumant/workspace/hermes`
 - **Remote**: `git@github.com:SumanKr7/hermes.git`, branch `main`
-- **Latest commit**: `6dae21a` — 406 tests across backend, frontend, admin (91/100/97% coverage)
+- **Latest commit**: `d51fc93` — fix: address all 12 audit issues across backend and frontends
 - **GitHub Issues**: #114–#143 (30 issues, 9 phases)
   - Phases 1–7 + Testing (#139–#140): **CLOSED**
   - Phase 8 (#141, OCI deployment): **OPEN — next**

@@ -24,7 +24,7 @@
 					"name": "Health Check",
 					"request": {
 						"method": "GET",
-						"url": "{{base_url}}/../health",
+						"url": "{{base_url}}/health",
 						"header": []
 					}
 				}
