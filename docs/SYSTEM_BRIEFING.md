@@ -5,7 +5,7 @@ You are continuing work on **Hermes**, a Government Job Vacancy Portal (India-fo
 ## Repo & Location
 - Workspace: `/home/sumant/workspace/hermes`
 - Remote: `git@github.com:SumanKr7/hermes.git`, branch `main`
-- GitHub Issues: #114–#143 (30 issues, 9 phases). Phases 1–8 are CLOSED. Phase 9 (#141) is next.
+- GitHub Issues: #114–#143 (30 issues, 9 phases). Phases 1–7 + testing (#139–#140) are CLOSED. Phase 8 (#141, deployment) is next.
 
 ## Architecture
 ```
@@ -131,8 +131,9 @@ src/frontend/app/
 - **Phase 5** (#130–#132) ✅: In-app notification endpoints, email via SMTP (Mailpit dev), FCM push, notification preferences, frontend bell
 - **Phase 6** (#133–#135) ✅: Admin frontend (dashboard, job/user mgmt, audit logs), SEO (sitemap, meta tags, JSON-LD), fee display by category, share buttons
 - **Phase 7** (#136–#138) ✅: PDF upload + AI extraction (Anthropic Claude), draft review/approve workflow, PWA (manifest, service worker, offline)
-- **Phase 8** (#139–#140) ✅: 80 pytest tests (auth, jobs, applications, admin, integration, security), security audit (JWT, RBAC, file upload, OWASP)
-- **Phase 9**: Production deployment, mobile app
+- **Testing** (#139–#140) ✅: 80 pytest tests (auth, jobs, applications, admin, integration, security), security audit (JWT, RBAC, file upload, OWASP)
+- **Phase 8** (#141): Production deployment to OCI ARM VM
+- **Phase 9** (#142–#143): React Native mobile app + push notifications
 
 ## Docs
 - `docs/API.md` — complete endpoint reference with examples

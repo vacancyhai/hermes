@@ -283,8 +283,9 @@ hermes/
 | 5     | Notification engine (email, push, in-app, future: Telegram + WhatsApp) | Done |
 | 6     | Admin frontend (dashboard, job/user mgmt, logs), SEO (sitemap, meta, JSON-LD), fee display, share buttons | Done |
 | 7     | PDF ingestion (AI extraction + operator review), PWA | Done |
-| 8     | Testing (80 tests), security audit (JWT, RBAC, OWASP) | Done |
-| 9     | React Native mobile app (Android + iOS) — same API | Open |
+| 7.5   | Testing (80 tests), security audit (JWT, RBAC, OWASP) | Done |
+| 8     | Production deployment to OCI ARM VM | Open |
+| 9     | React Native mobile app (Android + iOS) | Open |
 
 ## License
 

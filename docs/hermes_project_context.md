@@ -1,4 +1,4 @@
-# Hermes Project — Complete Context (as of March 22, 2026, Phase 8 complete)
+# Hermes Project — Complete Context (as of March 22, 2026, testing complete)
 
 ## What It Is
 A **Government Job Vacancy Portal** (India-focused). Users register, browse jobs, get personalized recommendations, follow organizations, track applications, receive deadline reminders. Admins manage jobs, users, and content.
@@ -6,7 +6,7 @@ A **Government Job Vacancy Portal** (India-focused). Users register, browse jobs
 ## Repo
 - Path: `/home/sumant/workspace/hermes`
 - Remote: `git@github.com:SumanKr7/hermes.git`
-- Branch: `main` (Phase 8 complete)
+- Branch: `main` (testing complete, Phase 8 deployment next)
 
 ---
 
@@ -329,8 +329,9 @@ When something breaks (and it will):
 - Phase 5 (#130-#132): CLOSED — In-app notification endpoints, email (Mailpit dev), FCM push, notification preferences, frontend bell
 - Phase 6 (#133-#135): CLOSED — Admin frontend (dashboard, job/user mgmt, logs), SEO (sitemap, meta, JSON-LD), fee display, share buttons
 - Phase 7 (#136-#138): CLOSED — PDF upload + AI extraction, draft review/approve, PWA
-- Phase 8 (#139-#140): CLOSED — 80 pytest tests, security audit (JWT, RBAC, OWASP)
-- Phase 9 (#141): OPEN — Production deployment
+- Testing (#139-#140): CLOSED — 80 pytest tests, security audit (JWT, RBAC, OWASP)
+- Phase 8 (#141): OPEN — Production deployment to OCI ARM VM
+- Phase 9 (#142-#143): OPEN — React Native mobile app + push notifications
 - Phase 9 (#142-#143): OPEN — React Native mobile app
 - 34 labels total (9 story labels + component/type/size/priority labels)
 
@@ -469,7 +470,7 @@ When something breaks (and it will):
 
 **Issues closed:** #136, #137, #138
 
-### Phase 8 — Testing + Security Audit (#139–#140) ✅
+### Testing + Security Audit (#139–#140) ✅
 
 **What was built:**
 
