@@ -1,8 +1,9 @@
 # Hermes — System Design Document
 
-> **Status:** Project skeleton created. Dockerfiles, docker-compose files,
-> database migration (Alembic), and API route stubs are in place. All endpoints
-> return stub responses — business logic implementation is the next step.
+> **Status:** Phases 1–7.5 complete. Auth, job CRUD, full-text search,
+> user profiles, job matching, org follow, application tracking, notifications
+> (email, push, in-app), admin panel, SEO, PDF AI extraction, PWA, test suite
+> (80 tests), and security audit — all implemented. Phase 8 (deployment) next.
 
 ---
 
@@ -193,7 +194,7 @@ being built.
 
 Six tables for the initial release.
 
-#### 1. `users`
+#### 1. `users` (regular job seekers)
 
 ```sql
 CREATE TABLE users (
@@ -202,8 +203,6 @@ CREATE TABLE users (
   password_hash       VARCHAR(255) NOT NULL,
   full_name           VARCHAR(255) NOT NULL,
   phone               VARCHAR(20),
-  role                VARCHAR(20) NOT NULL DEFAULT 'user'
-                        CHECK (role IN ('user','admin','operator')),
   status              VARCHAR(20) NOT NULL DEFAULT 'active'
                         CHECK (status IN ('active','suspended','deleted')),
   is_verified         BOOLEAN NOT NULL DEFAULT FALSE,
@@ -215,6 +214,35 @@ CREATE TABLE users (
 
 CREATE INDEX idx_users_email  ON users (email);
 CREATE INDEX idx_users_status ON users (status);
+```
+
+> **Note:** The original design had a `role` column on `users`. Migration 0002
+> split admin/operator accounts into a separate `admin_users` table to enforce
+> distinct login flows and prevent privilege escalation.
+
+#### 1b. `admin_users` (admins and operators)
+
+```sql
+CREATE TABLE admin_users (
+  id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email               VARCHAR(255) UNIQUE NOT NULL,
+  password_hash       VARCHAR(255) NOT NULL,
+  full_name           VARCHAR(255) NOT NULL,
+  phone               VARCHAR(20),
+  role                VARCHAR(20) NOT NULL DEFAULT 'operator'
+                        CHECK (role IN ('admin','operator')),
+  department          VARCHAR(255),
+  permissions         JSONB NOT NULL DEFAULT '{}',
+  status              VARCHAR(20) NOT NULL DEFAULT 'active'
+                        CHECK (status IN ('active','suspended','deleted')),
+  is_email_verified   BOOLEAN NOT NULL DEFAULT FALSE,
+  last_login          TIMESTAMP WITH TIME ZONE,
+  created_at          TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  updated_at          TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_admin_users_email ON admin_users (email);
+CREATE INDEX idx_admin_users_role  ON admin_users (role);
 ```
 
 #### 2. `user_profiles`
@@ -234,6 +262,10 @@ CREATE TABLE user_profiles (
   highest_qualification     VARCHAR(50),
   education                 JSONB NOT NULL DEFAULT '{}',
   notification_preferences  JSONB NOT NULL DEFAULT '{}',
+  preferred_states          JSONB NOT NULL DEFAULT '[]',
+  preferred_categories      JSONB NOT NULL DEFAULT '[]',
+  followed_organizations    JSONB NOT NULL DEFAULT '[]',
+  fcm_tokens                JSONB NOT NULL DEFAULT '[]',
   updated_at                TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 
@@ -275,15 +307,21 @@ CREATE TABLE job_vacancies (
   salary_max            INTEGER,
   salary                JSONB NOT NULL DEFAULT '{}',
   selection_process     JSONB NOT NULL DEFAULT '[]',
+  fee_general           INTEGER,
+  fee_obc               INTEGER,
+  fee_sc_st             INTEGER,
+  fee_ews               INTEGER,
+  fee_female            INTEGER,
   status                VARCHAR(20) NOT NULL DEFAULT 'active'
                           CHECK (status IN ('draft','active','expired','cancelled','upcoming')),
   is_featured           BOOLEAN NOT NULL DEFAULT FALSE,
   is_urgent             BOOLEAN NOT NULL DEFAULT FALSE,
   views                 INTEGER NOT NULL DEFAULT 0,
   applications_count    INTEGER NOT NULL DEFAULT 0,
-  created_by            UUID REFERENCES users(id),
+  created_by            UUID REFERENCES admin_users(id),
   source                VARCHAR(20) NOT NULL DEFAULT 'manual'
                           CHECK (source IN ('manual','pdf_upload')),
+  source_pdf_path       TEXT,
   published_at          TIMESTAMP WITH TIME ZONE,
   created_at            TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
   updated_at            TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
@@ -387,7 +425,7 @@ CREATE INDEX idx_notifications_expires      ON notifications (expires_at);
 ```sql
 CREATE TABLE admin_logs (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  admin_id      UUID NOT NULL REFERENCES users(id),
+  admin_id      UUID NOT NULL REFERENCES admin_users(id),
   action        VARCHAR(100) NOT NULL,
   resource_type VARCHAR(100),
   resource_id   UUID,
@@ -589,14 +627,16 @@ delete jobs.
 ### Initial Admin Setup
 
 No self-registration for admin accounts. The first admin is created via a direct
-database insert or by registering a normal user and then promoting via `psql`:
+database insert into the `admin_users` table:
 
 ```sql
-UPDATE users SET role = 'admin' WHERE email = 'admin@example.com';
+INSERT INTO admin_users (email, password_hash, full_name, role, department, status)
+VALUES ('admin@example.com', '<bcrypt-hash>', 'System Admin', 'admin', 'Engineering', 'active');
 ```
 
-Subsequent operators are promoted by an admin via
-`PUT /api/v1/admin/users/:id/role`.
+Subsequent operators are created by inserting into `admin_users` with
+`role = 'operator'`. Existing admin/operator roles can be changed via
+`PUT /api/v1/admin/users/:id/role` (admin only).
 
 ---
 
@@ -632,7 +672,7 @@ Admin creates a job via `POST /api/v1/admin/jobs`. The job is created with
 `source='manual'` and `status='active'` (published immediately). This is the
 only method available in v1.
 
-### Phase 2: PDF Upload → AI Extraction → Review → Publish (Future)
+### Phase 2: PDF Upload → AI Extraction → Review → Publish (Implemented)
 
 Government job notifications are published as PDF documents. Instead of
 manually typing every field, admin/operator uploads the notification PDF and
@@ -682,13 +722,13 @@ Admin/Operator uploads notification PDF
 └────────────────────────────────────────┘
 ```
 
-### PDF Extraction Tech Stack (Future)
+### PDF Extraction Tech Stack
 
 | Component | Technology | Purpose |
 | --------- | ---------- | ------- |
-| PDF parsing | PyMuPDF or pdfplumber | Extract raw text from notification PDF |
-| AI extraction | OpenAI API / local LLM | Structured data extraction from text |
-| Storage | OCI Object Storage (10 GB free) | Store uploaded PDF files |
+| PDF parsing | pdfplumber | Extract raw text from notification PDF |
+| AI extraction | Anthropic Claude API | Structured data extraction from text |
+| Storage | Docker volume (local disk) | Store uploaded PDF files |
 | Task queue | Celery (existing) | Async PDF processing |
 
 The AI extraction prompt would map PDF text to the `job_vacancies` schema
@@ -937,7 +977,7 @@ This avoids building images on the VM itself (slow on 4 OCPU) or doing
 | `DEBUG`  | `True`                                                 |
 | Database | Local PostgreSQL container (Docker volume)              |
 | Redis    | Local Redis container, no password (AOF enabled)        |
-| Mail     | Mailhog or `MAIL_SUPPRESS_SEND=True`                  |
+| Mail     | Mailpit or `MAIL_SUPPRESS_SEND=True`                  |
 | Nginx    | Not required; access services directly on exposed ports|
 | TLS      | None                                                   |
 | Volumes  | Hot-reload mounts for code                             |
@@ -1026,7 +1066,7 @@ All containers run via Docker Compose on this single VM.
 
 ## Security Design
 
-All items below are **planned**, not yet implemented.
+All items below are implemented.
 
 - **Password hashing:** bcrypt (salted)
 - **JWT with Redis blocklist:** access tokens expire in 15 min, refresh in 7 days

@@ -20,7 +20,7 @@ import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from sqlalchemy import select
@@ -42,6 +42,8 @@ from app.schemas.auth import (
     ResetPasswordRequest,
     TokenResponse,
 )
+
+from app.rate_limit import limiter
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
@@ -76,7 +78,8 @@ def create_refresh_token(user_id: str, user_type: str, role: str | None = None) 
 
 
 @router.post("/register", response_model=RegisterResponse, status_code=status.HTTP_201_CREATED)
-async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
+@limiter.limit("5/minute")
+async def register(request: Request, body: RegisterRequest, db: AsyncSession = Depends(get_db)):
     """Create a new user account."""
     result = await db.execute(select(User).where(User.email == body.email))
     if result.scalar_one_or_none():
@@ -97,7 +100,8 @@ async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/login", response_model=TokenResponse)
-async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)):
+@limiter.limit("5/minute")
+async def login(request: Request, body: LoginRequest, db: AsyncSession = Depends(get_db)):
     """Authenticate regular user and return JWT token pair."""
     result = await db.execute(select(User).where(User.email == body.email))
     user = result.scalar_one_or_none()
@@ -162,7 +166,8 @@ async def refresh(body: RefreshRequest, db: AsyncSession = Depends(get_db), redi
 
 
 @router.post("/forgot-password", response_model=MessageResponse)
-async def forgot_password(body: ForgotPasswordRequest, db: AsyncSession = Depends(get_db), redis=Depends(get_redis)):
+@limiter.limit("3/minute")
+async def forgot_password(request: Request, body: ForgotPasswordRequest, db: AsyncSession = Depends(get_db), redis=Depends(get_redis)):
     """Send password reset email. Always returns 200 to prevent email enumeration."""
     result = await db.execute(select(User).where(User.email == body.email))
     user = result.scalar_one_or_none()
@@ -225,7 +230,8 @@ async def csrf_token(redis=Depends(get_redis)):
 
 
 @router.post("/admin/login", response_model=TokenResponse)
-async def admin_login(body: AdminLoginRequest, db: AsyncSession = Depends(get_db)):
+@limiter.limit("5/minute")
+async def admin_login(request: Request, body: AdminLoginRequest, db: AsyncSession = Depends(get_db)):
     """Authenticate admin/operator and return JWT token pair."""
     result = await db.execute(select(AdminUser).where(AdminUser.email == body.email))
     admin = result.scalar_one_or_none()

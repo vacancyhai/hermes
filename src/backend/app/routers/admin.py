@@ -99,6 +99,81 @@ async def dashboard_stats(
     }
 
 
+@router.get("/analytics")
+async def platform_analytics(
+    admin=Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Platform analytics: demographics, application trends, popular orgs, notification stats."""
+    from app.models.notification import Notification
+
+    # User demographics — category breakdown
+    profiles = await db.execute(
+        select(UserProfile.category, func.count(UserProfile.id))
+        .where(UserProfile.category.isnot(None))
+        .group_by(UserProfile.category)
+    )
+    category_breakdown = {row[0]: row[1] for row in profiles.all()}
+
+    # User demographics — qualification breakdown
+    quals = await db.execute(
+        select(UserProfile.highest_qualification, func.count(UserProfile.id))
+        .where(UserProfile.highest_qualification.isnot(None))
+        .group_by(UserProfile.highest_qualification)
+    )
+    qualification_breakdown = {row[0]: row[1] for row in quals.all()}
+
+    # Application trends — daily counts for last 30 days
+    thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
+    daily_apps = await db.execute(
+        select(
+            func.date_trunc("day", UserJobApplication.applied_on).label("day"),
+            func.count(UserJobApplication.id),
+        )
+        .where(UserJobApplication.applied_on >= thirty_days_ago)
+        .group_by("day")
+        .order_by("day")
+    )
+    application_trends = [
+        {"date": row[0].isoformat() if row[0] else None, "count": row[1]}
+        for row in daily_apps.all()
+    ]
+
+    # Popular organizations — top 10 by job count
+    popular_orgs = await db.execute(
+        select(JobVacancy.organization, func.count(JobVacancy.id).label("job_count"))
+        .where(JobVacancy.status == "active")
+        .group_by(JobVacancy.organization)
+        .order_by(func.count(JobVacancy.id).desc())
+        .limit(10)
+    )
+    top_organizations = [{"organization": row[0], "job_count": row[1]} for row in popular_orgs.all()]
+
+    # Application status breakdown
+    status_counts = await db.execute(
+        select(UserJobApplication.status, func.count(UserJobApplication.id))
+        .group_by(UserJobApplication.status)
+    )
+    application_statuses = {row[0]: row[1] for row in status_counts.all()}
+
+    # Notification stats
+    notif_total = (await db.execute(select(func.count(Notification.id)))).scalar()
+    notif_unread = (await db.execute(
+        select(func.count(Notification.id)).where(Notification.is_read.is_(False))
+    )).scalar()
+
+    return {
+        "demographics": {
+            "categories": category_breakdown,
+            "qualifications": qualification_breakdown,
+        },
+        "application_trends": application_trends,
+        "application_statuses": application_statuses,
+        "top_organizations": top_organizations,
+        "notifications": {"total": notif_total, "unread": notif_unread},
+    }
+
+
 # ─── Job Management ─────────────────────────────────────────────────────────
 
 
@@ -196,6 +271,11 @@ async def create_job(
     await _log_action(db, admin, "create_job", "job_vacancy", job.id,
                       details=f"Created job: {body.job_title}", request=request)
 
+    # If created as active, notify org followers
+    if body.status == "active":
+        from app.tasks.notifications import send_new_job_notifications
+        send_new_job_notifications.delay(str(job.id))
+
     return JobResponse.model_validate(job).model_dump()
 
 
@@ -247,15 +327,31 @@ async def update_job(
     current_admin=Depends(require_operator),
     db: AsyncSession = Depends(get_db),
 ):
-    """Update a job vacancy."""
+    """Update a job vacancy. Operators can only modify limited fields."""
     admin = current_admin
     result = await db.execute(select(JobVacancy).where(JobVacancy.id == job_id))
     job = result.scalar_one_or_none()
     if not job:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
 
+    # Operators can only modify these fields
+    OPERATOR_ALLOWED_FIELDS = {
+        "status", "description", "short_description",
+        "notification_date", "application_start", "application_end",
+        "exam_start", "exam_end", "result_date",
+    }
+
     changes = {}
     update_data = body.model_dump(exclude_unset=True)
+
+    if admin.role == "operator":
+        restricted = set(update_data.keys()) - OPERATOR_ALLOWED_FIELDS
+        if restricted:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Operators cannot modify: {', '.join(sorted(restricted))}",
+            )
+
     for field, value in update_data.items():
         old_value = getattr(job, field)
         if old_value != value:
@@ -271,6 +367,15 @@ async def update_job(
 
     await _log_action(db, admin, "update_job", "job_vacancy", job.id,
                       changes=changes, request=request)
+
+    # Notify users who marked this job as priority
+    from app.tasks.notifications import notify_priority_subscribers
+    notify_priority_subscribers.delay(str(job.id))
+
+    # If status changed to active, also notify org followers
+    if "status" in changes and body.status == "active":
+        from app.tasks.notifications import send_new_job_notifications
+        send_new_job_notifications.delay(str(job.id))
 
     return JobResponse.model_validate(job).model_dump()
 
@@ -417,6 +522,36 @@ async def update_user_status(
                       changes={"status": {"old": old_status, "new": new_status}}, request=request)
 
     return {"message": f"User status changed to {new_status}"}
+
+
+@router.put("/users/{user_id}/role")
+async def update_user_role(
+    user_id: uuid.UUID,
+    request: Request,
+    admin=Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Change an admin/operator user's role (admin only)."""
+    body = await request.json()
+    new_role = body.get("role")
+    if new_role not in ("admin", "operator"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Role must be 'admin' or 'operator'")
+
+    result = await db.execute(select(AdminUser).where(AdminUser.id == user_id))
+    target = result.scalar_one_or_none()
+    if not target:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Admin user not found")
+
+    if target.id == admin.id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot change your own role")
+
+    old_role = target.role
+    target.role = new_role
+
+    await _log_action(db, admin, "update_user_role", "admin_user", user_id,
+                      changes={"role": {"old": old_role, "new": new_role}}, request=request)
+
+    return {"message": f"Role changed from {old_role} to {new_role}"}
 
 
 # ─── Logs ────────────────────────────────────────────────────────────────────
