@@ -1,28 +1,235 @@
-"""Application tracking endpoints.
+"""Application tracking endpoints (requires user JWT).
 
-GET    /api/v1/applications       — List own applications
-POST   /api/v1/applications       — Track a job
-DELETE /api/v1/applications/:id   — Remove from tracker
+GET    /api/v1/applications            — List own tracked applications
+POST   /api/v1/applications            — Track / save a job
+GET    /api/v1/applications/:id        — Get single application detail
+PUT    /api/v1/applications/:id        — Update application (status, notes, priority)
+DELETE /api/v1/applications/:id        — Remove from tracker
+GET    /api/v1/applications/stats      — Application stats (counts by status)
 """
 
-from fastapi import APIRouter
+import uuid
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.dependencies import get_current_user, get_db
+from app.models.application import UserJobApplication
+from app.models.job_vacancy import JobVacancy
+from app.schemas.applications import (
+    ApplicationCreateRequest,
+    ApplicationResponse,
+    ApplicationUpdateRequest,
+)
 
 router = APIRouter(prefix="/api/v1/applications", tags=["applications"])
 
+VALID_STATUSES = {"applied", "admit_card_released", "exam_completed", "result_pending", "selected", "rejected", "waiting_list"}
+
+
+@router.get("/stats")
+async def application_stats(
+    current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Counts of applications grouped by status."""
+    user, _ = current_user
+    result = await db.execute(
+        select(UserJobApplication.status, func.count())
+        .where(UserJobApplication.user_id == user.id)
+        .group_by(UserJobApplication.status)
+    )
+    rows = result.all()
+    counts = {row[0]: row[1] for row in rows}
+    counts["total"] = sum(counts.values())
+    return counts
+
 
 @router.get("")
-async def list_applications():
-    """List own tracked applications. TODO: Implement."""
-    return {"data": [], "pagination": {"limit": 20, "offset": 0, "total": 0, "has_more": False}}
+async def list_applications(
+    status_filter: str | None = Query(None, alias="status"),
+    is_priority: bool | None = Query(None),
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """List own tracked applications with optional filters."""
+    user, _ = current_user
+    query = select(UserJobApplication).where(UserJobApplication.user_id == user.id)
+    count_query = select(func.count(UserJobApplication.id)).where(UserJobApplication.user_id == user.id)
+
+    if status_filter:
+        query = query.where(UserJobApplication.status == status_filter)
+        count_query = count_query.where(UserJobApplication.status == status_filter)
+    if is_priority is not None:
+        query = query.where(UserJobApplication.is_priority == is_priority)
+        count_query = count_query.where(UserJobApplication.is_priority == is_priority)
+
+    total_result = await db.execute(count_query)
+    total = total_result.scalar()
+
+    query = query.order_by(UserJobApplication.applied_on.desc()).offset(offset).limit(limit)
+    result = await db.execute(query)
+    apps = result.scalars().all()
+
+    # Enrich with job info
+    data = []
+    for app in apps:
+        job_result = await db.execute(select(JobVacancy).where(JobVacancy.id == app.job_id))
+        job = job_result.scalar_one_or_none()
+        item = ApplicationResponse.model_validate(app).model_dump()
+        if job:
+            item["job"] = {
+                "job_title": job.job_title,
+                "slug": job.slug,
+                "organization": job.organization,
+                "application_end": job.application_end.isoformat() if job.application_end else None,
+            }
+        data.append(item)
+
+    return {
+        "data": data,
+        "pagination": {"limit": limit, "offset": offset, "total": total, "has_more": (offset + limit) < total},
+    }
 
 
-@router.post("")
-async def track_job():
-    """Track / save a job application. TODO: Implement."""
-    return {"message": "Not implemented"}
+@router.post("", status_code=status.HTTP_201_CREATED)
+async def track_job(
+    body: ApplicationCreateRequest,
+    current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Track / save a job application."""
+    user, _ = current_user
+
+    # Verify job exists and is active
+    job_result = await db.execute(select(JobVacancy).where(JobVacancy.id == body.job_id))
+    job = job_result.scalar_one_or_none()
+    if not job:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
+
+    # Check duplicate
+    existing = await db.execute(
+        select(UserJobApplication).where(
+            UserJobApplication.user_id == user.id,
+            UserJobApplication.job_id == body.job_id,
+        )
+    )
+    if existing.scalar_one_or_none():
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Already tracking this job")
+
+    app = UserJobApplication(
+        user_id=user.id,
+        job_id=body.job_id,
+        application_number=body.application_number,
+        is_priority=body.is_priority,
+        notes=body.notes,
+        status=body.status or "applied",
+    )
+    db.add(app)
+    await db.flush()
+
+    # Increment applications_count on the job
+    job.applications_count = (job.applications_count or 0) + 1
+
+    item = ApplicationResponse.model_validate(app).model_dump()
+    item["job"] = {
+        "job_title": job.job_title,
+        "slug": job.slug,
+        "organization": job.organization,
+        "application_end": job.application_end.isoformat() if job.application_end else None,
+    }
+    return item
 
 
-@router.delete("/{application_id}")
-async def remove_application(application_id: str):
-    """Remove a job from tracker. TODO: Implement."""
-    return {"message": "Not implemented"}
+@router.get("/{application_id}")
+async def get_application(
+    application_id: uuid.UUID,
+    current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get a single tracked application."""
+    user, _ = current_user
+    result = await db.execute(
+        select(UserJobApplication).where(
+            UserJobApplication.id == application_id,
+            UserJobApplication.user_id == user.id,
+        )
+    )
+    app = result.scalar_one_or_none()
+    if not app:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found")
+
+    job_result = await db.execute(select(JobVacancy).where(JobVacancy.id == app.job_id))
+    job = job_result.scalar_one_or_none()
+
+    item = ApplicationResponse.model_validate(app).model_dump()
+    if job:
+        item["job"] = {
+            "job_title": job.job_title,
+            "slug": job.slug,
+            "organization": job.organization,
+            "application_end": job.application_end.isoformat() if job.application_end else None,
+        }
+    return item
+
+
+@router.put("/{application_id}")
+async def update_application(
+    application_id: uuid.UUID,
+    body: ApplicationUpdateRequest,
+    current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Update an application (status, notes, priority, application_number)."""
+    user, _ = current_user
+    result = await db.execute(
+        select(UserJobApplication).where(
+            UserJobApplication.id == application_id,
+            UserJobApplication.user_id == user.id,
+        )
+    )
+    app = result.scalar_one_or_none()
+    if not app:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found")
+
+    update_data = body.model_dump(exclude_unset=True)
+    if "status" in update_data and update_data["status"] not in VALID_STATUSES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid status. Must be one of: {', '.join(sorted(VALID_STATUSES))}",
+        )
+
+    for field, value in update_data.items():
+        setattr(app, field, value)
+
+    return ApplicationResponse.model_validate(app).model_dump()
+
+
+@router.delete("/{application_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def remove_application(
+    application_id: uuid.UUID,
+    current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Remove a job from the tracker."""
+    user, _ = current_user
+    result = await db.execute(
+        select(UserJobApplication).where(
+            UserJobApplication.id == application_id,
+            UserJobApplication.user_id == user.id,
+        )
+    )
+    app = result.scalar_one_or_none()
+    if not app:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found")
+
+    # Decrement applications_count on the job
+    job_result = await db.execute(select(JobVacancy).where(JobVacancy.id == app.job_id))
+    job = job_result.scalar_one_or_none()
+    if job and job.applications_count > 0:
+        job.applications_count -= 1
+
+    await db.delete(app)

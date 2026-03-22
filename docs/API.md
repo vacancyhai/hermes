@@ -120,6 +120,34 @@ All admin endpoints require an admin JWT token (`user_type: "admin"`).
 
 ---
 
+## Application Tracking
+
+All application endpoints require a user JWT.
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | `/applications` | User | List own tracked applications (filterable) |
+| GET | `/applications/stats` | User | Application counts by status |
+| POST | `/applications` | User | Track / save a job application |
+| GET | `/applications/:id` | User | Get single application detail |
+| PUT | `/applications/:id` | User | Update (status, notes, priority, app number) |
+| DELETE | `/applications/:id` | User | Remove from tracker (204) |
+
+**Query Parameters for `GET /applications`:**
+
+| Param | Type | Description |
+|-------|------|-------------|
+| `status` | string | Filter by status |
+| `is_priority` | boolean | Filter priority applications |
+| `limit` | int | 1-100, default: 20 |
+| `offset` | int | Default: 0 |
+
+**Valid statuses:** `applied`, `admit_card_released`, `exam_completed`, `result_pending`, `selected`, `rejected`, `waiting_list`
+
+**Deadline Reminders:** A Celery Beat task runs daily at 08:00 UTC and creates in-app notifications at T-7, T-3, and T-1 days before `application_end` for all tracked applications.
+
+---
+
 ## Request/Response Examples
 
 ### Register
@@ -186,6 +214,33 @@ Authorization: Bearer <user_token>
 → 200 { "followed_organizations": ["UPSC", "SSC"], "count": 2 }
 ```
 
+### Track Application
+```
+POST /api/v1/applications
+Authorization: Bearer <user_token>
+{
+  "job_id": "82886414-e24b-4bef-97ea-898936ca8333",
+  "notes": "Preparing for this exam",
+  "is_priority": true
+}
+→ 201 { "id": "uuid", "status": "applied", "job": { "job_title": "...", ... } }
+```
+
+### Update Application Status
+```
+PUT /api/v1/applications/<id>
+Authorization: Bearer <user_token>
+{ "status": "admit_card_released", "application_number": "UPSC-2026-12345" }
+→ 200 { "id": "uuid", "status": "admit_card_released", ... }
+```
+
+### Application Stats
+```
+GET /api/v1/applications/stats
+Authorization: Bearer <user_token>
+→ 200 { "applied": 3, "admit_card_released": 1, "total": 4 }
+```
+
 ---
 
 ## Error Responses
@@ -198,7 +253,7 @@ All errors follow: `{ "detail": "Error message" }`
 | 401 | Unauthorized (invalid/expired/revoked token) |
 | 403 | Forbidden (wrong role or token scope) |
 | 404 | Resource not found |
-| 409 | Conflict (e.g., duplicate email) |
+| 409 | Conflict (e.g., duplicate email, already tracking job) |
 | 422 | Validation error (Pydantic) |
 
 ---

@@ -5,10 +5,11 @@ matched to their education, age, category, and preferences. Includes user
 authentication, profile-based job matching, application tracking, multi-channel
 notifications, and an admin panel.
 
-> **Status:** Phases 1–3 complete. Auth system, job CRUD, full-text search,
+> **Status:** Phases 1–4 complete. Auth system, job CRUD, full-text search,
 > user profiles, admin dashboard, job matching & recommendations, org follow
-> with Celery notifications — all implemented and tested. Separate `users`
-> and `admin_users` tables with complete RBAC isolation.
+> with Celery notifications, application tracking with deadline reminders,
+> and user dashboard — all implemented and tested. Separate `users` and
+> `admin_users` tables with complete RBAC isolation.
 
 ## Tech Stack
 
@@ -88,6 +89,8 @@ PostgreSQL and Redis are isolated inside Docker networks — never exposed to th
 | [docs/WORKFLOW_DIAGRAMS.md](docs/WORKFLOW_DIAGRAMS.md) | ASCII workflow diagrams for all major user and system flows |
 | [docs/API.md](docs/API.md) | Complete API endpoint reference with request/response examples |
 | [docs/hermes.postman_collection.json](docs/hermes.postman_collection.json) | Postman collection for all API endpoints |
+| [docs/hermes_project_context.md](docs/hermes_project_context.md) | Full project context reference |
+| [docs/SYSTEM_BRIEFING.md](docs/SYSTEM_BRIEFING.md) | AI assistant system briefing |
 
 ## Development Quick Start
 
@@ -154,6 +157,10 @@ hermes/
 │   │   │   │   ├── notification.py
 │   │   │   │   └── admin_log.py
 │   │   │   ├── schemas/                  # Pydantic request/response models
+│   │   │   ├── auth.py
+│   │   │   ├── jobs.py
+│   │   │   ├── users.py
+│   │   │   └── applications.py
 │   │   │   ├── services/                 # Business logic
 │   │   │   │   └── matching.py           # Job recommendation scoring engine
 │   │   │   └── tasks/                    # Celery tasks
@@ -181,6 +188,9 @@ hermes/
 │   │           ├── index.html            # Job listing + search + filters
 │   │           ├── _job_cards.html       # HTMX partial (load more)
 │   │           ├── job_detail.html       # Job detail page
+│   │           ├── dashboard.html       # Application tracking dashboard
+│   │           ├── _application_rows.html # HTMX partial (load more apps)
+│   │           ├── login.html           # Login form
 │   │           └── 404.html
 │   ├── frontend-admin/                   # Admin Frontend (port 8081)
 │   │   ├── Dockerfile
@@ -214,7 +224,11 @@ hermes/
 │       └── stop_all.sh                   # Stop all services
 ├── docs/
 │   ├── DESIGN.md
-│   └── WORKFLOW_DIAGRAMS.md
+│   ├── WORKFLOW_DIAGRAMS.md
+│   ├── API.md
+│   ├── hermes.postman_collection.json
+│   ├── hermes_project_context.md
+│   └── SYSTEM_BRIEFING.md
 ├── .gitignore
 └── README.md
 ```
@@ -226,7 +240,7 @@ hermes/
 | 1     | Database schema, user auth (register, login, JWT, logout, refresh, password reset, email verify, CSRF) | Done |
 | 2     | Job vacancy CRUD, full-text search, user profile, admin dashboard, frontend job listing | Done |
 | 3     | Job matching algorithm, recommendations, org follow + alerts | Done |
-| 4     | Application tracking, priority marking, reminders | Open |
+| 4     | Application tracking, deadline reminders, user dashboard | Done |
 | 5     | Notification engine (email, push, in-app, future: Telegram + WhatsApp) | Open |
 | 6     | Admin dashboard analytics, SEO (sitemap, meta, schema.org) | Open |
 | 7     | PDF ingestion (AI extraction + operator review), PWA | Open |

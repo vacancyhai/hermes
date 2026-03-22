@@ -37,6 +37,12 @@
         <a href="/">Hermes</a>
         <nav>
             <a href="/">Jobs</a>
+            <a href="/dashboard">Dashboard</a>
+            {% if session.get('token') %}
+                <a href="/logout">Logout</a>
+            {% else %}
+                <a href="/login">Login</a>
+            {% endif %}
         </nav>
     </header>
 
