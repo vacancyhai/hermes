@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+
+{% block title %}{{ job.job_title }} — Hermes{% endblock %}
+
+{% block head %}
+<style>
+    .job-header{margin-bottom:1.5rem}
+    .job-header h1{font-size:1.5rem;margin-bottom:.35rem}
+    .job-header .org{font-size:1rem;color:#475569;margin-bottom:.5rem}
+    .job-header .badges{display:flex;gap:.35rem;flex-wrap:wrap}
+    .detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:1.5rem}
+    .detail-item{background:#fff;border:1px solid #e2e8f0;border-radius:.375rem;padding:.75rem}
+    .detail-item .label{font-size:.75rem;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em}
+    .detail-item .value{font-size:.95rem;font-weight:500;margin-top:.15rem}
+    .section{margin-bottom:1.5rem}
+    .section h2{font-size:1.1rem;margin-bottom:.5rem;color:#1e3a5f;border-bottom:2px solid #e2e8f0;padding-bottom:.25rem}
+    .section p,.section li{font-size:.925rem;color:#334155}
+    .back-link{display:inline-block;margin-bottom:1rem;font-size:.9rem}
+    @media(max-width:600px){.detail-grid{grid-template-columns:1fr}}
+</style>
+{% endblock %}
+
+{% block content %}
+<a href="/" class="back-link">&larr; Back to jobs</a>
+
+<div class="job-header">
+    <div class="badges">
+        <span class="badge badge-type">{{ job.job_type | replace('_', ' ') | title }}</span>
+        {% if job.is_featured %}<span class="badge badge-featured">Featured</span>{% endif %}
+        {% if job.is_urgent %}<span class="badge badge-urgent">Urgent</span>{% endif %}
+    </div>
+    <h1>{{ job.job_title }}</h1>
+    <div class="org">{{ job.organization }}{% if job.department %} &mdash; {{ job.department }}{% endif %}</div>
+</div>
+
+<div class="detail-grid">
+    {% if job.total_vacancies %}
+    <div class="detail-item">
+        <div class="label">Total Vacancies</div>
+        <div class="value">{{ job.total_vacancies }}</div>
+    </div>
+    {% endif %}
+    {% if job.qualification_level %}
+    <div class="detail-item">
+        <div class="label">Qualification</div>
+        <div class="value">{{ job.qualification_level | title }}</div>
+    </div>
+    {% endif %}
+    {% if job.employment_type %}
+    <div class="detail-item">
+        <div class="label">Employment Type</div>
+        <div class="value">{{ job.employment_type | title }}</div>
+    </div>
+    {% endif %}
+    {% if job.application_start %}
+    <div class="detail-item">
+        <div class="label">Application Start</div>
+        <div class="value">{{ job.application_start }}</div>
+    </div>
+    {% endif %}
+    {% if job.application_end %}
+    <div class="detail-item">
+        <div class="label">Application Deadline</div>
+        <div class="value">{{ job.application_end }}</div>
+    </div>
+    {% endif %}
+    {% if job.salary_initial %}
+    <div class="detail-item">
+        <div class="label">Salary Range</div>
+        <div class="value">&#8377;{{ job.salary_initial }}{% if job.salary_max %} &ndash; &#8377;{{ job.salary_max }}{% endif %}</div>
+    </div>
+    {% endif %}
+    {% if job.notification_date %}
+    <div class="detail-item">
+        <div class="label">Notification Date</div>
+        <div class="value">{{ job.notification_date }}</div>
+    </div>
+    {% endif %}
+    <div class="detail-item">
+        <div class="label">Views</div>
+        <div class="value">{{ job.views }}</div>
+    </div>
+</div>
+
+{% if job.description %}
+<div class="section">
+    <h2>Description</h2>
+    <p>{{ job.description }}</p>
+</div>
+{% endif %}
+
+{% if job.eligibility %}
+<div class="section">
+    <h2>Eligibility</h2>
+    <ul>
+    {% for key, val in job.eligibility.items() %}
+        <li><strong>{{ key | replace('_', ' ') | title }}:</strong> {{ val }}</li>
+    {% endfor %}
+    </ul>
+</div>
+{% endif %}
+
+{% if job.selection_process %}
+<div class="section">
+    <h2>Selection Process</h2>
+    <ol>
+    {% for step in job.selection_process %}
+        <li>{{ step }}</li>
+    {% endfor %}
+    </ol>
+</div>
+{% endif %}
+
+{% if job.exam_details %}
+<div class="section">
+    <h2>Exam Details</h2>
+    <ul>
+    {% for key, val in job.exam_details.items() %}
+        <li><strong>{{ key | replace('_', ' ') | title }}:</strong> {{ val }}</li>
+    {% endfor %}
+    </ul>
+</div>
+{% endif %}
+
+{% if job.source_url %}
+<div class="section">
+    <h2>Official Notification</h2>
+    <p><a href="{{ job.source_url }}" target="_blank" rel="noopener">View official notification &rarr;</a></p>
+</div>
+{% endif %}
+{% endblock %}

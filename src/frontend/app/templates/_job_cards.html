@@ -1,0 +1,39 @@
+{% if jobs %}
+{% for job in jobs %}
+<div class="job-card">
+    <div class="badges">
+        <span class="badge badge-type">{{ job.job_type | replace('_', ' ') | title }}</span>
+        {% if job.is_featured %}<span class="badge badge-featured">Featured</span>{% endif %}
+        {% if job.is_urgent %}<span class="badge badge-urgent">Urgent</span>{% endif %}
+    </div>
+    <h3><a href="/jobs/{{ job.slug }}">{{ job.job_title }}</a></h3>
+    <div class="meta">{{ job.organization }}{% if job.department %} &mdash; {{ job.department }}{% endif %}</div>
+    {% if job.short_description %}
+    <div class="meta">{{ job.short_description[:120] }}{% if job.short_description|length > 120 %}&hellip;{% endif %}</div>
+    {% endif %}
+    <div class="dates">
+        {% if job.total_vacancies %}Vacancies: {{ job.total_vacancies }} &nbsp;|&nbsp; {% endif %}
+        {% if job.qualification_level %}{{ job.qualification_level | title }} &nbsp;|&nbsp; {% endif %}
+        {% if job.application_end %}Apply by {{ job.application_end }}{% endif %}
+    </div>
+</div>
+{% endfor %}
+
+{% if pagination.get('has_more') %}
+<div class="load-more">
+    <button class="btn btn-outline"
+            hx-get="/jobs?offset={{ pagination.get('offset', 0) + pagination.get('limit', 20) }}{% if params.get('q') %}&q={{ params.q }}{% endif %}{% if params.get('job_type') %}&job_type={{ params.job_type }}{% endif %}{% if params.get('qualification_level') %}&qualification_level={{ params.qualification_level }}{% endif %}"
+            hx-target="#job-list"
+            hx-swap="beforeend"
+            hx-indicator=".htmx-indicator">
+        Load more
+    </button>
+    <div class="htmx-indicator" style="color:#94a3b8;margin-top:.5rem">Loading…</div>
+</div>
+{% endif %}
+
+{% else %}
+<div class="empty">
+    <p>No jobs found{% if params.get('q') %} for &ldquo;{{ params.q }}&rdquo;{% endif %}. Try adjusting your filters.</p>
+</div>
+{% endif %}

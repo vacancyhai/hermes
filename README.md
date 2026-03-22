@@ -5,9 +5,9 @@ matched to their education, age, category, and preferences. Includes user
 authentication, profile-based job matching, application tracking, multi-channel
 notifications, and an admin panel.
 
-> **Status:** Project skeleton created. Dockerfiles, docker-compose files,
-> database migration, and API route stubs are in place. Business logic is
-> not yet implemented — all endpoints return stub responses.
+> **Status:** Phase 1 & 2 complete. Auth system, job CRUD, full-text search,
+> user profiles, admin dashboard — all implemented and tested. Separate
+> `users` and `admin_users` tables with complete RBAC isolation.
 
 ## Tech Stack
 
@@ -19,7 +19,7 @@ notifications, and an admin panel.
 | Async DB Driver    | asyncpg                                     |
 | Auth               | python-jose (JWT + Redis blocklist)          |
 | Validation         | Pydantic v2 (FastAPI native)                |
-| Task Queue         | Celery 5.3 + Redis 7 broker                |
+| Task Queue         | Celery 5.4 + Redis 7 broker                |
 | Email              | OCI Email Delivery (3,000/day free)         |
 | Push Notifications | Firebase Cloud Messaging                    |
 | Telegram (future) | Telegram Bot API                             |
@@ -85,6 +85,8 @@ PostgreSQL and Redis are isolated inside Docker networks — never exposed to th
 | -------- | ----------- |
 | [docs/DESIGN.md](docs/DESIGN.md) | Full system design: architecture, database schema, API endpoints, Docker environments, security, deployment |
 | [docs/WORKFLOW_DIAGRAMS.md](docs/WORKFLOW_DIAGRAMS.md) | ASCII workflow diagrams for all major user and system flows |
+| [docs/API.md](docs/API.md) | Complete API endpoint reference with request/response examples |
+| [docs/hermes.postman_collection.json](docs/hermes.postman_collection.json) | Postman collection for all API endpoints |
 
 ## Development Quick Start
 
@@ -141,9 +143,10 @@ hermes/
 │   │   │   │   ├── applications.py       # /api/v1/applications/*
 │   │   │   │   ├── notifications.py      # /api/v1/notifications/*
 │   │   │   │   └── admin.py              # /api/v1/admin/*
-│   │   │   ├── models/                   # SQLAlchemy models (6 core tables)
+│   │   │   ├── models/                   # SQLAlchemy models (7 core tables)
 │   │   │   │   ├── base.py               # DeclarativeBase
-│   │   │   │   ├── user.py
+│   │   │   │   ├── user.py               # Regular users (no role column)
+│   │   │   │   ├── admin_user.py          # Admin/operator accounts
 │   │   │   │   ├── user_profile.py
 │   │   │   │   ├── job_vacancy.py
 │   │   │   │   ├── application.py
@@ -160,7 +163,8 @@ hermes/
 │   │   │   ├── env.py                    # Async migration runner
 │   │   │   ├── script.py.mako
 │   │   │   └── versions/
-│   │   │       └── 0001_initial_schema.py  # 6 core tables + FTS
+│   │   │       ├── 0001_initial_schema.py  # 6 core tables + FTS
+│   │   │       └── 0002_separate_admin_users.py  # Split users/admin_users
 │   │   └── tests/
 │   ├── frontend/                         # User Frontend (port 8080)
 │   │   ├── Dockerfile
@@ -211,17 +215,17 @@ hermes/
 
 ## Development Roadmap
 
-| Phase | Scope |
-| ----- | ----- |
-| 1     | Project setup, database schema, user authentication |
-| 2     | Job vacancy CRUD, full-text search, listing |
-| 3     | Job matching algorithm, recommendations |
-| 4     | Application tracking, priority marking, reminders |
-| 5     | Notification engine (email, push, in-app, future: Telegram + WhatsApp) |
-| 6     | Admin dashboard, analytics, SEO (sitemap, meta, schema.org) |
-| 7     | PDF ingestion (AI extraction + operator review), PWA |
-| 8     | Testing, security audit, production deployment |
-| 9     | React Native mobile app (Android + iOS) — same API |
+| Phase | Scope | Status |
+| ----- | ----- | ------ |
+| 1     | Database schema, user auth (register, login, JWT, logout, refresh, password reset, email verify, CSRF) | Done |
+| 2     | Job vacancy CRUD, full-text search, user profile, admin dashboard, frontend job listing | Done |
+| 3     | Job matching algorithm, recommendations | Open |
+| 4     | Application tracking, priority marking, reminders | Open |
+| 5     | Notification engine (email, push, in-app, future: Telegram + WhatsApp) | Open |
+| 6     | Admin dashboard analytics, SEO (sitemap, meta, schema.org) | Open |
+| 7     | PDF ingestion (AI extraction + operator review), PWA | Open |
+| 8     | Testing, security audit, production deployment | Open |
+| 9     | React Native mobile app (Android + iOS) — same API | Open |
 
 ## License
 

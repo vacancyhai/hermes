@@ -1,0 +1,499 @@
+{
+	"info": {
+		"name": "Hermes – Gov Job Portal",
+		"description": "API collection for Hermes Government Job Vacancy Portal.\n\nVariables:\n- `base_url` → http://localhost:8000/api/v1\n- `user_token` → set automatically after user login\n- `admin_token` → set automatically after admin login\n- `refresh_token` / `admin_refresh_token` → set after login",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{ "key": "base_url", "value": "http://localhost:8000/api/v1" },
+		{ "key": "user_token", "value": "" },
+		{ "key": "admin_token", "value": "" },
+		{ "key": "refresh_token", "value": "" },
+		{ "key": "admin_refresh_token", "value": "" },
+		{ "key": "job_id", "value": "" },
+		{ "key": "job_slug", "value": "" },
+		{ "key": "user_id", "value": "" }
+	],
+	"item": [
+		{
+			"name": "Health",
+			"item": [
+				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"url": "{{base_url}}/../health",
+						"header": []
+					}
+				}
+			]
+		},
+		{
+			"name": "Auth – User",
+			"item": [
+				{
+					"name": "Register",
+					"request": {
+						"method": "POST",
+						"url": "{{base_url}}/auth/register",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"SecurePass123\",\n  \"full_name\": \"Test User\"\n}"
+						}
+					}
+				},
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var json = pm.response.json();",
+									"if (json.access_token) {",
+									"    pm.collectionVariables.set('user_token', json.access_token);",
+									"    pm.collectionVariables.set('refresh_token', json.refresh_token);",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"url": "{{base_url}}/auth/login",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"SecurePass123\"\n}"
+						}
+					}
+				},
+				{
+					"name": "Logout",
+					"request": {
+						"method": "POST",
+						"url": "{{base_url}}/auth/logout",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{user_token}}" }
+						]
+					}
+				},
+				{
+					"name": "Refresh Token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var json = pm.response.json();",
+									"if (json.access_token) {",
+									"    pm.collectionVariables.set('user_token', json.access_token);",
+									"    pm.collectionVariables.set('refresh_token', json.refresh_token);",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"url": "{{base_url}}/auth/refresh",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"refresh_token\": \"{{refresh_token}}\"\n}"
+						}
+					}
+				},
+				{
+					"name": "Forgot Password",
+					"request": {
+						"method": "POST",
+						"url": "{{base_url}}/auth/forgot-password",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"user@example.com\"\n}"
+						}
+					}
+				},
+				{
+					"name": "Reset Password",
+					"request": {
+						"method": "POST",
+						"url": "{{base_url}}/auth/reset-password",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"token\": \"PASTE_RESET_TOKEN_HERE\",\n  \"new_password\": \"NewSecurePass456\"\n}"
+						}
+					}
+				},
+				{
+					"name": "Verify Email",
+					"request": {
+						"method": "GET",
+						"url": "{{base_url}}/auth/verify-email/PASTE_VERIFY_TOKEN_HERE",
+						"header": []
+					}
+				},
+				{
+					"name": "CSRF Token",
+					"request": {
+						"method": "GET",
+						"url": "{{base_url}}/auth/csrf-token",
+						"header": []
+					}
+				}
+			]
+		},
+		{
+			"name": "Auth – Admin",
+			"item": [
+				{
+					"name": "Admin Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var json = pm.response.json();",
+									"if (json.access_token) {",
+									"    pm.collectionVariables.set('admin_token', json.access_token);",
+									"    pm.collectionVariables.set('admin_refresh_token', json.refresh_token);",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"url": "{{base_url}}/auth/admin/login",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"admin@hermes.gov.in\",\n  \"password\": \"AdminPass123\"\n}"
+						}
+					}
+				},
+				{
+					"name": "Admin Logout",
+					"request": {
+						"method": "POST",
+						"url": "{{base_url}}/auth/admin/logout",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{admin_token}}" }
+						]
+					}
+				},
+				{
+					"name": "Admin Refresh Token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var json = pm.response.json();",
+									"if (json.access_token) {",
+									"    pm.collectionVariables.set('admin_token', json.access_token);",
+									"    pm.collectionVariables.set('admin_refresh_token', json.refresh_token);",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"url": "{{base_url}}/auth/admin/refresh",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"refresh_token\": \"{{admin_refresh_token}}\"\n}"
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Jobs – Public",
+			"item": [
+				{
+					"name": "List Jobs",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/jobs?limit=20&offset=0",
+							"host": ["{{base_url}}"],
+							"path": ["jobs"],
+							"query": [
+								{ "key": "limit", "value": "20" },
+								{ "key": "offset", "value": "0" },
+								{ "key": "q", "value": "", "disabled": true },
+								{ "key": "job_type", "value": "", "disabled": true },
+								{ "key": "qualification_level", "value": "", "disabled": true },
+								{ "key": "organization", "value": "", "disabled": true },
+								{ "key": "department", "value": "", "disabled": true },
+								{ "key": "is_featured", "value": "true", "disabled": true },
+								{ "key": "is_urgent", "value": "true", "disabled": true }
+							]
+						},
+						"header": []
+					}
+				},
+				{
+					"name": "Search Jobs (FTS)",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/jobs?q=SSC+CGL&limit=10",
+							"host": ["{{base_url}}"],
+							"path": ["jobs"],
+							"query": [
+								{ "key": "q", "value": "SSC CGL" },
+								{ "key": "limit", "value": "10" }
+							]
+						},
+						"header": []
+					}
+				},
+				{
+					"name": "Job Detail by Slug",
+					"request": {
+						"method": "GET",
+						"url": "{{base_url}}/jobs/{{job_slug}}",
+						"header": []
+					}
+				}
+			]
+		},
+		{
+			"name": "Admin – Jobs",
+			"item": [
+				{
+					"name": "List All Jobs (Admin)",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/admin/jobs?limit=20&offset=0",
+							"host": ["{{base_url}}"],
+							"path": ["admin", "jobs"],
+							"query": [
+								{ "key": "limit", "value": "20" },
+								{ "key": "offset", "value": "0" },
+								{ "key": "status", "value": "", "disabled": true }
+							]
+						},
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{admin_token}}" }
+						]
+					}
+				},
+				{
+					"name": "Create Job",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var json = pm.response.json();",
+									"if (json.id) {",
+									"    pm.collectionVariables.set('job_id', json.id);",
+									"    pm.collectionVariables.set('job_slug', json.slug);",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"url": "{{base_url}}/admin/jobs",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{admin_token}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"job_title\": \"SSC CGL 2026\",\n  \"organization\": \"Staff Selection Commission\",\n  \"job_type\": \"latest_job\",\n  \"qualification_level\": \"graduate\",\n  \"total_vacancies\": 8000,\n  \"description\": \"Combined Graduate Level Exam 2026 recruitment.\",\n  \"application_end\": \"2026-07-15\",\n  \"status\": \"draft\"\n}"
+						}
+					}
+				},
+				{
+					"name": "Update Job",
+					"request": {
+						"method": "PUT",
+						"url": "{{base_url}}/admin/jobs/{{job_id}}",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{admin_token}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"total_vacancies\": 9000,\n  \"is_featured\": true\n}"
+						}
+					}
+				},
+				{
+					"name": "Approve Job (draft → active)",
+					"request": {
+						"method": "PUT",
+						"url": "{{base_url}}/admin/jobs/{{job_id}}/approve",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{admin_token}}" }
+						]
+					}
+				},
+				{
+					"name": "Delete Job (Admin only)",
+					"request": {
+						"method": "DELETE",
+						"url": "{{base_url}}/admin/jobs/{{job_id}}",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{admin_token}}" }
+						]
+					}
+				}
+			]
+		},
+		{
+			"name": "Admin – Users",
+			"item": [
+				{
+					"name": "List Users",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/admin/users?limit=20&offset=0",
+							"host": ["{{base_url}}"],
+							"path": ["admin", "users"],
+							"query": [
+								{ "key": "limit", "value": "20" },
+								{ "key": "offset", "value": "0" },
+								{ "key": "search", "value": "", "disabled": true }
+							]
+						},
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{admin_token}}" }
+						]
+					}
+				},
+				{
+					"name": "User Detail",
+					"request": {
+						"method": "GET",
+						"url": "{{base_url}}/admin/users/{{user_id}}",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{admin_token}}" }
+						]
+					}
+				},
+				{
+					"name": "Suspend / Activate User",
+					"request": {
+						"method": "PUT",
+						"url": "{{base_url}}/admin/users/{{user_id}}/status",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{admin_token}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"status\": \"suspended\"\n}"
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Admin – Dashboard",
+			"item": [
+				{
+					"name": "Dashboard Stats",
+					"request": {
+						"method": "GET",
+						"url": "{{base_url}}/admin/stats",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{admin_token}}" }
+						]
+					}
+				},
+				{
+					"name": "Admin Logs",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/admin/logs?limit=50&offset=0",
+							"host": ["{{base_url}}"],
+							"path": ["admin", "logs"],
+							"query": [
+								{ "key": "limit", "value": "50" },
+								{ "key": "offset", "value": "0" }
+							]
+						},
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{admin_token}}" }
+						]
+					}
+				}
+			]
+		},
+		{
+			"name": "User – Profile",
+			"item": [
+				{
+					"name": "Get Profile",
+					"request": {
+						"method": "GET",
+						"url": "{{base_url}}/users/profile",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{user_token}}" }
+						]
+					}
+				},
+				{
+					"name": "Update Profile",
+					"request": {
+						"method": "PUT",
+						"url": "{{base_url}}/users/profile",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{user_token}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"state\": \"Delhi\",\n  \"city\": \"New Delhi\",\n  \"highest_qualification\": \"graduate\",\n  \"category\": \"general\"\n}"
+						}
+					}
+				},
+				{
+					"name": "Update Phone",
+					"request": {
+						"method": "PUT",
+						"url": "{{base_url}}/users/profile/phone",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{user_token}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"phone\": \"9876543210\"\n}"
+						}
+					}
+				}
+			]
+		}
+	]
+}

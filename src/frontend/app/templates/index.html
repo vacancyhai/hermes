@@ -2,15 +2,56 @@
 
 {% block title %}Hermes — Government Job Portal{% endblock %}
 
-{% block content %}
-<h1>Hermes — Government Job Vacancy Portal</h1>
-<p>Find and track government job vacancies matched to your profile.</p>
+{% block head %}
+<style>
+    .hero{text-align:center;padding:2rem 0 1.5rem}
+    .hero h1{font-size:1.75rem;margin-bottom:.5rem}
+    .hero p{color:#64748b}
+    .search-bar{display:flex;gap:.5rem;margin:1.5rem 0}
+    .search-bar input{flex:1;padding:.6rem .75rem;border:1px solid #cbd5e1;border-radius:.375rem;font-size:.95rem}
+    .search-bar input:focus{outline:none;border-color:#2563eb;box-shadow:0 0 0 2px rgba(37,99,235,.15)}
+    .filters{display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:1.5rem}
+    .filters select{padding:.4rem .75rem;border:1px solid #cbd5e1;border-radius:.375rem;font-size:.85rem;background:#fff}
+    .job-card{border:1px solid #e2e8f0;border-radius:.5rem;padding:1rem 1.25rem;margin-bottom:.75rem;background:#fff;transition:box-shadow .15s}
+    .job-card:hover{box-shadow:0 2px 8px rgba(0,0,0,.06)}
+    .job-card h3{font-size:1.05rem;margin-bottom:.25rem}
+    .job-card h3 a{color:#1e293b}
+    .job-card .meta{font-size:.85rem;color:#64748b;margin-bottom:.35rem}
+    .job-card .badges{display:flex;gap:.35rem;flex-wrap:wrap;margin-bottom:.35rem}
+    .job-card .dates{font-size:.8rem;color:#94a3b8}
+    .load-more{text-align:center;padding:1rem 0}
+    .empty{text-align:center;padding:3rem 0;color:#94a3b8}
+</style>
+{% endblock %}
 
-<!-- TODO: Job listing with HTMX infinite scroll -->
-<div id="job-list"
-     hx-get="/jobs?page=1"
-     hx-trigger="load"
-     hx-swap="innerHTML">
-    <p>Loading jobs...</p>
+{% block content %}
+<div class="hero">
+    <h1>Government Job Vacancies</h1>
+    <p>Find and track the latest government jobs matched to your profile.</p>
+</div>
+
+<form action="/" method="get" x-data>
+    <div class="search-bar">
+        <input type="text" name="q" placeholder="Search jobs… e.g. SSC CGL, UPSC, Railway" value="{{ params.get('q', '') }}">
+        <button class="btn btn-primary" type="submit">Search</button>
+    </div>
+    <div class="filters">
+        <select name="job_type" onchange="this.form.submit()">
+            <option value="">All Types</option>
+            {% for val, label in [('latest_job','Latest Job'),('result','Result'),('admit_card','Admit Card'),('answer_key','Answer Key'),('syllabus','Syllabus'),('admission','Admission')] %}
+            <option value="{{ val }}" {{ 'selected' if params.get('job_type')==val }}>{{ label }}</option>
+            {% endfor %}
+        </select>
+        <select name="qualification_level" onchange="this.form.submit()">
+            <option value="">All Qualifications</option>
+            {% for val, label in [('10th','10th'),('12th','12th'),('graduate','Graduate'),('postgraduate','Post Graduate'),('diploma','Diploma'),('phd','PhD')] %}
+            <option value="{{ val }}" {{ 'selected' if params.get('qualification_level')==val }}>{{ label }}</option>
+            {% endfor %}
+        </select>
+    </div>
+</form>
+
+<div id="job-list">
+    {% include "_job_cards.html" %}
 </div>
 {% endblock %}
