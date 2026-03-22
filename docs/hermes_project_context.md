@@ -1,4 +1,4 @@
-# Hermes Project — Complete Context (as of March 22, 2026, Phase 7 complete)
+# Hermes Project — Complete Context (as of March 22, 2026, Phase 8 complete)
 
 ## What It Is
 A **Government Job Vacancy Portal** (India-focused). Users register, browse jobs, get personalized recommendations, follow organizations, track applications, receive deadline reminders. Admins manage jobs, users, and content.
@@ -6,7 +6,7 @@ A **Government Job Vacancy Portal** (India-focused). Users register, browse jobs
 ## Repo
 - Path: `/home/sumant/workspace/hermes`
 - Remote: `git@github.com:SumanKr7/hermes.git`
-- Branch: `main` (Phase 7 complete)
+- Branch: `main` (Phase 8 complete)
 
 ---
 
@@ -329,7 +329,8 @@ When something breaks (and it will):
 - Phase 5 (#130-#132): CLOSED — In-app notification endpoints, email (Mailpit dev), FCM push, notification preferences, frontend bell
 - Phase 6 (#133-#135): CLOSED — Admin frontend (dashboard, job/user mgmt, logs), SEO (sitemap, meta, JSON-LD), fee display, share buttons
 - Phase 7 (#136-#138): CLOSED — PDF upload + AI extraction, draft review/approve, PWA
-- Phase 8 (#139-#141): OPEN — Tests, security audit, deployment
+- Phase 8 (#139-#140): CLOSED — 80 pytest tests, security audit (JWT, RBAC, OWASP)
+- Phase 9 (#141): OPEN — Production deployment
 - Phase 9 (#142-#143): OPEN — React Native mobile app
 - 34 labels total (9 story labels + component/type/size/priority labels)
 
@@ -467,3 +468,25 @@ When something breaks (and it will):
    - Flask route `/offline` added.
 
 **Issues closed:** #136, #137, #138
+
+### Phase 8 — Testing + Security Audit (#139–#140) ✅
+
+**What was built:**
+
+1. **Unit + Integration Tests (#139):**
+   - `tests/conftest.py`: async fixtures with engine-per-test pattern to avoid event-loop mismatch. Fixtures for DB session, httpx AsyncClient, test users (user, admin, operator), JWT tokens, active/draft jobs.
+   - `tests/test_auth.py` (18 tests): registration (success, duplicate, validation), login (success, wrong password, nonexistent), JWT claims, logout/revocation, refresh tokens, forgot/reset password, CSRF, admin auth.
+   - `tests/test_jobs.py` (18 tests): public listing, pagination, filters (type, org), slug lookup, view count increment, FTS search, admin CRUD, approve flow, slug uniqueness, RBAC.
+   - `tests/test_applications.py` (10 tests): track job, duplicate prevention, list, stats, update status, invalid status, delete, auth requirement.
+   - `tests/test_admin.py` (12 tests): dashboard stats, user listing/search/detail, suspend/activate, RBAC (operator vs admin), audit logs.
+   - `tests/test_integration.py` (4 tests): full user flow (register→login→track→update→delete), admin job lifecycle (create→update→approve→delete), user management flow, RBAC verification.
+   - `pytest.ini`: asyncio_mode=auto, tests/ path.
+   - Docker: test volume mounts (`./tests:/app/tests`, `./pytest.ini:/app/pytest.ini`) on backend container.
+
+2. **Security Audit (#140):**
+   - `tests/test_security.py` (18 tests): JWT algorithm pinning (HS256), expiry, JTI for revocation, forged token rejection, expired token rejection, user/admin scope isolation, token blocklist verification, bcrypt hashing, no passwords in responses, file upload validation (non-PDF, oversized, auth required), SQL injection defense, XSS handling, pagination validation, CORS headers, Dockerfile non-root user, health endpoint no-auth.
+   - All OWASP top 10 controls verified: parameterized queries (SQLAlchemy), Jinja2 autoescaping, JWT blocklist, bcrypt, file upload sanitization, CORS config.
+
+**Test results:** 80 passed, 0 failed in ~41 seconds.
+
+**Issues closed:** #139, #140

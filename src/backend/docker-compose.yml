@@ -75,6 +75,8 @@ services:
       - "${BACKEND_PORT:-8000}:8000"
     volumes:
       - ./app:/app/app  # Hot-reload in development
+      - ./tests:/app/tests
+      - ./pytest.ini:/app/pytest.ini
       - uploads_data:/app/uploads
     depends_on:
       pgbouncer:

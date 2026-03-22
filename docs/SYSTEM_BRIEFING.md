@@ -5,7 +5,7 @@ You are continuing work on **Hermes**, a Government Job Vacancy Portal (India-fo
 ## Repo & Location
 - Workspace: `/home/sumant/workspace/hermes`
 - Remote: `git@github.com:SumanKr7/hermes.git`, branch `main`
-- GitHub Issues: #114–#143 (30 issues, 9 phases). Phases 1–7 are CLOSED. Phase 8 (#139–#141) is next.
+- GitHub Issues: #114–#143 (30 issues, 9 phases). Phases 1–8 are CLOSED. Phase 9 (#141) is next.
 
 ## Architecture
 ```
@@ -46,6 +46,9 @@ docker restart hermes_backend
 # Restart Celery (after task code changes)
 docker restart hermes_celery_worker
 
+# Run tests (80 tests: auth, jobs, applications, admin, integration, security)
+docker exec -w /app -e PYTHONPATH=/app hermes_backend python -m pytest tests/ -v
+
 # Frontend
 cd src/frontend && docker compose up -d --build
 ```
@@ -83,6 +86,14 @@ src/backend/
       jobs.py            # close_expired_job_listings, extract_job_from_pdf
       seo.py             # generate_sitemap
     templates/email/     # Jinja2 email templates (base, welcome, verification, password_reset, deadline_reminder, new_job_alert)
+  tests/                 # pytest test suite (80 tests)
+    conftest.py          # Async fixtures (engine-per-test, httpx client, auth tokens)
+    test_auth.py         # 18 tests: register, login, logout, refresh, JWT claims, admin auth
+    test_jobs.py         # 18 tests: list, filter, slug, FTS, admin CRUD, approve, RBAC
+    test_applications.py # 10 tests: track, duplicate, update, delete, stats
+    test_admin.py        # 12 tests: stats, user mgmt, suspend/activate, RBAC
+    test_integration.py  #  4 tests: full user flow, admin lifecycle, user mgmt, RBAC
+    test_security.py     # 18 tests: JWT, token revocation, bcrypt, file upload, XSS, SQLi, CORS
   migrations/versions/
     0001_initial_schema.py
     0002_separate_admin_users.py
@@ -120,7 +131,8 @@ src/frontend/app/
 - **Phase 5** (#130–#132) ✅: In-app notification endpoints, email via SMTP (Mailpit dev), FCM push, notification preferences, frontend bell
 - **Phase 6** (#133–#135) ✅: Admin frontend (dashboard, job/user mgmt, audit logs), SEO (sitemap, meta tags, JSON-LD), fee display by category, share buttons
 - **Phase 7** (#136–#138) ✅: PDF upload + AI extraction (Anthropic Claude), draft review/approve workflow, PWA (manifest, service worker, offline)
-- **Phase 8–9**: Tests, security audit, production deployment, mobile app
+- **Phase 8** (#139–#140) ✅: 80 pytest tests (auth, jobs, applications, admin, integration, security), security audit (JWT, RBAC, file upload, OWASP)
+- **Phase 9**: Production deployment, mobile app
 
 ## Docs
 - `docs/API.md` — complete endpoint reference with examples

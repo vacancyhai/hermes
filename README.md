@@ -5,7 +5,7 @@ matched to their education, age, category, and preferences. Includes user
 authentication, profile-based job matching, application tracking, multi-channel
 notifications, and an admin panel.
 
-> **Status:** Phases 1–7 complete. Auth system, job CRUD, full-text search,
+> **Status:** Phases 1–8 complete. Auth system, job CRUD, full-text search,
 > user profiles, job matching & recommendations, org follow with Celery
 > notifications, application tracking with deadline reminders, user dashboard,
 > email notifications (Mailpit in dev), FCM push notifications, in-app
@@ -13,8 +13,9 @@ notifications, and an admin panel.
 > (dashboard, job/user management, audit logs), SEO (sitemap, meta tags,
 > JSON-LD structured data), application fee display by category,
 > WhatsApp/Telegram share buttons, PDF upload with AI extraction (Anthropic
-> Claude), draft review & approve workflow, and PWA (manifest, service worker,
-> offline fallback) — all implemented and tested.
+> Claude), draft review & approve workflow, PWA (manifest, service worker,
+> offline fallback), comprehensive test suite (80 tests, pytest + httpx),
+> and security audit (JWT, RBAC, file upload, OWASP) — all implemented.
 
 ## Tech Stack
 
@@ -118,6 +119,9 @@ cd ../frontend-admin && docker compose up -d --build
 # 5. (Optional) Start Nginx reverse proxy
 cd ../nginx && docker compose up -d
 
+# 6. Run tests
+docker exec -w /app -e PYTHONPATH=/app hermes_backend python -m pytest tests/ -v
+
 # Access:
 #   Backend API:    http://localhost:8000/api/v1/health
 #   API Docs:       http://localhost:8000/api/v1/docs
@@ -186,7 +190,15 @@ hermes/
 │   │   │       ├── 0004_fcm_tokens.py            # FCM tokens for push notifications
 │   │   │       ├── 0005_add_fee_columns.py       # Application fee by category
 │   │   │       └── 0006_add_source_pdf_path.py   # PDF upload source tracking
-│   │   └── tests/
+│   │   ├── tests/                               # pytest test suite (80 tests)
+│   │   │   ├── conftest.py                      # Async fixtures (DB, client, tokens)
+│   │   │   ├── test_auth.py                     # Auth: register, login, logout, refresh, JWT
+│   │   │   ├── test_jobs.py                     # Jobs: CRUD, search, slug, pagination
+│   │   │   ├── test_applications.py             # Applications: track, update, delete
+│   │   │   ├── test_admin.py                    # Admin: stats, user mgmt, RBAC
+│   │   │   ├── test_integration.py              # E2E flows: user, admin, lifecycle
+│   │   │   └── test_security.py                 # Security: JWT, uploads, XSS, SQL injection
+│   │   └── pytest.ini
 │   ├── frontend/                         # User Frontend (port 8080)
 │   │   ├── Dockerfile
 │   │   ├── docker-compose.yml
@@ -271,7 +283,7 @@ hermes/
 | 5     | Notification engine (email, push, in-app, future: Telegram + WhatsApp) | Done |
 | 6     | Admin frontend (dashboard, job/user mgmt, logs), SEO (sitemap, meta, JSON-LD), fee display, share buttons | Done |
 | 7     | PDF ingestion (AI extraction + operator review), PWA | Done |
-| 8     | Testing, security audit, production deployment | Open |
+| 8     | Testing (80 tests), security audit (JWT, RBAC, OWASP) | Done |
 | 9     | React Native mobile app (Android + iOS) — same API | Open |
 
 ## License
