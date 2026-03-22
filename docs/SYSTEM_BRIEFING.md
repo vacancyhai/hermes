@@ -156,7 +156,7 @@ src/frontend/app/
 - **Phase 5** (#130–#132) ✅: In-app notification endpoints, email via SMTP (Mailpit dev), FCM push, notification preferences, frontend bell
 - **Phase 6** (#133–#135) ✅: Admin frontend (dashboard, job/user mgmt, audit logs), SEO (sitemap, meta tags, JSON-LD), fee display by category, share buttons
 - **Phase 7** (#136–#138) ✅: PDF upload + AI extraction (Anthropic Claude), draft review/approve workflow, PWA (manifest, service worker, offline)
-- **Testing** (#139–#140) ✅: 80 pytest tests (auth, jobs, applications, admin, integration, security), security audit (JWT, RBAC, file upload, OWASP)
+- **Testing** (#139–#140) ✅: 292 pytest tests, 91% coverage — see `docs/TESTING.md`
 - **Phase 8** (#141): Production deployment to OCI ARM VM
 - **Phase 9** (#142–#143): React Native mobile app + push notifications
 
@@ -166,6 +166,7 @@ src/frontend/app/
 - `docs/DESIGN.md` — architecture, DB schema, API design
 - `docs/WORKFLOW_DIAGRAMS.md` — Mermaid architecture diagrams
 - `docs/hermes_project_context.md` — this same context in a repo file
+- `docs/TESTING.md` — test coverage report, test file inventory, unit test strategy
 
 ---
 

@@ -108,3 +108,101 @@ async def test_operator_cannot_suspend_user(client: AsyncClient, operator_token:
         headers=auth_header(operator_token),
     )
     assert resp.status_code == 403
+
+
+# --- Analytics ---
+
+async def test_platform_analytics(client: AsyncClient, admin_token: str):
+    resp = await client.get("/api/v1/admin/analytics", headers=auth_header(admin_token))
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "demographics" in data
+    assert "application_trends" in data
+    assert "top_organizations" in data
+    assert "notifications" in data
+    assert "application_statuses" in data
+
+
+async def test_operator_cannot_access_analytics(client: AsyncClient, operator_token: str):
+    resp = await client.get("/api/v1/admin/analytics", headers=auth_header(operator_token))
+    assert resp.status_code == 403
+
+
+# --- Role change ---
+
+async def test_change_admin_role(client: AsyncClient, admin_token: str, test_operator):
+    operator_id, _, _ = test_operator
+    resp = await client.put(
+        f"/api/v1/admin/users/{operator_id}/role",
+        json={"role": "admin"},
+        headers=auth_header(admin_token),
+    )
+    assert resp.status_code == 200
+    assert "admin" in resp.json()["message"]
+
+
+async def test_change_role_invalid_value(client: AsyncClient, admin_token: str, test_operator):
+    operator_id, _, _ = test_operator
+    resp = await client.put(
+        f"/api/v1/admin/users/{operator_id}/role",
+        json={"role": "superuser"},
+        headers=auth_header(admin_token),
+    )
+    assert resp.status_code == 400
+
+
+async def test_change_role_not_found(client: AsyncClient, admin_token: str):
+    fake_id = uuid.uuid4()
+    resp = await client.put(
+        f"/api/v1/admin/users/{fake_id}/role",
+        json={"role": "operator"},
+        headers=auth_header(admin_token),
+    )
+    assert resp.status_code == 404
+
+
+async def test_change_own_role_rejected(client: AsyncClient, admin_token: str, test_admin):
+    admin_id, _, _ = test_admin
+    resp = await client.put(
+        f"/api/v1/admin/users/{admin_id}/role",
+        json={"role": "operator"},
+        headers=auth_header(admin_token),
+    )
+    assert resp.status_code == 400
+
+
+async def test_operator_cannot_change_role(client: AsyncClient, operator_token: str, test_operator):
+    operator_id, _, _ = test_operator
+    resp = await client.put(
+        f"/api/v1/admin/users/{operator_id}/role",
+        json={"role": "admin"},
+        headers=auth_header(operator_token),
+    )
+    assert resp.status_code == 403
+
+
+# --- User not found ---
+
+async def test_admin_get_nonexistent_user(client: AsyncClient, admin_token: str):
+    fake_id = uuid.uuid4()
+    resp = await client.get(f"/api/v1/admin/users/{fake_id}", headers=auth_header(admin_token))
+    assert resp.status_code == 404
+
+
+async def test_admin_suspend_nonexistent_user(client: AsyncClient, admin_token: str):
+    fake_id = uuid.uuid4()
+    resp = await client.put(
+        f"/api/v1/admin/users/{fake_id}/status",
+        json={"status": "suspended"},
+        headers=auth_header(admin_token),
+    )
+    assert resp.status_code == 404
+
+
+# --- Status filter for user listing ---
+
+async def test_admin_list_users_status_filter(client: AsyncClient, admin_token: str, test_user):
+    resp = await client.get("/api/v1/admin/users?status=active", headers=auth_header(admin_token))
+    assert resp.status_code == 200
+    for user in resp.json()["data"]:
+        assert user["status"] == "active"

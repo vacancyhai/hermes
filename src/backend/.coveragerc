@@ -1,0 +1,11 @@
+[run]
+source = app
+concurrency = thread,greenlet
+omit =
+    */tests/*
+    */migrations/*
+    */__pycache__/*
+
+[report]
+precision = 0
+skip_covered = false
