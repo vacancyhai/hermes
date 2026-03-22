@@ -96,6 +96,110 @@ def create_app():
             current_status=status_filter,
         )
 
+    # --- Notifications ---
+
+    @app.route("/notifications")
+    def notifications():
+        """Notifications page — requires login."""
+        token = session.get("token")
+        if not token:
+            return render_template("login.html", next="/notifications")
+
+        # Fetch unread count
+        count_resp = current_app.api_client.get("/notifications/count", token=token)
+        unread_count = count_resp.json().get("count", 0) if count_resp.ok else 0
+
+        # Fetch notifications
+        params = {"limit": 20, "offset": 0}
+        notif_resp = current_app.api_client.get("/notifications", token=token, params=params)
+        notif_data = notif_resp.json() if notif_resp.ok else {"data": [], "pagination": {}}
+
+        return render_template(
+            "notifications.html",
+            notifications=notif_data["data"],
+            pagination=notif_data.get("pagination", {}),
+            unread_count=unread_count,
+        )
+
+    @app.route("/notifications/list")
+    def notifications_list_partial():
+        """HTMX partial — returns notification rows for load-more."""
+        token = session.get("token")
+        if not token:
+            return "", 401
+
+        params = {"limit": 20, "offset": int(request.args.get("offset", 0))}
+        notif_resp = current_app.api_client.get("/notifications", token=token, params=params)
+        notif_data = notif_resp.json() if notif_resp.ok else {"data": [], "pagination": {}}
+
+        # Return just the notification items (reuse the loop from notifications.html)
+        items_html = ""
+        for n in notif_data["data"]:
+            read_class = "" if n["is_read"] else "unread"
+            dot_class = "read" if n["is_read"] else "unread"
+            items_html += f'''<div class="notif-item {read_class}" id="notif-{n["id"]}">
+                <div class="notif-dot {dot_class}"></div>
+                <div class="notif-body">
+                    <div class="notif-title">{n["title"]}</div>
+                    <div class="notif-msg">{n["message"]}</div>
+                    <div class="notif-meta"><span>{str(n["created_at"])[:16].replace("T", " ")}</span></div>
+                </div>
+            </div>'''
+
+        if notif_data.get("pagination", {}).get("has_more"):
+            next_offset = params["offset"] + params["limit"]
+            items_html += f'''<div style="text-align:center;margin-top:1rem;">
+                <button class="btn btn-outline"
+                    hx-get="/notifications/list?offset={next_offset}"
+                    hx-target="#notification-list"
+                    hx-swap="beforeend">Load more</button></div>'''
+
+        return items_html
+
+    @app.route("/notifications/unread-count")
+    def notifications_unread_count():
+        """HTMX partial — returns just the unread count number for the badge."""
+        token = session.get("token")
+        if not token:
+            return ""
+
+        resp = current_app.api_client.get("/notifications/count", token=token)
+        count = resp.json().get("count", 0) if resp.ok else 0
+
+        if count > 0:
+            return str(count)
+        return ""
+
+    @app.route("/notifications/<notification_id>/read", methods=["POST"])
+    def mark_notification_read(notification_id):
+        """Mark a notification as read (proxies to backend PUT)."""
+        token = session.get("token")
+        if not token:
+            return redirect("/login")
+
+        current_app.api_client.put(f"/notifications/{notification_id}/read", token=token)
+        return redirect("/notifications")
+
+    @app.route("/notifications/read-all", methods=["POST"])
+    def mark_all_notifications_read():
+        """Mark all notifications as read (proxies to backend PUT)."""
+        token = session.get("token")
+        if not token:
+            return redirect("/login")
+
+        current_app.api_client.put("/notifications/read-all", token=token)
+        return redirect("/notifications")
+
+    @app.route("/notifications/<notification_id>/delete", methods=["POST"])
+    def delete_notification(notification_id):
+        """Delete a notification (proxies to backend DELETE)."""
+        token = session.get("token")
+        if not token:
+            return redirect("/login")
+
+        current_app.api_client.delete(f"/notifications/{notification_id}", token=token)
+        return redirect("/notifications")
+
     @app.route("/login", methods=["GET", "POST"])
     def login():
         """Simple login form — stores JWT in session."""

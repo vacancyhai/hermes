@@ -63,3 +63,13 @@ class ApiClient:
             timeout=10,
         )
         return resp
+
+    def patch(self, path: str, token: str | None = None, json: dict | None = None):
+        """PATCH request to backend API."""
+        resp = self.session.patch(
+            f"{self.base_url}{path}",
+            headers=self._headers(token),
+            json=json,
+            timeout=10,
+        )
+        return resp

@@ -39,6 +39,14 @@
             <a href="/">Jobs</a>
             <a href="/dashboard">Dashboard</a>
             {% if session.get('token') %}
+                <a href="/notifications" style="position:relative;">
+                    🔔
+                    <span id="notif-badge"
+                          hx-get="/notifications/unread-count"
+                          hx-trigger="load, every 30s"
+                          hx-swap="innerHTML"
+                          style="position:absolute;top:-6px;right:-10px;background:#ef4444;color:#fff;border-radius:50%;font-size:.65rem;min-width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;font-weight:700;"></span>
+                </a>
                 <a href="/logout">Logout</a>
             {% else %}
                 <a href="/login">Login</a>

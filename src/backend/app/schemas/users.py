@@ -23,6 +23,7 @@ class ProfileResponse(BaseModel):
     preferred_states: list
     preferred_categories: list
     followed_organizations: list
+    fcm_tokens: list
     updated_at: datetime
 
     model_config = {"from_attributes": True}
@@ -46,3 +47,18 @@ class ProfileUpdateRequest(BaseModel):
 
 class PhoneUpdateRequest(BaseModel):
     phone: str = Field(min_length=10, max_length=20)
+
+
+class FCMTokenRequest(BaseModel):
+    token: str = Field(min_length=10, max_length=500)
+    device_name: str | None = None
+
+
+class FCMTokenDeleteRequest(BaseModel):
+    token: str = Field(min_length=10, max_length=500)
+
+
+class NotificationPreferencesRequest(BaseModel):
+    email: bool | None = None
+    push: bool | None = None
+    in_app: bool | None = None

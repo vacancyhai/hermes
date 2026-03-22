@@ -1,0 +1,26 @@
+{% extends "email/base.html" %}
+{% block content %}
+<h2>🆕 New Job from {{ organization }}</h2>
+<p>Hi {{ name }},</p>
+<p>A new job has been posted by <strong>{{ organization }}</strong>, an organization you follow:</p>
+<table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+  <tr>
+    <td style="padding: 8px 0; color: #64748b;">Job Title</td>
+    <td style="padding: 8px 0; font-weight: 600;">{{ job_title }}</td>
+  </tr>
+  <tr>
+    <td style="padding: 8px 0; color: #64748b;">Organization</td>
+    <td style="padding: 8px 0;">{{ organization }}</td>
+  </tr>
+  {% if deadline %}
+  <tr>
+    <td style="padding: 8px 0; color: #64748b;">Apply Before</td>
+    <td style="padding: 8px 0;">{{ deadline }}</td>
+  </tr>
+  {% endif %}
+</table>
+<p style="text-align: center; margin: 28px 0;">
+  <a href="{{ base_url }}/jobs/{{ slug }}" class="btn">View Job Details</a>
+</p>
+<p class="muted">You're receiving this because you follow {{ organization }} on Hermes.</p>
+{% endblock %}

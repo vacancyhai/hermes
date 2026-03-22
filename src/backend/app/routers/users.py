@@ -1,12 +1,17 @@
 """User profile endpoints (requires user JWT).
 
-GET  /api/v1/users/profile               — Get own profile
-PUT  /api/v1/users/profile               — Update own profile
-PUT  /api/v1/users/profile/phone         — Update phone number
-GET  /api/v1/users/me/following           — List followed organizations
-POST /api/v1/organizations/{name}/follow  — Follow an organization
+GET    /api/v1/users/profile               — Get own profile
+PUT    /api/v1/users/profile               — Update own profile
+PUT    /api/v1/users/profile/phone         — Update phone number
+GET    /api/v1/users/me/following           — List followed organizations
+POST   /api/v1/organizations/{name}/follow  — Follow an organization
 DELETE /api/v1/organizations/{name}/follow — Unfollow an organization
+POST   /api/v1/users/me/fcm-token          — Register FCM device token
+DELETE /api/v1/users/me/fcm-token          — Unregister FCM token
+PUT    /api/v1/users/me/notification-preferences — Update notification preferences
 """
+
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
@@ -15,11 +20,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.dependencies import get_current_user, get_db
 from app.models.user_profile import UserProfile
 from app.schemas.auth import UserResponse
-from app.schemas.users import PhoneUpdateRequest, ProfileResponse, ProfileUpdateRequest
+from app.schemas.users import (
+    FCMTokenDeleteRequest,
+    FCMTokenRequest,
+    NotificationPreferencesRequest,
+    PhoneUpdateRequest,
+    ProfileResponse,
+    ProfileUpdateRequest,
+)
 
 router = APIRouter(tags=["users"])
 
 MAX_FOLLOWED_ORGS = 50
+MAX_FCM_TOKENS = 10
 
 
 @router.get("/api/v1/users/profile")
@@ -138,3 +151,91 @@ async def unfollow_organization(
 
     profile.followed_organizations = new_orgs
     return {"message": f"Unfollowed {name}", "followed_organizations": new_orgs}
+
+
+# --- FCM Token Management ---
+
+
+@router.post("/api/v1/users/me/fcm-token")
+async def register_fcm_token(
+    body: FCMTokenRequest,
+    current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Register an FCM device token for push notifications. Max 10 devices."""
+    user, _ = current_user
+    result = await db.execute(select(UserProfile).where(UserProfile.user_id == user.id))
+    profile = result.scalar_one_or_none()
+    if not profile:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Profile not found")
+
+    tokens = list(profile.fcm_tokens or [])
+
+    # Deduplicate by token value
+    existing = [t for t in tokens if isinstance(t, dict) and t.get("token") == body.token]
+    if existing:
+        return {"message": "Token already registered", "fcm_tokens_count": len(tokens)}
+
+    if len(tokens) >= MAX_FCM_TOKENS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Maximum {MAX_FCM_TOKENS} devices allowed",
+        )
+
+    tokens.append({
+        "token": body.token,
+        "device_name": body.device_name or "Unknown",
+        "registered_at": datetime.now(timezone.utc).isoformat(),
+    })
+    profile.fcm_tokens = tokens
+
+    return {"message": "FCM token registered", "fcm_tokens_count": len(tokens)}
+
+
+@router.delete("/api/v1/users/me/fcm-token")
+async def unregister_fcm_token(
+    body: FCMTokenDeleteRequest,
+    current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Unregister an FCM device token."""
+    user, _ = current_user
+    result = await db.execute(select(UserProfile).where(UserProfile.user_id == user.id))
+    profile = result.scalar_one_or_none()
+    if not profile:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Profile not found")
+
+    tokens = list(profile.fcm_tokens or [])
+    new_tokens = [t for t in tokens if not (isinstance(t, dict) and t.get("token") == body.token)]
+
+    if len(new_tokens) == len(tokens):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Token not found")
+
+    profile.fcm_tokens = new_tokens
+    return {"message": "FCM token removed", "fcm_tokens_count": len(new_tokens)}
+
+
+# --- Notification Preferences ---
+
+
+@router.put("/api/v1/users/me/notification-preferences")
+async def update_notification_preferences(
+    body: NotificationPreferencesRequest,
+    current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Update notification channel preferences (email, push, in_app)."""
+    user, _ = current_user
+    result = await db.execute(select(UserProfile).where(UserProfile.user_id == user.id))
+    profile = result.scalar_one_or_none()
+    if not profile:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Profile not found")
+
+    prefs = dict(profile.notification_preferences or {})
+    update_data = body.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        prefs[key] = value
+
+    profile.notification_preferences = prefs
+
+    return {"message": "Preferences updated", "notification_preferences": prefs}

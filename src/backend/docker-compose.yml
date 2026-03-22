@@ -137,6 +137,16 @@ services:
     networks:
       - backend_network
 
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: hermes_mailhog
+    restart: unless-stopped
+    ports:
+      - "1025:1025"   # SMTP
+      - "8025:8025"   # Web UI
+    networks:
+      - backend_network
+
 volumes:
   postgres_data:
   redis_data:

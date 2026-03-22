@@ -29,6 +29,7 @@ class UserProfile(Base):
     preferred_states: Mapped[list] = mapped_column(JSONB, nullable=False, server_default="[]")
     preferred_categories: Mapped[list] = mapped_column(JSONB, nullable=False, server_default="[]")
     followed_organizations: Mapped[list] = mapped_column(JSONB, nullable=False, server_default="[]")
+    fcm_tokens: Mapped[list] = mapped_column(JSONB, nullable=False, server_default="[]")
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
 
     # Relationships

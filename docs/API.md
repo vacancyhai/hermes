@@ -144,7 +144,46 @@ All application endpoints require a user JWT.
 
 **Valid statuses:** `applied`, `admit_card_released`, `exam_completed`, `result_pending`, `selected`, `rejected`, `waiting_list`
 
-**Deadline Reminders:** A Celery Beat task runs daily at 08:00 UTC and creates in-app notifications at T-7, T-3, and T-1 days before `application_end` for all tracked applications.
+**Deadline Reminders:** A Celery Beat task runs daily at 08:00 UTC and creates in-app notifications at T-7, T-3, and T-1 days before `application_end` for all tracked applications. If the user has email enabled, a deadline reminder email is also sent.
+
+---
+
+## Notifications
+
+All notification endpoints require a user JWT.
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | `/notifications` | User | List notifications (paginated, filterable) |
+| GET | `/notifications/count` | User | Unread notification count |
+| PUT | `/notifications/{id}/read` | User | Mark single notification as read |
+| PUT | `/notifications/read-all` | User | Mark all unread → read |
+| DELETE | `/notifications/{id}` | User | Delete notification (204) |
+
+**Query Parameters for `GET /notifications`:**
+
+| Param | Type | Description |
+|-------|------|-------------|
+| `type` | string | Filter by notification type |
+| `is_read` | boolean | Filter read/unread |
+| `limit` | int | 1-100, default: 20 |
+| `offset` | int | Default: 0 |
+
+**Notification Types:** `deadline_reminder_7d`, `deadline_reminder_3d`, `deadline_reminder_1d`, `new_job_from_followed_org`, `priority_job_update`, `welcome`
+
+**Email Notifications:** When creating in-app notifications, the system also queues email via Celery if the user's `notification_preferences.email` is not explicitly `false`. Dev environment uses MailHog (SMTP port 1025, Web UI port 8025).
+
+**Push Notifications:** FCM push notification is sent if `FIREBASE_CREDENTIALS_PATH` is configured and the user has registered FCM tokens with `notification_preferences.push` not set to `false`.
+
+---
+
+## FCM Tokens & Notification Preferences
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| POST | `/users/me/fcm-token` | User | Register FCM device token (max 10) |
+| DELETE | `/users/me/fcm-token` | User | Unregister FCM token |
+| PUT | `/users/me/notification-preferences` | User | Update notification channel preferences |
 
 ---
 
@@ -239,6 +278,36 @@ Authorization: Bearer <user_token>
 GET /api/v1/applications/stats
 Authorization: Bearer <user_token>
 → 200 { "applied": 3, "admit_card_released": 1, "total": 4 }
+```
+
+### List Notifications
+```
+GET /api/v1/notifications?is_read=false&limit=10
+Authorization: Bearer <user_token>
+→ 200 { "data": [{ "id": "uuid", "type": "deadline_reminder_3d", "title": "3 days left: SSC CGL 2026", ... }], "pagination": { ... } }
+```
+
+### Unread Count
+```
+GET /api/v1/notifications/count
+Authorization: Bearer <user_token>
+→ 200 { "count": 5 }
+```
+
+### Register FCM Token
+```
+POST /api/v1/users/me/fcm-token
+Authorization: Bearer <user_token>
+{ "token": "fcm-device-token-string", "device_name": "Chrome" }
+→ 200 { "message": "FCM token registered", "fcm_tokens_count": 1 }
+```
+
+### Update Notification Preferences
+```
+PUT /api/v1/users/me/notification-preferences
+Authorization: Bearer <user_token>
+{ "email": true, "push": false }
+→ 200 { "message": "Preferences updated", "notification_preferences": { "email": true, "push": false } }
 ```
 
 ---

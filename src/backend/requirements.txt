@@ -28,6 +28,9 @@ redis==5.1.0
 # Email
 fastapi-mail==1.4.1
 
+# Push notifications
+firebase-admin==6.5.0
+
 # Rate limiting
 slowapi==0.1.9
 
