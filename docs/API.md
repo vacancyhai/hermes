@@ -44,6 +44,23 @@ All list endpoints return: `{ "data": [...], "pagination": { "limit", "offset", 
 | GET | `/users/profile` | User | Get own profile + user data |
 | PUT | `/users/profile` | User | Update profile fields |
 | PUT | `/users/profile/phone` | User | Update phone number |
+| GET | `/users/me/following` | User | List followed organizations |
+
+**Profile preference fields** (used for job matching):
+- `preferred_states` — JSON array of state names, e.g. `["Delhi", "Uttar Pradesh"]`
+- `preferred_categories` — JSON array of reservation categories, e.g. `["general", "obc"]`
+- `highest_qualification` — `10th`, `12th`, `diploma`, `graduate`, `postgraduate`, `phd`
+
+---
+
+## Organization Follow
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| POST | `/organizations/{name}/follow` | User | Follow an org (idempotent, max 50) |
+| DELETE | `/organizations/{name}/follow` | User | Unfollow (404 if not following) |
+
+When a job from a followed org is approved (draft → active), a `new_job_from_followed_org` notification is created via Celery.
 
 ---
 
@@ -52,6 +69,7 @@ All list endpoints return: `{ "data": [...], "pagination": { "limit", "offset", 
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
 | GET | `/jobs` | Public | List active jobs (filtered, paginated, FTS) |
+| GET | `/jobs/recommended` | User JWT | Personalized recommendations by profile match |
 | GET | `/jobs/:slug` | Public | Job detail by slug (increments views) |
 
 **Query Parameters for `GET /jobs`:**
@@ -143,6 +161,29 @@ Authorization: Bearer <admin_token>
 ```
 GET /api/v1/jobs?q=SSC+CGL&qualification_level=graduate&limit=10
 → 200 { "data": [...], "pagination": { "total": 1, "has_more": false, ... } }
+```
+
+### Get Recommended Jobs
+```
+GET /api/v1/jobs/recommended?limit=20&offset=0
+Authorization: Bearer <user_token>
+→ 200 { "data": [...], "pagination": { "total": 5, ... } }
+```
+Scoring: state match (+3), category match (+3), education match (+2), recency <7d (+1).
+Fallback: returns latest active jobs if user has no preferences set.
+
+### Follow Organization
+```
+POST /api/v1/organizations/UPSC/follow
+Authorization: Bearer <user_token>
+→ 200 { "message": "Now following UPSC", "followed_organizations": ["UPSC"] }
+```
+
+### List Following
+```
+GET /api/v1/users/me/following
+Authorization: Bearer <user_token>
+→ 200 { "followed_organizations": ["UPSC", "SSC"], "count": 2 }
 ```
 
 ---

@@ -5,9 +5,10 @@ matched to their education, age, category, and preferences. Includes user
 authentication, profile-based job matching, application tracking, multi-channel
 notifications, and an admin panel.
 
-> **Status:** Phase 1 & 2 complete. Auth system, job CRUD, full-text search,
-> user profiles, admin dashboard — all implemented and tested. Separate
-> `users` and `admin_users` tables with complete RBAC isolation.
+> **Status:** Phases 1–3 complete. Auth system, job CRUD, full-text search,
+> user profiles, admin dashboard, job matching & recommendations, org follow
+> with Celery notifications — all implemented and tested. Separate `users`
+> and `admin_users` tables with complete RBAC isolation.
 
 ## Tech Stack
 
@@ -154,6 +155,7 @@ hermes/
 │   │   │   │   └── admin_log.py
 │   │   │   ├── schemas/                  # Pydantic request/response models
 │   │   │   ├── services/                 # Business logic
+│   │   │   │   └── matching.py           # Job recommendation scoring engine
 │   │   │   └── tasks/                    # Celery tasks
 │   │   │       ├── notifications.py      # Deadline reminders, job alerts
 │   │   │       ├── cleanup.py            # Purge expired records
@@ -164,7 +166,8 @@ hermes/
 │   │   │   ├── script.py.mako
 │   │   │   └── versions/
 │   │   │       ├── 0001_initial_schema.py  # 6 core tables + FTS
-│   │   │       └── 0002_separate_admin_users.py  # Split users/admin_users
+│   │   │       ├── 0002_separate_admin_users.py  # Split users/admin_users
+│   │   │       └── 0003_profile_preferences.py   # Matching prefs + org follows
 │   │   └── tests/
 │   ├── frontend/                         # User Frontend (port 8080)
 │   │   ├── Dockerfile
@@ -175,7 +178,10 @@ hermes/
 │   │       ├── api_client.py             # HTTP client for backend API
 │   │       └── templates/
 │   │           ├── base.html             # Base layout (HTMX + Alpine.js)
-│   │           └── index.html
+│   │           ├── index.html            # Job listing + search + filters
+│   │           ├── _job_cards.html       # HTMX partial (load more)
+│   │           ├── job_detail.html       # Job detail page
+│   │           └── 404.html
 │   ├── frontend-admin/                   # Admin Frontend (port 8081)
 │   │   ├── Dockerfile
 │   │   ├── docker-compose.yml
@@ -219,7 +225,7 @@ hermes/
 | ----- | ----- | ------ |
 | 1     | Database schema, user auth (register, login, JWT, logout, refresh, password reset, email verify, CSRF) | Done |
 | 2     | Job vacancy CRUD, full-text search, user profile, admin dashboard, frontend job listing | Done |
-| 3     | Job matching algorithm, recommendations | Open |
+| 3     | Job matching algorithm, recommendations, org follow + alerts | Done |
 | 4     | Application tracking, priority marking, reminders | Open |
 | 5     | Notification engine (email, push, in-app, future: Telegram + WhatsApp) | Open |
 | 6     | Admin dashboard analytics, SEO (sitemap, meta, schema.org) | Open |

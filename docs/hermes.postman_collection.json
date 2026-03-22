@@ -277,6 +277,24 @@
 						"url": "{{base_url}}/jobs/{{job_slug}}",
 						"header": []
 					}
+				},
+				{
+					"name": "Recommended Jobs",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/jobs/recommended?limit=20&offset=0",
+							"host": ["{{base_url}}"],
+							"path": ["jobs", "recommended"],
+							"query": [
+								{ "key": "limit", "value": "20" },
+								{ "key": "offset", "value": "0" }
+							]
+						},
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{user_token}}" }
+						]
+					}
 				}
 			]
 		},
@@ -474,7 +492,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"state\": \"Delhi\",\n  \"city\": \"New Delhi\",\n  \"highest_qualification\": \"graduate\",\n  \"category\": \"general\"\n}"
+							"raw": "{\n  \"state\": \"Delhi\",\n  \"city\": \"New Delhi\",\n  \"highest_qualification\": \"graduate\",\n  \"category\": \"general\",\n  \"preferred_states\": [\"Delhi\", \"Uttar Pradesh\"],\n  \"preferred_categories\": [\"general\", \"obc\"]\n}"
 						}
 					}
 				},
@@ -491,6 +509,41 @@
 							"mode": "raw",
 							"raw": "{\n  \"phone\": \"9876543210\"\n}"
 						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Organizations",
+			"item": [
+				{
+					"name": "Follow Organization",
+					"request": {
+						"method": "POST",
+						"url": "{{base_url}}/organizations/UPSC/follow",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{user_token}}" }
+						]
+					}
+				},
+				{
+					"name": "Unfollow Organization",
+					"request": {
+						"method": "DELETE",
+						"url": "{{base_url}}/organizations/UPSC/follow",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{user_token}}" }
+						]
+					}
+				},
+				{
+					"name": "List Following",
+					"request": {
+						"method": "GET",
+						"url": "{{base_url}}/users/me/following",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{user_token}}" }
+						]
 					}
 				}
 			]
