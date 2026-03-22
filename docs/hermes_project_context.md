@@ -58,6 +58,76 @@ PostgreSQL 16 with 8 tables: users, admin_users, user_profiles, job_vacancies, u
 
 ---
 
+## Implementation Workflow — How I Execute Each Phase
+
+When the user says "do next phase" or "do Phase N", follow this exact workflow:
+
+### Step 1: Plan — Create a Todo List
+Break the phase into a todo list of 5–7 actionable items. Always include these standard steps:
+
+```
+1. Read phase issues & existing code          (in-progress)
+2. #NNN: [First issue — core backend work]    (not-started)
+3. #NNN: [Second issue — supporting feature]  (not-started)
+4. #NNN: [Third issue — frontend/UI]          (not-started)
+5. Test all endpoints with curl                (not-started)
+6. Update docs (README, API.md, Postman)       (not-started)
+7. Commit, push, close issues                  (not-started)
+```
+
+**Example — Phase 4 todo list:**
+```
+1. Read Phase 4 issues & existing code         ✅
+2. #127: Application tracking CRUD endpoints   ✅
+3. #128: Deadline reminders Celery task         ✅
+4. #129: Frontend application dashboard         ✅
+5. Test all endpoints with curl                 ✅
+6. Update docs (README, API.md, Postman)        ✅
+7. Commit, push, close issues                   ✅
+```
+
+### Step 2: Research — Read Before Writing
+- Read every file you plan to modify (models, routers, schemas, tasks, frontend).
+- Check DB constraints (`\d table_name` in psql) — they dictate valid status values and column limits.
+- Read the existing skeleton/placeholder code — routers like `applications.py` and `notifications.py` were created as stubs in Phase 1.
+- Check `celery_app.py` for the Beat schedule and `include` list.
+
+### Step 3: Implement — One Issue at a Time
+- Mark one todo as `in-progress`, implement it, mark `completed`, move to next.
+- Backend first (models → schemas → router → tasks), frontend last.
+- If a new migration is needed: write it, rebuild backend, run it.
+- If a new schema file is needed: create it, import in the router.
+- If Celery tasks change: restart `hermes_celery_worker`.
+
+### Step 4: Test — Run Tests Inside Docker
+- Get a user token: login via `/auth/login` and capture `access_token`.
+- Get a test resource ID (e.g., job_id from `/jobs?limit=1`).
+- Run a comprehensive test script inside `hermes_backend` container using `urllib` (not `requests` — it's not installed in the container).
+- Test: happy path, duplicates (409), not found (404), invalid input (400), auth required (401/403), delete + verify gone.
+- Check Celery task registration: `celery -A app.celery_app inspect registered`.
+
+### Step 5: Update Docs
+After all tests pass:
+- `README.md` — Update status line ("Phases 1–N complete"), roadmap table (Phase N → Done), project tree (new files).
+- `docs/API.md` — Add new endpoint tables, query params, request/response examples.
+- `docs/hermes.postman_collection.json` — Add new folder with requests, auto-save variables in test scripts.
+
+### Step 6: Commit & Push
+- `git add -A && git status` — review staged files.
+- Commit with format: `feat: Phase N — description (#issue1, #issue2, #issue3)` + bullet list body.
+- `git push origin main` — auto-closes issues via `(#NNN)` in subject.
+- Update memory file (`/memories/repo/hermes_project_context.md`) with new commit hash and phase status.
+
+### Bugs & Fixes During Implementation
+When something breaks (and it will):
+- **500 error**: Check `docker logs hermes_backend --tail 30` for traceback.
+- **DB constraint violation**: Run `\d table_name` in psql to find exact check constraint values — match them in code.
+- **Celery tasks not found**: Restart worker after code changes. Verify with `inspect registered`.
+- **Route conflict** (`/{id}` catching `/stats`): Place specific routes BEFORE parameterized routes in the router.
+- **PgBouncer issues**: Migrations bypass it; ensure `prepared_statement_cache_size=0` for asyncpg.
+
+---
+
 ## Phase-by-Phase Implementation Details
 
 ### Phase 1 — Database Schema + Auth (#114–#120) ✅
