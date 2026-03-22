@@ -6,6 +6,8 @@ from datetime import datetime
 from pydantic import BaseModel, EmailStr, Field
 
 
+# --- User (regular) schemas ---
+
 class RegisterRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8, max_length=128)
@@ -16,7 +18,6 @@ class RegisterResponse(BaseModel):
     id: uuid.UUID
     email: str
     full_name: str
-    role: str
     message: str = "Registration successful. Please verify your email."
 
 
@@ -53,7 +54,27 @@ class UserResponse(BaseModel):
     email: str
     full_name: str
     phone: str | None
+    status: str
+    is_email_verified: bool
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+# --- Admin/Operator schemas ---
+
+class AdminLoginRequest(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class AdminUserResponse(BaseModel):
+    id: uuid.UUID
+    email: str
+    full_name: str
+    phone: str | None
     role: str
+    department: str | None
     status: str
     is_email_verified: bool
     created_at: datetime

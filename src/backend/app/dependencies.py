@@ -40,12 +40,12 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
             raise
 
 
-async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
-    db: AsyncSession = Depends(get_db),
-    redis: aioredis.Redis = Depends(get_redis),
+async def _decode_and_validate_token(
+    credentials: HTTPAuthorizationCredentials,
+    redis: aioredis.Redis,
+    expected_user_type: str,
 ):
-    """Validate JWT and return (user, token_payload) tuple."""
+    """Decode JWT, check blocklist, and validate user_type. Returns payload dict."""
     token = credentials.credentials
     try:
         payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[ALGORITHM])
@@ -55,18 +55,30 @@ async def get_current_user(
     if payload.get("type") != "access":
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token type")
 
-    # Check blocklist
+    if payload.get("user_type") != expected_user_type:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid token scope")
+
     jti = payload.get("jti")
     if jti and await redis.get(f"blocklist:{jti}"):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token revoked")
 
-    user_id = payload.get("sub")
-    if not user_id:
+    if not payload.get("sub"):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+
+    return payload
+
+
+async def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: AsyncSession = Depends(get_db),
+    redis: aioredis.Redis = Depends(get_redis),
+):
+    """Validate JWT and return (user, token_payload) tuple for regular users."""
+    payload = await _decode_and_validate_token(credentials, redis, "user")
 
     from app.models.user import User
 
-    result = await db.execute(select(User).where(User.id == uuid.UUID(user_id)))
+    result = await db.execute(select(User).where(User.id == uuid.UUID(payload["sub"])))
     user = result.scalar_one_or_none()
     if not user or user.status != "active":
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found or inactive")
@@ -74,17 +86,35 @@ async def get_current_user(
     return user, payload
 
 
-async def require_admin(current_user=Depends(get_current_user)):
-    """Require the current user to have admin role."""
-    user, _ = current_user
-    if user.role != "admin":
+async def get_current_admin(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: AsyncSession = Depends(get_db),
+    redis: aioredis.Redis = Depends(get_redis),
+):
+    """Validate JWT and return (admin, token_payload) tuple for admin/operator."""
+    payload = await _decode_and_validate_token(credentials, redis, "admin")
+
+    from app.models.admin_user import AdminUser
+
+    result = await db.execute(select(AdminUser).where(AdminUser.id == uuid.UUID(payload["sub"])))
+    admin = result.scalar_one_or_none()
+    if not admin or admin.status != "active":
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Admin not found or inactive")
+
+    return admin, payload
+
+
+async def require_admin(current_admin=Depends(get_current_admin)):
+    """Require the current admin to have admin role (not operator)."""
+    admin, _ = current_admin
+    if admin.role != "admin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
-    return user
+    return admin
 
 
-async def require_operator(current_user=Depends(get_current_user)):
-    """Require the current user to have operator or admin role."""
-    user, _ = current_user
-    if user.role not in ("operator", "admin"):
+async def require_operator(current_admin=Depends(get_current_admin)):
+    """Require the current admin to have operator or admin role."""
+    admin, _ = current_admin
+    if admin.role not in ("operator", "admin"):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Operator access required")
-    return user
+    return admin
