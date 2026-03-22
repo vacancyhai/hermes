@@ -192,17 +192,25 @@ hermes/
 │   │   │       └── 0006_add_source_pdf_path.py   # PDF upload source tracking
 │   │   ├── tests/                               # pytest test suite (80 tests)
 │   │   │   ├── conftest.py                      # Async fixtures (DB, client, tokens)
-│   │   │   ├── test_auth.py                     # Auth: register, login, logout, refresh, JWT
-│   │   │   ├── test_jobs.py                     # Jobs: CRUD, search, slug, pagination
-│   │   │   ├── test_applications.py             # Applications: track, update, delete
-│   │   │   ├── test_admin.py                    # Admin: stats, user mgmt, RBAC
-│   │   │   ├── test_integration.py              # E2E flows: user, admin, lifecycle
-│   │   │   └── test_security.py                 # Security: JWT, uploads, XSS, SQL injection
+│   │   │   ├── unit/                            # Pure logic tests (no DB/Redis)
+│   │   │   ├── integration/                     # API endpoint tests (real DB + Redis)
+│   │   │   │   ├── test_auth.py                 # Auth: register, login, logout, refresh, JWT
+│   │   │   │   ├── test_jobs.py                 # Jobs: CRUD, search, slug, pagination
+│   │   │   │   ├── test_applications.py         # Applications: track, update, delete
+│   │   │   │   └── test_admin.py                # Admin: stats, user mgmt, RBAC
+│   │   │   ├── security/                        # OWASP + auth security tests
+│   │   │   │   └── test_security.py             # JWT, uploads, XSS, SQL injection
+│   │   │   └── e2e/                             # Multi-step end-to-end flows
+│   │   │       └── test_user_flow.py            # Full user + admin lifecycle flows
 │   │   └── pytest.ini
 │   ├── frontend/                         # User Frontend (port 8080)
 │   │   ├── Dockerfile
 │   │   ├── docker-compose.yml
 │   │   ├── requirements.txt
+│   │   ├── tests/                        # (empty — no tests yet)
+│   │   │   ├── unit/
+│   │   │   ├── integration/
+│   │   │   └── e2e/
 │   │   └── app/
 │   │       ├── __init__.py               # Flask app factory
 │   │       ├── api_client.py             # HTTP client for backend API
@@ -226,6 +234,10 @@ hermes/
 │   │   ├── Dockerfile
 │   │   ├── docker-compose.yml
 │   │   ├── requirements.txt
+│   │   ├── tests/                        # (empty — no tests yet)
+│   │   │   ├── unit/
+│   │   │   ├── integration/
+│   │   │   └── e2e/
 │   │   └── app/
 │   │       ├── __init__.py               # Flask routes (dashboard, jobs, upload, review, users, logs)
 │   │       ├── api_client.py

@@ -476,17 +476,41 @@ When something breaks (and it will):
 
 1. **Unit + Integration Tests (#139):**
    - `tests/conftest.py`: async fixtures with engine-per-test pattern to avoid event-loop mismatch. Fixtures for DB session, httpx AsyncClient, test users (user, admin, operator), JWT tokens, active/draft jobs.
-   - `tests/test_auth.py` (18 tests): registration (success, duplicate, validation), login (success, wrong password, nonexistent), JWT claims, logout/revocation, refresh tokens, forgot/reset password, CSRF, admin auth.
-   - `tests/test_jobs.py` (18 tests): public listing, pagination, filters (type, org), slug lookup, view count increment, FTS search, admin CRUD, approve flow, slug uniqueness, RBAC.
-   - `tests/test_applications.py` (10 tests): track job, duplicate prevention, list, stats, update status, invalid status, delete, auth requirement.
-   - `tests/test_admin.py` (12 tests): dashboard stats, user listing/search/detail, suspend/activate, RBAC (operator vs admin), audit logs.
-   - `tests/test_integration.py` (4 tests): full user flow (register→login→track→update→delete), admin job lifecycle (create→update→approve→delete), user management flow, RBAC verification.
-   - `pytest.ini`: asyncio_mode=auto, tests/ path.
+   - `tests/integration/test_auth.py` (18 tests): registration (success, duplicate, validation), login (success, wrong password, nonexistent), JWT claims, logout/revocation, refresh tokens, forgot/reset password, CSRF, admin auth.
+   - `tests/integration/test_jobs.py` (18 tests): public listing, pagination, filters (type, org), slug lookup, view count increment, FTS search, admin CRUD, approve flow, slug uniqueness, RBAC.
+   - `tests/integration/test_applications.py` (10 tests): track job, duplicate prevention, list, stats, update status, invalid status, delete, auth requirement.
+   - `tests/integration/test_admin.py` (12 tests): dashboard stats, user listing/search/detail, suspend/activate, RBAC (operator vs admin), audit logs.
+   - `tests/e2e/test_user_flow.py` (4 tests): full user flow (register→login→track→update→delete), admin job lifecycle (create→update→approve→delete), user management flow, RBAC verification.
+   - `tests/unit/` (empty — to be filled with pure logic tests for services, schemas, models).
+   - `pytest.ini`: asyncio_mode=auto, tests/ path (recursive discovery).
    - Docker: test volume mounts (`./tests:/app/tests`, `./pytest.ini:/app/pytest.ini`) on backend container.
 
 2. **Security Audit (#140):**
-   - `tests/test_security.py` (18 tests): JWT algorithm pinning (HS256), expiry, JTI for revocation, forged token rejection, expired token rejection, user/admin scope isolation, token blocklist verification, bcrypt hashing, no passwords in responses, file upload validation (non-PDF, oversized, auth required), SQL injection defense, XSS handling, pagination validation, CORS headers, Dockerfile non-root user, health endpoint no-auth.
+   - `tests/security/test_security.py` (18 tests): JWT algorithm pinning (HS256), expiry, JTI for revocation, forged token rejection, expired token rejection, user/admin scope isolation, token blocklist verification, bcrypt hashing, no passwords in responses, file upload validation (non-PDF, oversized, auth required), SQL injection defense, XSS handling, pagination validation, CORS headers, Dockerfile non-root user, health endpoint no-auth.
    - All OWASP top 10 controls verified: parameterized queries (SQLAlchemy), Jinja2 autoescaping, JWT blocklist, bcrypt, file upload sanitization, CORS config.
+
+3. **Test folder structure (reorganized):**
+   ```
+   src/backend/tests/
+     conftest.py              # Shared async fixtures
+     unit/                    # Pure logic tests (empty — no DB/Redis)
+     integration/             # API endpoint tests (real DB + Redis)
+       test_auth.py, test_jobs.py, test_applications.py, test_admin.py
+     security/                # OWASP + auth security tests
+       test_security.py
+     e2e/                     # Multi-step end-to-end flows
+       test_user_flow.py
+
+   src/frontend/tests/        # (empty — no tests yet)
+     unit/                    # ApiClient tests (mock requests.Session)
+     integration/             # Flask test_client route tests (mock ApiClient)
+     e2e/                     # Browser tests (Playwright — needs full stack)
+
+   src/frontend-admin/tests/  # (empty — no tests yet)
+     unit/                    # ApiClient tests (mock requests.Session)
+     integration/             # Flask test_client route tests (mock ApiClient)
+     e2e/                     # Browser tests (Playwright — needs full stack)
+   ```
 
 **Test results:** 80 passed, 0 failed in ~41 seconds.
 

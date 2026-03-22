@@ -46,8 +46,17 @@ docker restart hermes_backend
 # Restart Celery (after task code changes)
 docker restart hermes_celery_worker
 
-# Run tests (80 tests: auth, jobs, applications, admin, integration, security)
+# Run all backend tests (80 tests across unit, integration, security, e2e)
 docker exec -w /app -e PYTHONPATH=/app hermes_backend python -m pytest tests/ -v
+
+# Run only integration tests
+docker exec -w /app -e PYTHONPATH=/app hermes_backend python -m pytest tests/integration/ -v
+
+# Run only security tests
+docker exec -w /app -e PYTHONPATH=/app hermes_backend python -m pytest tests/security/ -v
+
+# Run only e2e tests
+docker exec -w /app -e PYTHONPATH=/app hermes_backend python -m pytest tests/e2e/ -v
 
 # Frontend
 cd src/frontend && docker compose up -d --build
@@ -88,12 +97,28 @@ src/backend/
     templates/email/     # Jinja2 email templates (base, welcome, verification, password_reset, deadline_reminder, new_job_alert)
   tests/                 # pytest test suite (80 tests)
     conftest.py          # Async fixtures (engine-per-test, httpx client, auth tokens)
-    test_auth.py         # 18 tests: register, login, logout, refresh, JWT claims, admin auth
-    test_jobs.py         # 18 tests: list, filter, slug, FTS, admin CRUD, approve, RBAC
-    test_applications.py # 10 tests: track, duplicate, update, delete, stats
-    test_admin.py        # 12 tests: stats, user mgmt, suspend/activate, RBAC
-    test_integration.py  #  4 tests: full user flow, admin lifecycle, user mgmt, RBAC
-    test_security.py     # 18 tests: JWT, token revocation, bcrypt, file upload, XSS, SQLi, CORS
+    unit/                # Pure logic tests — no DB/Redis (empty, to be filled)
+    integration/         # API endpoint tests against real DB + Redis
+      test_auth.py       # 18 tests: register, login, logout, refresh, JWT claims, admin auth
+      test_jobs.py       # 18 tests: list, filter, slug, FTS, admin CRUD, approve, RBAC
+      test_applications.py # 10 tests: track, duplicate, update, delete, stats
+      test_admin.py      # 12 tests: stats, user mgmt, suspend/activate, RBAC
+    security/            # OWASP + auth security tests
+      test_security.py   # 18 tests: JWT, token revocation, bcrypt, file upload, XSS, SQLi, CORS
+    e2e/                 # Multi-step end-to-end flows
+      test_user_flow.py  #  4 tests: full user flow, admin lifecycle, user mgmt, RBAC
+
+src/frontend/
+  tests/                 # (empty — no tests yet)
+    unit/                # ApiClient tests (mock requests.Session)
+    integration/         # Flask test_client route tests (mock ApiClient)
+    e2e/                 # Browser tests (Playwright/Selenium — needs full stack)
+
+src/frontend-admin/
+  tests/                 # (empty — no tests yet)
+    unit/                # ApiClient tests (mock requests.Session)
+    integration/         # Flask test_client route tests (mock ApiClient)
+    e2e/                 # Browser tests (Playwright/Selenium — needs full stack)
   migrations/versions/
     0001_initial_schema.py
     0002_separate_admin_users.py
