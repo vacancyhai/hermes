@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.logging_config import setup_logging
+import app.models  # noqa: F401 — register all models for SQLAlchemy relationships
 from app.routers import auth, health, jobs, notifications, users, admin, applications
 
 

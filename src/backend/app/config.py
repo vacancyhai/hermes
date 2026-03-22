@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     BACKEND_PORT: int = 8000
 
     # PostgreSQL (through PgBouncer)
-    DATABASE_URL: str = "postgresql+asyncpg://hermes_user:hermes_pass@pgbouncer:6432/hermes_db"
+    DATABASE_URL: str = "postgresql+asyncpg://hermes_user:hermes_pass@pgbouncer:5432/hermes_db"
     DB_POOL_SIZE: int = 20
 
     # Redis
@@ -39,7 +39,7 @@ class Settings(BaseSettings):
     # CORS
     CORS_ORIGINS: list[str] = ["http://localhost:8080", "http://localhost:8081"]
 
-    model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
+    model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 
 
 settings = Settings()

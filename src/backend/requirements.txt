@@ -13,6 +13,7 @@ alembic==1.13.0
 # Validation (FastAPI native)
 pydantic==2.9.0
 pydantic-settings==2.5.0
+email-validator==2.2.0
 
 # Auth
 python-jose[cryptography]==3.3.0

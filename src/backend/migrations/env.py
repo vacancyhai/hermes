@@ -5,10 +5,19 @@ from logging.config import fileConfig
 
 from alembic import context
 from sqlalchemy import pool
-from sqlalchemy.ext.asyncio import async_engine_from_config
+from sqlalchemy.ext.asyncio import async_engine_from_config, create_async_engine
+
+import os
 
 from app.config import settings
 from app.models.base import Base
+
+# Migrations always connect directly to PostgreSQL, bypassing PgBouncer.
+# asyncpg prepared statements are incompatible with PgBouncer transaction mode.
+MIGRATION_DATABASE_URL = os.environ.get(
+    "MIGRATION_DATABASE_URL",
+    settings.DATABASE_URL.replace("pgbouncer:5432", "postgresql:5432"),
+)
 
 # Import all models so Alembic can detect them
 from app.models.user import User  # noqa: F401
@@ -50,14 +59,7 @@ def do_run_migrations(connection):
 
 async def run_async_migrations() -> None:
     """Run migrations in 'online' mode using async engine."""
-    configuration = config.get_section(config.config_ini_section, {})
-    configuration["sqlalchemy.url"] = settings.DATABASE_URL
-
-    connectable = async_engine_from_config(
-        configuration,
-        prefix="sqlalchemy.",
-        poolclass=pool.NullPool,
-    )
+    connectable = create_async_engine(MIGRATION_DATABASE_URL, poolclass=pool.NullPool)
 
     async with connectable.connect() as connection:
         await connection.run_sync(do_run_migrations)
