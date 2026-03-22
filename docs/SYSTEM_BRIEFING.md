@@ -5,7 +5,7 @@ You are continuing work on **Hermes**, a Government Job Vacancy Portal (India-fo
 ## Repo & Location
 - Workspace: `/home/sumant/workspace/hermes`
 - Remote: `git@github.com:SumanKr7/hermes.git`, branch `main`
-- GitHub Issues: #114–#143 (30 issues, 9 phases). Phases 1–3 are CLOSED. Phase 4 (#127–#129) is next.
+- GitHub Issues: #114–#143 (30 issues, 9 phases). Phases 1–4 are CLOSED. Phase 5 (#130–#132) is next.
 
 ## Architecture
 ```
@@ -68,15 +68,15 @@ src/backend/
       jobs.py            # /api/v1/jobs/* — public listing (FTS), recommended, detail by slug
       users.py           # /api/v1/users/* + /api/v1/organizations/* — profile CRUD, org follow
       admin.py           # /api/v1/admin/* — job CRUD, approve, user mgmt, dashboard, audit logs
-      applications.py    # /api/v1/applications/* — skeleton/placeholder
+      applications.py    # /api/v1/applications/* — full CRUD (track, list, get, update, delete, stats)
       notifications.py   # /api/v1/notifications/* — user notification endpoints
       health.py          # /api/v1/health
     schemas/
-      auth.py, jobs.py, users.py  # Pydantic v2 request/response schemas
+      auth.py, jobs.py, users.py, applications.py  # Pydantic v2 request/response schemas
     services/
       matching.py        # Job scoring engine (state +3, category +3, education +2, recency +1)
     tasks/
-      notifications.py   # send_deadline_reminders (TODO), send_new_job_notifications (done)
+      notifications.py   # send_deadline_reminders (done), send_new_job_notifications (done)
       cleanup.py, jobs.py, seo.py  # Scheduled Celery tasks (mostly stubs)
   migrations/versions/
     0001_initial_schema.py
@@ -84,9 +84,9 @@ src/backend/
     0003_profile_preferences.py
 
 src/frontend/app/
-  __init__.py            # Flask app factory with routes (/, /jobs HTMX partial, /jobs/<slug>)
+  __init__.py            # Flask app factory with routes (/, /jobs, /jobs/<slug>, /dashboard, /login, /logout)
   api_client.py          # requests wrapper for backend API
-  templates/             # base.html, index.html, _job_cards.html, job_detail.html, 404.html
+  templates/             # base.html, index.html, _job_cards.html, job_detail.html, dashboard.html, _application_rows.html, login.html, 404.html
 ```
 
 ## Auth Design
@@ -107,7 +107,7 @@ src/frontend/app/
 - **Phase 1** (#114–#120) ✅: Alembic migration, all auth endpoints (register, login, logout, refresh, password reset, email verify, admin login/register)
 - **Phase 2** (#121–#124) ✅: Job CRUD + FTS search, admin approve flow + audit logging, user profile endpoints, frontend job listing (HTMX)
 - **Phase 3** (#125–#126) ✅: Job matching/recommendations, org follow/unfollow, Celery notification on approve
-- **Phase 4** (#127–#129) ⬜: Application tracking, deadline reminders, application dashboard
+- **Phase 4** (#127–#129) ✅: Application tracking CRUD, deadline reminders, user dashboard + login
 - **Phase 5** (#130–#132) ⬜: Email, push, in-app notifications
 - **Phase 6–9**: Admin dashboard, SEO, PDF ingestion, tests, security, deployment, mobile app
 
@@ -163,4 +163,39 @@ src/frontend/app/
 
 ---
 
-**Next up**: Phase 4 (#127–#129) — Application tracking CRUD, deadline reminders Celery task, frontend application dashboard.
+---
+
+## How Each Phase Was Implemented
+
+### Phase 1 — Database Schema + Auth (commit `2af60a5` → `277ffa5`)
+- Created Alembic migration 0001 with 6 core tables (users, user_profiles, job_vacancies, user_job_applications, notifications, admin_logs). Each table has UUID PKs, JSONB columns, check constraints, and targeted indexes (GIN for JSONB/FTS, B-tree for lookups).
+- `search_vector` is a PostgreSQL GENERATED COLUMN (tsvector) combining weighted fields A=job_title, B=organization, C=description with a GIN index.
+- Migration 0002 split auth: created `admin_users` table, migrated admin rows, updated FKs on admin_logs and job_vacancies, dropped `role` column from `users`.
+- Auth router with 11 endpoints across `/auth/*` and `/auth/admin/*`. JWT tokens carry `user_type` claim for scope isolation. Token revocation via Redis `blocklist:{jti}` keys.
+- Dependencies module: `get_current_user` and `get_current_admin` decode JWT → check blocklist → look up DB → return (model, payload) tuple.
+- Docker stack: 6 services. Fixed PgBouncer + asyncpg compatibility (`prepared_statement_cache_size=0`). Alembic env.py rewrites URL to bypass PgBouncer.
+
+### Phase 2 — Job CRUD + Search + Frontend (commit `774c270` → `75aab18`)
+- Admin router: full CRUD with `_slugify()` helper (unique slug enforcement with counter suffix), approve flow (draft → active + triggers Celery notification), audit logging via `_log_action()` that captures old→new changes as JSONB.
+- Jobs router: FTS via `plainto_tsquery('english', q)` matched against `search_vector`, ranked by `ts_rank()`. 8 query filters (q, job_type, qualification_level, organization, department, is_featured, is_urgent, status). Default active-only.
+- Users router: profile GET/PUT with `model_dump(exclude_unset=True)` for partial updates, phone update endpoint.
+- Schemas: flat Pydantic models — CreateRequest, UpdateRequest (all optional), Response (from_attributes). No inheritance.
+- Frontend: Flask factory with 4 routes (/, /jobs HTMX partial, /jobs/<slug>, health). ApiClient class for backend HTTP calls. Jinja2 templates with HTMX 2.0 load-more and Alpine.js.
+
+### Phase 3 — Matching + Org Follow + Notifications (commit `d89474d` → `d836581`)
+- Migration 0003 added 3 JSONB columns to user_profiles: preferred_states, preferred_categories, followed_organizations.
+- Matching engine (`services/matching.py`): scores each active job against user profile — state (+3), category (+3), education rank (+2, using hierarchy 10th→phd), recency <7d (+1). Fallback to newest if no preferences.
+- `/jobs/recommended` endpoint placed before `/{slug}` in router to avoid route conflict.
+- Org follow: JSONB array in user_profiles, max 50, case-insensitive, idempotent follow.
+- Celery task `send_new_job_notifications`: triggered on admin approve, queries JSONB followers via `jsonb_array_elements_text()`, creates in-app notifications.
+- Fixed Celery autodiscover → explicit `include` list. Added `psycopg2-binary` + `sync_engine` for Celery sync DB access.
+
+### Phase 4 — Application Tracking + Dashboard (commit `89e9f7b`)
+- Application CRUD: 6 endpoints (list, stats, create, get, update, delete). Create validates job exists + prevents duplicates (409) + increments `applications_count`. Delete decrements count. Update validates status against DB check constraint: applied, admit_card_released, exam_completed, result_pending, selected, rejected, waiting_list.
+- `/applications/stats` placed before `/{id}` to avoid route conflict. Enriches list/detail responses with job info (title, slug, org, deadline).
+- Deadline reminders: implemented `send_deadline_reminders()` Celery Beat task (daily 08:00 UTC). Checks T-7, T-3, T-1 days. Joins applications with jobs, skips rejected/selected/waiting_list, deduplicates per (user, job, interval). Priority: high (1d, 3d), medium (7d).
+- Frontend: `/dashboard` (stats grid + status filter tabs + HTMX load-more), `/login` (form → POST → store JWT in Flask session), `/logout`. Nav bar updated with Dashboard/Login/Logout links.
+
+---
+
+**Next up**: Phase 5 (#130–#132) — Email notifications, push notifications, in-app notification endpoints.

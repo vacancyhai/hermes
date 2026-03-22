@@ -6,7 +6,7 @@ A **Government Job Vacancy Portal** (India-focused). Users register, browse jobs
 ## Repo
 - Path: `/home/sumant/workspace/hermes`
 - Remote: `git@github.com:SumanKr7/hermes.git`
-- Branch: `main` at commit `d836581`
+- Branch: `main` at commit `89e9f7b`
 
 ---
 
@@ -32,7 +32,7 @@ Browser → Nginx (80/443)
 ## Frontend Tech Stack (`src/frontend/`)
 - Flask 3.1 + Jinja2 + HTMX 2.0 + Alpine.js 3.14
 - Job listing with HTMX load-more pagination, search, filters
-- Job detail page, 404 page
+- Job detail page, application dashboard, login/logout
 - Connected to backend via `src_backend_network` Docker network
 
 ## Docker Stack (`src/backend/docker-compose.yml`)
@@ -56,11 +56,189 @@ PostgreSQL 16 with 8 tables: users, admin_users, user_profiles, job_vacancies, u
 - `0002_separate_admin_users.py` — Split users/admin_users
 - `0003_profile_preferences.py` — preferred_states, preferred_categories, followed_organizations
 
+---
+
+## Phase-by-Phase Implementation Details
+
+### Phase 1 — Database Schema + Auth (#114–#120) ✅
+
+**Commit:** `2af60a5` → `277ffa5`
+
+**What was built:**
+
+1. **Migration 0001 — Initial Schema (6 tables):**
+   - `users` — id (UUID PK), email (unique), password_hash, full_name, phone, role, status, is_verified, is_email_verified, last_login, timestamps. Indexes on email + status. Check constraints on role, status.
+   - `user_profiles` — id, user_id (FK→users CASCADE, unique), date_of_birth, gender, category, is_pwd, is_ex_serviceman, state, city, pincode, highest_qualification, education (JSONB), notification_preferences (JSONB). GIN indexes on JSONB columns. Check constraints on gender, category.
+   - `job_vacancies` — 30+ columns including JSONB (vacancy_breakdown, eligibility, application_details, documents, exam_details, salary, selection_process), date fields (notification_date through result_date), `search_vector` (tsvector GENERATED COLUMN weighted: A=job_title, B=organization, C=description). GIN index on search_vector. Check constraints on job_type, employment_type, status, source.
+   - `user_job_applications` — id, user_id, job_id, application_number, is_priority, applied_on, status, notes, reminders (JSONB), result_info (JSONB). Unique(user_id, job_id). Check constraint `ck_applications_status` with values: applied, admit_card_released, exam_completed, result_pending, selected, rejected, waiting_list.
+   - `notifications` — id, user_id, entity_type, entity_id, type, title, message, action_url, is_read, sent_via (ARRAY), priority, created_at, read_at, expires_at (NOW()+90 days). Indexes on user+read, user+created, expires.
+   - `admin_logs` — id, admin_id, action, resource_type, resource_id, details, changes (JSONB), ip_address (INET), user_agent, timestamp, expires_at (NOW()+30 days).
+
+2. **Migration 0002 — Separate Admin Users:**
+   - Created `admin_users` table (parallel to users): id, email, password_hash, full_name, phone, role (admin/operator), department, permissions (JSONB), status, timestamps.
+   - Migrated admin/operator rows from `users` → `admin_users`.
+   - Updated FKs: `admin_logs.admin_id` and `job_vacancies.created_by` now point to `admin_users`.
+   - Dropped `role` column from `users` (all remaining are regular users).
+
+3. **Auth Router (`app/routers/auth.py`):**
+   - User: register (creates user + linked profile), login, logout (JTI → Redis blocklist), refresh (token rotation), forgot-password (Redis token), reset-password, verify-email, csrf-token.
+   - Admin: login, logout, refresh (separate /auth/admin/* paths).
+   - JWT claims: `sub` (UUID), `user_type` ("user"|"admin"), `type` ("access"|"refresh"), `jti` (UUID for blocklist), `role` (admin tokens only), `exp`, `iat`.
+   - Token creation via `_create_token()`, `create_access_token()`, `create_refresh_token()`.
+   - Password hashing: passlib bcrypt via `pwd_context`.
+
+4. **Dependencies (`app/dependencies.py`):**
+   - `get_redis()` — Lazy singleton aioredis pool.
+   - `get_db()` — AsyncSession with auto-commit/rollback.
+   - `_decode_and_validate_token()` — Decodes JWT, checks blocklist:{jti}, validates user_type.
+   - `get_current_user()` → (User, payload_dict) — User auth dependency.
+   - `get_current_admin()` → (AdminUser, payload_dict) — Admin auth dependency.
+   - `require_admin()` — Role check (admin only).
+   - `require_operator()` — Role check (operator or admin).
+
+5. **Docker Stack:**
+   - 6 backend services: postgresql (16-alpine), redis (7-alpine), pgbouncer (edoburu/pgbouncer:latest, transaction mode), backend (uvicorn --reload), celery_worker (concurrency=2), celery_beat.
+   - PgBouncer: scram-sha-256, pool_mode=transaction, 20 default/100 max connections.
+   - Fixed: asyncpg + PgBouncer requires `prepared_statement_cache_size=0`.
+   - Fixed: Alembic migrations bypass PgBouncer (env.py rewrites URL).
+
+**Issues closed:** #114, #115, #116, #117, #118, #119, #120
+
+---
+
+### Phase 2 — Job CRUD + Search + Frontend (#121–#124) ✅
+
+**Commit:** `774c270` → `75aab18`
+
+**What was built:**
+
+1. **Admin Router (`app/routers/admin.py`):**
+   - `GET /admin/stats` — Dashboard counts (total jobs, active, draft, total users, active users).
+   - `POST /admin/jobs` — Create job (auto-slugifies title via `_slugify()`, enforces unique slug with counter suffix, defaults to draft).
+   - `PUT /admin/jobs/{id}` — Update job (tracks changes as JSONB).
+   - `PUT /admin/jobs/{id}/approve` — Approve draft → active, sets published_at, triggers `send_new_job_notifications.delay()`.
+   - `DELETE /admin/jobs/{id}` — Soft-delete (status → cancelled, admin-only).
+   - `GET /admin/users` — List users (searchable by name/email via ILIKE).
+   - `GET /admin/users/{id}` — User detail with profile.
+   - `PUT /admin/users/{id}/status` — Suspend/activate (admin-only).
+   - `GET /admin/logs` — Audit trail with pagination.
+   - Audit logging via `_log_action()` — tracks admin_id, action, resource, changes (old→new dict), IP, user-agent. Auto-expires 30 days.
+
+2. **Jobs Router (`app/routers/jobs.py`):**
+   - `GET /jobs` — Public listing with FTS: `search_vector @@ plainto_tsquery('english', q)`, ranked by `ts_rank()`. Filters: q, job_type, qualification_level, organization (ILIKE), department (ILIKE), is_featured, is_urgent, status (default: active). Pagination with limit/offset.
+   - `GET /jobs/{slug}` — Detail by slug, increments views counter.
+   - Response format: `{"data": [...], "pagination": {"limit", "offset", "total", "has_more"}}`.
+
+3. **Users Router (`app/routers/users.py`):**
+   - `GET /users/profile` — Returns user data + profile joined.
+   - `PUT /users/profile` — Update profile fields via `model_dump(exclude_unset=True)`.
+   - `PUT /users/profile/phone` — Update phone on user record.
+
+4. **Schemas:**
+   - `auth.py`: RegisterRequest/Response, LoginRequest, TokenResponse, RefreshRequest, ForgotPasswordRequest, ResetPasswordRequest, MessageResponse, UserResponse, AdminLoginRequest, AdminUserResponse.
+   - `jobs.py`: JobCreateRequest, JobUpdateRequest, JobResponse (full), JobListItem (summary).
+   - `users.py`: ProfileResponse (from_attributes), ProfileUpdateRequest, PhoneUpdateRequest.
+
+5. **Frontend (`src/frontend/`):**
+   - Flask factory `create_app()` with routes inside.
+   - `GET /` — Full page: search bar + job_type/qualification_level dropdowns + HTMX job cards.
+   - `GET /jobs` — HTMX partial: `_job_cards.html` with load-more button.
+   - `GET /jobs/<slug>` — Job detail page.
+   - `ApiClient` class wrapping urllib for backend communication.
+   - Templates: `base.html` (nav, HTMX 2.0 + Alpine.js 3.14 CDN), `index.html`, `_job_cards.html`, `job_detail.html`, `404.html`.
+   - Connected to backend network via `src_backend_network` (external Docker network).
+
+**Issues closed:** #121, #122, #123, #124
+
+---
+
+### Phase 3 — Job Matching + Org Follow + Notifications (#125–#126) ✅
+
+**Commit:** `d89474d` → `d836581`
+
+**What was built:**
+
+1. **Migration 0003 — Profile Preferences:**
+   - Added to `user_profiles`: `preferred_states` (JSONB, default []), `preferred_categories` (JSONB, default []), `followed_organizations` (JSONB, default []).
+
+2. **Matching Engine (`app/services/matching.py`):**
+   - `get_recommended_jobs(user_id, db, limit, offset)` → (jobs, total).
+   - Scoring: state match (+3 from eligibility.states or vacancy_breakdown), category match (+3 from vacancy_breakdown keys), education rank match (+2 if user_edu >= job_edu), recency <7d (+1).
+   - Education hierarchy: 10th < 12th < diploma < graduate < postgraduate < phd.
+   - Fallback: if user has no preferences, returns latest active jobs.
+   - Sort: score DESC, then application_end ASC (None deadlines last).
+
+3. **Recommendations Endpoint:**
+   - `GET /jobs/recommended` (placed before `/{slug}` to avoid route conflict) — requires user JWT, calls `get_recommended_jobs()`, returns paginated response.
+
+4. **Organization Follow (`app/routers/users.py`):**
+   - `POST /organizations/{name}/follow` — Idempotent, case-insensitive, max 50 orgs (`MAX_FOLLOWED_ORGS`).
+   - `DELETE /organizations/{name}/follow` — 404 if not following.
+   - `GET /users/me/following` — Returns followed_organizations array + count.
+   - Storage: JSONB array in `user_profiles.followed_organizations`.
+
+5. **New Job Notifications (`app/tasks/notifications.py`):**
+   - `send_new_job_notifications(job_id)` — Celery task triggered by admin approve endpoint.
+   - Queries `user_profiles.followed_organizations` via JSONB array search (case-insensitive).
+   - Creates `new_job_from_followed_org` notification for each follower.
+   - Uses sync_engine + Session + raw SQL via `text()`.
+
+6. **Celery Configuration Fix:**
+   - Switched from `autodiscover_tasks` (unreliable) to explicit `include` list in `celery_app.py`.
+   - Added `psycopg2-binary` to requirements.txt.
+   - Added `sync_engine` in `database.py` (converts asyncpg URL → psycopg2).
+
+**Issues closed:** #125, #126
+
+---
+
+### Phase 4 — Application Tracking + Dashboard (#127–#129) ✅
+
+**Commit:** `89e9f7b`
+
+**What was built:**
+
+1. **Application CRUD (`app/routers/applications.py`):**
+   - `GET /applications/stats` — Counts grouped by status (`SELECT status, count(*) GROUP BY status`).
+   - `GET /applications` — List own tracked applications. Filters: status, is_priority. Enriched with job info (job_title, slug, organization, application_end). Paginated.
+   - `POST /applications` — Track a job. Validates job exists, prevents duplicates (409), increments `job_vacancies.applications_count`.
+   - `GET /applications/{id}` — Single application detail with job enrichment.
+   - `PUT /applications/{id}` — Update status, notes, priority, application_number. Validates against DB check constraint: applied, admit_card_released, exam_completed, result_pending, selected, rejected, waiting_list.
+   - `DELETE /applications/{id}` — Remove from tracker (204), decrements applications_count on job.
+
+2. **Application Schemas (`app/schemas/applications.py`):**
+   - `ApplicationCreateRequest` — job_id, application_number, is_priority (default False), notes, status (default "applied").
+   - `ApplicationUpdateRequest` — all fields optional.
+   - `ApplicationResponse` — full model with from_attributes.
+
+3. **Deadline Reminders (`app/tasks/notifications.py`):**
+   - `send_deadline_reminders()` — Celery Beat task, daily 08:00 UTC.
+   - Checks T-7, T-3, T-1 days before `application_end`.
+   - Joins `user_job_applications` with `job_vacancies` for active jobs.
+   - Skips rejected/selected/waiting_list applications.
+   - Deduplicates: checks if `deadline_reminder_{N}d` notification already exists for (user, job).
+   - Creates notifications with priority: high (1d, 3d), medium (7d).
+
+4. **Frontend Dashboard (`src/frontend/app/__init__.py`):**
+   - `GET /dashboard` — Stats grid (total, applied, shortlisted, selected) + status filter tabs + application cards with HTMX load-more. Requires login (redirects to `/login` if no session token).
+   - `GET /dashboard/applications` — HTMX partial for load-more.
+   - `GET /login` — Login form.
+   - `POST /login` — Calls `/auth/login`, stores access_token + user_name in Flask session, redirects.
+   - `GET /logout` — Clears session, redirects to `/`.
+   - Nav bar updated: Jobs, Dashboard, Login/Logout links.
+   - New templates: `dashboard.html` (stats grid, filter tabs, app cards), `_application_rows.html` (HTMX partial), `login.html` (sign-in form).
+
+**Issues closed:** #127, #128, #129
+
+---
+
 ## Docs
-- docs/API.md — full API endpoint reference (incl. Phase 3 endpoints)
+- docs/API.md — full API endpoint reference (all phases)
 - docs/hermes.postman_collection.json — Postman v2.1 collection (auto-saves tokens)
 - docs/DESIGN.md — architecture, DB schema, API design
 - docs/WORKFLOW_DIAGRAMS.md — Mermaid architecture diagrams
+- docs/hermes_project_context.md — this file
+- docs/SYSTEM_BRIEFING.md — AI assistant system briefing with coding conventions
 
 ## Auth System (all tested & working)
 - Redis keys: `blocklist:{jti}`, `reset:{token}`, `verify:{token}`, `csrf:{token}`
@@ -69,26 +247,12 @@ PostgreSQL 16 with 8 tables: users, admin_users, user_profiles, job_vacancies, u
 - JWT `user_type` claim: "user" or "admin" for scope isolation
 - Dependencies: get_current_user (users), get_current_admin (admin/operator), require_admin, require_operator
 
-## Phase 2 — Job CRUD + Frontend
-- `app/routers/jobs.py` — public job listing with FTS, filters, pagination; detail by slug
-- `app/routers/admin.py` — full job CRUD, approve flow, audit logging, user management, dashboard stats
-- `app/routers/users.py` — profile get/update, phone update, org follow/unfollow/list
-- `src/frontend/` — Flask + HTMX job listing, search bar, job_type/qualification filters, job detail, 404 page
-
-## Phase 3 — Matching + Org Follow + Notifications
-- `app/services/matching.py` — scoring engine: state (+3), category (+3), education (+2), recency (+1)
-- `GET /api/v1/jobs/recommended` — personalized recommendations (requires user JWT)
-- `POST/DELETE /api/v1/organizations/{name}/follow` — follow/unfollow (max 50, idempotent)
-- `GET /api/v1/users/me/following` — list followed orgs
-- `app/tasks/notifications.py` — `send_new_job_notifications` Celery task (triggered on job approve, queries JSONB followers, creates in-app notifications)
-- user_profiles new columns: `preferred_states`, `preferred_categories`, `followed_organizations` (all JSONB)
-
 ## GitHub Issues
 - 30 issues (#114-#143) across 9 phases
 - Phase 1 (#114-#120): CLOSED — migration + auth endpoints
 - Phase 2 (#121-#124): CLOSED — Job CRUD, search, user profile, frontend job listing
 - Phase 3 (#125-#126): CLOSED — Job matching + org follow + Celery notifications
-- Phase 4 (#127-#129): OPEN — Application tracking, deadline reminders, dashboard
+- Phase 4 (#127-#129): CLOSED — Application tracking, deadline reminders, user dashboard
 - Phase 5 (#130-#132): OPEN — Email, push, in-app notifications
 - Phase 6 (#133-#135): OPEN — Admin dashboard, SEO, fee display
 - Phase 7 (#136-#138): OPEN — PDF ingestion, review workflow, PWA
@@ -97,7 +261,7 @@ PostgreSQL 16 with 8 tables: users, admin_users, user_profiles, job_vacancies, u
 - 34 labels total (9 story labels + component/type/size/priority labels)
 
 ## Test Accounts
-- User: user1@test.com / UserPass123 (regular user, has prefs: graduate, Delhi, general/obc)
+- User: user1@test.com / UserPass123 (regular user, has prefs: graduate, Delhi, general/obc, follows UPSC)
 - Admin: admin@hermes.gov.in / AdminPass123 (role=admin, dept=IT Department)
 - Operator: operator@hermes.gov.in / OperPass123 (role=operator, dept=Content Team)
 - Old user: test@example.com / NewPass456 (from Phase 1 testing)
