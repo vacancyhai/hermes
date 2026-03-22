@@ -5,7 +5,7 @@ You are continuing work on **Hermes**, a Government Job Vacancy Portal (India-fo
 ## Repo & Location
 - Workspace: `/home/sumant/workspace/hermes`
 - Remote: `git@github.com:SumanKr7/hermes.git`, branch `main`
-- GitHub Issues: #114–#143 (30 issues, 9 phases). Phases 1–4 are CLOSED. Phase 5 (#130–#132) is next.
+- GitHub Issues: #114–#143 (30 issues, 9 phases). Phases 1–5 are CLOSED. Phase 6 (#133–#135) is next.
 
 ## Architecture
 ```
@@ -21,8 +21,8 @@ Browser → Nginx (80/443)
 **Admin Frontend** (`src/frontend-admin/`): Flask 3.1 — skeleton only, not implemented yet.
 **Database**: PostgreSQL 16, 8 tables: `users`, `admin_users`, `user_profiles`, `job_vacancies`, `user_job_applications`, `notifications`, `admin_logs`, `alembic_version`. Has tsvector/GIN full-text search.
 
-## Docker (7 services)
-`src/backend/docker-compose.yml` — 6 services: postgresql (16-alpine), redis (7-alpine), pgbouncer, backend, celery_worker, celery_beat.
+## Docker (8 services)
+`src/backend/docker-compose.yml` — 7 services: postgresql (16-alpine), redis (7-alpine), pgbouncer, backend, celery_worker, celery_beat, mailhog (dev email).
 `src/frontend/docker-compose.yml` — 1 service: hermes_frontend (port 8080), connected via `src_backend_network`.
 
 ### Critical Docker/DB Notes
@@ -69,24 +69,26 @@ src/backend/
       users.py           # /api/v1/users/* + /api/v1/organizations/* — profile CRUD, org follow
       admin.py           # /api/v1/admin/* — job CRUD, approve, user mgmt, dashboard, audit logs
       applications.py    # /api/v1/applications/* — full CRUD (track, list, get, update, delete, stats)
-      notifications.py   # /api/v1/notifications/* — user notification endpoints
+      notifications.py   # /api/v1/notifications/* — list, count, read, read-all, delete
       health.py          # /api/v1/health
     schemas/
-      auth.py, jobs.py, users.py, applications.py  # Pydantic v2 request/response schemas
+      auth.py, jobs.py, users.py, applications.py, notifications.py  # Pydantic v2 schemas
     services/
       matching.py        # Job scoring engine (state +3, category +3, education +2, recency +1)
     tasks/
-      notifications.py   # send_deadline_reminders (done), send_new_job_notifications (done)
+      notifications.py   # send_deadline_reminders, send_new_job_notifications, send_email_notification, send_push_notification
       cleanup.py, jobs.py, seo.py  # Scheduled Celery tasks (mostly stubs)
+    templates/email/     # Jinja2 email templates (base, welcome, verification, password_reset, deadline_reminder, new_job_alert)
   migrations/versions/
     0001_initial_schema.py
     0002_separate_admin_users.py
     0003_profile_preferences.py
+    0004_fcm_tokens.py
 
 src/frontend/app/
-  __init__.py            # Flask app factory with routes (/, /jobs, /jobs/<slug>, /dashboard, /login, /logout)
-  api_client.py          # requests wrapper for backend API
-  templates/             # base.html, index.html, _job_cards.html, job_detail.html, dashboard.html, _application_rows.html, login.html, 404.html
+  __init__.py            # Flask app factory with routes (/, /jobs, /jobs/<slug>, /dashboard, /notifications/*, /login, /logout)
+  api_client.py          # requests wrapper for backend API (get, post, put, delete, patch)
+  templates/             # base.html (notification bell), index.html, _job_cards.html, job_detail.html, dashboard.html, _application_rows.html, notifications.html, login.html, 404.html
 ```
 
 ## Auth Design
@@ -108,7 +110,7 @@ src/frontend/app/
 - **Phase 2** (#121–#124) ✅: Job CRUD + FTS search, admin approve flow + audit logging, user profile endpoints, frontend job listing (HTMX)
 - **Phase 3** (#125–#126) ✅: Job matching/recommendations, org follow/unfollow, Celery notification on approve
 - **Phase 4** (#127–#129) ✅: Application tracking CRUD, deadline reminders, user dashboard + login
-- **Phase 5** (#130–#132) ⬜: Email, push, in-app notifications
+- **Phase 5** (#130–#132) ✅: In-app notification endpoints, email via SMTP (MailHog dev), FCM push, notification preferences, frontend bell
 - **Phase 6–9**: Admin dashboard, SEO, PDF ingestion, tests, security, deployment, mobile app
 
 ## Docs
@@ -266,6 +268,15 @@ When something breaks (and it will):
 - Deadline reminders: implemented `send_deadline_reminders()` Celery Beat task (daily 08:00 UTC). Checks T-7, T-3, T-1 days. Joins applications with jobs, skips rejected/selected/waiting_list, deduplicates per (user, job, interval). Priority: high (1d, 3d), medium (7d).
 - Frontend: `/dashboard` (stats grid + status filter tabs + HTMX load-more), `/login` (form → POST → store JWT in Flask session), `/logout`. Nav bar updated with Dashboard/Login/Logout links.
 
+### Phase 5 — Email, Push & In-App Notifications (commit `2c00666`)
+- In-app notification endpoints: GET /notifications (paginated, filterable), GET /notifications/count, PUT /notifications/{id}/read, PUT /notifications/read-all, DELETE /notifications/{id}. Route order: `/count` and `/read-all` before `/{id}` to avoid conflicts.
+- Email: `send_email_notification` Celery task using sync `smtplib` with 3x retry + exponential backoff. 6 Jinja2 HTML templates in `app/templates/email/`. MailHog in Docker for dev (`1025` SMTP, `8025` web UI). `MAIL_ENABLED` toggle in config.
+- Push: `send_push_notification` Celery task with `firebase-admin`. Graceful no-op if `FIREBASE_CREDENTIALS_PATH` not set. Checks `notification_preferences.push`. Cleans invalid tokens on `NotRegistered`.
+- FCM endpoints: POST/DELETE `/users/me/fcm-token` (max 10 devices), PUT `/users/me/notification-preferences`.
+- Migration 0004: `fcm_tokens` JSONB column on `user_profiles`.
+- Email + push wired into `send_deadline_reminders` and `send_new_job_notifications` — checks user prefs before sending.
+- Frontend: notification bell (🔔) in nav with HTMX polling every 30s, notifications page with mark-read/delete/read-all, HTMX load-more.
+
 ---
 
-**Next up**: Phase 5 (#130–#132) — Email notifications, push notifications, in-app notification endpoints.
+**Next up**: Phase 6 (#133–#135) — Admin dashboard, SEO enhancements, application fee display.

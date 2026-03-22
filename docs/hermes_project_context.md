@@ -6,7 +6,7 @@ A **Government Job Vacancy Portal** (India-focused). Users register, browse jobs
 ## Repo
 - Path: `/home/sumant/workspace/hermes`
 - Remote: `git@github.com:SumanKr7/hermes.git`
-- Branch: `main` at commit `89e9f7b`
+- Branch: `main` at commit `2c00666`
 
 ---
 
@@ -36,7 +36,7 @@ Browser → Nginx (80/443)
 - Connected to backend via `src_backend_network` Docker network
 
 ## Docker Stack (`src/backend/docker-compose.yml`)
-6 backend services: postgresql (16-alpine), redis (7-alpine), pgbouncer (edoburu/pgbouncer:latest), backend, celery_worker, celery_beat.
+7 backend services: postgresql (16-alpine), redis (7-alpine), pgbouncer (edoburu/pgbouncer:latest), backend, celery_worker, celery_beat, mailhog (dev email: SMTP 1025, Web UI 8025).
 1 frontend service: hermes_frontend (port 8080).
 
 ### Critical Config
@@ -55,6 +55,7 @@ PostgreSQL 16 with 8 tables: users, admin_users, user_profiles, job_vacancies, u
 - `0001_initial_schema.py` — 6 core tables + FTS
 - `0002_separate_admin_users.py` — Split users/admin_users
 - `0003_profile_preferences.py` — preferred_states, preferred_categories, followed_organizations
+- `0004_fcm_tokens.py` — fcm_tokens JSONB column on user_profiles
 
 ---
 
@@ -323,7 +324,7 @@ When something breaks (and it will):
 - Phase 2 (#121-#124): CLOSED — Job CRUD, search, user profile, frontend job listing
 - Phase 3 (#125-#126): CLOSED — Job matching + org follow + Celery notifications
 - Phase 4 (#127-#129): CLOSED — Application tracking, deadline reminders, user dashboard
-- Phase 5 (#130-#132): OPEN — Email, push, in-app notifications
+- Phase 5 (#130-#132): CLOSED — In-app notification endpoints, email (MailHog dev), FCM push, notification preferences, frontend bell
 - Phase 6 (#133-#135): OPEN — Admin dashboard, SEO, fee display
 - Phase 7 (#136-#138): OPEN — PDF ingestion, review workflow, PWA
 - Phase 8 (#139-#141): OPEN — Tests, security audit, deployment
@@ -346,3 +347,50 @@ When something breaks (and it will):
 - Restart backend (hot-reload app/ only): `docker restart hermes_backend`
 - Rebuild all backend services: `cd src/backend && docker compose up -d --build backend celery_worker celery_beat`
 - Start frontend: `cd src/frontend && docker compose up -d --build`
+
+---
+
+## Phase 5 — Email, Push & In-App Notifications (#130–#132) ✅
+
+**Commit:** `2c00666`
+
+**What was built:**
+
+1. **In-App Notification Endpoints (`app/routers/notifications.py`):**
+   - `GET /notifications` — Paginated, filterable by type/is_read. Returns `{data, pagination}`.
+   - `GET /notifications/count` — Unread count `{count: N}`.
+   - `PUT /notifications/{id}/read` — Mark single as read (is_read=true, read_at=now). Ownership check.
+   - `PUT /notifications/read-all` — Mark all unread → read for user.
+   - `DELETE /notifications/{id}` — Delete notification (204). Ownership check.
+   - Route order: `/count` and `/read-all` before `/{id}` to avoid conflicts.
+   - Schema: `NotificationResponse` in `app/schemas/notifications.py`.
+
+2. **Email Notifications (`app/tasks/notifications.py`):**
+   - `send_email_notification(to, subject, template_name, context)` — Celery task using sync `smtplib` + `email.mime`. 3x retry with exponential backoff.
+   - Jinja2 templates in `app/templates/email/`: base.html, welcome.html, verification.html, password_reset.html, deadline_reminder.html, new_job_alert.html.
+   - `MAIL_ENABLED` toggle in config.py (default: False). Dev uses MailHog.
+   - MailHog added to docker-compose.yml: SMTP 1025, Web UI 8025.
+   - Email wired into `send_deadline_reminders` and `send_new_job_notifications` via `_queue_email_for_user()` helper (checks `notification_preferences.email`).
+
+3. **Push Notifications (FCM):**
+   - `send_push_notification(user_id, title, body, data)` — Celery task using `firebase-admin`. Graceful no-op if `FIREBASE_CREDENTIALS_PATH` not set.
+   - Invalid token cleanup: removes tokens with `NotRegistered` errors.
+   - Checks `notification_preferences.push` before sending.
+   - `firebase-admin==6.5.0` added to requirements.txt.
+
+4. **FCM Token Endpoints (`app/routers/users.py`):**
+   - `POST /users/me/fcm-token` — Register device token (max 10, deduplication).
+   - `DELETE /users/me/fcm-token` — Unregister token.
+   - `PUT /users/me/notification-preferences` — Update email/push/in_app toggles.
+   - Schemas: `FCMTokenRequest`, `FCMTokenDeleteRequest`, `NotificationPreferencesRequest`.
+
+5. **Migration 0004 — FCM Tokens:**
+   - Added `fcm_tokens` (JSONB, default []) to `user_profiles`.
+
+6. **Frontend:**
+   - Notification bell (🔔) in nav with HTMX polling every 30s (`hx-get="/notifications/unread-count" hx-trigger="every 30s"`).
+   - Notifications page: list with read/unread styling, mark-read, delete, read-all, HTMX load-more.
+   - 6 Flask routes: /notifications, /notifications/list (HTMX partial), /notifications/unread-count (badge), /notifications/{id}/read, /notifications/read-all, /notifications/{id}/delete.
+   - `patch()` method added to `ApiClient`.
+
+**Issues closed:** #130, #131, #132
