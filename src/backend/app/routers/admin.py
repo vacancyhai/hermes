@@ -3,6 +3,7 @@
 Job Management:
   GET    /api/v1/admin/jobs              — List all jobs (any status)
   POST   /api/v1/admin/jobs              — Create job
+  POST   /api/v1/admin/jobs/upload-pdf   — Upload PDF → AI extraction → draft job
   PUT    /api/v1/admin/jobs/:id          — Update job
   PUT    /api/v1/admin/jobs/:id/approve  — Approve draft → active
   DELETE /api/v1/admin/jobs/:id          — Soft delete
@@ -17,13 +18,17 @@ Dashboard:
   GET    /api/v1/admin/logs              — Admin activity logs
 """
 
+import os
 import re
 import uuid
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, UploadFile, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.config import settings
 
 from app.dependencies import get_current_admin, get_db, require_admin, require_operator
 from app.models.admin_log import AdminLog
@@ -192,6 +197,46 @@ async def create_job(
                       details=f"Created job: {body.job_title}", request=request)
 
     return JobResponse.model_validate(job).model_dump()
+
+
+@router.post("/jobs/upload-pdf", status_code=status.HTTP_202_ACCEPTED)
+async def upload_pdf(
+    file: UploadFile,
+    request: Request,
+    current_admin=Depends(require_operator),
+    db: AsyncSession = Depends(get_db),
+):
+    """Upload a PDF notification → AI extraction → create draft job."""
+    admin = current_admin
+
+    if not file.filename or not file.filename.lower().endswith(".pdf"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only PDF files are accepted")
+
+    if file.content_type and file.content_type != "application/pdf":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only PDF files are accepted")
+
+    content = await file.read()
+    max_bytes = settings.PDF_MAX_SIZE_MB * 1024 * 1024
+    if len(content) > max_bytes:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"File exceeds {settings.PDF_MAX_SIZE_MB}MB limit",
+        )
+
+    upload_dir = Path(settings.PDF_UPLOAD_DIR)
+    upload_dir.mkdir(parents=True, exist_ok=True)
+
+    safe_name = re.sub(r"[^\w.\-]", "_", file.filename or "upload.pdf")
+    file_id = uuid.uuid4().hex[:12]
+    dest = upload_dir / f"{file_id}_{safe_name}"
+    dest.write_bytes(content)
+
+    from app.tasks.jobs import extract_job_from_pdf
+    task = extract_job_from_pdf.delay(str(dest), str(admin.id))
+
+    await _log_action(db, admin, "upload_pdf", "job_vacancy", details=f"PDF: {safe_name}", request=request)
+
+    return {"message": "PDF uploaded, extraction in progress", "task_id": task.id, "filename": safe_name}
 
 
 @router.put("/jobs/{job_id}")

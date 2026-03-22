@@ -384,6 +384,22 @@
 							{ "key": "Authorization", "value": "Bearer {{admin_token}}" }
 						]
 					}
+				},
+				{
+					"name": "Upload PDF (AI Extraction)",
+					"request": {
+						"method": "POST",
+						"url": "{{base_url}}/admin/jobs/upload-pdf",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{admin_token}}" }
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{ "key": "file", "type": "file", "src": "", "description": "PDF notification file (max 10MB)" }
+							]
+						}
+					}
 				}
 			]
 		},

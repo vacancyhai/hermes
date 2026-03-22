@@ -67,3 +67,15 @@ class ApiClient:
             timeout=10,
         )
         return resp
+
+    def post_file(self, path: str, token: str | None = None, files: dict | None = None):
+        headers = {"X-Request-ID": str(uuid.uuid4())}
+        if token:
+            headers["Authorization"] = f"Bearer {token}"
+        resp = self.session.post(
+            f"{self.base_url}{path}",
+            headers=headers,
+            files=files,
+            timeout=60,
+        )
+        return resp

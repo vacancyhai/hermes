@@ -3,7 +3,10 @@
 {% block title %}Jobs — Hermes Admin{% endblock %}
 
 {% block content %}
-<h1 style="font-size:1.35rem;margin-bottom:1rem;">Job Management</h1>
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+    <h1 style="font-size:1.35rem;">Job Management</h1>
+    <a href="/jobs/upload" class="btn btn-primary">Upload PDF</a>
+</div>
 
 <div class="filters">
     <form method="GET" action="/jobs" style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;">

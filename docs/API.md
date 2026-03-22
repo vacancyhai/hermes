@@ -99,6 +99,7 @@ All admin endpoints require an admin JWT token (`user_type: "admin"`).
 |--------|----------|------|-------------|
 | GET | `/admin/jobs` | Operator+ | List all jobs (any status) |
 | POST | `/admin/jobs` | Operator+ | Create job vacancy |
+| POST | `/admin/jobs/upload-pdf` | Operator+ | Upload PDF → AI extraction → draft job |
 | PUT | `/admin/jobs/:id` | Operator+ | Update job |
 | PUT | `/admin/jobs/:id/approve` | Operator+ | Approve draft → active |
 | DELETE | `/admin/jobs/:id` | Admin only | Soft-delete (→ cancelled) |
@@ -398,6 +399,53 @@ Job detail and job card pages include:
 - **WhatsApp**: `https://wa.me/?text={encoded_url+title}`
 - **Telegram**: `https://t.me/share/url?url={url}&text={title}`
 - **Copy Link**: Clipboard API button
+
+---
+
+## PDF Upload & AI Extraction
+
+### Upload PDF
+```
+POST /api/v1/admin/jobs/upload-pdf
+Authorization: Bearer <admin_token>
+Content-Type: multipart/form-data
+
+file: <pdf_file>
+
+→ 202 {
+  "message": "PDF uploaded, extraction in progress",
+  "task_id": "celery-task-uuid",
+  "filename": "notification.pdf"
+}
+```
+
+**Constraints:**
+- Only `.pdf` files accepted
+- Maximum file size: 10MB (configurable via `PDF_MAX_SIZE_MB`)
+- Requires `ANTHROPIC_API_KEY` for AI extraction (graceful fallback if not set)
+
+**Workflow:**
+1. Upload PDF → saved to `/app/uploads/pdfs/`
+2. Celery task `extract_job_from_pdf` triggered
+3. PDF text extracted via `pdfplumber`
+4. Text sent to Anthropic Claude for structured field extraction
+5. Draft job created in DB with extracted data
+6. Admin reviews draft via `/jobs/{id}/review` in admin frontend
+7. Admin approves → job goes live
+
+**Extracted fields:** job_title, organization, department, qualification_level, total_vacancies, description, dates, fees, salary, eligibility, selection_process, source_url.
+
+---
+
+## PWA Support
+
+The user frontend supports Progressive Web App features:
+
+- **Web App Manifest** (`/static/manifest.json`): enables Add to Home Screen
+- **Service Worker** (`/static/sw.js`): caches homepage and offline page
+- **Offline Fallback** (`/offline`): shown when network unavailable during navigation
+- **Theme Color**: `#1e3a5f` (Hermes brand)
+- **Icons**: 192x192 and 512x512 PNG
 
 ---
 

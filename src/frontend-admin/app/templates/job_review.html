@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+
+{% block title %}Review Draft — Hermes Admin{% endblock %}
+
+{% block head %}
+<style>
+    .review-form label { font-weight:600; font-size:.8rem; display:block; margin-bottom:.25rem; color:#475569; text-transform:uppercase; letter-spacing:.03em; }
+    .review-form input[type="text"],
+    .review-form input[type="number"],
+    .review-form input[type="date"],
+    .review-form input[type="url"],
+    .review-form textarea,
+    .review-form select { width:100%; padding:.45rem .65rem; border:1px solid #cbd5e1; border-radius:.375rem; font-size:.85rem; font-family:inherit; }
+    .review-form textarea { min-height:120px; resize:vertical; }
+    .review-form .field { margin-bottom:1rem; }
+    .review-form .row { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+    .review-form .row-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:1rem; }
+    @media(max-width:768px) { .review-form .row, .review-form .row-3 { grid-template-columns:1fr; } }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+    <h1 style="font-size:1.35rem;">Review Draft Job</h1>
+    <div style="display:flex;gap:.5rem;">
+        {% if job.source_pdf_path %}
+        <span class="badge" style="background:#dbeafe;color:#1e40af;">PDF Upload</span>
+        {% endif %}
+        <span class="badge badge-draft">Draft</span>
+    </div>
+</div>
+
+<form method="POST" class="review-form">
+    <div class="card">
+        <h3 style="font-size:1rem;margin-bottom:1rem;color:#1e3a5f;">Basic Information</h3>
+
+        <div class="field">
+            <label>Job Title</label>
+            <input type="text" name="job_title" value="{{ job.job_title or '' }}" required>
+        </div>
+
+        <div class="row">
+            <div class="field">
+                <label>Organization</label>
+                <input type="text" name="organization" value="{{ job.organization or '' }}" required>
+            </div>
+            <div class="field">
+                <label>Department</label>
+                <input type="text" name="department" value="{{ job.department or '' }}">
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="field">
+                <label>Qualification Level</label>
+                <select name="qualification_level">
+                    <option value="">— Select —</option>
+                    {% for lvl in ['10th', '12th', 'diploma', 'graduate', 'postgraduate', 'phd'] %}
+                    <option value="{{ lvl }}" {% if job.qualification_level == lvl %}selected{% endif %}>{{ lvl | title }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="field">
+                <label>Total Vacancies</label>
+                <input type="number" name="total_vacancies" value="{{ job.total_vacancies or '' }}" min="0">
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3 style="font-size:1rem;margin-bottom:1rem;color:#1e3a5f;">Description</h3>
+
+        <div class="field">
+            <label>Short Description</label>
+            <input type="text" name="short_description" value="{{ job.short_description or '' }}">
+        </div>
+
+        <div class="field">
+            <label>Full Description</label>
+            <textarea name="description">{{ job.description or '' }}</textarea>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3 style="font-size:1rem;margin-bottom:1rem;color:#1e3a5f;">Important Dates</h3>
+
+        <div class="row">
+            <div class="field">
+                <label>Notification Date</label>
+                <input type="date" name="notification_date" value="{{ job.notification_date or '' }}">
+            </div>
+            <div class="field">
+                <label>Application Start</label>
+                <input type="date" name="application_start" value="{{ job.application_start or '' }}">
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="field">
+                <label>Application End</label>
+                <input type="date" name="application_end" value="{{ job.application_end or '' }}">
+            </div>
+            <div class="field">
+                <label>Exam Start</label>
+                <input type="date" name="exam_start" value="{{ job.exam_start or '' }}">
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3 style="font-size:1rem;margin-bottom:1rem;color:#1e3a5f;">Application Fees (INR)</h3>
+
+        <div class="row-3">
+            <div class="field">
+                <label>General</label>
+                <input type="number" name="fee_general" value="{{ job.fee_general or '' }}" min="0">
+            </div>
+            <div class="field">
+                <label>OBC</label>
+                <input type="number" name="fee_obc" value="{{ job.fee_obc or '' }}" min="0">
+            </div>
+            <div class="field">
+                <label>SC/ST</label>
+                <input type="number" name="fee_sc_st" value="{{ job.fee_sc_st or '' }}" min="0">
+            </div>
+        </div>
+
+        <div class="row-3">
+            <div class="field">
+                <label>EWS</label>
+                <input type="number" name="fee_ews" value="{{ job.fee_ews or '' }}" min="0">
+            </div>
+            <div class="field">
+                <label>Female</label>
+                <input type="number" name="fee_female" value="{{ job.fee_female or '' }}" min="0">
+            </div>
+            <div class="field"></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3 style="font-size:1rem;margin-bottom:1rem;color:#1e3a5f;">Salary</h3>
+
+        <div class="row">
+            <div class="field">
+                <label>Initial (Annual INR)</label>
+                <input type="number" name="salary_initial" value="{{ job.salary_initial or '' }}" min="0">
+            </div>
+            <div class="field">
+                <label>Maximum (Annual INR)</label>
+                <input type="number" name="salary_max" value="{{ job.salary_max or '' }}" min="0">
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3 style="font-size:1rem;margin-bottom:1rem;color:#1e3a5f;">Source</h3>
+
+        <div class="field">
+            <label>Source URL</label>
+            <input type="url" name="source_url" value="{{ job.source_url or '' }}" placeholder="https://...">
+        </div>
+    </div>
+
+    <div style="display:flex;gap:.75rem;margin-top:.5rem;margin-bottom:2rem;">
+        <button type="submit" name="action" value="save" class="btn btn-primary">Save Draft</button>
+        {% if job.status == 'draft' %}
+        <button type="submit" name="action" value="approve" class="btn btn-success"
+                onclick="return confirm('Approve and publish this job?')">
+            Approve & Publish
+        </button>
+        {% endif %}
+        <a href="/jobs" class="btn btn-outline">Back to Jobs</a>
+    </div>
+</form>
+{% endblock %}

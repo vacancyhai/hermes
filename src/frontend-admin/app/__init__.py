@@ -7,6 +7,9 @@ Routes:
   /logout              — Clear session
   /jobs                — Job management (list, search, status filter)
   /jobs/list           — HTMX partial for job table rows
+  /jobs/upload         — Upload PDF for AI extraction
+  /jobs/<id>/review    — Review/edit draft job, approve or update
+  /jobs/<id>/approve   — Approve draft → active
   /users               — User management (list, search, status filter)
   /users/list          — HTMX partial for user table rows
   /users/<id>/suspend  — Toggle user suspend/activate
@@ -123,6 +126,95 @@ def create_app():
 
         current_app.api_client.put(f"/admin/jobs/{job_id}/approve", token=token)
         return redirect("/jobs")
+
+    # --- PDF Upload ---
+
+    @app.route("/jobs/upload", methods=["GET", "POST"])
+    def upload_pdf():
+        token = session.get("token")
+        if not token:
+            return redirect("/login")
+
+        if request.method == "GET":
+            return render_template("job_upload.html")
+
+        file = request.files.get("pdf_file")
+        if not file or not file.filename:
+            flash("Please select a PDF file", "error")
+            return render_template("job_upload.html")
+
+        resp = current_app.api_client.post_file(
+            "/admin/jobs/upload-pdf",
+            token=token,
+            files={"file": (file.filename, file.stream, "application/pdf")},
+        )
+
+        if resp.ok:
+            data = resp.json()
+            flash(f"PDF uploaded successfully. Extraction task started (ID: {data.get('task_id', 'N/A')[:8]}...)", "success")
+            return redirect("/jobs?status=draft")
+
+        detail = resp.json().get("detail", "Upload failed") if resp.headers.get("content-type", "").startswith("application/json") else "Upload failed"
+        flash(detail, "error")
+        return render_template("job_upload.html")
+
+    # --- Draft Review ---
+
+    @app.route("/jobs/<job_id>/review", methods=["GET", "POST"])
+    def review_job(job_id):
+        token = session.get("token")
+        if not token:
+            return redirect("/login")
+
+        if request.method == "POST":
+            form = request.form.to_dict()
+            update = {}
+            text_fields = ["job_title", "organization", "department", "qualification_level",
+                           "description", "short_description", "source_url"]
+            for f in text_fields:
+                if f in form:
+                    update[f] = form[f] or None
+
+            int_fields = ["total_vacancies", "fee_general", "fee_obc", "fee_sc_st",
+                          "fee_ews", "fee_female", "salary_initial", "salary_max"]
+            for f in int_fields:
+                if f in form:
+                    val = form[f].strip()
+                    update[f] = int(val) if val else None
+
+            date_fields = ["notification_date", "application_start", "application_end", "exam_start"]
+            for f in date_fields:
+                if f in form:
+                    val = form[f].strip()
+                    update[f] = val if val else None
+
+            action = form.get("action", "save")
+
+            if update:
+                current_app.api_client.put(f"/admin/jobs/{job_id}", token=token, json=update)
+
+            if action == "approve":
+                current_app.api_client.put(f"/admin/jobs/{job_id}/approve", token=token)
+                flash("Job approved and published", "success")
+                return redirect("/jobs?status=active")
+
+            flash("Draft saved", "success")
+            return redirect(f"/jobs/{job_id}/review")
+
+        # GET — fetch job detail
+        resp = current_app.api_client.get(f"/admin/jobs", token=token, params={"limit": 100, "offset": 0})
+        job = None
+        if resp.ok:
+            for j in resp.json().get("data", []):
+                if j["id"] == job_id:
+                    job = j
+                    break
+
+        if not job:
+            flash("Job not found", "error")
+            return redirect("/jobs")
+
+        return render_template("job_review.html", job=job)
 
     # --- User Management ---
 

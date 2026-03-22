@@ -121,6 +121,7 @@ class JobResponse(BaseModel):
     views: int
     applications_count: int
     source: str
+    source_pdf_path: str | None = None
     published_at: datetime | None
     created_at: datetime
     updated_at: datetime

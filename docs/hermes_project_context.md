@@ -1,4 +1,4 @@
-# Hermes Project — Complete Context (as of March 22, 2026)
+# Hermes Project — Complete Context (as of March 22, 2026, Phase 7 complete)
 
 ## What It Is
 A **Government Job Vacancy Portal** (India-focused). Users register, browse jobs, get personalized recommendations, follow organizations, track applications, receive deadline reminders. Admins manage jobs, users, and content.
@@ -6,7 +6,7 @@ A **Government Job Vacancy Portal** (India-focused). Users register, browse jobs
 ## Repo
 - Path: `/home/sumant/workspace/hermes`
 - Remote: `git@github.com:SumanKr7/hermes.git`
-- Branch: `main` (Phase 6 in progress)
+- Branch: `main` (Phase 7 complete)
 
 ---
 
@@ -57,6 +57,7 @@ PostgreSQL 16 with 8 tables: users, admin_users, user_profiles, job_vacancies, u
 - `0003_profile_preferences.py` — preferred_states, preferred_categories, followed_organizations
 - `0004_fcm_tokens.py` — fcm_tokens JSONB column on user_profiles
 - `0005_add_fee_columns.py` — fee_general, fee_obc, fee_sc_st, fee_ews, fee_female on job_vacancies
+- `0006_add_source_pdf_path.py` — source_pdf_path (Text, nullable) on job_vacancies
 
 ---
 
@@ -327,7 +328,7 @@ When something breaks (and it will):
 - Phase 4 (#127-#129): CLOSED — Application tracking, deadline reminders, user dashboard
 - Phase 5 (#130-#132): CLOSED — In-app notification endpoints, email (Mailpit dev), FCM push, notification preferences, frontend bell
 - Phase 6 (#133-#135): CLOSED — Admin frontend (dashboard, job/user mgmt, logs), SEO (sitemap, meta, JSON-LD), fee display, share buttons
-- Phase 7 (#136-#138): OPEN — PDF ingestion, review workflow, PWA
+- Phase 7 (#136-#138): CLOSED — PDF upload + AI extraction, draft review/approve, PWA
 - Phase 8 (#139-#141): OPEN — Tests, security audit, deployment
 - Phase 9 (#142-#143): OPEN — React Native mobile app
 - 34 labels total (9 story labels + component/type/size/priority labels)
@@ -434,3 +435,35 @@ When something breaks (and it will):
    - Job cards: WhatsApp, Telegram links.
 
 **Issues closed:** #133, #134, #135
+
+---
+
+### Phase 7 — PDF Upload + AI Extraction + PWA (#136–#138) ✅
+
+**What was built:**
+
+1. **PDF Upload + AI Data Extraction (#136):**
+   - Added `pdfplumber==0.11.4` and `anthropic==0.42.0` to requirements.
+   - `app/config.py`: `PDF_UPLOAD_DIR`, `PDF_MAX_SIZE_MB`, `ANTHROPIC_API_KEY`, `AI_MODEL` settings.
+   - Migration 0006: `source_pdf_path` (Text, nullable) on `job_vacancies`.
+   - `app/services/pdf_extractor.py`: extracts all text from PDF pages using pdfplumber.
+   - `app/services/ai_extractor.py`: sends text to Anthropic Claude with detailed extraction prompt for Indian government job fields. Returns structured JSON. Graceful no-op if API key not set.
+   - `app/tasks/jobs.py`: `extract_job_from_pdf` Celery task (bind=True, max_retries=2). Extracts PDF → AI → creates draft job. Fallback: raw text as description if AI fails. Also implemented `close_expired_job_listings` (was stub).
+   - `POST /admin/jobs/upload-pdf`: accepts multipart PDF, validates type + size (10MB), saves to upload dir, triggers Celery task, returns 202.
+   - Docker: shared `uploads_data` volume between backend and celery_worker.
+
+2. **Draft Review + Approve Workflow (#137):**
+   - Admin frontend `/jobs/upload`: PDF upload form with file validation and progress indicator.
+   - Admin frontend `/jobs/<id>/review`: full-page form with all extractable fields organized into sections (Basic Info, Description, Dates, Fees, Salary, Source). Save Draft and Approve & Publish buttons.
+   - "Upload PDF" button on jobs list page. "Review" button on draft job rows.
+   - `api_client.py`: added `post_file()` method for multipart uploads.
+
+3. **PWA — Progressive Web App (#138):**
+   - `src/frontend/app/static/manifest.json`: standalone display, portrait orientation, Hermes branding, 192+512 icons.
+   - `src/frontend/app/static/sw.js`: service worker with precaching (homepage + offline page), network-first strategy for navigation, offline fallback.
+   - `src/frontend/app/templates/offline.html`: user-friendly offline page with retry button.
+   - Placeholder icons (192x192 and 512x512 PNG).
+   - `base.html`: manifest link, theme-color meta, apple-touch-icon, service worker registration.
+   - Flask route `/offline` added.
+
+**Issues closed:** #136, #137, #138

@@ -18,6 +18,7 @@
     <td>{{ job.application_end or '—' }}</td>
     <td>
         {% if job.status == 'draft' %}
+        <a href="/jobs/{{ job.id }}/review" class="btn btn-primary btn-sm">Review</a>
         <form method="POST" action="/jobs/{{ job.id }}/approve" style="display:inline;">
             <button type="submit" class="btn btn-success btn-sm">Approve</button>
         </form>

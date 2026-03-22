@@ -75,6 +75,7 @@ services:
       - "${BACKEND_PORT:-8000}:8000"
     volumes:
       - ./app:/app/app  # Hot-reload in development
+      - uploads_data:/app/uploads
     depends_on:
       pgbouncer:
         condition: service_healthy
@@ -104,6 +105,7 @@ services:
       - .env
     volumes:
       - ./app:/app/app
+      - uploads_data:/app/uploads
     depends_on:
       pgbouncer:
         condition: service_healthy
@@ -150,6 +152,7 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  uploads_data:
 
 networks:
   backend_network:

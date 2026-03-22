@@ -5,14 +5,14 @@ You are continuing work on **Hermes**, a Government Job Vacancy Portal (India-fo
 ## Repo & Location
 - Workspace: `/home/sumant/workspace/hermes`
 - Remote: `git@github.com:SumanKr7/hermes.git`, branch `main`
-- GitHub Issues: #114–#143 (30 issues, 9 phases). Phases 1–6 are CLOSED. Phase 7 (#136–#138) is next.
+- GitHub Issues: #114–#143 (30 issues, 9 phases). Phases 1–7 are CLOSED. Phase 8 (#139–#141) is next.
 
 ## Architecture
 ```
 Browser → Nginx (80/443)
          ├── /api/*       → Backend  (FastAPI, port 8000)
          ├── /*           → Frontend (Flask,   port 8080)
-         └── admin.*      → Admin FE (Flask,   port 8081 — skeleton only)
+         └── admin.*      → Admin FE (Flask,   port 8081)
 ```
 
 ## Tech Stack
@@ -75,9 +75,13 @@ src/backend/
       auth.py, jobs.py, users.py, applications.py, notifications.py  # Pydantic v2 schemas
     services/
       matching.py        # Job scoring engine (state +3, category +3, education +2, recency +1)
+      pdf_extractor.py   # PDF text extraction (pdfplumber)
+      ai_extractor.py    # AI structured extraction (Anthropic Claude)
     tasks/
       notifications.py   # send_deadline_reminders, send_new_job_notifications, send_email_notification, send_push_notification
-      cleanup.py, jobs.py, seo.py  # Scheduled Celery tasks (mostly stubs)
+      cleanup.py         # Purge expired records
+      jobs.py            # close_expired_job_listings, extract_job_from_pdf
+      seo.py             # generate_sitemap
     templates/email/     # Jinja2 email templates (base, welcome, verification, password_reset, deadline_reminder, new_job_alert)
   migrations/versions/
     0001_initial_schema.py
@@ -85,11 +89,13 @@ src/backend/
     0003_profile_preferences.py
     0004_fcm_tokens.py
     0005_add_fee_columns.py
+    0006_add_source_pdf_path.py
 
 src/frontend/app/
-  __init__.py            # Flask app factory with routes (/, /jobs, /jobs/<slug>, /dashboard, /notifications/*, /login, /logout)
+  __init__.py            # Flask app factory with routes (/, /jobs, /jobs/<slug>, /dashboard, /notifications/*, /offline, /login, /logout)
   api_client.py          # requests wrapper for backend API (get, post, put, delete, patch)
-  templates/             # base.html (notification bell), index.html, _job_cards.html, job_detail.html, dashboard.html, _application_rows.html, notifications.html, login.html, 404.html
+  static/                # PWA assets (manifest.json, sw.js, icons)
+  templates/             # base.html (notification bell, PWA), index.html, _job_cards.html, job_detail.html, dashboard.html, _application_rows.html, notifications.html, offline.html, login.html, 404.html
 ```
 
 ## Auth Design
@@ -113,7 +119,8 @@ src/frontend/app/
 - **Phase 4** (#127–#129) ✅: Application tracking CRUD, deadline reminders, user dashboard + login
 - **Phase 5** (#130–#132) ✅: In-app notification endpoints, email via SMTP (Mailpit dev), FCM push, notification preferences, frontend bell
 - **Phase 6** (#133–#135) ✅: Admin frontend (dashboard, job/user mgmt, audit logs), SEO (sitemap, meta tags, JSON-LD), fee display by category, share buttons
-- **Phase 7–9**: PDF ingestion, tests, security, deployment, mobile app
+- **Phase 7** (#136–#138) ✅: PDF upload + AI extraction (Anthropic Claude), draft review/approve workflow, PWA (manifest, service worker, offline)
+- **Phase 8–9**: Tests, security audit, production deployment, mobile app
 
 ## Docs
 - `docs/API.md` — complete endpoint reference with examples
@@ -293,4 +300,14 @@ When something breaks (and it will):
 
 ---
 
-**Next up**: Phase 7 (#136–#138) — PDF ingestion (AI extraction + operator review), PWA.
+### Phase 7 — PDF Upload + AI Extraction + PWA (commit TBD)
+- Added `pdfplumber` and `anthropic` to requirements. Migration 0006: `source_pdf_path` column on `job_vacancies`.
+- `services/pdf_extractor.py`: extracts text from PDF pages using pdfplumber.
+- `services/ai_extractor.py`: sends PDF text to Anthropic Claude API with a detailed extraction prompt for Indian government job fields. Returns structured JSON. Graceful no-op if API key not set.
+- `tasks/jobs.py`: fully implemented `close_expired_job_listings` (daily 02:30 UTC) and new `extract_job_from_pdf` task (PDF text → AI extraction → create draft job in DB with fallback).
+- `POST /admin/jobs/upload-pdf` endpoint: accepts multipart PDF, validates type/size, saves to upload dir, triggers Celery extraction task, returns 202 with task_id.
+- Docker: shared `uploads_data` volume between backend and celery_worker. Config: `PDF_UPLOAD_DIR`, `PDF_MAX_SIZE_MB`, `ANTHROPIC_API_KEY`, `AI_MODEL`.
+- Admin frontend: PDF upload page (`/jobs/upload`), draft review page (`/jobs/<id>/review`) with editable fields for all extracted data + Save Draft / Approve & Publish buttons. "Upload PDF" button on jobs list. "Review" button on draft rows.
+- PWA: `manifest.json` (standalone, portrait, Hermes branding), `sw.js` (network-first for navigation, offline fallback), `offline.html` page, 192+512 PNG icons. `base.html` updated with manifest link, theme-color meta, apple-touch-icon, service worker registration.
+
+**Next up**: Phase 8 (#139–#141) — Testing, security audit, production deployment.

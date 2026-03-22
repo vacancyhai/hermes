@@ -31,6 +31,12 @@ fastapi-mail==1.4.1
 # Push notifications
 firebase-admin==6.5.0
 
+# PDF extraction
+pdfplumber==0.11.4
+
+# AI extraction
+anthropic==0.42.0
+
 # Rate limiting
 slowapi==0.1.9
 

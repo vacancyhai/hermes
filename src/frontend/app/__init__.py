@@ -200,6 +200,10 @@ def create_app():
         current_app.api_client.delete(f"/notifications/{notification_id}", token=token)
         return redirect("/notifications")
 
+    @app.route("/offline")
+    def offline():
+        return render_template("offline.html")
+
     @app.route("/login", methods=["GET", "POST"])
     def login():
         """Simple login form — stores JWT in session."""

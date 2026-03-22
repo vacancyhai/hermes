@@ -40,6 +40,12 @@ class Settings(BaseSettings):
     FIREBASE_CREDENTIALS_PATH: str = ""
     JWT_REFRESH_TOKEN_EXPIRES: int = 604800  # 7 days
 
+    # PDF / AI extraction
+    PDF_UPLOAD_DIR: str = "/app/uploads/pdfs"
+    PDF_MAX_SIZE_MB: int = 10
+    ANTHROPIC_API_KEY: str = ""
+    AI_MODEL: str = "claude-sonnet-4-20250514"
+
     # SEO
     SITE_URL: str = "http://localhost:8080"
     SITEMAP_PATH: str = "/app/sitemap.xml"

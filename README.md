@@ -5,14 +5,16 @@ matched to their education, age, category, and preferences. Includes user
 authentication, profile-based job matching, application tracking, multi-channel
 notifications, and an admin panel.
 
-> **Status:** Phases 1–6 complete. Auth system, job CRUD, full-text search,
+> **Status:** Phases 1–7 complete. Auth system, job CRUD, full-text search,
 > user profiles, job matching & recommendations, org follow with Celery
 > notifications, application tracking with deadline reminders, user dashboard,
 > email notifications (Mailpit in dev), FCM push notifications, in-app
 > notification endpoints, notification preferences, full admin frontend
 > (dashboard, job/user management, audit logs), SEO (sitemap, meta tags,
-> JSON-LD structured data), application fee display by category, and
-> WhatsApp/Telegram share buttons — all implemented and tested.
+> JSON-LD structured data), application fee display by category,
+> WhatsApp/Telegram share buttons, PDF upload with AI extraction (Anthropic
+> Claude), draft review & approve workflow, and PWA (manifest, service worker,
+> offline fallback) — all implemented and tested.
 
 ## Tech Stack
 
@@ -166,11 +168,13 @@ hermes/
 │   │   │   │   ├── applications.py
 │   │   │   │   └── notifications.py
 │   │   │   ├── services/                 # Business logic
-│   │   │   │   └── matching.py           # Job recommendation scoring engine
+│   │   │   │   ├── matching.py           # Job recommendation scoring engine
+│   │   │   │   ├── pdf_extractor.py      # PDF text extraction (pdfplumber)
+│   │   │   │   └── ai_extractor.py       # AI structured extraction (Anthropic Claude)
 │   │   │   └── tasks/                    # Celery tasks
 │   │   │       ├── notifications.py      # Deadline reminders, job alerts
 │   │   │       ├── cleanup.py            # Purge expired records
-│   │   │       ├── jobs.py               # Close expired listings
+│   │   │       ├── jobs.py               # Close expired listings, PDF extraction
 │   │   │       └── seo.py                # Generate sitemap
 │   │   ├── migrations/                   # Alembic migrations
 │   │   │   ├── env.py                    # Async migration runner
@@ -180,7 +184,8 @@ hermes/
 │   │   │       ├── 0002_separate_admin_users.py  # Split users/admin_users
 │   │   │       ├── 0003_profile_preferences.py   # Matching prefs + org follows
 │   │   │       ├── 0004_fcm_tokens.py            # FCM tokens for push notifications
-│   │   │       └── 0005_add_fee_columns.py       # Application fee by category
+│   │   │       ├── 0005_add_fee_columns.py       # Application fee by category
+│   │   │       └── 0006_add_source_pdf_path.py   # PDF upload source tracking
 │   │   └── tests/
 │   ├── frontend/                         # User Frontend (port 8080)
 │   │   ├── Dockerfile
@@ -189,20 +194,28 @@ hermes/
 │   │   └── app/
 │   │       ├── __init__.py               # Flask app factory
 │   │       ├── api_client.py             # HTTP client for backend API
+│   │       ├── static/
+│   │       │   ├── manifest.json         # PWA web app manifest
+│   │       │   ├── sw.js                 # Service worker (offline fallback)
+│   │       │   ├── icon-192.png          # PWA icon 192x192
+│   │       │   └── icon-512.png          # PWA icon 512x512
 │   │       └── templates/
-│   │           ├── base.html             # Base layout (HTMX + Alpine.js)
+│   │           ├── base.html             # Base layout (HTMX + Alpine.js + PWA)
 │   │           ├── index.html            # Job listing + search + filters
 │   │           ├── _job_cards.html       # HTMX partial (load more)
 │   │           ├── job_detail.html       # Job detail page
-│   │           ├── dashboard.html       # Application tracking dashboard
-│   │           ├── _application_rows.html # HTMX partial (load more apps)│   │           ├── notifications.html   # Notification center│   │           ├── login.html           # Login form
+│   │           ├── dashboard.html        # Application tracking dashboard
+│   │           ├── _application_rows.html # HTMX partial (load more apps)
+│   │           ├── notifications.html    # Notification center
+│   │           ├── login.html            # Login form
+│   │           ├── offline.html          # PWA offline fallback
 │   │           └── 404.html
 │   ├── frontend-admin/                   # Admin Frontend (port 8081)
 │   │   ├── Dockerfile
 │   │   ├── docker-compose.yml
 │   │   ├── requirements.txt
 │   │   └── app/
-│   │       ├── __init__.py               # Flask routes (dashboard, jobs, users, logs)
+│   │       ├── __init__.py               # Flask routes (dashboard, jobs, upload, review, users, logs)
 │   │       ├── api_client.py
 │   │       └── templates/
 │   │           ├── base.html             # Admin layout (nav, styling)
@@ -210,6 +223,8 @@ hermes/
 │   │           ├── dashboard.html        # Stats cards + quick actions
 │   │           ├── jobs.html             # Job management table
 │   │           ├── _job_rows.html        # HTMX partial (job rows)
+│   │           ├── job_upload.html       # PDF upload form
+│   │           ├── job_review.html       # Draft review/edit + approve
 │   │           ├── users.html            # User management table
 │   │           ├── _user_rows.html       # HTMX partial (user rows)
 │   │           ├── logs.html             # Audit log viewer
@@ -255,7 +270,7 @@ hermes/
 | 4     | Application tracking, deadline reminders, user dashboard | Done |
 | 5     | Notification engine (email, push, in-app, future: Telegram + WhatsApp) | Done |
 | 6     | Admin frontend (dashboard, job/user mgmt, logs), SEO (sitemap, meta, JSON-LD), fee display, share buttons | Done |
-| 7     | PDF ingestion (AI extraction + operator review), PWA | Open |
+| 7     | PDF ingestion (AI extraction + operator review), PWA | Done |
 | 8     | Testing, security audit, production deployment | Open |
 | 9     | React Native mobile app (Android + iOS) — same API | Open |
 
