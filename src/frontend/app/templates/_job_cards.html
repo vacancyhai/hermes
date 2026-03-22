@@ -16,6 +16,10 @@
         {% if job.qualification_level %}{{ job.qualification_level | title }} &nbsp;|&nbsp; {% endif %}
         {% if job.application_end %}Apply by {{ job.application_end }}{% endif %}
     </div>
+    <div style="margin-top:.4rem;display:flex;gap:.35rem;">
+        <a style="font-size:.75rem;color:#25d366;border:1px solid #25d366;padding:.15rem .5rem;border-radius:.25rem;" href="https://wa.me/?text={{ (job.job_title + ' — Apply now! /jobs/' + job.slug) | urlencode }}" target="_blank" rel="noopener">WhatsApp</a>
+        <a style="font-size:.75rem;color:#0088cc;border:1px solid #0088cc;padding:.15rem .5rem;border-radius:.25rem;" href="https://t.me/share/url?url={{ ('/jobs/' + job.slug) | urlencode }}&text={{ job.job_title | urlencode }}" target="_blank" rel="noopener">Telegram</a>
+    </div>
 </div>
 {% endfor %}
 

@@ -646,6 +646,50 @@
 					}
 				}
 			]
+		},
+		{
+			"name": "Phase 6 — Admin Dashboard (enhanced)",
+			"item": [
+				{
+					"name": "Admin Stats (enhanced)",
+					"request": {
+						"method": "GET",
+						"url": "{{base_url}}/admin/stats",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{admin_token}}" }
+						]
+					}
+				},
+				{
+					"name": "Create Job with Fees",
+					"request": {
+						"method": "POST",
+						"url": "{{base_url}}/admin/jobs",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{admin_token}}" },
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"job_title\": \"SSC GD Constable 2026\",\n  \"organization\": \"Staff Selection Commission\",\n  \"job_type\": \"latest_job\",\n  \"qualification_level\": \"12th\",\n  \"total_vacancies\": 25000,\n  \"description\": \"GD Constable recruitment with fee details.\",\n  \"application_end\": \"2026-08-15\",\n  \"fee_general\": 100,\n  \"fee_obc\": 100,\n  \"fee_sc_st\": 0,\n  \"fee_ews\": 0,\n  \"fee_female\": 0,\n  \"status\": \"draft\"\n}"
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    var data = pm.response.json();",
+									"    pm.collectionVariables.set('job_id', data.id);",
+									"    pm.collectionVariables.set('job_slug', data.slug);",
+									"}"
+								]
+							}
+						}
+					]
+				}
+			]
 		}
 	]
 }

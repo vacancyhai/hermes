@@ -115,7 +115,7 @@ All admin endpoints require an admin JWT token (`user_type: "admin"`).
 
 | Method | Endpoint | Role | Description |
 |--------|----------|------|-------------|
-| GET | `/admin/stats` | Operator+ | Job/user counts |
+| GET | `/admin/stats` | Operator+ | Job/user/application counts (includes new_this_week) |
 | GET | `/admin/logs` | Admin only | Admin audit trail |
 
 ---
@@ -324,6 +324,80 @@ All errors follow: `{ "detail": "Error message" }`
 | 404 | Resource not found |
 | 409 | Conflict (e.g., duplicate email, already tracking job) |
 | 422 | Validation error (Pydantic) |
+
+---
+
+## Application Fee Fields
+
+Job vacancies can include category-wise application fees (all nullable integers in INR):
+
+| Field | Description |
+|-------|-------------|
+| `fee_general` | Fee for General category |
+| `fee_obc` | Fee for OBC category |
+| `fee_sc_st` | Fee for SC/ST category |
+| `fee_ews` | Fee for EWS category |
+| `fee_female` | Fee for Female candidates |
+
+Fee fields are included in `JobCreateRequest`, `JobUpdateRequest`, `JobResponse`, and `JobListItem`.
+Value `0` means "Free". `null` means fee not specified (row hidden in UI).
+
+### Create Job with Fees
+```
+POST /api/v1/admin/jobs
+Authorization: Bearer <admin_token>
+{
+  "job_title": "SSC GD Constable 2026",
+  "organization": "Staff Selection Commission",
+  "fee_general": 100,
+  "fee_obc": 100,
+  "fee_sc_st": 0,
+  "fee_ews": 0,
+  "fee_female": 0,
+  ...
+}
+```
+
+---
+
+## Admin Dashboard Stats (enhanced)
+
+```
+GET /api/v1/admin/stats
+Authorization: Bearer <admin_token>
+→ 200 {
+  "jobs": { "total": 7, "active": 6, "draft": 0 },
+  "users": { "total": 3, "active": 3, "new_this_week": 1 },
+  "applications": { "total": 12 }
+}
+```
+
+---
+
+## SEO
+
+### Sitemap
+- Celery Beat task `generate_sitemap` runs daily at 04:00 UTC
+- Generates `/sitemap.xml` with all active job URLs
+- Served via Nginx at `/sitemap.xml`
+
+### Meta Tags (job detail pages)
+- `<title>`: `{job_title} | {organization} | Hermes`
+- `<meta name="description">`: First 160 chars of description
+- Open Graph: `og:title`, `og:description`, `og:url`, `og:type`, `og:site_name`
+
+### JobPosting JSON-LD (job detail pages)
+- Embedded `<script type="application/ld+json">` on each job detail page
+- Fields: title, description, datePosted, validThrough, hiringOrganization, jobLocation, employmentType, educationRequirements, baseSalary
+
+---
+
+## Share Buttons
+
+Job detail and job card pages include:
+- **WhatsApp**: `https://wa.me/?text={encoded_url+title}`
+- **Telegram**: `https://t.me/share/url?url={url}&text={title}`
+- **Copy Link**: Clipboard API button
 
 ---
 

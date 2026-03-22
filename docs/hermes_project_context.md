@@ -6,7 +6,7 @@ A **Government Job Vacancy Portal** (India-focused). Users register, browse jobs
 ## Repo
 - Path: `/home/sumant/workspace/hermes`
 - Remote: `git@github.com:SumanKr7/hermes.git`
-- Branch: `main` at commit `2c00666`
+- Branch: `main` (Phase 6 in progress)
 
 ---
 
@@ -56,7 +56,7 @@ PostgreSQL 16 with 8 tables: users, admin_users, user_profiles, job_vacancies, u
 - `0002_separate_admin_users.py` — Split users/admin_users
 - `0003_profile_preferences.py` — preferred_states, preferred_categories, followed_organizations
 - `0004_fcm_tokens.py` — fcm_tokens JSONB column on user_profiles
-- `0004_fcm_tokens.py` — fcm_tokens JSONB column on user_profiles
+- `0005_add_fee_columns.py` — fee_general, fee_obc, fee_sc_st, fee_ews, fee_female on job_vacancies
 
 ---
 
@@ -326,7 +326,7 @@ When something breaks (and it will):
 - Phase 3 (#125-#126): CLOSED — Job matching + org follow + Celery notifications
 - Phase 4 (#127-#129): CLOSED — Application tracking, deadline reminders, user dashboard
 - Phase 5 (#130-#132): CLOSED — In-app notification endpoints, email (Mailpit dev), FCM push, notification preferences, frontend bell
-- Phase 6 (#133-#135): OPEN — Admin dashboard, SEO, fee display
+- Phase 6 (#133-#135): CLOSED — Admin frontend (dashboard, job/user mgmt, logs), SEO (sitemap, meta, JSON-LD), fee display, share buttons
 - Phase 7 (#136-#138): OPEN — PDF ingestion, review workflow, PWA
 - Phase 8 (#139-#141): OPEN — Tests, security audit, deployment
 - Phase 9 (#142-#143): OPEN — React Native mobile app
@@ -395,3 +395,42 @@ When something breaks (and it will):
    - `patch()` method added to `ApiClient`.
 
 **Issues closed:** #130, #131, #132
+
+---
+
+### Phase 6 — Admin Frontend + SEO + Fee Display (#133–#135) ✅
+
+**What was built:**
+
+1. **Enhanced Admin Stats (`app/routers/admin.py`):**
+   - Added `applications.total` count and `users.new_this_week` (past 7 days) to `/admin/stats`.
+
+2. **Admin Frontend (`src/frontend-admin/`):**
+   - Full Flask app with login, dashboard, job management, user management, audit log viewer.
+   - Dashboard: stat cards (HTMX auto-refresh 60s), quick action links, system info.
+   - Job management: table with status filter, approve draft button, HTMX load-more.
+   - User management: table with search, status filter, suspend/activate buttons.
+   - Audit logs: table with timestamp, action, resource, details, IP.
+   - Connected to backend via `src_backend_network`.
+
+3. **SEO — Sitemap (`app/tasks/seo.py`):**
+   - `generate_sitemap()` Celery task: queries active jobs, writes XML sitemap with `lastmod`, `changefreq`, `priority`.
+   - Served via Nginx at `/sitemap.xml`.
+
+4. **SEO — Meta Tags & JSON-LD (`src/frontend/app/templates/job_detail.html`):**
+   - `<title>`: `{title} | {org} | Hermes`.
+   - `<meta description>`, `<meta keywords>`, Open Graph tags.
+   - JobPosting JSON-LD: title, description, datePosted, validThrough, hiringOrganization, jobLocation, employmentType, educationRequirements, baseSalary.
+
+5. **Migration 0005 — Fee Columns:**
+   - Added `fee_general`, `fee_obc`, `fee_sc_st`, `fee_ews`, `fee_female` (nullable int) to `job_vacancies`.
+   - Updated model, create/update/response/list schemas, admin create_job endpoint.
+
+6. **Fee Display (`job_detail.html`):**
+   - Category-wise fee table: General, OBC, SC/ST, EWS, Female. Shows "Free" if 0, hides row if null.
+
+7. **Share Buttons:**
+   - Job detail: WhatsApp, Telegram, Copy Link (clipboard API).
+   - Job cards: WhatsApp, Telegram links.
+
+**Issues closed:** #133, #134, #135

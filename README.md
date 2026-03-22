@@ -5,12 +5,14 @@ matched to their education, age, category, and preferences. Includes user
 authentication, profile-based job matching, application tracking, multi-channel
 notifications, and an admin panel.
 
-> **Status:** Phases 1–5 complete. Auth system, job CRUD, full-text search,
-> user profiles, admin dashboard, job matching & recommendations, org follow
-> with Celery notifications, application tracking with deadline reminders,
-> user dashboard, email notifications (Mailpit in dev), FCM push notifications,
-> in-app notification endpoints, and notification preferences — all implemented
-> and tested. Separate `users` and `admin_users` tables with complete RBAC isolation.
+> **Status:** Phases 1–6 complete. Auth system, job CRUD, full-text search,
+> user profiles, job matching & recommendations, org follow with Celery
+> notifications, application tracking with deadline reminders, user dashboard,
+> email notifications (Mailpit in dev), FCM push notifications, in-app
+> notification endpoints, notification preferences, full admin frontend
+> (dashboard, job/user management, audit logs), SEO (sitemap, meta tags,
+> JSON-LD structured data), application fee display by category, and
+> WhatsApp/Telegram share buttons — all implemented and tested.
 
 ## Tech Stack
 
@@ -177,7 +179,8 @@ hermes/
 │   │   │       ├── 0001_initial_schema.py  # 6 core tables + FTS
 │   │   │       ├── 0002_separate_admin_users.py  # Split users/admin_users
 │   │   │       ├── 0003_profile_preferences.py   # Matching prefs + org follows
-│   │   │       └── 0004_fcm_tokens.py            # FCM tokens for push notifications
+│   │   │       ├── 0004_fcm_tokens.py            # FCM tokens for push notifications
+│   │   │       └── 0005_add_fee_columns.py       # Application fee by category
 │   │   └── tests/
 │   ├── frontend/                         # User Frontend (port 8080)
 │   │   ├── Dockerfile
@@ -199,11 +202,18 @@ hermes/
 │   │   ├── docker-compose.yml
 │   │   ├── requirements.txt
 │   │   └── app/
-│   │       ├── __init__.py
+│   │       ├── __init__.py               # Flask routes (dashboard, jobs, users, logs)
 │   │       ├── api_client.py
 │   │       └── templates/
-│   │           ├── base.html
-│   │           └── index.html
+│   │           ├── base.html             # Admin layout (nav, styling)
+│   │           ├── login.html            # Admin login form
+│   │           ├── dashboard.html        # Stats cards + quick actions
+│   │           ├── jobs.html             # Job management table
+│   │           ├── _job_rows.html        # HTMX partial (job rows)
+│   │           ├── users.html            # User management table
+│   │           ├── _user_rows.html       # HTMX partial (user rows)
+│   │           ├── logs.html             # Audit log viewer
+│   │           └── _log_rows.html        # HTMX partial (log rows)
 │   └── nginx/                            # Reverse Proxy (port 80)
 │       ├── docker-compose.yml
 │       ├── nginx.conf                    # Rate limiting, routing, security headers
@@ -244,7 +254,7 @@ hermes/
 | 3     | Job matching algorithm, recommendations, org follow + alerts | Done |
 | 4     | Application tracking, deadline reminders, user dashboard | Done |
 | 5     | Notification engine (email, push, in-app, future: Telegram + WhatsApp) | Done |
-| 6     | Admin dashboard analytics, SEO (sitemap, meta, schema.org) | Open |
+| 6     | Admin frontend (dashboard, job/user mgmt, logs), SEO (sitemap, meta, JSON-LD), fee display, share buttons | Done |
 | 7     | PDF ingestion (AI extraction + operator review), PWA | Open |
 | 8     | Testing, security audit, production deployment | Open |
 | 9     | React Native mobile app (Android + iOS) — same API | Open |

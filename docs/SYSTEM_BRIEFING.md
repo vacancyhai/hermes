@@ -5,7 +5,7 @@ You are continuing work on **Hermes**, a Government Job Vacancy Portal (India-fo
 ## Repo & Location
 - Workspace: `/home/sumant/workspace/hermes`
 - Remote: `git@github.com:SumanKr7/hermes.git`, branch `main`
-- GitHub Issues: #114–#143 (30 issues, 9 phases). Phases 1–5 are CLOSED. Phase 6 (#133–#135) is next.
+- GitHub Issues: #114–#143 (30 issues, 9 phases). Phases 1–6 are CLOSED. Phase 7 (#136–#138) is next.
 
 ## Architecture
 ```
@@ -18,7 +18,7 @@ Browser → Nginx (80/443)
 ## Tech Stack
 **Backend** (`src/backend/`): Python 3.12, FastAPI + Uvicorn, SQLAlchemy 2.0 async (asyncpg), Pydantic v2 (`pydantic_settings`), python-jose JWT (HS256), passlib+bcrypt, Celery 5.4 + Redis 7, SlowAPI, PgBouncer (transaction mode, scram-sha-256).
 **Frontend** (`src/frontend/`): Flask 3.1 + Jinja2 + HTMX 2.0 + Alpine.js 3.14.
-**Admin Frontend** (`src/frontend-admin/`): Flask 3.1 — skeleton only, not implemented yet.
+**Admin Frontend** (`src/frontend-admin/`): Flask 3.1 + Jinja2 + HTMX 2.0 — dashboard, job/user management, audit logs.
 **Database**: PostgreSQL 16, 8 tables: `users`, `admin_users`, `user_profiles`, `job_vacancies`, `user_job_applications`, `notifications`, `admin_logs`, `alembic_version`. Has tsvector/GIN full-text search.
 
 ## Docker (8 services)
@@ -84,6 +84,7 @@ src/backend/
     0002_separate_admin_users.py
     0003_profile_preferences.py
     0004_fcm_tokens.py
+    0005_add_fee_columns.py
 
 src/frontend/app/
   __init__.py            # Flask app factory with routes (/, /jobs, /jobs/<slug>, /dashboard, /notifications/*, /login, /logout)
@@ -111,7 +112,8 @@ src/frontend/app/
 - **Phase 3** (#125–#126) ✅: Job matching/recommendations, org follow/unfollow, Celery notification on approve
 - **Phase 4** (#127–#129) ✅: Application tracking CRUD, deadline reminders, user dashboard + login
 - **Phase 5** (#130–#132) ✅: In-app notification endpoints, email via SMTP (Mailpit dev), FCM push, notification preferences, frontend bell
-- **Phase 6–9**: Admin dashboard, SEO, PDF ingestion, tests, security, deployment, mobile app
+- **Phase 6** (#133–#135) ✅: Admin frontend (dashboard, job/user mgmt, audit logs), SEO (sitemap, meta tags, JSON-LD), fee display by category, share buttons
+- **Phase 7–9**: PDF ingestion, tests, security, deployment, mobile app
 
 ## Docs
 - `docs/API.md` — complete endpoint reference with examples
@@ -277,6 +279,18 @@ When something breaks (and it will):
 - Email + push wired into `send_deadline_reminders` and `send_new_job_notifications` — checks user prefs before sending.
 - Frontend: notification bell (🔔) in nav with HTMX polling every 30s, notifications page with mark-read/delete/read-all, HTMX load-more.
 
+### Phase 6 — Admin Frontend + SEO + Fee Display (commit TBD)
+- Enhanced `/admin/stats` endpoint: added `applications.total` and `users.new_this_week` counts.
+- Built full admin frontend (`src/frontend-admin/`): login, dashboard with stat cards (HTMX auto-refresh 60s), job management table (status filter, approve draft), user management table (search, suspend/activate), audit log viewer. All with HTMX load-more pagination.
+- Admin frontend connected to backend via `src_backend_network` Docker network.
+- Implemented `generate_sitemap` Celery task: queries active jobs, writes valid XML sitemap with `lastmod`, `changefreq`, `priority`. Served via Nginx at `/sitemap.xml`.
+- Added SEO meta tags to job detail pages: `<title>`, `<meta description>`, `<meta keywords>`, Open Graph (`og:title`, `og:description`, `og:url`, `og:type`, `og:site_name`).
+- Added JobPosting JSON-LD structured data (`<script type="application/ld+json">`) on job detail pages: title, description, datePosted, validThrough, hiringOrganization, jobLocation, employmentType, educationRequirements, baseSalary.
+- Migration 0005: added 5 nullable integer columns to `job_vacancies`: `fee_general`, `fee_obc`, `fee_sc_st`, `fee_ews`, `fee_female`.
+- Fee fields added to model, all schemas (create, update, response, list), and admin create_job endpoint.
+- Fee table rendered on job detail page (category-wise breakdown, shows "Free" if 0, hides row if null).
+- Share buttons on job detail and job cards: WhatsApp, Telegram, Copy Link (clipboard API).
+
 ---
 
-**Next up**: Phase 6 (#133–#135) — Admin dashboard, SEO enhancements, application fee display.
+**Next up**: Phase 7 (#136–#138) — PDF ingestion (AI extraction + operator review), PWA.

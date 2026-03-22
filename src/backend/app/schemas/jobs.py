@@ -34,6 +34,11 @@ class JobCreateRequest(BaseModel):
     salary_max: int | None = None
     salary: dict = Field(default_factory=dict)
     selection_process: list = Field(default_factory=list)
+    fee_general: int | None = None
+    fee_obc: int | None = None
+    fee_sc_st: int | None = None
+    fee_ews: int | None = None
+    fee_female: int | None = None
     status: str = "draft"
     is_featured: bool = False
     is_urgent: bool = False
@@ -65,6 +70,11 @@ class JobUpdateRequest(BaseModel):
     salary_max: int | None = None
     salary: dict | None = None
     selection_process: list | None = None
+    fee_general: int | None = None
+    fee_obc: int | None = None
+    fee_sc_st: int | None = None
+    fee_ews: int | None = None
+    fee_female: int | None = None
     status: str | None = None
     is_featured: bool | None = None
     is_urgent: bool | None = None
@@ -100,6 +110,11 @@ class JobResponse(BaseModel):
     salary_max: int | None
     salary: dict
     selection_process: list
+    fee_general: int | None
+    fee_obc: int | None
+    fee_sc_st: int | None
+    fee_ews: int | None
+    fee_female: int | None
     status: str
     is_featured: bool
     is_urgent: bool
@@ -125,6 +140,11 @@ class JobListItem(BaseModel):
     total_vacancies: int | None
     short_description: str | None
     application_end: date | None
+    fee_general: int | None = None
+    fee_obc: int | None = None
+    fee_sc_st: int | None = None
+    fee_ews: int | None = None
+    fee_female: int | None = None
     status: str
     is_featured: bool
     is_urgent: bool

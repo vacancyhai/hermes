@@ -40,6 +40,10 @@ class Settings(BaseSettings):
     FIREBASE_CREDENTIALS_PATH: str = ""
     JWT_REFRESH_TOKEN_EXPIRES: int = 604800  # 7 days
 
+    # SEO
+    SITE_URL: str = "http://localhost:8080"
+    SITEMAP_PATH: str = "/app/sitemap.xml"
+
     # CORS
     CORS_ORIGINS: list[str] = ["http://localhost:8080", "http://localhost:8081"]
 

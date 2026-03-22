@@ -6,17 +6,84 @@
     <title>{% block title %}Hermes Admin{% endblock %}</title>
     <script src="https://unpkg.com/htmx.org@2.0.0" integrity="sha384-wS5l5IKJBvK6sPTKa2XN5W3A+nXFl30aKmSfEBR6drFQoAhRmCAMQPsKB84OOSL" crossorigin="anonymous"></script>
     <script defer src="https://unpkg.com/alpinejs@3.14.0/dist/cdn.min.js"></script>
+    <style>
+        *{box-sizing:border-box;margin:0;padding:0}
+        body{font-family:system-ui,-apple-system,sans-serif;color:#1e293b;line-height:1.6;background:#f1f5f9}
+        a{color:#2563eb;text-decoration:none}
+        a:hover{text-decoration:underline}
+        header{background:#0f172a;color:#fff;padding:.75rem 1.5rem;display:flex;align-items:center;justify-content:space-between}
+        header a{color:#fff;font-weight:700;font-size:1.15rem}
+        header nav{display:flex;align-items:center;gap:1.25rem}
+        header nav a{font-weight:400;font-size:.875rem;opacity:.8}
+        header nav a:hover{opacity:1;text-decoration:none}
+        header .role-badge{background:#6366f1;color:#fff;font-size:.7rem;padding:.15rem .5rem;border-radius:9999px;font-weight:600}
+        main{max-width:1100px;margin:0 auto;padding:1.5rem 1rem}
+        .card{background:#fff;border:1px solid #e2e8f0;border-radius:.5rem;padding:1.25rem;margin-bottom:1rem}
+        .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;margin-bottom:1.5rem}
+        .stat-card{background:#fff;border:1px solid #e2e8f0;border-radius:.5rem;padding:1rem;text-align:center}
+        .stat-card .value{font-size:1.75rem;font-weight:700;color:#1e3a5f}
+        .stat-card .label{font-size:.8rem;color:#64748b;text-transform:uppercase;letter-spacing:.04em;margin-top:.25rem}
+        table{width:100%;border-collapse:collapse;font-size:.875rem}
+        th,td{padding:.6rem .75rem;text-align:left;border-bottom:1px solid #e2e8f0}
+        th{background:#f8fafc;font-weight:600;color:#475569;font-size:.8rem;text-transform:uppercase;letter-spacing:.03em}
+        tr:hover{background:#f8fafc}
+        .btn{display:inline-block;padding:.4rem .85rem;border-radius:.375rem;font-size:.8rem;cursor:pointer;border:none;font-weight:500;text-decoration:none}
+        .btn-primary{background:#2563eb;color:#fff}
+        .btn-primary:hover{background:#1d4ed8;text-decoration:none}
+        .btn-outline{border:1px solid #cbd5e1;background:#fff;color:#334155}
+        .btn-outline:hover{border-color:#94a3b8;text-decoration:none}
+        .btn-danger{background:#ef4444;color:#fff}
+        .btn-danger:hover{background:#dc2626;text-decoration:none}
+        .btn-success{background:#22c55e;color:#fff}
+        .btn-success:hover{background:#16a34a;text-decoration:none}
+        .btn-sm{padding:.25rem .5rem;font-size:.75rem}
+        .badge{display:inline-block;padding:.15rem .5rem;border-radius:9999px;font-size:.7rem;font-weight:600}
+        .badge-active{background:#dcfce7;color:#166534}
+        .badge-suspended{background:#fee2e2;color:#991b1b}
+        .badge-draft{background:#fef3c7;color:#92400e}
+        .badge-cancelled{background:#f1f5f9;color:#475569}
+        .filters{display:flex;gap:.75rem;align-items:center;margin-bottom:1rem;flex-wrap:wrap}
+        .filters input[type="text"]{padding:.4rem .75rem;border:1px solid #cbd5e1;border-radius:.375rem;font-size:.85rem;width:220px}
+        .filters select{padding:.4rem .75rem;border:1px solid #cbd5e1;border-radius:.375rem;font-size:.85rem}
+        .flash-error{background:#fee2e2;color:#991b1b;padding:.5rem 1rem;border-radius:.375rem;margin-bottom:1rem;font-size:.875rem}
+        .htmx-indicator{display:none}
+        .htmx-request .htmx-indicator{display:inline-block}
+        footer{text-align:center;padding:2rem 1rem;color:#64748b;font-size:.8rem;border-top:1px solid #e2e8f0;margin-top:2rem}
+        @media(max-width:768px){.stats-grid{grid-template-columns:1fr 1fr} table{font-size:.8rem}}
+    </style>
     {% block head %}{% endblock %}
 </head>
 <body>
     <header>
+        <a href="/">Hermes Admin</a>
         <nav>
-            <a href="/">Hermes Admin</a>
+            {% if session.get('token') %}
+                <a href="/">Dashboard</a>
+                <a href="/jobs">Jobs</a>
+                <a href="/users">Users</a>
+                <a href="/logs">Logs</a>
+                <span class="role-badge">{{ session.get('admin_role', 'admin') | upper }}</span>
+                <a href="/logout">Logout</a>
+            {% else %}
+                <a href="/login">Login</a>
+            {% endif %}
         </nav>
     </header>
 
     <main>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="flash-error">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+        {% endwith %}
+
         {% block content %}{% endblock %}
     </main>
+
+    <footer>
+        <p>Hermes Admin Panel &copy; 2025</p>
+    </footer>
 </body>
 </html>

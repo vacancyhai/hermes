@@ -13,13 +13,13 @@ User Management:
   PUT    /api/v1/admin/users/:id/status  — Suspend/activate
 
 Dashboard:
-  GET    /api/v1/admin/stats             — Dashboard counts
+  GET    /api/v1/admin/stats             — Dashboard counts (jobs, users, applications, new users this week)
   GET    /api/v1/admin/logs              — Admin activity logs
 """
 
 import re
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import func, select
@@ -28,6 +28,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.dependencies import get_current_admin, get_db, require_admin, require_operator
 from app.models.admin_log import AdminLog
 from app.models.admin_user import AdminUser
+from app.models.application import UserJobApplication
 from app.models.job_vacancy import JobVacancy
 from app.models.user import User
 from app.models.user_profile import UserProfile
@@ -70,16 +71,26 @@ async def dashboard_stats(
     admin=Depends(require_operator),
     db: AsyncSession = Depends(get_db),
 ):
-    """Dashboard stats: counts of jobs, users, applications."""
+    """Dashboard stats: counts of jobs, users, applications, new users this week."""
     jobs_total = (await db.execute(select(func.count(JobVacancy.id)))).scalar()
     jobs_active = (await db.execute(select(func.count(JobVacancy.id)).where(JobVacancy.status == "active"))).scalar()
     jobs_draft = (await db.execute(select(func.count(JobVacancy.id)).where(JobVacancy.status == "draft"))).scalar()
     users_total = (await db.execute(select(func.count(User.id)))).scalar()
     users_active = (await db.execute(select(func.count(User.id)).where(User.status == "active"))).scalar()
 
+    # New users this week
+    week_ago = datetime.now(timezone.utc) - timedelta(days=7)
+    users_new_this_week = (await db.execute(
+        select(func.count(User.id)).where(User.created_at >= week_ago)
+    )).scalar()
+
+    # Application counts
+    apps_total = (await db.execute(select(func.count(UserJobApplication.id)))).scalar()
+
     return {
         "jobs": {"total": jobs_total, "active": jobs_active, "draft": jobs_draft},
-        "users": {"total": users_total, "active": users_active},
+        "users": {"total": users_total, "active": users_active, "new_this_week": users_new_this_week},
+        "applications": {"total": apps_total},
     }
 
 
@@ -162,6 +173,11 @@ async def create_job(
         salary_max=body.salary_max,
         salary=body.salary,
         selection_process=body.selection_process,
+        fee_general=body.fee_general,
+        fee_obc=body.fee_obc,
+        fee_sc_st=body.fee_sc_st,
+        fee_ews=body.fee_ews,
+        fee_female=body.fee_female,
         status=body.status,
         is_featured=body.is_featured,
         is_urgent=body.is_urgent,

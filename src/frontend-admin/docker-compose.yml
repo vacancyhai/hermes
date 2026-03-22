@@ -21,7 +21,11 @@ services:
       flask run --host=0.0.0.0 --port=8081 --reload
     networks:
       - frontend_admin_network
+      - backend_network
 
 networks:
   frontend_admin_network:
     name: src_frontend_admin_network
+  backend_network:
+    name: src_backend_network
+    external: true

@@ -1,6 +1,53 @@
 {% extends "base.html" %}
 
-{% block title %}{{ job.job_title }} — Hermes{% endblock %}
+{% block title %}{{ job.job_title }} | {{ job.organization }} | Hermes{% endblock %}
+
+{% block meta %}
+<meta name="description" content="{{ (job.description or job.short_description or '')[:160] }}">
+<meta name="keywords" content="{{ job.job_title }}, {{ job.organization }}, government jobs, sarkari naukri{% if job.qualification_level %}, {{ job.qualification_level }}{% endif %}">
+<meta property="og:title" content="{{ job.job_title }} | {{ job.organization }}">
+<meta property="og:description" content="{{ (job.description or job.short_description or '')[:160] }}">
+<meta property="og:url" content="{{ request.url }}">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Hermes">
+
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org/",
+    "@type": "JobPosting",
+    "title": {{ job.job_title | tojson }},
+    "description": {{ (job.description or job.short_description or '') | tojson }},
+    {% if job.published_at %}"datePosted": "{{ job.published_at[:10] }}",{% endif %}
+    {% if job.application_end %}"validThrough": "{{ job.application_end }}T23:59:59+05:30",{% endif %}
+    "hiringOrganization": {
+        "@type": "Organization",
+        "name": {{ job.organization | tojson }}
+    },
+    "jobLocation": {
+        "@type": "Place",
+        "address": {
+            "@type": "PostalAddress",
+            "addressCountry": "IN"
+        }
+    }{% if job.employment_type %},
+    "employmentType": {{ job.employment_type | upper | tojson }}{% endif %}{% if job.qualification_level %},
+    "educationRequirements": {
+        "@type": "EducationalOccupationalCredential",
+        "credentialCategory": {{ job.qualification_level | tojson }}
+    }{% endif %}{% if job.salary_initial %},
+    "baseSalary": {
+        "@type": "MonetaryAmount",
+        "currency": "INR",
+        "value": {
+            "@type": "QuantitativeValue",
+            "minValue": {{ job.salary_initial }},
+            {% if job.salary_max %}"maxValue": {{ job.salary_max }},{% endif %}
+            "unitText": "YEAR"
+        }
+    }{% endif %}
+}
+</script>
+{% endblock %}
 
 {% block head %}
 <style>
@@ -16,6 +63,14 @@
     .section h2{font-size:1.1rem;margin-bottom:.5rem;color:#1e3a5f;border-bottom:2px solid #e2e8f0;padding-bottom:.25rem}
     .section p,.section li{font-size:.925rem;color:#334155}
     .back-link{display:inline-block;margin-bottom:1rem;font-size:.9rem}
+    .fee-table{width:100%;border-collapse:collapse;font-size:.9rem;margin-top:.5rem}
+    .fee-table th,.fee-table td{padding:.4rem .75rem;border:1px solid #e2e8f0;text-align:left}
+    .fee-table th{background:#f8fafc;font-size:.8rem;text-transform:uppercase;color:#475569}
+    .share-buttons{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.75rem}
+    .share-btn{display:inline-flex;align-items:center;gap:.3rem;padding:.4rem .75rem;border-radius:.375rem;font-size:.8rem;font-weight:500;text-decoration:none;border:1px solid #e2e8f0;background:#fff;color:#334155;cursor:pointer}
+    .share-btn:hover{background:#f8fafc;text-decoration:none}
+    .share-btn.whatsapp{background:#25d366;color:#fff;border-color:#25d366}
+    .share-btn.telegram{background:#0088cc;color:#fff;border-color:#0088cc}
     @media(max-width:600px){.detail-grid{grid-template-columns:1fr}}
 </style>
 {% endblock %}
@@ -31,6 +86,12 @@
     </div>
     <h1>{{ job.job_title }}</h1>
     <div class="org">{{ job.organization }}{% if job.department %} &mdash; {{ job.department }}{% endif %}</div>
+
+    <div class="share-buttons">
+        <a class="share-btn whatsapp" href="https://wa.me/?text={{ (job.job_title + ' — ' + job.organization + ' | Hermes ' + request.url) | urlencode }}" target="_blank" rel="noopener">WhatsApp</a>
+        <a class="share-btn telegram" href="https://t.me/share/url?url={{ request.url | urlencode }}&text={{ (job.job_title + ' — ' + job.organization) | urlencode }}" target="_blank" rel="noopener">Telegram</a>
+        <button class="share-btn" onclick="navigator.clipboard.writeText(window.location.href).then(()=>{this.textContent='Copied!'})">Copy Link</button>
+    </div>
 </div>
 
 <div class="detail-grid">
@@ -81,6 +142,23 @@
         <div class="value">{{ job.views }}</div>
     </div>
 </div>
+
+{% set has_fees = job.fee_general is not none or job.fee_obc is not none or job.fee_sc_st is not none or job.fee_ews is not none or job.fee_female is not none %}
+{% if has_fees %}
+<div class="section">
+    <h2>Application Fee</h2>
+    <table class="fee-table">
+        <thead><tr><th>Category</th><th>Fee (INR)</th></tr></thead>
+        <tbody>
+            {% if job.fee_general is not none %}<tr><td>General</td><td>{{ 'Free' if job.fee_general == 0 else '₹' ~ job.fee_general }}</td></tr>{% endif %}
+            {% if job.fee_obc is not none %}<tr><td>OBC</td><td>{{ 'Free' if job.fee_obc == 0 else '₹' ~ job.fee_obc }}</td></tr>{% endif %}
+            {% if job.fee_sc_st is not none %}<tr><td>SC / ST</td><td>{{ 'Free' if job.fee_sc_st == 0 else '₹' ~ job.fee_sc_st }}</td></tr>{% endif %}
+            {% if job.fee_ews is not none %}<tr><td>EWS</td><td>{{ 'Free' if job.fee_ews == 0 else '₹' ~ job.fee_ews }}</td></tr>{% endif %}
+            {% if job.fee_female is not none %}<tr><td>Female</td><td>{{ 'Free' if job.fee_female == 0 else '₹' ~ job.fee_female }}</td></tr>{% endif %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
 
 {% if job.description %}
 <div class="section">
