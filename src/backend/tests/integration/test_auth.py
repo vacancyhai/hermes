@@ -36,7 +36,7 @@ async def test_register_duplicate_email(client: AsyncClient, test_user):
         "full_name": "Duplicate User",
     })
     assert resp.status_code == 409
-    assert "already registered" in resp.json()["detail"].lower()
+    assert "already registered" in resp.json()["error"]["message"].lower()
 
 
 async def test_register_short_password(client: AsyncClient):

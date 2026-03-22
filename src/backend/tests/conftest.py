@@ -16,6 +16,10 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from app.config import settings
 from app.dependencies import get_db, get_redis
 from app.main import app
+from app.rate_limit import limiter
+
+# Disable rate limiting for the entire test suite so auth fixtures don't hit 429
+limiter.enabled = False
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 

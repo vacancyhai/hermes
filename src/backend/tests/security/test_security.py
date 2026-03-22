@@ -146,7 +146,7 @@ async def test_upload_rejects_non_pdf(client: AsyncClient, admin_token: str):
         headers=auth_header(admin_token),
     )
     assert resp.status_code == 400
-    assert "pdf" in resp.json()["detail"].lower()
+    assert "pdf" in resp.json()["error"]["message"].lower()
 
 
 async def test_upload_rejects_oversized_file(client: AsyncClient, admin_token: str):
@@ -158,7 +158,7 @@ async def test_upload_rejects_oversized_file(client: AsyncClient, admin_token: s
         headers=auth_header(admin_token),
     )
     assert resp.status_code == 400
-    assert "exceed" in resp.json()["detail"].lower() or "limit" in resp.json()["detail"].lower()
+    assert "exceed" in resp.json()["error"]["message"].lower() or "limit" in resp.json()["error"]["message"].lower()
 
 
 async def test_upload_requires_auth(client: AsyncClient):
