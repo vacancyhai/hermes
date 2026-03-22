@@ -44,14 +44,13 @@ def test_education_rank_empty_string():
 
 @pytest.mark.asyncio
 async def test_get_recommended_jobs_no_profile():
-    """When user has no profile, return newest jobs sorted by created_at."""
+    """When user has no profile, return newest jobs sorted by created_at (DB-paginated)."""
     from unittest.mock import AsyncMock, MagicMock
     from datetime import datetime, timezone
 
     db = AsyncMock()
 
-    # First execute: profile query → None
-    # Second execute: jobs query → list of fake jobs
+    # Execute calls: 1) profile → None, 2) count → 2, 3) paginated jobs
     today = date.today()
     job1 = MagicMock()
     job1.created_at = datetime(2024, 1, 10, tzinfo=timezone.utc)
@@ -64,38 +63,41 @@ async def test_get_recommended_jobs_no_profile():
     profile_result = MagicMock()
     profile_result.scalar_one_or_none.return_value = None
 
-    jobs_result = MagicMock()
-    jobs_result.scalars.return_value.all.return_value = [job1, job2]
+    count_result = MagicMock()
+    count_result.scalar.return_value = 2
 
-    db.execute = AsyncMock(side_effect=[profile_result, jobs_result])
+    # DB returns newest first (ORDER BY created_at DESC at DB level)
+    jobs_result = MagicMock()
+    jobs_result.scalars.return_value.all.return_value = [job2, job1]
+
+    db.execute = AsyncMock(side_effect=[profile_result, count_result, jobs_result])
 
     jobs, total = await get_recommended_jobs(user_id="some-uuid", db=db, limit=10, offset=0)
-    # newest first: job2 (2024-01-20) before job1 (2024-01-10)
     assert total == 2
     assert jobs[0] == job2
 
 
 @pytest.mark.asyncio
 async def test_get_recommended_jobs_no_profile_pagination():
-    """Offset/limit slicing works in the no-profile path."""
+    """Offset/limit pagination works in the no-profile path (DB-level)."""
     from unittest.mock import AsyncMock, MagicMock
     from datetime import datetime, timezone
 
     db = AsyncMock()
-    today = date.today()
 
-    jobs_list = []
-    for i in range(5):
-        j = MagicMock()
-        j.created_at = datetime(2024, 1, i + 1, tzinfo=timezone.utc)
-        j.application_end = None
-        jobs_list.append(j)
+    # DB returns the 2 jobs for offset=2, limit=2 (already paginated)
+    paged_jobs = [MagicMock(), MagicMock()]
 
     profile_result = MagicMock()
     profile_result.scalar_one_or_none.return_value = None
+
+    count_result = MagicMock()
+    count_result.scalar.return_value = 5
+
     jobs_result = MagicMock()
-    jobs_result.scalars.return_value.all.return_value = jobs_list
-    db.execute = AsyncMock(side_effect=[profile_result, jobs_result])
+    jobs_result.scalars.return_value.all.return_value = paged_jobs
+
+    db.execute = AsyncMock(side_effect=[profile_result, count_result, jobs_result])
 
     jobs, total = await get_recommended_jobs(user_id="uid", db=db, limit=2, offset=2)
     assert total == 5
@@ -243,7 +245,7 @@ async def test_get_recommended_jobs_eligibility_string_state():
 
 @pytest.mark.asyncio
 async def test_get_recommended_jobs_empty_profile_no_scoring():
-    """Profile with all-empty prefs → falls back to newest-first ordering."""
+    """Profile with all-empty prefs → falls back to newest-first (DB-paginated)."""
     from datetime import datetime, timezone
     from unittest.mock import AsyncMock, MagicMock
 
@@ -253,9 +255,13 @@ async def test_get_recommended_jobs_empty_profile_no_scoring():
     j = _make_job()
     profile_result = MagicMock()
     profile_result.scalar_one_or_none.return_value = profile
+
+    count_result = MagicMock()
+    count_result.scalar.return_value = 1
+
     jobs_result = MagicMock()
     jobs_result.scalars.return_value.all.return_value = [j]
-    db.execute = AsyncMock(side_effect=[profile_result, jobs_result])
+    db.execute = AsyncMock(side_effect=[profile_result, count_result, jobs_result])
 
     jobs, total = await get_recommended_jobs(user_id="uid", db=db, limit=10)
     assert total == 1

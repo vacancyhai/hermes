@@ -7,6 +7,7 @@ send_push_notification      — FCM push (retries 3x, graceful no-op if unconfig
 notify_priority_subscribers — Event: notify priority trackers on job update
 """
 
+import json
 import os
 import smtplib
 import uuid
@@ -27,7 +28,7 @@ logger = structlog.get_logger()
 
 REMINDER_DAYS = [7, 3, 1]  # T-7, T-3, T-1
 MAX_FCM_TOKENS = 10
-BASE_URL = os.environ.get("FRONTEND_URL", "http://localhost:8080")
+BASE_URL = settings.FRONTEND_URL
 
 # Jinja2 env for email templates
 _template_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "templates")
@@ -328,7 +329,7 @@ def send_push_notification(self, user_id: str, title: str, body: str, data: dict
                 cleaned = [t for t in current_tokens if t.get("token") not in invalid_tokens]
                 session.execute(
                     text("UPDATE user_profiles SET fcm_tokens = :tokens::jsonb WHERE user_id = :uid"),
-                    {"tokens": str(cleaned).replace("'", '"'), "uid": user_id},
+                    {"tokens": json.dumps(cleaned), "uid": user_id},
                 )
                 session.commit()
                 logger.info("push_tokens_cleaned", user_id=user_id, removed=len(invalid_tokens))

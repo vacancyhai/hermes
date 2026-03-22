@@ -1,0 +1,18 @@
+{% for n in notifications %}
+<div class="notif-item {{ '' if n.is_read else 'unread' }}" id="notif-{{ n.id }}">
+    <div class="notif-dot {{ 'read' if n.is_read else 'unread' }}"></div>
+    <div class="notif-body">
+        <div class="notif-title">{{ n.title }}</div>
+        <div class="notif-msg">{{ n.message }}</div>
+        <div class="notif-meta"><span>{{ n.created_at | string | truncate(16, True, '') }}</span></div>
+    </div>
+</div>
+{% endfor %}
+{% if has_more %}
+<div style="text-align:center;margin-top:1rem;">
+    <button class="btn btn-outline"
+        hx-get="/notifications/list?offset={{ next_offset }}"
+        hx-target="#notification-list"
+        hx-swap="beforeend">Load more</button>
+</div>
+{% endif %}

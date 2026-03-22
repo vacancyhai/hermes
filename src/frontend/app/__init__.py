@@ -81,7 +81,7 @@ def create_app():
         if not token:
             return "", 401
 
-        params = {"limit": 20, "offset": int(request.args.get("offset", 0))}
+        params = {"limit": 20, "offset": _int_arg("offset", 0)}
         status_filter = request.args.get("status")
         if status_filter:
             params["status"] = status_filter
@@ -128,33 +128,20 @@ def create_app():
         if not token:
             return "", 401
 
-        params = {"limit": 20, "offset": int(request.args.get("offset", 0))}
+        params = {"limit": 20, "offset": _int_arg("offset", 0)}
         notif_resp = current_app.api_client.get("/notifications", token=token, params=params)
         notif_data = notif_resp.json() if notif_resp.ok else {"data": [], "pagination": {}}
 
-        # Return just the notification items (reuse the loop from notifications.html)
-        items_html = ""
-        for n in notif_data["data"]:
-            read_class = "" if n["is_read"] else "unread"
-            dot_class = "read" if n["is_read"] else "unread"
-            items_html += f'''<div class="notif-item {read_class}" id="notif-{n["id"]}">
-                <div class="notif-dot {dot_class}"></div>
-                <div class="notif-body">
-                    <div class="notif-title">{n["title"]}</div>
-                    <div class="notif-msg">{n["message"]}</div>
-                    <div class="notif-meta"><span>{str(n["created_at"])[:16].replace("T", " ")}</span></div>
-                </div>
-            </div>'''
+        pagination = notif_data.get("pagination", {})
+        has_more = pagination.get("has_more", False)
+        next_offset = params["offset"] + params["limit"] if has_more else 0
 
-        if notif_data.get("pagination", {}).get("has_more"):
-            next_offset = params["offset"] + params["limit"]
-            items_html += f'''<div style="text-align:center;margin-top:1rem;">
-                <button class="btn btn-outline"
-                    hx-get="/notifications/list?offset={next_offset}"
-                    hx-target="#notification-list"
-                    hx-swap="beforeend">Load more</button></div>'''
-
-        return items_html
+        return render_template(
+            "_notif_items.html",
+            notifications=notif_data["data"],
+            has_more=has_more,
+            next_offset=next_offset,
+        )
 
     @app.route("/notifications/unread-count")
     def notifications_unread_count():
@@ -234,9 +221,21 @@ def create_app():
             val = request.args.get(key)
             if val:
                 params[key] = val
-        params["limit"] = min(int(request.args.get("limit", 20)), 100)
-        params["offset"] = int(request.args.get("offset", 0))
+        params["limit"] = min(_int_arg("limit", 20), 100)
+        params["offset"] = _int_arg("offset", 0)
         return params
+
+    def _int_arg(name: str, default: int) -> int:
+        """Parse an integer query parameter safely."""
+        try:
+            return int(request.args.get(name, default))
+        except (ValueError, TypeError):
+            return default
+
+    @app.errorhandler(Exception)
+    def handle_unexpected_error(exc):
+        app.logger.error("Unhandled exception: %s", exc, exc_info=True)
+        return render_template("404.html"), 500
 
     return app
 

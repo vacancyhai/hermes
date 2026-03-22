@@ -175,7 +175,14 @@ async def forgot_password(request: Request, body: ForgotPasswordRequest, db: Asy
     if user:
         reset_token = secrets.token_urlsafe(32)
         await redis.setex(f"reset:user:{reset_token}", 3600, str(user.id))
-        # TODO: Queue Celery email task with reset_token
+        from app.tasks.notifications import send_email_notification
+        reset_url = f"{settings.FRONTEND_URL}/reset-password?token={reset_token}"
+        send_email_notification.delay(
+            user.email,
+            "Reset your Hermes password",
+            "password_reset.html",
+            {"name": user.full_name or user.email, "reset_url": reset_url},
+        )
 
     return MessageResponse(message="If the email exists, a reset link has been sent.")
 

@@ -592,46 +592,46 @@ async def test_get_user_found_with_profile():
 @pytest.mark.asyncio
 async def test_update_user_status_invalid():
     from fastapi import HTTPException
-    from app.routers.admin import update_user_status
-    req = _make_request(json_body={"status": "deleted"})
+    from app.routers.admin import update_user_status, UserStatusRequest
+    req = _make_request()
     db = AsyncMock()
 
     with pytest.raises(HTTPException) as exc_info:
-        await update_user_status(user_id=uuid.uuid4(), request=req,
-                                 admin=_make_admin(), db=db)
+        await update_user_status(user_id=uuid.uuid4(), body=UserStatusRequest(status="deleted"),
+                                 request=req, admin=_make_admin(), db=db)
     assert exc_info.value.status_code == 400
 
 
 @pytest.mark.asyncio
 async def test_update_user_status_not_found():
     from fastapi import HTTPException
-    from app.routers.admin import update_user_status
-    req = _make_request(json_body={"status": "suspended"})
+    from app.routers.admin import update_user_status, UserStatusRequest
+    req = _make_request()
     db = AsyncMock()
     result = MagicMock()
     result.scalar_one_or_none.return_value = None
     db.execute.return_value = result
 
     with pytest.raises(HTTPException) as exc_info:
-        await update_user_status(user_id=uuid.uuid4(), request=req,
-                                 admin=_make_admin(), db=db)
+        await update_user_status(user_id=uuid.uuid4(), body=UserStatusRequest(status="suspended"),
+                                 request=req, admin=_make_admin(), db=db)
     assert exc_info.value.status_code == 404
 
 
 @pytest.mark.asyncio
 async def test_update_user_status_success():
-    from app.routers.admin import update_user_status
+    from app.routers.admin import update_user_status, UserStatusRequest
     user = _make_user()
     user.status = "active"
-    req = _make_request(json_body={"status": "suspended"})
+    req = _make_request()
     db = AsyncMock()
     result = MagicMock()
     result.scalar_one_or_none.return_value = user
     db.execute.return_value = result
     db.add = MagicMock()
 
-    output = await update_user_status(user_id=user.id, request=req,
-                                      admin=_make_admin(), db=db)
+    output = await update_user_status(user_id=user.id, body=UserStatusRequest(status="suspended"),
+                                      request=req, admin=_make_admin(), db=db)
     assert user.status == "suspended"
     assert "suspended" in output["message"]
 
@@ -641,70 +641,70 @@ async def test_update_user_status_success():
 @pytest.mark.asyncio
 async def test_update_user_role_invalid():
     from fastapi import HTTPException
-    from app.routers.admin import update_user_role
-    req = _make_request(json_body={"role": "superuser"})
+    from app.routers.admin import update_user_role, UserRoleRequest
+    req = _make_request()
     db = AsyncMock()
 
     with pytest.raises(HTTPException) as exc_info:
-        await update_user_role(user_id=uuid.uuid4(), request=req,
-                               admin=_make_admin(), db=db)
+        await update_user_role(user_id=uuid.uuid4(), body=UserRoleRequest(role="superuser"),
+                               request=req, admin=_make_admin(), db=db)
     assert exc_info.value.status_code == 400
 
 
 @pytest.mark.asyncio
 async def test_update_user_role_not_found():
     from fastapi import HTTPException
-    from app.routers.admin import update_user_role
-    req = _make_request(json_body={"role": "operator"})
+    from app.routers.admin import update_user_role, UserRoleRequest
+    req = _make_request()
     db = AsyncMock()
     result = MagicMock()
     result.scalar_one_or_none.return_value = None
     db.execute.return_value = result
 
     with pytest.raises(HTTPException) as exc_info:
-        await update_user_role(user_id=uuid.uuid4(), request=req,
-                               admin=_make_admin(), db=db)
+        await update_user_role(user_id=uuid.uuid4(), body=UserRoleRequest(role="operator"),
+                               request=req, admin=_make_admin(), db=db)
     assert exc_info.value.status_code == 404
 
 
 @pytest.mark.asyncio
 async def test_update_user_role_own_role():
     from fastapi import HTTPException
-    from app.routers.admin import update_user_role
+    from app.routers.admin import update_user_role, UserRoleRequest
     admin = _make_admin()
     target = MagicMock()
     target.id = admin.id  # same id
     target.role = "admin"
 
-    req = _make_request(json_body={"role": "operator"})
+    req = _make_request()
     db = AsyncMock()
     result = MagicMock()
     result.scalar_one_or_none.return_value = target
     db.execute.return_value = result
 
     with pytest.raises(HTTPException) as exc_info:
-        await update_user_role(user_id=admin.id, request=req,
-                               admin=admin, db=db)
+        await update_user_role(user_id=admin.id, body=UserRoleRequest(role="operator"),
+                               request=req, admin=admin, db=db)
     assert exc_info.value.status_code == 400
 
 
 @pytest.mark.asyncio
 async def test_update_user_role_success():
-    from app.routers.admin import update_user_role
+    from app.routers.admin import update_user_role, UserRoleRequest
     admin = _make_admin()
     target = MagicMock()
     target.id = uuid.uuid4()  # different id
     target.role = "operator"
 
-    req = _make_request(json_body={"role": "admin"})
+    req = _make_request()
     db = AsyncMock()
     result = MagicMock()
     result.scalar_one_or_none.return_value = target
     db.execute.return_value = result
     db.add = MagicMock()
 
-    output = await update_user_role(user_id=target.id, request=req,
-                                    admin=admin, db=db)
+    output = await update_user_role(user_id=target.id, body=UserRoleRequest(role="admin"),
+                                    request=req, admin=admin, db=db)
     assert target.role == "admin"
     assert "admin" in output["message"]
 

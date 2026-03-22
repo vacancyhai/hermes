@@ -2,7 +2,7 @@
 
 from datetime import date, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.job_vacancy import JobVacancy
@@ -46,24 +46,31 @@ async def get_recommended_jobs(
 
     # Base query: active jobs with future (or null) deadlines
     today = date.today()
-    base = select(JobVacancy).where(
+    base_filter = (
         JobVacancy.status == "active",
         (JobVacancy.application_end >= today) | (JobVacancy.application_end.is_(None)),
     )
-
-    result = await db.execute(base)
-    jobs = result.scalars().all()
 
     if not profile or (
         not profile.preferred_states
         and not profile.preferred_categories
         and not profile.highest_qualification
     ):
-        # No preferences — return newest active jobs
-        jobs_sorted = sorted(jobs, key=lambda j: j.created_at, reverse=True)
-        total = len(jobs_sorted)
-        page = jobs_sorted[offset : offset + limit]
-        return page, total
+        # No preferences — return newest active jobs using DB-level pagination
+        total = (await db.execute(
+            select(func.count(JobVacancy.id)).where(*base_filter)
+        )).scalar() or 0
+        result = await db.execute(
+            select(JobVacancy)
+            .where(*base_filter)
+            .order_by(JobVacancy.created_at.desc())
+            .offset(offset)
+            .limit(limit)
+        )
+        return list(result.scalars().all()), total
+
+    result = await db.execute(select(JobVacancy).where(*base_filter))
+    jobs = result.scalars().all()
 
     # Score each job
     pref_states = {s.lower() for s in (profile.preferred_states or [])}

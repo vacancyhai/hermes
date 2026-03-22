@@ -108,7 +108,7 @@ def create_app():
         if not token:
             return "", 401
 
-        params = {"limit": 20, "offset": int(request.args.get("offset", 0))}
+        params = {"limit": 20, "offset": _int_arg("offset", 0)}
         status_filter = request.args.get("status")
         if status_filter:
             params["status"] = status_filter
@@ -201,18 +201,12 @@ def create_app():
             flash("Draft saved", "success")
             return redirect(f"/jobs/{job_id}/review")
 
-        # GET — fetch job detail
-        resp = current_app.api_client.get(f"/admin/jobs", token=token, params={"limit": 100, "offset": 0})
-        job = None
-        if resp.ok:
-            for j in resp.json().get("data", []):
-                if j["id"] == job_id:
-                    job = j
-                    break
-
-        if not job:
+        # GET — fetch job detail directly by ID
+        resp = current_app.api_client.get(f"/admin/jobs/{job_id}", token=token)
+        if not resp.ok:
             flash("Job not found", "error")
             return redirect("/jobs")
+        job = resp.json()
 
         return render_template("job_review.html", job=job)
 
@@ -250,7 +244,7 @@ def create_app():
         if not token:
             return "", 401
 
-        params = {"limit": 20, "offset": int(request.args.get("offset", 0))}
+        params = {"limit": 20, "offset": _int_arg("offset", 0)}
         q = request.args.get("q")
         if q:
             params["q"] = q
@@ -295,11 +289,23 @@ def create_app():
         if not token:
             return "", 401
 
-        params = {"limit": 20, "offset": int(request.args.get("offset", 0))}
+        params = {"limit": 20, "offset": _int_arg("offset", 0)}
         resp = current_app.api_client.get("/admin/logs", token=token, params=params)
         data = resp.json() if resp.ok else {"data": [], "pagination": {}}
 
         return render_template("_log_rows.html", logs=data["data"], pagination=data.get("pagination", {}))
+
+    def _int_arg(name: str, default: int) -> int:
+        """Parse an integer query parameter safely."""
+        try:
+            return int(request.args.get(name, default))
+        except (ValueError, TypeError):
+            return default
+
+    @app.errorhandler(Exception)
+    def handle_unexpected_error(exc):
+        app.logger.error("Unhandled exception: %s", exc, exc_info=True)
+        return render_template("login.html"), 500
 
     return app
 

@@ -1,5 +1,6 @@
 """Application configuration from environment variables."""
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings
 
 
@@ -46,6 +47,9 @@ class Settings(BaseSettings):
     ANTHROPIC_API_KEY: str = ""
     AI_MODEL: str = "claude-sonnet-4-20250514"
 
+    # Frontend
+    FRONTEND_URL: str = "http://localhost:8080"
+
     # SEO
     SITE_URL: str = "http://localhost:8080"
     SITEMAP_PATH: str = "/app/sitemap.xml"
@@ -54,6 +58,15 @@ class Settings(BaseSettings):
     CORS_ORIGINS: list[str] = ["http://localhost:8080", "http://localhost:8081"]
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
+
+    @model_validator(mode="after")
+    def validate_production_secrets(self) -> "Settings":
+        if self.APP_ENV == "production":
+            if self.SECRET_KEY.startswith("change-me"):
+                raise ValueError("SECRET_KEY must not use the default value in production")
+            if self.JWT_SECRET_KEY.startswith("change-me"):
+                raise ValueError("JWT_SECRET_KEY must not use the default value in production")
+        return self
 
 
 settings = Settings()

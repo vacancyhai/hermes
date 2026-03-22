@@ -244,7 +244,9 @@ def test_review_job_get_no_token(client, mock_api):
 
 def test_review_job_get_not_found(auth_client):
     client, mock_api = auth_client
-    mock_api.get.return_value = _ok({"data": [], "pagination": {}})
+    not_found = MagicMock()
+    not_found.ok = False
+    mock_api.get.return_value = not_found
     resp = client.get("/jobs/nonexistent/review")
     assert resp.status_code == 302
     assert "/jobs" in resp.headers["Location"]
@@ -253,9 +255,8 @@ def test_review_job_get_not_found(auth_client):
 def test_review_job_get_found(auth_client):
     client, mock_api = auth_client
     mock_api.get.return_value = _ok({
-        "data": [{"id": "job-1", "job_title": "Test Job", "status": "draft",
-                  "organization": "SSC", "slug": "test-job"}],
-        "pagination": {},
+        "id": "job-1", "job_title": "Test Job", "status": "draft",
+        "organization": "SSC", "slug": "test-job",
     })
     resp = client.get("/jobs/job-1/review")
     assert resp.status_code == 200

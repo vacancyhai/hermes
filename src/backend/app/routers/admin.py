@@ -25,6 +25,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, UploadFile, status
+from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -40,6 +41,21 @@ from app.models.user_profile import UserProfile
 from app.schemas.jobs import JobCreateRequest, JobListItem, JobResponse, JobUpdateRequest
 
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
+
+# Operators can only modify these fields on an existing job
+OPERATOR_ALLOWED_FIELDS = frozenset({
+    "status", "description", "short_description",
+    "notification_date", "application_start", "application_end",
+    "exam_start", "exam_end", "result_date",
+})
+
+
+class UserStatusRequest(BaseModel):
+    status: str
+
+
+class UserRoleRequest(BaseModel):
+    role: str
 
 
 def _slugify(text: str) -> str:
@@ -205,6 +221,20 @@ async def list_all_jobs(
     }
 
 
+@router.get("/jobs/{job_id}")
+async def get_job(
+    job_id: uuid.UUID,
+    admin=Depends(require_operator),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get a single job (admin view, any status)."""
+    result = await db.execute(select(JobVacancy).where(JobVacancy.id == job_id))
+    job = result.scalar_one_or_none()
+    if not job:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
+    return JobResponse.model_validate(job).model_dump()
+
+
 @router.post("/jobs", status_code=status.HTTP_201_CREATED)
 async def create_job(
     body: JobCreateRequest,
@@ -333,13 +363,6 @@ async def update_job(
     job = result.scalar_one_or_none()
     if not job:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
-
-    # Operators can only modify these fields
-    OPERATOR_ALLOWED_FIELDS = {
-        "status", "description", "short_description",
-        "notification_date", "application_start", "application_end",
-        "exam_start", "exam_end", "result_date",
-    }
 
     changes = {}
     update_data = body.model_dump(exclude_unset=True)
@@ -500,13 +523,13 @@ async def get_user(
 @router.put("/users/{user_id}/status")
 async def update_user_status(
     user_id: uuid.UUID,
+    body: UserStatusRequest,
     request: Request,
     admin=Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
     """Suspend or activate a user (admin only)."""
-    body = await request.json()
-    new_status = body.get("status")
+    new_status = body.status
     if new_status not in ("active", "suspended"):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Status must be 'active' or 'suspended'")
 
@@ -527,13 +550,13 @@ async def update_user_status(
 @router.put("/users/{user_id}/role")
 async def update_user_role(
     user_id: uuid.UUID,
+    body: UserRoleRequest,
     request: Request,
     admin=Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
     """Change an admin/operator user's role (admin only)."""
-    body = await request.json()
-    new_role = body.get("role")
+    new_role = body.role
     if new_role not in ("admin", "operator"):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Role must be 'admin' or 'operator'")
 

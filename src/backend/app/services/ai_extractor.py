@@ -83,6 +83,9 @@ def extract_job_data(pdf_text: str) -> dict | None:
 
         return json.loads(response_text)
 
+    except json.JSONDecodeError as e:
+        logger.error("AI extraction: invalid JSON in response: %s", e)
+        return None
     except Exception as e:
-        logger.error(f"AI extraction failed: {e}")
+        logger.error("AI extraction failed (%s): %s", type(e).__name__, e)
         return None
