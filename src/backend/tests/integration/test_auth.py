@@ -105,15 +105,44 @@ async def test_verify_token_invalid_token(client: AsyncClient):
 
 
 async def test_verify_token_phone_only_user(client: AsyncClient):
-    """Phone-only Firebase user (no email) creates an account."""
+    """Phone-only Firebase user (no email) creates an account.
+
+    Uses the Firebase test phone number configured in Firebase Console:
+      Phone: +917777777777  OTP: 123456
+    """
     decoded = {
         "uid": f"phone-uid-{uuid.uuid4().hex[:8]}",
-        "phone_number": "+919876543210",
+        "phone_number": "+917777777777",  # Firebase test phone number
         "firebase": {"sign_in_provider": "phone"},
     }
     with patch("app.firebase.verify_id_token", return_value=decoded):
         resp = await client.post("/api/v1/auth/verify-token", json={"id_token": "fake-token"})
     assert resp.status_code == 200
+    data = resp.json()
+    assert "access_token" in data
+
+
+async def test_verify_token_phone_user_stores_phone(client: AsyncClient, db):
+    """Phone number from Firebase token is stored on the user record."""
+    from app.models.user import User
+    from sqlalchemy import select
+
+    uid = f"phone-store-uid-{uuid.uuid4().hex[:8]}"
+    decoded = {
+        "uid": uid,
+        "phone_number": "+917777777777",  # Firebase test phone number
+        "firebase": {"sign_in_provider": "phone"},
+    }
+    with patch("app.firebase.verify_id_token", return_value=decoded):
+        resp = await client.post("/api/v1/auth/verify-token", json={"id_token": "fake-token"})
+    assert resp.status_code == 200
+
+    from jose import jwt
+    user_id = jwt.decode(resp.json()["access_token"], settings.JWT_SECRET_KEY, algorithms=["HS256"])["sub"]
+    result = await db.execute(select(User).where(User.id == uuid.UUID(user_id)))
+    user = result.scalar_one()
+    assert user.phone == "+917777777777"
+    assert user.email is None  # phone-only, no email
 
 
 async def test_verify_token_returns_correct_jwt_claims(client: AsyncClient):
