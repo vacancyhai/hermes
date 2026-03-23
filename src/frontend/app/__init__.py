@@ -468,6 +468,9 @@ def create_app():
 
     @app.route("/logout")
     def logout():
+        token = session.get("token")
+        if token:
+            current_app.api_client.post("/auth/logout", token=token)
         session.clear()
         return redirect("/")
 
