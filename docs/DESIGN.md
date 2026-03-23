@@ -1079,11 +1079,10 @@ All containers run via Docker Compose on this single VM.
 | Nginx     | SSL termination, rate limiting, security headers                |
 | Uvicorn   | Workers via `WEB_CONCURRENCY` (default: CPU × 2 + 1)           |
 | Networking| OCI VCN — VM in private subnet; ports 80/443/22 via security list|
-| Monitoring| OCI Monitoring + Alarms (500M datapoints/month free)            |
 | Images    | Built directly on VM via `git pull` + `docker compose up --build`|
 | CDN       | Cloudflare Free Tier — CDN cache, DDoS protection, analytics   |
 | Secrets   | `.env` files (gitignored, managed manually on VM)               |
-| Backups   | `pg_dump` daily cron + OCI block volume snapshots (weekly)      |
+| Backups   | `pg_dump` daily cron (host cron job, stored on VM disk)          |
 
 **Resource allocation (~3 GB used of 24 GB):**
 
@@ -1110,7 +1109,6 @@ All containers run via Docker Compose on this single VM.
 - [ ] Nginx SSL config updated with cert paths + HTTP → HTTPS redirect
 - [ ] `CORS_ORIGINS` restricted to production domain(s)
 - [ ] VCN security list: ports 80/443 open to `0.0.0.0/0`; SSH (22) from admin IP only
-- [ ] OCI Monitoring alarms set for CPU > 80%, disk > 90%
 - [ ] Cloudflare DNS configured — domain proxied through Cloudflare
 - [ ] Redis AOF persistence enabled (`appendonly yes` in redis.conf)
 
@@ -1275,7 +1273,7 @@ Internet
 │  │ Celery Worker  │  Celery Beat           │  │
 │  └─────────────────────────────────────────┘  │
 │                                               │
-│  Cron: pg_dump daily + block volume weekly    │
+│  Cron: pg_dump daily                          │
 └───────────────────────────────────────────────┘
                │
                ▼
@@ -1291,8 +1289,6 @@ Internet
 | ------- | ------- | --------------- |
 | ARM VM (Ampere A1) | Runs all Docker containers | 4 OCPU, 24 GB RAM, 200 GB storage |
 | Email Delivery | Job notification emails (SPF/DKIM) | 3,000 emails/day |
-| Monitoring + Alarms | CPU, disk, health check alerts | 500M datapoints/month |
-| Block Volume | VM storage + backup snapshots | 200 GB total |
 | VCN + Networking | Subnet isolation + security lists | Unlimited |
 
 **External free services (not OCI):**
@@ -1361,16 +1357,6 @@ cd ../nginx           && docker compose up -d --build
 ```bash
 # crontab -e
 0 2 * * * /home/ubuntu/hermes/scripts/backup/backup_db.sh
-```
-
-**Weekly block volume snapshot** (host cron via OCI CLI):
-
-```bash
-# crontab -e
-0 3 * * 0 oci bv boot-volume-backup create \
-  --boot-volume-id <boot-volume-ocid> \
-  --type INCREMENTAL \
-  --display-name "hermes-weekly-$(date +\%Y\%m\%d)"
 ```
 
 **Restore:**
