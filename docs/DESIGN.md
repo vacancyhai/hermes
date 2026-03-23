@@ -1146,7 +1146,7 @@ All items below are implemented.
   | Suspend/activate user | `update_user_status` — old → new status |
   | Change admin role | `update_user_role` — old → new role |
 
-- **Audit logging — user events (structlog → stdout → OCI Logging):** User actions emit JSON-structured log lines. Shipped to OCI Logging via Unified Monitoring Agent in production.
+- **Audit logging — user events (structlog → stdout):** User actions emit JSON-structured log lines to Docker stdout, collected by the container runtime and available via `docker logs` or any log aggregator configured on the VM.
 
   | Event | Key fields logged |
   |-------|-------------------|
