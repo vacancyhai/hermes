@@ -135,7 +135,6 @@ All application endpoints require a user JWT.
 | GET | `/applications` | User | List own tracked applications (filterable) |
 | GET | `/applications/stats` | User | Application counts by status |
 | POST | `/applications` | User | Track / save a job application |
-| GET | `/applications/:id` | User | Get single application detail |
 | PUT | `/applications/:id` | User | Update (status, notes, priority, app number) |
 | DELETE | `/applications/:id` | User | Remove from tracker (204) |
 

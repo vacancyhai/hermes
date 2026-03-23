@@ -102,5 +102,5 @@ These endpoints exist in the backend and are documented in `API.md` but no front
 ## Recommendations
 
 1. ~~**Fix immediately:** Change `/users/me` → `/users/profile` in `firebase_callback()`~~ — **Done.**
-2. **Future (Phase 9 / PWA):** Wire `POST /users/me/fcm-token` and `DELETE /users/me/fcm-token` from the service worker to enable full push notification support.
-3. **Future:** Add a `/dashboard/applications/{id}` detail page in the user frontend to make use of the existing `GET /applications/{id}` backend endpoint.
+2. **Future (Phase 9 / mobile):** Wire `POST /users/me/fcm-token` and `DELETE /users/me/fcm-token` from the React Native app to enable full push notification support (tracked in GitHub issue #143).
+3. ~~**Future:** Add a `/dashboard/applications/{id}` detail page~~ — endpoint removed; dashboard uses inline list, no detail view planned.

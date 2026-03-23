@@ -559,6 +559,7 @@ User auth is fully handled by the Firebase JS SDK on the client. The backend onl
 | ------ | -------------------------------- | ---------------------- | ------ |
 | GET    | `/api/v1/applications`           | List own applications  | User   |
 | POST   | `/api/v1/applications`           | Track a job            | User   |
+| PUT    | `/api/v1/applications/:id`       | Update application     | User   |
 | DELETE | `/api/v1/applications/:id`       | Remove from tracker    | User   |
 
 ### Notifications
