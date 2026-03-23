@@ -8,9 +8,12 @@ DELETE /api/v1/applications/:id        — Remove from tracker
 GET    /api/v1/applications/stats      — Application stats (counts by status)
 """
 
+import logging
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+
+logger = logging.getLogger(__name__)
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -143,6 +146,7 @@ async def track_job(
 
     # Increment applications_count on the job
     job.applications_count = (job.applications_count or 0) + 1
+    logger.info("application_tracked", extra={"user_id": str(user.id), "job_id": str(body.job_id)})
 
     item = ApplicationResponse.model_validate(app).model_dump()
     item["job"] = {
@@ -215,6 +219,7 @@ async def update_application(
     for field, value in update_data.items():
         setattr(app, field, value)
 
+    logger.info("application_updated", extra={"user_id": str(user.id), "application_id": str(application_id), "fields": list(update_data.keys())})
     return ApplicationResponse.model_validate(app).model_dump()
 
 
@@ -243,3 +248,4 @@ async def remove_application(
         job.applications_count -= 1
 
     await db.delete(app)
+    logger.info("application_removed", extra={"user_id": str(user.id), "application_id": str(application_id)})

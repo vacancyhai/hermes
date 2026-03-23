@@ -11,9 +11,12 @@ DELETE /api/v1/users/me/fcm-token          — Unregister FCM token
 PUT    /api/v1/users/me/notification-preferences — Update notification preferences
 """
 
+import logging
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
+
+logger = logging.getLogger(__name__)
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -71,6 +74,7 @@ async def update_profile(
     for field, value in update_data.items():
         setattr(profile, field, value)
 
+    logger.info("profile_updated", extra={"user_id": str(user.id), "fields": list(update_data.keys())})
     return ProfileResponse.model_validate(profile).model_dump()
 
 
@@ -83,6 +87,7 @@ async def update_phone(
     """Update phone number on user record."""
     user, _ = current_user
     user.phone = body.phone
+    logger.info("phone_updated", extra={"user_id": str(user.id)})
     return {"message": "Phone number updated", "phone": user.phone}
 
 
@@ -126,6 +131,7 @@ async def follow_organization(
 
     orgs.append(name.strip())
     profile.followed_organizations = orgs
+    logger.info("org_followed", extra={"user_id": str(user.id), "org": name.strip()})
     return {"message": f"Now following {name}", "followed_organizations": orgs}
 
 
@@ -150,6 +156,7 @@ async def unfollow_organization(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Not following {name}")
 
     profile.followed_organizations = new_orgs
+    logger.info("org_unfollowed", extra={"user_id": str(user.id), "org": name.strip()})
     return {"message": f"Unfollowed {name}", "followed_organizations": new_orgs}
 
 
@@ -188,7 +195,7 @@ async def register_fcm_token(
         "registered_at": datetime.now(timezone.utc).isoformat(),
     })
     profile.fcm_tokens = tokens
-
+    logger.info("fcm_token_registered", extra={"user_id": str(user.id), "device_name": body.device_name or "Unknown"})
     return {"message": "FCM token registered", "fcm_tokens_count": len(tokens)}
 
 
@@ -212,6 +219,7 @@ async def unregister_fcm_token(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Token not found")
 
     profile.fcm_tokens = new_tokens
+    logger.info("fcm_token_removed", extra={"user_id": str(user.id)})
     return {"message": "FCM token removed", "fcm_tokens_count": len(new_tokens)}
 
 
@@ -237,5 +245,5 @@ async def update_notification_preferences(
         prefs[key] = value
 
     profile.notification_preferences = prefs
-
+    logger.info("notification_preferences_updated", extra={"user_id": str(user.id), "channels": list(update_data.keys())})
     return {"message": "Preferences updated", "notification_preferences": prefs}

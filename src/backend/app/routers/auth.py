@@ -100,6 +100,9 @@ async def register(request: Request, body: RegisterRequest, db: AsyncSession = D
     profile = UserProfile(user_id=user.id)
     db.add(profile)
 
+    ip = request.client.host if request.client else "unknown"
+    logger.info("user_registered", extra={"user_id": str(user.id), "ip": ip})
+
     return RegisterResponse(id=user.id, email=user.email, full_name=user.full_name)
 
 
@@ -233,6 +236,7 @@ async def verify_email(token: str, db: AsyncSession = Depends(get_db), redis=Dep
 
     user.is_email_verified = True
     await redis.delete(f"{settings.REDIS_KEY_PREFIX}:verify:{token}")
+    logger.info("email_verified", extra={"user_id": str(user.id)})
 
     return MessageResponse(message="Email verified successfully.")
 
