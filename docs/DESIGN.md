@@ -1082,7 +1082,7 @@ All containers run via Docker Compose on this single VM.
 | Monitoring| OCI Monitoring + Alarms (500M datapoints/month free)            |
 | Images    | Built directly on VM via `git pull` + `docker compose up --build`|
 | CDN       | Cloudflare Free Tier — CDN cache, DDoS protection, analytics   |
-| Secrets   | OCI Vault (20 key versions free) or `.env` files                |
+| Secrets   | `.env` files (gitignored, managed manually on VM)               |
 | Backups   | `pg_dump` daily cron + OCI block volume snapshots (weekly)      |
 
 **Resource allocation (~3 GB used of 24 GB):**
@@ -1101,7 +1101,7 @@ All containers run via Docker Compose on this single VM.
 
 **Production checklist:**
 
-- [ ] `SECRET_KEY` — minimum 32 random bytes, stored in OCI Vault
+- [ ] `SECRET_KEY` — minimum 32 random bytes, set in `.env` (gitignored)
 - [ ] `POSTGRES_PASSWORD` / `DB_PASSWORD` — strong, unique
 - [ ] `REDIS_PASSWORD` — strong, unique
 - [ ] `JWT_SECRET_KEY` — separate from `SECRET_KEY`
@@ -1129,7 +1129,7 @@ All items below are implemented.
 - **Security headers:** X-Frame-Options, X-Content-Type-Options, X-XSS-Protection, Content-Security-Policy, Strict-Transport-Security, Referrer-Policy (via Nginx behind LB)
 - **Input validation:** Pydantic models on all endpoints (FastAPI native)
 - **CSRF protection:** Redis-backed single-use tokens (1h TTL)
-- **Secrets:** `.env` files in `.gitignore`; production secrets in OCI Vault (20 free key versions)
+- **Secrets:** `.env` files in `.gitignore`; never committed to version control
 - **Redis persistence:** AOF (append-only file) enabled — prevents JWT blocklist loss on Redis restart. Without AOF, a Redis restart would make previously logged-out tokens valid again.
 - **Security event logging:** Failed logins, successful logins, logouts, and password resets are logged via `logging` with user ID and client IP for audit purposes.
 
@@ -1255,7 +1255,6 @@ Internet
 | ------- | ------- | --------------- |
 | ARM VM (Ampere A1) | Runs all Docker containers | 4 OCPU, 24 GB RAM, 200 GB storage |
 | Email Delivery | Job notification emails (SPF/DKIM) | 3,000 emails/day |
-| Vault | Store secrets (`SECRET_KEY`, `JWT_SECRET_KEY`, passwords) | 20 key versions |
 | Monitoring + Alarms | CPU, disk, health check alerts | 500M datapoints/month |
 | Block Volume | VM storage + backup snapshots | 200 GB total |
 | VCN + Networking | Subnet isolation + security lists | Unlimited |
