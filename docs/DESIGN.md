@@ -1153,6 +1153,7 @@ All items below are implemented.
   | Register | `user_id`, IP |
   | Login success / failure | `user_id`, IP |
   | Logout | `user_id` |
+  | Token refresh | `user_id` |
   | Email verified | `user_id` |
   | Password reset requested | `user_id` |
   | Password reset completed | `user_id` |
@@ -1161,6 +1162,9 @@ All items below are implemented.
   | Org followed / unfollowed | `user_id`, org name |
   | FCM token registered / removed | `user_id`, device name |
   | Notification preferences updated | `user_id`, channels changed |
+  | Notification marked read | `user_id`, `notification_id` |
+  | All notifications marked read | `user_id`, count |
+  | Notification deleted | `user_id`, `notification_id` |
   | Application tracked | `user_id`, `job_id` |
   | Application updated | `user_id`, changed fields |
   | Application removed | `user_id`, `application_id` |

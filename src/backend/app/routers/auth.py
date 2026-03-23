@@ -172,6 +172,7 @@ async def refresh(body: RefreshRequest, db: AsyncSession = Depends(get_db), redi
     ttl = max(int(exp - datetime.now(timezone.utc).timestamp()), 1)
     await redis.setex(f"{settings.REDIS_KEY_PREFIX}:blocklist:{jti}", ttl, "1")
 
+    logger.info("token_refreshed", extra={"user_id": str(user.id)})
     return TokenResponse(
         access_token=create_access_token(str(user.id), "user"),
         refresh_token=create_refresh_token(str(user.id), "user"),

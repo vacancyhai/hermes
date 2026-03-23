@@ -7,10 +7,13 @@ PUT    /api/v1/notifications/read-all  — Mark all as read
 DELETE /api/v1/notifications/:id       — Delete notification
 """
 
+import logging
 import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+
+logger = logging.getLogger(__name__)
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -94,6 +97,7 @@ async def mark_all_read(
     )
     updated = result.rowcount
 
+    logger.info("notifications_marked_all_read", extra={"user_id": str(user.id), "count": updated})
     return {"message": f"Marked {updated} notifications as read", "updated": updated}
 
 
@@ -119,6 +123,7 @@ async def mark_read(
     if not notification.is_read:
         notification.is_read = True
         notification.read_at = datetime.now(timezone.utc)
+        logger.info("notification_marked_read", extra={"user_id": str(user.id), "notification_id": str(notification_id)})
 
     return NotificationResponse.model_validate(notification).model_dump()
 
@@ -143,3 +148,4 @@ async def delete_notification(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not your notification")
 
     await db.delete(notification)
+    logger.info("notification_deleted", extra={"user_id": str(user.id), "notification_id": str(notification_id)})
