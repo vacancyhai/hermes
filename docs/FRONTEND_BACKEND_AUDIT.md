@@ -8,27 +8,27 @@
 
 | Category | Count |
 |----------|-------|
-| 🔴 Bugs (frontend calls non-existent endpoint) | 1 |
+| ✅ Bugs (all fixed) | 1 fixed |
 | 🟡 Backend endpoints unused by any frontend | 4 |
 | ✅ Endpoints correctly wired | 38+ |
 
 ---
 
-## 🔴 Bug — Calls Non-Existent Endpoint
-
-### `GET /users/me` — Does Not Exist
+## ✅ Fixed Bug — `GET /users/me` → `GET /users/profile`
 
 **File:** `src/frontend/app/__init__.py` — `firebase_callback()` (line 372)
 
+**Status: Fixed** — `/users/me` replaced with `/users/profile`.
+
 ```python
-# BUG: /users/me does not exist — should be /users/profile
-me_resp = current_app.api_client.get("/users/me", token=session["token"])
+# FIXED: was /users/me (non-existent), now correctly calls /users/profile
+me_resp = current_app.api_client.get("/users/profile", token=session["token"])
 session["user_name"] = me_resp.json().get("full_name", "") if me_resp.ok else ""
 ```
 
-**Impact:** After Firebase login, `session["user_name"]` always stays `""`. The app won't crash — `me_resp.ok` will be `False` and it silently falls back — but the user's display name in the session is always empty.
+**Impact before fix:** After Firebase login, `session["user_name"]` always stayed `""` because `/users/me` doesn't exist. Fixed in `firebase_callback()`.
 
-**Fix:** Replace `/users/me` → `/users/profile`.
+**Regression guard:** `test_firebase_callback_success` in `src/frontend/tests/integration/test_routes.py` now asserts `mock_api.get.assert_called_once_with("/users/profile", token="jwt-access")`.
 
 ---
 
@@ -101,6 +101,6 @@ These endpoints exist in the backend and are documented in `API.md` but no front
 
 ## Recommendations
 
-1. **Fix immediately:** Change `/users/me` → `/users/profile` in `firebase_callback()` so the user's display name is correctly stored in session after login.
+1. ~~**Fix immediately:** Change `/users/me` → `/users/profile` in `firebase_callback()`~~ — **Done.**
 2. **Future (Phase 9 / PWA):** Wire `POST /users/me/fcm-token` and `DELETE /users/me/fcm-token` from the service worker to enable full push notification support.
 3. **Future:** Add a `/dashboard/applications/{id}` detail page in the user frontend to make use of the existing `GET /applications/{id}` backend endpoint.

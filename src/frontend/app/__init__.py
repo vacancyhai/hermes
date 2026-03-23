@@ -369,7 +369,7 @@ def create_app():
         tokens = resp.json()
         session["token"] = tokens.get("access_token")
         session["refresh_token"] = tokens.get("refresh_token")
-        me_resp = current_app.api_client.get("/users/me", token=session["token"])
+        me_resp = current_app.api_client.get("/users/profile", token=session["token"])
         session["user_name"] = me_resp.json().get("full_name", "") if me_resp.ok else ""
         return {"redirect": "/dashboard"}, 200
 

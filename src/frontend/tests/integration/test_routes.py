@@ -176,6 +176,7 @@ def test_firebase_callback_success(client, mock_api):
         "/auth/verify-token",
         json={"id_token": "valid-firebase-id-token", "full_name": None},
     )
+    mock_api.get.assert_called_once_with("/users/profile", token="jwt-access")
 
 
 def test_firebase_callback_stores_token_in_session(app, mock_api):
