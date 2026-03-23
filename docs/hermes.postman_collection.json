@@ -31,24 +31,11 @@
 			]
 		},
 		{
-			"name": "Auth – User",
+			"name": "Auth – User (Firebase)",
 			"item": [
 				{
-					"name": "Register",
-					"request": {
-						"method": "POST",
-						"url": "{{base_url}}/auth/register",
-						"header": [
-							{ "key": "Content-Type", "value": "application/json" }
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"SecurePass123\",\n  \"full_name\": \"Test User\"\n}"
-						}
-					}
-				},
-				{
-					"name": "Login",
+					"name": "Verify Firebase Token",
+					"description": "Exchange a Firebase ID token (from Firebase JS SDK) for an internal JWT pair. Creates user if new, links existing by firebase_uid or email.",
 					"event": [
 						{
 							"listen": "test",
@@ -65,13 +52,13 @@
 					],
 					"request": {
 						"method": "POST",
-						"url": "{{base_url}}/auth/login",
+						"url": "{{base_url}}/auth/verify-token",
 						"header": [
 							{ "key": "Content-Type", "value": "application/json" }
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"SecurePass123\"\n}"
+							"raw": "{\n  \"firebase_id_token\": \"PASTE_FIREBASE_ID_TOKEN_HERE\"\n}"
 						}
 					}
 				},
@@ -111,42 +98,6 @@
 							"mode": "raw",
 							"raw": "{\n  \"refresh_token\": \"{{refresh_token}}\"\n}"
 						}
-					}
-				},
-				{
-					"name": "Forgot Password",
-					"request": {
-						"method": "POST",
-						"url": "{{base_url}}/auth/forgot-password",
-						"header": [
-							{ "key": "Content-Type", "value": "application/json" }
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"email\": \"user@example.com\"\n}"
-						}
-					}
-				},
-				{
-					"name": "Reset Password",
-					"request": {
-						"method": "POST",
-						"url": "{{base_url}}/auth/reset-password",
-						"header": [
-							{ "key": "Content-Type", "value": "application/json" }
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"token\": \"PASTE_RESET_TOKEN_HERE\",\n  \"new_password\": \"NewSecurePass456\"\n}"
-						}
-					}
-				},
-				{
-					"name": "Verify Email",
-					"request": {
-						"method": "GET",
-						"url": "{{base_url}}/auth/verify-email/PASTE_VERIFY_TOKEN_HERE",
-						"header": []
 					}
 				},
 				{
@@ -349,6 +300,16 @@
 							"mode": "raw",
 							"raw": "{\n  \"job_title\": \"SSC CGL 2026\",\n  \"organization\": \"Staff Selection Commission\",\n  \"job_type\": \"latest_job\",\n  \"qualification_level\": \"graduate\",\n  \"total_vacancies\": 8000,\n  \"description\": \"Combined Graduate Level Exam 2026 recruitment.\",\n  \"application_end\": \"2026-07-15\",\n  \"fee_general\": 100,\n  \"fee_obc\": 100,\n  \"fee_sc_st\": 0,\n  \"fee_ews\": 0,\n  \"fee_female\": 0,\n  \"status\": \"draft\"\n}"
 						}
+					}
+				},
+				{
+					"name": "Get Job Detail (Admin)",
+					"request": {
+						"method": "GET",
+						"url": "{{base_url}}/admin/jobs/{{job_id}}",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{admin_token}}" }
+						]
 					}
 				},
 				{
