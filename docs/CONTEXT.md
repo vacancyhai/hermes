@@ -98,6 +98,7 @@ PostgreSQL 16 with 10 tables:
 - `0007_user_devices_and_delivery_log.py` — `user_devices` + `notification_delivery_log` tables (migrates JSONB fcm_tokens)
 - `0008_add_google_id_to_users.py` — `google_id VARCHAR(255)` + unique index on `users` (legacy Google OAuth)
 - `0009_firebase_auth.py` — `firebase_uid VARCHAR(128)` + unique index, `migration_status VARCHAR(20)`, `password_hash` made nullable (Firebase Auth migration)
+- `0010_email_nullable.py` — `email` column made nullable on `users` (supports phone-only Firebase Auth accounts)
 
 ### Key DB Constraints
 

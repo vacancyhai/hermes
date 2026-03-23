@@ -1189,7 +1189,7 @@ SECRET_KEY=<random-32-bytes>
 BACKEND_PORT=8000
 
 # PostgreSQL (async via asyncpg, through PgBouncer)
-DATABASE_URL=postgresql+asyncpg://hermes_user:<password>@pgbouncer:6432/hermes_db
+DATABASE_URL=postgresql+asyncpg://hermes_user:<password>@pgbouncer:5432/hermes_db
 DB_POOL_SIZE=20
 
 # Redis
@@ -1200,13 +1200,14 @@ REDIS_PASSWORD=<password>
 CELERY_BROKER_URL=redis://localhost:6379/0
 CELERY_RESULT_BACKEND=redis://localhost:6379/0
 
-# Email — OCI Email Delivery (3,000/day free)
+# Email (dev: Mailpit SMTP port 1025 / prod: OCI Email Delivery)
 MAIL_SERVER=smtp.email.ap-mumbai-1.oci.oraclecloud.com
 MAIL_PORT=587
 MAIL_USE_TLS=True
 MAIL_USERNAME=<OCI-SMTP-credential-OCID>
 MAIL_PASSWORD=<OCI-SMTP-credential-password>
 MAIL_DEFAULT_SENDER=noreply@yourdomain.com
+MAIL_ENABLED=True              # Set False to disable all email sending
 
 # Firebase (Auth + FCM push — shared credentials)
 FIREBASE_CREDENTIALS_PATH=path/to/firebase-credentials.json
@@ -1221,6 +1222,18 @@ NOTIFY_WHATSAPP_DELAY=3600     # 1 hour (default)
 # JWT (internal tokens issued after Firebase verification)
 JWT_SECRET_KEY=<separate-random-key>
 JWT_ACCESS_TOKEN_EXPIRES=900
+JWT_REFRESH_TOKEN_EXPIRES=604800   # 7 days
+
+# AI Extraction (PDF job ingestion)
+ANTHROPIC_API_KEY=<anthropic-api-key>   # Leave blank to disable AI extraction
+AI_MODEL=claude-sonnet-4-20250514
+
+# SEO / Sitemap
+SITE_URL=https://yourdomain.com
+SITEMAP_PATH=/app/sitemap.xml
+
+# Frontend URL (for CORS and email links)
+FRONTEND_URL=https://yourdomain.com
 ```
 
 ### User Frontend (`src/frontend/.env`)

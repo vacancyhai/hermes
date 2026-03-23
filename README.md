@@ -269,7 +269,7 @@ hermes/
 │   │           ├── _user_rows.html       # HTMX partial (user rows)
 │   │           ├── logs.html             # Audit log viewer
 │   │           └── _log_rows.html        # HTMX partial (log rows)
-│   ├── mobile/                           # React Native mobile app (Phase 9 — planned)
+│   ├── mobile-app/                       # React Native mobile app (Phase 9 — planned)
 │   │   ├── google-services.json          # Android Firebase SDK config (com.hermes.app)
 │   │   ├── GoogleService-Info.plist      # iOS Firebase SDK config (com.hermes.app)
 │   │   └── README.md                     # Setup instructions + test credentials
