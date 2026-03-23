@@ -1022,52 +1022,39 @@ Notifications:
 SCHEDULED TASKS (with Priority Routing):
 ════════════════════════════════════════
 
-1. daily_job_matching
-   Run: Every day at 1:00 AM
-   Priority: MEDIUM
-   Purpose: Match new jobs with users
-   Retry: 3x with exponential backoff
-
-2. send_deadline_reminders
-   Run: Every day at 9:00 AM
+1. app.tasks.notifications.send_deadline_reminders
+   Run: Every day at 08:00 UTC
    Priority: HIGH
    Purpose: Send application deadline reminders
-   Retry: 5x with exponential backoff
 
-3. check_admit_card_dates
-   Run: Every day at 8:00 AM
-   Priority: HIGH
-   Purpose: Check and notify admit card releases
-   Retry: 5x (critical notifications)
-
-4. check_exam_dates
-   Run: Every day at 7:00 AM
-   Priority: HIGH
-   Purpose: Remind users of upcoming exams
-   Retry: 5x (critical notifications)
-
-5. check_result_dates
-   Run: Every day at 6:00 PM
-   Priority: HIGH
-   Purpose: Notify about result declarations
-   Retry: 5x (critical notifications)
-
-6. cleanup_old_notifications
-   Run: Every week (Sunday 2:00 AM)
+2. app.tasks.cleanup.purge_expired_notifications
+   Run: Every day at 01:00 UTC
    Priority: LOW
-   Purpose: Archive old read notifications (TTL: 90 days)
+   Purpose: Archive old notifications (TTL enforcement)
    Retry: 1x
 
-7. generate_weekly_report
-   Run: Every Monday 6:00 AM
+3. app.tasks.cleanup.purge_expired_admin_logs
+   Run: Every day at 01:30 UTC
    Priority: LOW
-   Purpose: Generate analytics report for admin
-   Retry: 2x
+   Purpose: Delete expired admin logs (TTL enforcement)
+   Retry: 1x
 
-8. cleanup_old_logs
-   Run: Every week (Sunday 3:00 AM)
+4. app.tasks.cleanup.purge_soft_deleted_jobs
+   Run: Every day at 02:00 UTC
    Priority: LOW
-   Purpose: Delete logs older than 30 days (TTL enforcement)
+   Purpose: Permanently delete soft-deleted jobs
+   Retry: 1x
+
+5. app.tasks.jobs.close_expired_job_listings
+   Run: Every day at 02:30 UTC
+   Priority: MEDIUM
+   Purpose: Close job listings that have passed their deadline
+   Retry: 3x
+
+6. app.tasks.seo.generate_sitemap
+   Run: Every day at 04:00 UTC
+   Priority: LOW
+   Purpose: Generate updated sitemap for SEO
    Retry: 1x
 ```
 
@@ -1241,7 +1228,7 @@ OPERATOR ROLE (🔧) - Content Reviewer
 ──────────────────────────────────────
 ✅ GET    /api/v1/jobs                    View all jobs
 ✅ GET    /api/v1/jobs/<id>               View job details
-✅ PUT    /api/v1/jobs/<id>               Update job (limited fields)
+✅ PUT    /api/v1/admin/jobs/<id>         Update job (limited fields)
   └─→ Can modify: status, description, important_dates
   └─→ CANNOT modify: salary_max, salary_min, vacancies
 
@@ -1255,8 +1242,8 @@ Rate Limits:
   - API: 1000 requests/min per user
   - Login: 5 attempts/min
 
-❌ POST   /api/v1/jobs                    (Admin only) 403
-❌ DELETE /api/v1/jobs/<id>               (Admin only) 403
+❌ POST   /api/v1/admin/jobs              (Admin only) 403
+❌ DELETE /api/v1/admin/jobs/<id>         (Admin only) 403
 ❌ GET    /api/v1/admin/users             (Admin only) 403
 ❌ PUT    /api/v1/admin/users/<id>/role   (Admin only) 403
 ❌ GET    /api/v1/admin/analytics         (Admin only) 403
@@ -1265,9 +1252,9 @@ ADMIN ROLE (👨‍💼) - Full Control
 ──────────────────────────────────
 ✅ GET    /api/v1/jobs                    View all jobs
 ✅ GET    /api/v1/jobs/<id>               View job details
-✅ POST   /api/v1/jobs                    Create job
-✅ PUT    /api/v1/jobs/<id>               Update job (all fields)
-✅ DELETE /api/v1/jobs/<id>               Delete job
+✅ POST   /api/v1/admin/jobs              Create job
+✅ PUT    /api/v1/admin/jobs/<id>         Update job (all fields)
+✅ DELETE /api/v1/admin/jobs/<id>         Delete job
 
 ✅ GET    /api/v1/users/profile           View own profile
 ✅ PUT    /api/v1/users/profile           Update own profile
