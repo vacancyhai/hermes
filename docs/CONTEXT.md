@@ -19,8 +19,8 @@ A **Government Job Vacancy Portal** (India-focused). Users register, browse jobs
 - **Latest commit**: `1836397` — feat: Phase 10 + 11 — complete user and admin frontend
 - **GitHub Issues**: #114–#154 (41 issues, 11 phases)
   - Phases 1–7 + Testing (#139–#140) + Phase 10–11 (#144–#154): **CLOSED**
-  - Phase 8 (#141, OCI deployment): **OPEN — next**
-  - Phase 9 (#142–#143, React Native): **OPEN**
+  - Phase 8 (#141, OCI deployment): **OPEN — deferred to future**
+  - Phase 9 (#142–#143, React Native): **OPEN — deferred to future**
 
 ---
 
@@ -280,8 +280,8 @@ docker exec hermes_celery_worker celery -A app.celery_app inspect registered
 | Testing | #139–#140 | ✅ | 406 tests (291 backend + 52 frontend + 62 admin), 91/100/97% coverage, security audit |
 | 10 | #144–#148 | ✅ | Complete user frontend: register, forgot/reset password, verify email, profile, org follow/unfollow, recommended jobs tab, application tracking inline edit |
 | 11 | #149–#154 | ✅ | Complete admin frontend: analytics dashboard, new job form, job delete, user detail, role management; 476 tests (292 backend + 96 frontend + 88 admin) |
-| 8 | #141 | 🔲 | Production deployment to OCI ARM VM |
-| 9 | #142–#143 | 🔲 | React Native mobile app + push notifications |
+| 8 | #141 | ⏳ Deferred | Production deployment to OCI ARM VM — planned for future |
+| 9 | #142–#143 | ⏳ Deferred | React Native mobile app + push notifications — planned for future |
 
 ---
 

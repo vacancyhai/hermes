@@ -296,8 +296,8 @@ hermes/
 | 6     | Admin frontend (dashboard, job/user mgmt, logs), SEO (sitemap, meta, JSON-LD), fee display, share buttons | Done |
 | 7     | PDF ingestion (AI extraction + operator review), PWA | Done |
 | 7.5   | Testing (406 tests — 91/100/97% coverage), security audit (JWT, RBAC, OWASP) | Done |
-| 8     | Production deployment to OCI ARM VM | Open |
-| 9     | React Native mobile app (Android + iOS) | Open |
+| 8     | Production deployment to OCI ARM VM | Deferred — future |
+| 9     | React Native mobile app (Android + iOS) | Deferred — future |
 
 ## License
 
