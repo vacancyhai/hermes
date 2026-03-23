@@ -1003,8 +1003,6 @@ consistent fields:
 }
 ```
 
-This makes OCI Log Search actually useful — without structured logs, you're
-dumping unstructured text and can't filter by user, endpoint, or request ID.
 `structlog` is configured once in the FastAPI app startup and works with
 Uvicorn and Celery.
 
@@ -1082,7 +1080,6 @@ All containers run via Docker Compose on this single VM.
 | Uvicorn   | Workers via `WEB_CONCURRENCY` (default: CPU × 2 + 1)           |
 | Networking| OCI VCN — VM in private subnet; ports 80/443/22 via security list|
 | Monitoring| OCI Monitoring + Alarms (500M datapoints/month free)            |
-| Logging   | OCI Logging (10 GB/month free) — structured JSON via `structlog`|
 | Images    | Built directly on VM via `git pull` + `docker compose up --build`|
 | CDN       | Cloudflare Free Tier — CDN cache, DDoS protection, analytics   |
 | Secrets   | OCI Vault (20 key versions free) or `.env` files                |
@@ -1260,7 +1257,6 @@ Internet
 | Email Delivery | Job notification emails (SPF/DKIM) | 3,000 emails/day |
 | Vault | Store secrets (`SECRET_KEY`, `JWT_SECRET_KEY`, passwords) | 20 key versions |
 | Monitoring + Alarms | CPU, disk, health check alerts | 500M datapoints/month |
-| Logging | Centralized container logs | 10 GB/month |
 | Block Volume | VM storage + backup snapshots | 200 GB total |
 | VCN + Networking | Subnet isolation + security lists | Unlimited |
 

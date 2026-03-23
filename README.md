@@ -37,7 +37,7 @@ notifications, and an admin panel.
 | Reverse Proxy      | Nginx (SSL via Let's Encrypt / Certbot)     |
 | CDN / DDoS         | Cloudflare (free tier)                      |
 | Connection Pooling | PgBouncer                                   |
-| Logging            | structlog (JSON) → OCI Logging              |
+| Logging            | structlog (JSON)                            |
 | Containerization   | Docker + Docker Compose                     |
 | Hosting            | OCI ARM VM (4 OCPU, 24 GB RAM, 200 GB storage — Always Free)|
 
