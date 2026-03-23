@@ -15,7 +15,7 @@ notifications, and an admin panel.
 > category, WhatsApp/Telegram share buttons, PDF upload with AI extraction
 > (Anthropic Claude), draft review & approve workflow, PWA (manifest, service
 > worker, offline fallback), comprehensive test suite
-> (406 tests — 292 backend + 52 frontend + 62 admin),
+> (481 tests — 313 backend + 80 frontend + 88 admin),
 > and security audit (JWT, RBAC, file upload, OWASP) — all implemented.
 
 ## Tech Stack
@@ -29,7 +29,7 @@ notifications, and an admin panel.
 | Auth               | Firebase Auth (Email/Password, Google, Phone OTP), firebase-admin SDK, python-jose (internal JWT + Redis blocklist) |
 | Validation         | Pydantic v2 (FastAPI native)                |
 | Task Queue         | Celery 5.4 + Redis 7 broker                |
-| Email              | OCI Email Delivery (3,000/day free)         |
+| Email              | OCI Email Delivery (prod) / Mailpit (dev)   |
 | Push Notifications | Firebase Cloud Messaging                    |
 | WhatsApp (future) | WhatsApp Cloud API                           |
 | User Frontend      | Flask + Jinja2 + HTMX (port 8080)           |
@@ -153,11 +153,12 @@ hermes/
 │   │   │   ├── config.py                 # Settings from .env (pydantic-settings)
 │   │   │   ├── database.py               # SQLAlchemy async engine + session
 │   │   │   ├── celery_app.py             # Celery config + Beat schedule
+│   │   │   ├── firebase.py               # Firebase Admin SDK — shared init (Auth + FCM)
 │   │   │   ├── logging_config.py         # structlog JSON logging setup
 │   │   │   ├── dependencies.py           # FastAPI deps (auth, db session)
 │   │   │   ├── routers/                  # FastAPI route modules
 │   │   │   │   ├── health.py             # GET /api/v1/health
-│   │   │   │   ├── auth.py               # /api/v1/auth/*
+│   │   │   │   ├── auth.py               # /api/v1/auth/* (verify-token, logout, refresh, admin/*)
 │   │   │   │   ├── users.py              # /api/v1/users/*
 │   │   │   │   ├── jobs.py               # /api/v1/jobs/*
 │   │   │   │   ├── applications.py       # /api/v1/applications/*
@@ -200,12 +201,15 @@ hermes/
 │   │   │       ├── 0004_fcm_tokens.py            # FCM tokens for push notifications
 │   │   │       ├── 0005_add_fee_columns.py       # Application fee by category
 │   │   │       ├── 0006_add_source_pdf_path.py   # PDF upload source tracking
-│   │   │       └── 0007_user_devices_and_delivery_log.py  # Device registry + delivery tracking
-│   │   ├── tests/                               # pytest test suite (292 tests)
+│   │   │       ├── 0007_user_devices_and_delivery_log.py  # Device registry + delivery tracking
+│   │   │       ├── 0008_add_google_id_to_users.py  # Legacy Google OAuth linking (superseded)
+│   │   │       ├── 0009_firebase_auth.py          # firebase_uid, migration_status, password_hash nullable
+│   │   │       └── 0010_email_nullable.py         # email nullable for phone-only Firebase users
+│   │   ├── tests/                               # pytest test suite (313 tests)
 │   │   │   ├── conftest.py                      # Async fixtures (DB, client, tokens)
 │   │   │   ├── unit/                            # Pure logic tests (no DB/Redis)
 │   │   │   ├── integration/                     # API endpoint tests (real DB + Redis)
-│   │   │   │   ├── test_auth.py                 # Auth: register, login, logout, refresh, JWT
+│   │   │   │   ├── test_auth.py                 # Auth: Firebase verify-token, logout, refresh, admin login
 │   │   │   │   ├── test_jobs.py                 # Jobs: CRUD, search, slug, pagination
 │   │   │   │   ├── test_applications.py         # Applications: track, update, delete
 │   │   │   │   └── test_admin.py                # Admin: stats, user mgmt, RBAC
@@ -218,12 +222,12 @@ hermes/
 │   │   ├── Dockerfile
 │   │   ├── docker-compose.yml
 │   │   ├── requirements.txt
-│   │   ├── tests/                        # pytest test suite (52 tests)
+│   │   ├── tests/                        # pytest test suite (80 tests)
 │   │   │   ├── unit/                     # API client tests
 │   │   │   ├── integration/              # Route + template tests
 │   │   │   └── e2e/
 │   │   └── app/
-│   │       ├── __init__.py               # Flask app factory
+│   │       ├── __init__.py               # Flask app factory + /auth/firebase-callback relay
 │   │       ├── api_client.py             # HTTP client for backend API
 │   │       ├── static/
 │   │       │   ├── manifest.json         # PWA web app manifest
@@ -238,14 +242,15 @@ hermes/
 │   │           ├── dashboard.html        # Application tracking dashboard
 │   │           ├── _application_rows.html # HTMX partial (load more apps)
 │   │           ├── notifications.html    # Notification center
-│   │           ├── login.html            # Login form
+│   │           ├── login.html            # Firebase JS SDK auth (email, Google, phone OTP)
+│   │           ├── profile.html          # User profile + preferences
 │   │           ├── offline.html          # PWA offline fallback
 │   │           └── 404.html
 │   ├── frontend-admin/                   # Admin Frontend (port 8081)
 │   │   ├── Dockerfile
 │   │   ├── docker-compose.yml
 │   │   ├── requirements.txt
-│   │   ├── tests/                        # pytest test suite (62 tests)
+│   │   ├── tests/                        # pytest test suite (88 tests)
 │   │   │   ├── unit/                     # API client tests
 │   │   │   ├── integration/              # Route + template tests
 │   │   │   └── e2e/
@@ -264,6 +269,10 @@ hermes/
 │   │           ├── _user_rows.html       # HTMX partial (user rows)
 │   │           ├── logs.html             # Audit log viewer
 │   │           └── _log_rows.html        # HTMX partial (log rows)
+│   ├── mobile/                           # React Native mobile app (Phase 9 — planned)
+│   │   ├── google-services.json          # Android Firebase SDK config (com.hermes.app)
+│   │   ├── GoogleService-Info.plist      # iOS Firebase SDK config (com.hermes.app)
+│   │   └── README.md                     # Setup instructions + test credentials
 │   └── nginx/                            # Reverse Proxy (port 80)
 │       ├── docker-compose.yml
 │       ├── nginx.conf                    # Rate limiting, routing, security headers
@@ -306,7 +315,7 @@ hermes/
 | 5     | Notification engine (in-app, FCM push, email, WhatsApp placeholder) | Done |
 | 6     | Admin frontend (dashboard, job/user mgmt, logs), SEO (sitemap, meta, JSON-LD), fee display, share buttons | Done |
 | 7     | PDF ingestion (AI extraction + operator review), PWA | Done |
-| 7.5   | Testing (406 tests — 91/100/97% coverage), security audit (JWT, RBAC, OWASP) | Done |
+| 7.5   | Testing (481 tests — 93/91/97% coverage), security audit (JWT, RBAC, OWASP) | Done |
 | 8     | Production deployment to OCI ARM VM | Deferred — future |
 | 9     | React Native mobile app (Android + iOS) | Deferred — future |
 

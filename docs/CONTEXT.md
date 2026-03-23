@@ -16,7 +16,7 @@ A **Government Job Vacancy Portal** (India-focused). Users register, browse jobs
 
 - **Path**: `/home/sumant/workspace/hermes`
 - **Remote**: `git@github.com:SumanKr7/hermes.git`, branch `main`
-- **Latest commit**: `1836397` — feat: Phase 10 + 11 — complete user and admin frontend
+- **Latest commit**: `e66d12b` — docs: fix documentation gaps and sync api and DB diagrams with codebase
 - **GitHub Issues**: #114–#154 (41 issues, 11 phases)
   - Phases 1–7 + Testing (#139–#140) + Phase 10–11 (#144–#154): **CLOSED**
   - Phase 8 (#141, OCI deployment): **OPEN — deferred to future**
@@ -241,7 +241,7 @@ docs/
 
 | Service | Tests | Coverage | Command |
 |---------|-------|----------|---------|
-| Backend | 292 | 91% | `docker exec -w /app hermes_backend pytest tests/ --cov=app -q` |
+| Backend | 313 | 93% | `docker exec -w /app hermes_backend pytest tests/ --cov=app -q` |
 | User Frontend | 96 | 100% | `docker exec -w /app hermes_frontend python -m pytest tests/ --cov=app -q` |
 | Admin Frontend | 88 | 97% | `docker exec -w /app hermes_frontend_admin python -m pytest tests/ --cov=app -q` |
 
@@ -403,5 +403,5 @@ git push origin main
 | `docs/API.md` | Complete endpoint reference with request/response examples |
 | `docs/DESIGN.md` | Architecture, DB schema, API design decisions |
 | `docs/TESTING.md` | Coverage report for backend + frontend + admin |
-| `docs/DIAGRAMS.md` | Mermaid architecture diagrams |
+| `docs/DIAGRAMS.md` | ASCII workflow diagrams for all major user and system flows |
 | `docs/hermes.postman_collection.json` | Postman v2.1 collection (auto-saves tokens) |
