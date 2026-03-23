@@ -98,7 +98,7 @@ PostgreSQL and Redis are isolated inside Docker networks — never exposed to th
 | Document | Description |
 | -------- | ----------- |
 | [docs/DESIGN.md](docs/DESIGN.md) | Full system design: architecture, database schema, API endpoints, Docker environments, security, deployment |
-| [docs/WORKFLOW_DIAGRAMS.md](docs/WORKFLOW_DIAGRAMS.md) | ASCII workflow diagrams for all major user and system flows |
+| [docs/DIAGRAMS.md](docs/DIAGRAMS.md) | ASCII workflow diagrams for all major user and system flows |
 | [docs/API.md](docs/API.md) | Complete API endpoint reference with request/response examples |
 | [docs/hermes.postman_collection.json](docs/hermes.postman_collection.json) | Postman collection for all API endpoints |
 | [docs/CONTEXT.md](docs/CONTEXT.md) | Unified session context — load at start of every new AI session |
@@ -285,7 +285,7 @@ hermes/
 │       └── stop_all.sh                   # Stop all services
 ├── docs/
 │   ├── DESIGN.md
-│   ├── WORKFLOW_DIAGRAMS.md
+│   ├── DIAGRAMS.md
 │   ├── API.md
 │   ├── hermes.postman_collection.json
 │   ├── CONTEXT.md

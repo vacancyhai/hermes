@@ -1,4 +1,4 @@
-# Hermes — Workflow Diagrams
+# Hermes — Diagrams
 
 ## 1. System Architecture
 

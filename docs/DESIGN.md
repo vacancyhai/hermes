@@ -1347,4 +1347,4 @@ cd ../nginx           && docker compose up -d --build
 
 ## Related Documentation
 
-- [Workflow Diagrams](WORKFLOW_DIAGRAMS.md) — ASCII diagrams for user registration, job creation, matching, application tracking, admin dashboard, RBAC enforcement, and JWT token flows.
+- [Workflow Diagrams](DIAGRAMS.md) — ASCII diagrams for user registration, job creation, matching, application tracking, admin dashboard, RBAC enforcement, and JWT token flows.

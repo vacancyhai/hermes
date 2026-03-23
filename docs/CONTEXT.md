@@ -203,7 +203,7 @@ docs/
   API.md                 # Complete endpoint reference
   DESIGN.md              # Architecture + DB schema
   TESTING.md             # Coverage report for all 3 services
-  WORKFLOW_DIAGRAMS.md   # Mermaid diagrams
+  DIAGRAMS.md            # Mermaid diagrams
   CONTEXT.md             # This file — load at session start
 ```
 
@@ -397,5 +397,5 @@ git push origin main
 | `docs/API.md` | Complete endpoint reference with request/response examples |
 | `docs/DESIGN.md` | Architecture, DB schema, API design decisions |
 | `docs/TESTING.md` | Coverage report for backend + frontend + admin |
-| `docs/WORKFLOW_DIAGRAMS.md` | Mermaid architecture diagrams |
+| `docs/DIAGRAMS.md` | Mermaid architecture diagrams |
 | `docs/hermes.postman_collection.json` | Postman v2.1 collection (auto-saves tokens) |
