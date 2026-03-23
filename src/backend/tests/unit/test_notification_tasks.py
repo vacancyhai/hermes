@@ -420,8 +420,9 @@ def test_smart_notify_calls_service_send():
     user_id = str(uuid.uuid4())
     mock_notif_id = str(uuid.uuid4())
 
-    mock_svc = MagicMock()
-    mock_svc.send.return_value = mock_notif_id
+    mock_svc_instance = MagicMock()
+    mock_svc_instance.send.return_value = mock_notif_id
+    mock_svc_cls = MagicMock(return_value=mock_svc_instance)
 
     session = MagicMock()
     ctx = MagicMock()
@@ -430,7 +431,7 @@ def test_smart_notify_calls_service_send():
 
     with patch("app.tasks.notifications.Session", return_value=ctx), \
          patch("app.tasks.notifications._get_sync_redis", return_value=MagicMock()), \
-         patch("app.tasks.notifications.NotificationService", return_value=mock_svc):
+         patch("app.services.notifications.NotificationService", mock_svc_cls):
         from app.tasks.notifications import smart_notify
         smart_notify(
             user_id=user_id,
@@ -439,16 +440,17 @@ def test_smart_notify_calls_service_send():
             notification_type="new_job_from_followed_org",
         )
 
-    mock_svc.send.assert_called_once()
-    call_kwargs = mock_svc.send.call_args[1]
+    mock_svc_instance.send.assert_called_once()
+    call_kwargs = mock_svc_instance.send.call_args[1]
     assert call_kwargs["user_id"] == user_id
     assert call_kwargs["title"] == "New Job Alert"
 
 
 def test_smart_notify_staggered_mode():
     """smart_notify passes delivery_mode='staggered' to NotificationService.send."""
-    mock_svc = MagicMock()
-    mock_svc.send.return_value = str(uuid.uuid4())
+    mock_svc_instance = MagicMock()
+    mock_svc_instance.send.return_value = str(uuid.uuid4())
+    mock_svc_cls = MagicMock(return_value=mock_svc_instance)
 
     session = MagicMock()
     ctx = MagicMock()
@@ -457,7 +459,7 @@ def test_smart_notify_staggered_mode():
 
     with patch("app.tasks.notifications.Session", return_value=ctx), \
          patch("app.tasks.notifications._get_sync_redis", return_value=MagicMock()), \
-         patch("app.tasks.notifications.NotificationService", return_value=mock_svc):
+         patch("app.services.notifications.NotificationService", mock_svc_cls):
         from app.tasks.notifications import smart_notify
         smart_notify(
             user_id=str(uuid.uuid4()),
@@ -467,7 +469,7 @@ def test_smart_notify_staggered_mode():
             delivery_mode="staggered",
         )
 
-    call_kwargs = mock_svc.send.call_args[1]
+    call_kwargs = mock_svc_instance.send.call_args[1]
     assert call_kwargs["delivery_mode"] == "staggered"
 
 
@@ -475,7 +477,8 @@ def test_smart_notify_staggered_mode():
 
 def test_deliver_delayed_email_calls_send_email():
     """deliver_delayed_email calls NotificationService._send_email then commits."""
-    mock_svc = MagicMock()
+    mock_svc_instance = MagicMock()
+    mock_svc_cls = MagicMock(return_value=mock_svc_instance)
 
     session = MagicMock()
     ctx = MagicMock()
@@ -484,7 +487,7 @@ def test_deliver_delayed_email_calls_send_email():
 
     with patch("app.tasks.notifications.Session", return_value=ctx), \
          patch("app.tasks.notifications._get_sync_redis", return_value=MagicMock()), \
-         patch("app.tasks.notifications.NotificationService", return_value=mock_svc):
+         patch("app.services.notifications.NotificationService", mock_svc_cls):
         from app.tasks.notifications import deliver_delayed_email
         deliver_delayed_email(
             notification_id=str(uuid.uuid4()),
@@ -494,7 +497,7 @@ def test_deliver_delayed_email_calls_send_email():
             context={"job_title": "SSC CGL"},
         )
 
-    mock_svc._send_email.assert_called_once()
+    mock_svc_instance._send_email.assert_called_once()
     session.commit.assert_called_once()
 
 
@@ -502,7 +505,8 @@ def test_deliver_delayed_email_calls_send_email():
 
 def test_deliver_delayed_whatsapp_calls_send_whatsapp():
     """deliver_delayed_whatsapp calls NotificationService._send_whatsapp then commits."""
-    mock_svc = MagicMock()
+    mock_svc_instance = MagicMock()
+    mock_svc_cls = MagicMock(return_value=mock_svc_instance)
 
     session = MagicMock()
     ctx = MagicMock()
@@ -511,7 +515,7 @@ def test_deliver_delayed_whatsapp_calls_send_whatsapp():
 
     with patch("app.tasks.notifications.Session", return_value=ctx), \
          patch("app.tasks.notifications._get_sync_redis", return_value=MagicMock()), \
-         patch("app.tasks.notifications.NotificationService", return_value=mock_svc):
+         patch("app.services.notifications.NotificationService", mock_svc_cls):
         from app.tasks.notifications import deliver_delayed_whatsapp
         deliver_delayed_whatsapp(
             notification_id=str(uuid.uuid4()),
@@ -520,7 +524,7 @@ def test_deliver_delayed_whatsapp_calls_send_whatsapp():
             message="A job was posted for you.",
         )
 
-    mock_svc._send_whatsapp.assert_called_once()
+    mock_svc_instance._send_whatsapp.assert_called_once()
     session.commit.assert_called_once()
 
 

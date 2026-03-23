@@ -120,6 +120,7 @@ async def test_list_applications_with_priority_filter():
 
 @pytest.mark.asyncio
 async def test_list_applications_with_job_enrichment():
+    """list_applications batch-fetches related jobs and enriches each item."""
     from app.routers.applications import list_applications
     db = AsyncMock()
     count_result = MagicMock()
@@ -129,12 +130,15 @@ async def test_list_applications_with_job_enrichment():
     data_result = MagicMock()
     data_result.scalars.return_value.all.return_value = [app_obj]
 
+    # Job id must match app_obj.job_id for jobs_map lookup to work
     job = MagicMock()
+    job.id = app_obj.job_id
     job.job_title = "SSC CGL 2024"
     job.slug = "ssc-cgl-2024"
     job.organization = "SSC"
     job.application_end = date(2025, 6, 30)
 
+    # Router uses: jobs_result.scalars().all() → list of JobVacancy objects
     jobs_result = MagicMock()
     jobs_result.scalars.return_value.all.return_value = [job]
 
