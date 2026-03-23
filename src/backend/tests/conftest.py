@@ -23,6 +23,9 @@ limiter.enabled = False
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
+# Import token helpers for test fixtures (avoids calling removed /auth/login endpoint)
+from app.routers.auth import create_access_token, create_refresh_token
+
 
 @pytest_asyncio.fixture
 async def test_engine():
@@ -77,7 +80,11 @@ async def client(test_engine, test_redis):
 
 @pytest_asyncio.fixture
 async def test_user(db: AsyncSession):
-    """Create a fresh test user and return (user_id, email, password)."""
+    """Create a fresh test user and return (user_id, email, password).
+
+    Users now authenticate via Firebase — password_hash is nullable but set here
+    for legacy compatibility. firebase_uid is set for tests that call verify-token.
+    """
     from app.models.user import User
     from app.models.user_profile import UserProfile
 
@@ -85,9 +92,11 @@ async def test_user(db: AsyncSession):
     password = "TestPass123"
     user = User(
         email=email,
-        password_hash=pwd_context.hash(password),
+        password_hash=pwd_context.hash(password),  # kept nullable; used by some legacy tests
+        firebase_uid=f"test-firebase-uid-{uuid.uuid4().hex[:12]}",
         full_name="Test User",
         status="active",
+        migration_status="native",
     )
     db.add(user)
     await db.flush()
@@ -142,12 +151,10 @@ async def test_operator(db: AsyncSession):
 
 
 @pytest_asyncio.fixture
-async def user_token(client: AsyncClient, test_user):
-    """Get a valid user JWT access token."""
-    _, email, password = test_user
-    resp = await client.post("/api/v1/auth/login", json={"email": email, "password": password})
-    assert resp.status_code == 200
-    return resp.json()["access_token"]
+async def user_token(test_user):
+    """Get a valid user JWT access token (created directly — /auth/login removed)."""
+    user_id, _, _ = test_user
+    return create_access_token(user_id, "user")
 
 
 @pytest_asyncio.fixture

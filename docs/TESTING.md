@@ -21,17 +21,18 @@ docker exec -w /app hermes_frontend_admin python -m pytest tests/ --cov=app --co
 
 ---
 
-## Backend — 90% (319 tests)
+## Backend — 93% (313 tests)
 
 | Module | Coverage | Notes |
 |--------|----------|-------|
 | `routers/notifications.py` | 100% | |
 | `routers/applications.py` | 97% | IntegrityError rollback path |
 | `routers/jobs.py` | 100% | |
-| `routers/users.py` | 97% | |
-| `routers/admin.py` | 92% | PDF file-write + Celery dispatch path |
-| `routers/auth.py` | 60% | Token refresh/verify require live Redis |
-| `services/notifications.py` | 82% | Firebase FCM send requires credentials |
+| `routers/users.py` | 98% | |
+| `routers/admin.py` | 93% | PDF file-write + Celery dispatch path |
+| `routers/auth.py` | 92% | Firebase `verify_id_token` uncovered paths; token refresh edge cases |
+| `firebase.py` | 69% | Real Firebase token verify path requires live credentials |
+| `services/notifications.py` | 89% | Firebase FCM send requires credentials |
 | `services/matching.py` | 99% | |
 | `services/ai_extractor.py` | 100% | |
 | `services/pdf_extractor.py` | 100% | |
@@ -55,14 +56,14 @@ docker exec -w /app hermes_frontend_admin python -m pytest tests/ --cov=app --co
 | `unit/test_tasks.py` | 12 | Cleanup, sitemap, job extraction |
 | `unit/test_notification_tasks.py` | 29 | Email, push, deadline reminders, smart_notify, delayed delivery |
 | `unit/test_notification_service.py` | 22 | NotificationService: all 4 channels, prefs, dedup, email limits |
-| `integration/test_auth.py` | ~30 | Login, register, password reset, email verify |
+| `integration/test_auth.py` | 19 | Firebase verify-token (new/existing/migrate/suspended/deleted/phone-only), logout, refresh, admin login/logout/refresh, RBAC |
 | `integration/test_admin.py` | ~40 | Admin API, analytics, RBAC |
 | `integration/test_jobs.py` | ~25 | Public job listing and search |
 | `integration/test_users.py` | ~30 | User profile API |
 | `integration/test_notifications.py` | ~25 | Notification API |
 | `integration/test_applications.py` | ~25 | Application tracking API |
-| `security/test_security.py` | 18 | JWT, RBAC, XSS, SQLi, CORS, file upload |
-| `e2e/test_user_flow.py` | 4 | Full user + admin lifecycle flows |
+| `security/test_security.py` | 17 | JWT structure (HS256/exp/iat/jti), RBAC, token revocation, admin bcrypt, file upload safety, XSS, SQLi, CORS |
+| `e2e/test_user_flow.py` | 4 | Full user + admin lifecycle flows (Firebase verify-token) |
 
 ### Backend Unit Test Strategy
 
@@ -72,20 +73,23 @@ Route handlers are called **directly as async functions** with `AsyncMock` db se
 
 Tasks that use **lazy imports** (e.g. `smart_notify`, `deliver_delayed_email`, `deliver_delayed_whatsapp`) are tested by patching `app.services.notifications.NotificationService` at its source module rather than on the tasks module (since the class is imported inside the function body at call-time).
 
+Firebase tests mock `app.firebase.verify_id_token` via `unittest.mock.patch` so they run without live Firebase credentials. The `user_token` fixture now uses `create_access_token()` directly instead of calling the removed `/auth/login` endpoint.
+
 ### Why Some Backend Lines Are Uncovered
 
-- **`auth.py`** — email verify + password reset endpoints depend on pre-seeded Redis tokens; covered at integration level but not unit.
-- **`admin.py:231–235, 257–258, 338–351`** — PDF file-write + Celery dispatch block; validation paths (wrong extension/MIME) are covered.
+- **`auth.py`** — blocklisted token check + `user.status != "active"` branch in `/refresh` require state that only arises after logout; covered at integration level.
+- **`firebase.py`** — real `verify_id_token()` call requires a live Firebase project; the init guard (`firebase_admin._apps`) is covered by unit tests.
+- **`admin.py:231–235, 338–351`** — PDF file-write + Celery dispatch block; validation paths (wrong extension/MIME) are covered.
 - **`tasks/notifications.py:328–387`** — Firebase legacy push code requires `FIREBASE_CREDENTIALS_PATH`, absent in the test environment.
-- **`services/notifications.py:191–209`** — FCM `_send_fcm` happy path requires Firebase credentials; no-credentials path is covered.
+- **`services/notifications.py:190–191, 221–222`** — FCM `_send_fcm` happy path requires Firebase credentials; no-credentials path is covered.
 
 ---
 
-## User Frontend — 100% (96 tests)
+## User Frontend — 91% (80 tests)
 
 | Module | Coverage | Notes |
 |--------|----------|-------|
-| `app/__init__.py` | 100% | All routes covered |
+| `app/__init__.py` | 90% | Firebase JS-handled routes (email-verify deep-link, account-link) not exercised |
 | `app/api_client.py` | 100% | All HTTP methods covered |
 
 ### Frontend Test Files
@@ -93,11 +97,11 @@ Tasks that use **lazy imports** (e.g. `smart_notify`, `deliver_delayed_email`, `
 | File | Tests | Covers |
 |------|-------|--------|
 | `unit/test_api_client.py` | 17 | `__init__`, `_headers`, `get`, `post`, `put`, `delete`, `patch` |
-| `integration/test_routes.py` | 79 | All routes: index, job listing, job detail, dashboard, notifications, login/logout, register, forgot/reset password, verify email, profile, org follow/unfollow, recommended jobs, application track/update/delete |
+| `integration/test_routes.py` | 63 | All routes: index, job listing, job detail, dashboard, notifications, login (GET), `/auth/firebase-callback`, logout, profile, org follow/unfollow, recommended jobs, application track/update/delete |
 
 ### Frontend Test Strategy
 
-Flask `test_client()` with `app.api_client` replaced by a `MagicMock`. No real backend calls are made. Auth-required routes are tested both with and without a session token. CSRF-protected routes use `_set_csrf()` helper to pre-populate session token before POSTs.
+Flask `test_client()` with `app.api_client` replaced by a `MagicMock`. No real backend or Firebase calls are made. Auth-required routes are tested both with and without a session token. The `/auth/firebase-callback` endpoint is tested by posting JSON directly (as the Firebase JS SDK would); no CSRF is needed since it's a JSON API endpoint. Register/forgot-password/reset-password pages are removed — Firebase JS SDK handles these flows entirely client-side.
 
 ---
 

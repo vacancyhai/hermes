@@ -1,6 +1,7 @@
 """Integration tests — end-to-end flows spanning multiple endpoints."""
 
 import uuid
+from unittest.mock import patch
 
 import pytest
 from httpx import AsyncClient
@@ -13,19 +14,20 @@ pytestmark = pytest.mark.asyncio
 
 
 async def test_full_user_flow(client: AsyncClient):
-    """Register → login → view jobs → track application → update status → delete."""
+    """Firebase sign-in → view jobs → track application → update status → delete."""
     email = f"flow_{uuid.uuid4().hex[:8]}@test.com"
+    firebase_uid = f"flow-uid-{uuid.uuid4().hex[:12]}"
 
-    # Register
-    resp = await client.post("/api/v1/auth/register", json={
+    # Sign in via Firebase verify-token (creates new user)
+    decoded = {
+        "uid": firebase_uid,
         "email": email,
-        "password": "FlowPass123",
-        "full_name": "Flow User",
-    })
-    assert resp.status_code == 201
-
-    # Login
-    resp = await client.post("/api/v1/auth/login", json={"email": email, "password": "FlowPass123"})
+        "email_verified": True,
+        "name": "Flow User",
+        "firebase": {"sign_in_provider": "password"},
+    }
+    with patch("app.firebase.verify_id_token", return_value=decoded):
+        resp = await client.post("/api/v1/auth/verify-token", json={"id_token": "fake-token"})
     assert resp.status_code == 200
     token = resp.json()["access_token"]
     headers = auth_header(token)
@@ -119,22 +121,27 @@ async def test_admin_job_lifecycle(client: AsyncClient, admin_token: str):
 
 
 async def test_admin_user_management_flow(client: AsyncClient, admin_token: str):
-    """Create user → list → suspend → verify suspended user can't login → activate."""
+    """Create user via Firebase → suspend → verify suspended → activate → verify active."""
     admin_headers = auth_header(admin_token)
 
-    # Register a user
+    # Create a user via Firebase verify-token
     email = f"mgmt_{uuid.uuid4().hex[:8]}@test.com"
-    resp = await client.post("/api/v1/auth/register", json={
+    firebase_uid = f"mgmt-uid-{uuid.uuid4().hex[:12]}"
+    decoded = {
+        "uid": firebase_uid,
         "email": email,
-        "password": "MgmtPass123",
-        "full_name": "Managed User",
-    })
-    assert resp.status_code == 201
-    user_id = resp.json()["id"]
-
-    # Can login
-    resp = await client.post("/api/v1/auth/login", json={"email": email, "password": "MgmtPass123"})
+        "email_verified": True,
+        "name": "Managed User",
+        "firebase": {"sign_in_provider": "password"},
+    }
+    with patch("app.firebase.verify_id_token", return_value=decoded):
+        resp = await client.post("/api/v1/auth/verify-token", json={"id_token": "fake-token"})
     assert resp.status_code == 200
+    user_token_first = resp.json()["access_token"]
+    # Extract user_id from JWT
+    from jose import jwt
+    from app.config import settings
+    user_id = jwt.decode(user_token_first, settings.JWT_SECRET_KEY, algorithms=["HS256"])["sub"]
 
     # Admin suspends user
     resp = await client.put(
@@ -144,8 +151,9 @@ async def test_admin_user_management_flow(client: AsyncClient, admin_token: str)
     )
     assert resp.status_code == 200
 
-    # Suspended user can't login
-    resp = await client.post("/api/v1/auth/login", json={"email": email, "password": "MgmtPass123"})
+    # Suspended user can't verify-token
+    with patch("app.firebase.verify_id_token", return_value=decoded):
+        resp = await client.post("/api/v1/auth/verify-token", json={"id_token": "fake-token"})
     assert resp.status_code == 403
 
     # Admin activates user
@@ -156,8 +164,9 @@ async def test_admin_user_management_flow(client: AsyncClient, admin_token: str)
     )
     assert resp.status_code == 200
 
-    # Can login again
-    resp = await client.post("/api/v1/auth/login", json={"email": email, "password": "MgmtPass123"})
+    # Active user can verify-token again
+    with patch("app.firebase.verify_id_token", return_value=decoded):
+        resp = await client.post("/api/v1/auth/verify-token", json={"id_token": "fake-token"})
     assert resp.status_code == 200
 
 

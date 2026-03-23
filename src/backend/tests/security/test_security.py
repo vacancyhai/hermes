@@ -12,6 +12,7 @@ from jose import jwt
 from passlib.context import CryptContext
 
 from app.config import settings
+from app.routers.auth import create_access_token
 
 def auth_header(token: str) -> dict:
     return {"Authorization": f"Bearer {token}"}
@@ -23,30 +24,17 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # --- JWT Security ---
 
-async def test_jwt_uses_hs256_only(client: AsyncClient, test_user):
-    _, email, password = test_user
-    resp = await client.post("/api/v1/auth/login", json={"email": email, "password": password})
-    token = resp.json()["access_token"]
-    header = jwt.get_unverified_header(token)
+async def test_jwt_token_structure(user_token: str):
+    """JWT uses HS256, has exp/iat/jti claims, and all values are valid."""
+    header = jwt.get_unverified_header(user_token)
     assert header["alg"] == "HS256"
 
-
-async def test_jwt_has_expiry(client: AsyncClient, test_user):
-    _, email, password = test_user
-    resp = await client.post("/api/v1/auth/login", json={"email": email, "password": password})
-    payload = jwt.decode(resp.json()["access_token"], settings.JWT_SECRET_KEY, algorithms=["HS256"])
+    payload = jwt.decode(user_token, settings.JWT_SECRET_KEY, algorithms=["HS256"])
     assert "exp" in payload
     assert "iat" in payload
     assert payload["exp"] > payload["iat"]
-
-
-async def test_jwt_has_jti_for_revocation(client: AsyncClient, test_user):
-    _, email, password = test_user
-    resp = await client.post("/api/v1/auth/login", json={"email": email, "password": password})
-    payload = jwt.decode(resp.json()["access_token"], settings.JWT_SECRET_KEY, algorithms=["HS256"])
     assert "jti" in payload
-    # JTI should be a valid UUID
-    uuid.UUID(payload["jti"])
+    uuid.UUID(payload["jti"])  # JTI must be a valid UUID
 
 
 async def test_forged_token_rejected(client: AsyncClient):
@@ -98,43 +86,36 @@ async def test_admin_token_cannot_access_user_endpoints(client: AsyncClient, adm
 
 # --- Token Revocation ---
 
-async def test_logout_blocklists_token(client: AsyncClient, test_user, test_redis):
-    _, email, password = test_user
-    resp = await client.post("/api/v1/auth/login", json={"email": email, "password": password})
-    token = resp.json()["access_token"]
-    payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=["HS256"])
+async def test_logout_blocklists_token(client: AsyncClient, user_token: str, test_redis):
+    payload = jwt.decode(user_token, settings.JWT_SECRET_KEY, algorithms=["HS256"])
     jti = payload["jti"]
+    prefix = settings.REDIS_KEY_PREFIX
 
     # Before logout, blocklist key shouldn't exist
-    assert await test_redis.get(f"blocklist:{jti}") is None
+    assert await test_redis.get(f"{prefix}:blocklist:{jti}") is None
 
     # Logout
-    await client.post("/api/v1/auth/logout", headers=auth_header(token))
+    await client.post("/api/v1/auth/logout", headers=auth_header(user_token))
 
     # After logout, blocklist key should exist
-    assert await test_redis.get(f"blocklist:{jti}") is not None
+    assert await test_redis.get(f"{prefix}:blocklist:{jti}") is not None
 
 
-# --- Password Security ---
+# --- Password Security (admin auth uses bcrypt) ---
 
-async def test_bcrypt_hashing():
-    password = "TestPassword123"
+def test_admin_bcrypt_hashing():
+    """Admin passwords are stored as bcrypt hashes."""
+    password = "AdminPassword123"
     hashed = pwd_context.hash(password)
     assert hashed.startswith("$2b$")
     assert pwd_context.verify(password, hashed)
     assert not pwd_context.verify("WrongPassword", hashed)
 
 
-async def test_password_not_in_response(client: AsyncClient):
-    email = f"nopw_{uuid.uuid4().hex[:8]}@test.com"
-    resp = await client.post("/api/v1/auth/register", json={
-        "email": email,
-        "password": "SecurePass123",
-        "full_name": "No PW User",
-    })
-    body = resp.text
-    assert "SecurePass123" not in body
-    assert "password_hash" not in body
+async def test_password_hash_not_exposed_in_api(client: AsyncClient, user_token: str):
+    """password_hash must never appear in API responses."""
+    resp = await client.get("/api/v1/users/me", headers=auth_header(user_token))
+    assert "password_hash" not in resp.text
 
 
 # --- File Upload Security ---

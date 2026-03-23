@@ -27,13 +27,6 @@ def _fail(status_code=400, json_data=None):
     return r
 
 
-def _set_csrf(client, token="test-csrf"):
-    """Set a CSRF token in the session so POST forms pass validation."""
-    with client.session_transaction() as sess:
-        sess["csrf_token"] = token
-    return token
-
-
 # ─── health ───────────────────────────────────────────────────────────────────
 
 def test_health(client):
@@ -149,54 +142,9 @@ def test_job_detail_shows_login_button_when_logged_out(client, mock_api):
 # ─── /login ───────────────────────────────────────────────────────────────────
 
 def test_login_get(client):
+    """Login page renders (GET-only; Firebase JS SDK handles auth client-side)."""
     resp = client.get("/login")
     assert resp.status_code == 200
-
-
-def test_login_get_sets_csrf_in_session(app, mock_api):
-    with app.test_client() as c:
-        c.get("/login")
-        with c.session_transaction() as sess:
-            assert "csrf_token" in sess
-
-
-def test_login_post_success(client, mock_api):
-    csrf = _set_csrf(client)
-    mock_api.post.return_value = _ok({"access_token": "jwt-token", "refresh_token": "ref"})
-    mock_api.get.return_value = _ok({"full_name": "Test User"})
-    resp = client.post("/login", data={
-        "email": "u@test.com", "password": "pass",
-        "next": "/dashboard", "csrf_token": csrf,
-    })
-    assert resp.status_code == 302
-    assert "/dashboard" in resp.headers["Location"]
-
-
-def test_login_post_failure(client, mock_api):
-    csrf = _set_csrf(client)
-    mock_api.post.return_value = _fail()
-    resp = client.post("/login", data={
-        "email": "u@test.com", "password": "wrong", "csrf_token": csrf,
-    })
-    assert resp.status_code == 302
-    assert "/login" in resp.headers["Location"]
-
-
-def test_login_post_bad_csrf_redirects(client, mock_api):
-    resp = client.post("/login", data={"email": "u@test.com", "password": "pass"})
-    assert resp.status_code == 302
-    assert "/login" in resp.headers["Location"]
-
-
-def test_login_stores_token_in_session(app, mock_api):
-    with app.test_client() as c:
-        with c.session_transaction() as sess:
-            sess["csrf_token"] = "tok"
-        mock_api.post.return_value = _ok({"access_token": "jwt", "refresh_token": "ref"})
-        mock_api.get.return_value = _ok({"full_name": "Test"})
-        c.post("/login", data={"email": "u@test.com", "password": "p", "csrf_token": "tok"})
-        with c.session_transaction() as sess:
-            assert sess.get("token") == "jwt"
 
 
 # ─── /logout ──────────────────────────────────────────────────────────────────
@@ -210,153 +158,75 @@ def test_logout_clears_session(auth_client):
         assert "token" not in sess
 
 
-# ─── /register ────────────────────────────────────────────────────────────────
+# ─── /auth/firebase-callback ──────────────────────────────────────────────────
 
-def test_register_get(client):
-    resp = client.get("/register")
+def test_firebase_callback_success(client, mock_api):
+    """Firebase callback verifies token, stores JWT in session, returns redirect."""
+    mock_api.post.return_value = _ok({"access_token": "jwt-access", "refresh_token": "jwt-refresh"})
+    mock_api.get.return_value = _ok({"full_name": "Firebase User"})
+    resp = client.post(
+        "/auth/firebase-callback",
+        json={"id_token": "valid-firebase-id-token"},
+        content_type="application/json",
+    )
     assert resp.status_code == 200
-    assert b"Create Account" in resp.data
+    data = resp.get_json()
+    assert data["redirect"] == "/dashboard"
+    mock_api.post.assert_called_once_with(
+        "/auth/verify-token",
+        json={"id_token": "valid-firebase-id-token", "full_name": None},
+    )
 
 
-def test_register_get_sets_csrf(app, mock_api):
+def test_firebase_callback_stores_token_in_session(app, mock_api):
+    """Tokens returned by backend are stored in Flask session."""
+    mock_api.post.return_value = _ok({"access_token": "the-jwt", "refresh_token": "the-ref"})
+    mock_api.get.return_value = _ok({"full_name": "User"})
     with app.test_client() as c:
-        c.get("/register")
+        c.post(
+            "/auth/firebase-callback",
+            json={"id_token": "tok"},
+            content_type="application/json",
+        )
         with c.session_transaction() as sess:
-            assert "csrf_token" in sess
+            assert sess.get("token") == "the-jwt"
+            assert sess.get("refresh_token") == "the-ref"
 
 
-def test_register_post_bad_csrf(client, mock_api):
-    resp = client.post("/register", data={
-        "email": "new@test.com", "password": "Pass1234", "full_name": "New User",
-    })
-    assert resp.status_code == 302
-    assert "/register" in resp.headers["Location"]
-
-
-def test_register_post_success(client, mock_api):
-    csrf = _set_csrf(client)
-    mock_api.post.return_value = _ok({"id": "uuid", "email": "new@test.com", "message": "ok"})
-    resp = client.post("/register", data={
-        "email": "new@test.com", "password": "Pass1234",
-        "full_name": "New User", "csrf_token": csrf,
-    })
-    assert resp.status_code == 302
-    assert "/login" in resp.headers["Location"]
-    mock_api.post.assert_called_once_with(
-        "/auth/register",
-        json={"email": "new@test.com", "password": "Pass1234", "full_name": "New User"},
+def test_firebase_callback_missing_token(client, mock_api):
+    """Missing id_token returns 400."""
+    resp = client.post(
+        "/auth/firebase-callback",
+        json={},
+        content_type="application/json",
     )
+    assert resp.status_code == 400
 
 
-def test_register_post_failure(client, mock_api):
-    csrf = _set_csrf(client)
-    mock_api.post.return_value = _fail(json_data={"detail": "Email already registered"})
-    resp = client.post("/register", data={
-        "email": "dup@test.com", "password": "Pass1234",
-        "full_name": "User", "csrf_token": csrf,
-    })
-    assert resp.status_code == 302
-    assert "/register" in resp.headers["Location"]
-
-
-# ─── /forgot-password ─────────────────────────────────────────────────────────
-
-def test_forgot_password_get(client):
-    resp = client.get("/forgot-password")
-    assert resp.status_code == 200
-    assert b"Forgot Password" in resp.data
-
-
-def test_forgot_password_post_bad_csrf(client, mock_api):
-    resp = client.post("/forgot-password", data={"email": "u@test.com"})
-    assert resp.status_code == 302
-    assert "/forgot-password" in resp.headers["Location"]
-
-
-def test_forgot_password_post_always_redirects_to_login(client, mock_api):
-    """Always shows success to avoid email enumeration."""
-    csrf = _set_csrf(client)
-    mock_api.post.return_value = _ok({"message": "Reset email sent"})
-    resp = client.post("/forgot-password", data={"email": "u@test.com", "csrf_token": csrf})
-    assert resp.status_code == 302
-    assert "/login" in resp.headers["Location"]
-    mock_api.post.assert_called_once_with("/auth/forgot-password", json={"email": "u@test.com"})
-
-
-# ─── /reset-password ──────────────────────────────────────────────────────────
-
-def test_reset_password_get_no_token(client):
-    resp = client.get("/reset-password")
-    assert resp.status_code == 302
-    assert "/login" in resp.headers["Location"]
-
-
-def test_reset_password_get_with_token(client):
-    resp = client.get("/reset-password?token=abc123")
-    assert resp.status_code == 200
-    assert b"Set New Password" in resp.data
-
-
-def test_reset_password_post_bad_csrf(client, mock_api):
-    resp = client.post("/reset-password", data={
-        "token": "abc", "new_password": "NewPass1!", "confirm_password": "NewPass1!",
-    })
-    assert resp.status_code == 302
-    assert "/reset-password" in resp.headers["Location"]
-
-
-def test_reset_password_post_passwords_mismatch(client, mock_api):
-    csrf = _set_csrf(client)
-    resp = client.post("/reset-password", data={
-        "token": "abc", "new_password": "Pass1!", "confirm_password": "Different1!",
-        "csrf_token": csrf,
-    })
-    assert resp.status_code == 302
-    assert "/reset-password" in resp.headers["Location"]
-    mock_api.post.assert_not_called()
-
-
-def test_reset_password_post_success(client, mock_api):
-    csrf = _set_csrf(client)
-    mock_api.post.return_value = _ok({"message": "Password reset"})
-    resp = client.post("/reset-password", data={
-        "token": "valid-token", "new_password": "NewPass1!",
-        "confirm_password": "NewPass1!", "csrf_token": csrf,
-    })
-    assert resp.status_code == 302
-    assert "/login" in resp.headers["Location"]
-    mock_api.post.assert_called_once_with(
-        "/auth/reset-password",
-        json={"token": "valid-token", "new_password": "NewPass1!"},
+def test_firebase_callback_backend_failure(client, mock_api):
+    """Backend 401 is relayed back to the caller."""
+    mock_api.post.return_value = _fail(status_code=401, json_data={"detail": "Invalid Firebase token"})
+    resp = client.post(
+        "/auth/firebase-callback",
+        json={"id_token": "bad-token"},
+        content_type="application/json",
     )
+    assert resp.status_code == 401
 
 
-def test_reset_password_post_failure(client, mock_api):
-    csrf = _set_csrf(client)
-    mock_api.post.return_value = _fail(json_data={"detail": "Token expired"})
-    resp = client.post("/reset-password", data={
-        "token": "expired", "new_password": "NewPass1!",
-        "confirm_password": "NewPass1!", "csrf_token": csrf,
-    })
-    assert resp.status_code == 302
-    assert "/reset-password" in resp.headers["Location"]
-
-
-# ─── /verify-email/<token> ────────────────────────────────────────────────────
-
-def test_verify_email_success(client, mock_api):
-    mock_api.get.return_value = _ok({"message": "Email verified"})
-    resp = client.get("/verify-email/valid-token")
-    assert resp.status_code == 302
-    assert "/login" in resp.headers["Location"]
-    mock_api.get.assert_called_once_with("/auth/verify-email/valid-token")
-
-
-def test_verify_email_failure(client, mock_api):
-    mock_api.get.return_value = _fail(json_data={"detail": "Token expired"})
-    resp = client.get("/verify-email/bad-token")
-    assert resp.status_code == 302
-    assert "/login" in resp.headers["Location"]
+def test_firebase_callback_with_full_name(client, mock_api):
+    """full_name is forwarded to backend verify-token."""
+    mock_api.post.return_value = _ok({"access_token": "tok", "refresh_token": "ref"})
+    mock_api.get.return_value = _ok({"full_name": "New User"})
+    client.post(
+        "/auth/firebase-callback",
+        json={"id_token": "tok", "full_name": "New User"},
+        content_type="application/json",
+    )
+    mock_api.post.assert_called_once_with(
+        "/auth/verify-token",
+        json={"id_token": "tok", "full_name": "New User"},
+    )
 
 
 # ─── /profile ─────────────────────────────────────────────────────────────────
