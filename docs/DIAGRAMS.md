@@ -10,29 +10,29 @@ separate Docker Compose files. They communicate via HTTP REST API.
 │        HERMES - SEPARATED MICROSERVICES (8 Containers, 3 Services)           │
 └──────────────────────────────────────────────────────────────────────────────┘
 
-                              ┌──────────────┐
-                              │   Internet   │
-                              │   (HTTPS)    │
-                              └──────┬───────┘
-                                     │
-                    ┌────────────────┼────────────────┐
-                    │                │                │
-            ┌───────▼──────┐  ┌──────▼───────┐  ┌────▼──────────┐
-            │   Web Users  │  │ Mobile Users │  │Admin/Operator  │
-            └───────┬──────┘  └──────┬───────┘  └────┬───────────┘
-                    │                │                │
-                    └────────────────┼────────────────┘
-                                     │
-                            ┌────────▼─────────┐
-                            │  Nginx (Optional) │
-                            │  /*   → Port 8080 │
-                            │  /admin/* → 8081  │
-                            │  /api/* → 8000    │
-                            └────────┬──────────┘
-                                     │
-              ┌──────────────────────┼──────────────────────┐
-              │                      │                      │
-              ▼                      ▼                      ▼
+                               ┌──────────────┐
+                               │   Internet   │
+                               │   (HTTPS)    │
+                               └──────┬───────┘
+                                      │
+                    ┌─────────────────┴─────────────────┐
+                    │                 │                 │
+            ┌───────▼──────┐  ┌───────▼───────┐  ┌──────▼───────┐
+            │  Web Users   │  │ Mobile Users  │  │Admin/Operator│
+            └───────┬──────┘  └───────┬───────┘  └──────┬───────┘
+                    │                 │                 │
+                    └─────────────────┬─────────────────┘
+                                      │
+                             ┌────────▼─────────┐
+                             │ Nginx (Optional) │
+                             │ /*   → Port 8080 │
+                             │ /admin/→ 8081    │
+                             │ /api/  → 8000    │
+                             └────────┬─────────┘
+                                      │
+               ┌──────────────────────┼──────────────────────┐
+               │                      │                      │
+               ▼                      ▼                      ▼
 ┌─────────────────────┐  ┌─────────────────────┐  ┌────────────────────────┐
 │  USER FRONTEND      │  │  ADMIN FRONTEND     │  │  BACKEND SERVICE       │
 │  src/frontend/      │  │  src/frontend-admin/│  │  src/backend/          │
@@ -50,20 +50,20 @@ separate Docker Compose files. They communicate via HTTP REST API.
 │  BACKEND_API_URL    │  │  Calls backend via  │  │  Persistent storage:   │
 │                     │  │  BACKEND_API_URL    │  │  PostgreSQL + Redis    │
 │  Network:           │  │                     │  │  AOF persistence       │
-│  src_frontend_      │  │  Network:           │  └────────────────────────┘
-│  network            │  │  src_frontend_      │           │
-└─────────────────────┘  │  admin_network      │           ▼
+│  src_frontend_      │  │  Network:           │  └──────────┬─────────────┘
+│  network            │  │  src_frontend_      │             │
+└─────────────────────┘  │  admin_network      │             ▼
                          │                     │  ┌──────────────────────┐
          Deploy          │  Firewall port 8081 │  │  External Services   │
          Separately!     │  from public        │  │  - OCI Email Delivery│
          Can scale       │  internet!          │  │  - Firebase FCM      │
          independently!  └─────────────────────┘  └──────────────────────┘
 
-┌────────────────────────────────────────────────────────────────────┐
-│  Can deploy on same server (dev) or different servers (prod)        │
-│  Frontends: Server 1       Backend: Server 2                       │
-│  Each service has independent docker-compose.yml                    │
-└────────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────────┐
+│  Can deploy on same server (dev) or different servers (prod)                 │
+│  Frontends: Server 1                   Backend: Server 2                     │
+│  Each service has independent docker-compose.yml                             │
+└──────────────────────────────────────────────────────────────────────────────┘
 
 Architecture properties:
 - Three separated services: User Frontend (8080), Admin Frontend (8081), Backend (8000)
@@ -94,95 +94,92 @@ Admin/Operator → Admin Frontend (port 8081)
 └────┬────┘
      │
      ▼
-┌──────────────────────┐
-│ User visits website  │
-└────┬─────────────────┘
+┌─────────────────────────┐
+│ User visits website     │
+└────┬────────────────────┘
      │
      ▼
-┌──────────────────────┐
-│ Click on "Register"  │
-└────┬─────────────────┘
+┌─────────────────────────┐
+│ Click on "Register"     │
+└────┬────────────────────┘
      │
      ▼
-┌──────────────────────────────────┐
-│ Fill registration form:           │
-│ - Email                           │
-│ - Password                        │
-│ - Full Name                       │
-│ - Phone                           │
-└────┬─────────────────────────────┘
+┌─────────────────────────┐
+│ Fill registration form: │
+│ - Email                 │
+│ - Password              │
+│ - Full Name             │
+│ - Phone                 │
+└────┬────────────────────┘
      │
      ▼
-┌──────────────────────┐
-│ Submit form          │
-└────┬─────────────────┘
+┌─────────────────────────┐
+│ Submit form             │
+└────┬────────────────────┘
      │
      ▼
-┌──────────────────────┐      ┌─────────────────┐
-│ Validate input       │─────►│  Error? Show    │
-│                      │      │  validation msg │
-└────┬─────────────────┘      └────────┬────────┘
-     │                                  │
-     │ Valid                            │
-     ▼                                  │
-┌──────────────────────┐               │
-│ Hash password        │               │
-└────┬─────────────────┘               │
-     │                                  │
-     ▼                                  │
-┌──────────────────────┐               │
-│ Save to PostgreSQL   │               │
-│ (users table)        │               │
-└────┬─────────────────┘               │
-     │                                  │
-     ▼                                  │
-┌──────────────────────┐               │
-│ Generate JWT token   │               │
-└────┬─────────────────┘               │
-     │                                  │
-     ▼                                  │
-┌──────────────────────┐               │
-│ Send verification    │               │
-│ email                │               │
-└────┬─────────────────┘               │
-     │                                  │
-     ▼                                  │
-┌──────────────────────┐               │
-│ Redirect to profile  │◄──────────────┘
-│ setup page           │
-└────┬─────────────────┘
+┌─────────────────────────┐      ┌─────────────────────────┐
+│ Validate input          │─────►│ Error? Show validation  │
+└────┬────────────────────┘      │ message & ask to fix    │
+     │                           └────────┬────────────────┘
+     │ Valid                              │
+     ▼                                    │
+┌─────────────────────────┐               │
+│ Hash password           │               │
+└────┬────────────────────┘               │
+     │                                    │
+     ▼                                    │
+┌─────────────────────────┐               │
+│ Save to PostgreSQL      │               │
+│ (users table)           │               │
+└────┬────────────────────┘               │
+     │                                    │
+     ▼                                    │
+┌─────────────────────────┐               │
+│ Generate JWT token      │               │
+└────┬────────────────────┘               │
+     │                                    │
+     ▼                                    │
+┌─────────────────────────┐               │
+│ Send verification       │               │
+│ email                   │               │
+└────┬────────────────────┘               │
+     │                                    │
+     ▼                                    │
+┌─────────────────────────┐               │
+│ Redirect to profile     │◄──────────────┘
+│ setup page              │
+└────┬────────────────────┘
      │
      ▼
-┌──────────────────────────────────┐
-│ Complete Profile Setup:           │
-│ 1. Personal Information           │
-│    - DOB, Gender, Category        │
-│    - State, City                  │
-│                                   │
-│ 2. Education Details              │
-│    - 10th, 12th, Graduation       │
-│    - Stream, Percentage           │
-│                                   │
-│ 3. Notification Preferences       │
-│    - Preferred Organizations      │
-│    - Job Types                    │
-│    - Locations                    │
-│    - Notification Channels        │
-└────┬─────────────────────────────┘
+┌─────────────────────────┐
+│ Complete Profile Setup: │
+│                         │
+│ 1. Personal Info        │
+│    - DOB, Category      │
+│    - State, City        │
+│                         │
+│ 2. Education Details    │
+│    - 10th, 12th, Degree │
+│    - Stream, Percentage │
+│                         │
+│ 3. Preferences          │
+│    - Organizations      │
+│    - Job Types          │
+│    - Notif. Channels    │
+└────┬────────────────────┘
      │
      ▼
-┌──────────────────────┐
-│ Save profile to      │
-│ user_profiles        │
-│ table                │
-└────┬─────────────────┘
+┌─────────────────────────┐
+│ Save profile to         │
+│ user_profiles table     │
+└────┬────────────────────┘
      │
      ▼
-┌──────────────────────┐
-│ Profile Complete!    │
-│ Redirect to          │
-│ Dashboard            │
-└────┬─────────────────┘
+┌─────────────────────────┐
+│ Profile Complete!       │
+│ Redirect to Dashboard   │
+└────┬────────────────────┘
      │
      ▼
 ┌─────────┐
@@ -227,113 +224,113 @@ Admin/Operator → Admin Frontend (port 8081)
      │
      ▼
 ┌────────────────────────────────────────┐
-│ Fill Job Details Form:                  │
-│                                         │
-│ ┌───────────────────────────────────┐  │
-│ │ Basic Information                 │  │
-│ │ - Job Title                       │  │
-│ │ - Organization                    │  │
-│ │ - Department                      │  │
-│ │ - Total Vacancies                 │  │
-│ │ - Description                     │  │
-│ └───────────────────────────────────┘  │
-│                                         │
-│ ┌───────────────────────────────────┐  │
-│ │ Eligibility Criteria              │  │
-│ │ - Minimum Qualification           │  │
-│ │ - Stream Required                 │  │
-│ │ - Age Limit (Min/Max)             │  │
-│ │ - Category-wise Vacancies         │  │
-│ └───────────────────────────────────┘  │
-│                                         │
-│ ┌───────────────────────────────────┐  │
-│ │ Application Details               │  │
-│ │ - Application Fee                 │  │
-│ │ - Application Mode                │  │
-│ │ - Official Website                │  │
-│ └───────────────────────────────────┘  │
-│                                         │
-│ ┌───────────────────────────────────┐  │
-│ │ Important Dates                   │  │
-│ │ - Application Start/End           │  │
-│ │ - Exam Date                       │  │
-│ │ - Admit Card Date                 │  │
-│ │ - Result Date                     │  │
-│ └───────────────────────────────────┘  │
-└────┬───────────────────────────────────┘
-     │
+│ Fill Job Details Form:                 │◄──────┐
+│                                        │       │
+│ ┌───────────────────────────────────┐  │       │
+│ │ Basic Information                 │  │       │
+│ │ - Job Title                       │  │       │
+│ │ - Organization                    │  │       │
+│ │ - Department                      │  │       │
+│ │ - Total Vacancies                 │  │       │
+│ │ - Description                     │  │       │
+│ └───────────────────────────────────┘  │       │
+│                                        │       │
+│ ┌───────────────────────────────────┐  │       │
+│ │ Eligibility Criteria              │  │       │
+│ │ - Minimum Qualification           │  │       │
+│ │ - Stream Required                 │  │       │
+│ │ - Age Limit (Min/Max)             │  │       │
+│ │ - Category-wise Vacancies         │  │       │
+│ └───────────────────────────────────┘  │       │
+│                                        │       │
+│ ┌───────────────────────────────────┐  │       │
+│ │ Application Details               │  │       │
+│ │ - Application Fee                 │  │       │
+│ │ - Application Mode                │  │       │
+│ │ - Official Website                │  │       │
+│ └───────────────────────────────────┘  │       │
+│                                        │       │
+│ ┌───────────────────────────────────┐  │       │
+│ │ Important Dates                   │  │       │
+│ │ - Application Start/End           │  │       │
+│ │ - Exam Date                       │  │       │
+│ │ - Admit Card Date                 │  │       │
+│ │ - Result Date                     │  │       │
+│ └───────────────────────────────────┘  │       │
+└────┬───────────────────────────────────┘       │
+     │                                           │
+     ▼                                           │
+┌──────────────────────────────────┐             │
+│ Submit form                      │             │
+│ POST /api/v1/admin/jobs          │             │
+└────┬───────────────────────────────┘           │
+     │                                           │
+     ▼                                           │
+┌──────────────────────────────────┐             │
+│ 🔒 PERMISSION CHECK              │             │
+│ @require_role('admin')           │             │
+│ Is user.role == 'admin'?         │             │
+└────┬───────────────────────────────┘           │
+     │                                           │
+     ├─ NO (403 Forbidden) → Return error        │
+     │                                           │
+     ▼ YES (admin verified)                      │
+┌──────────────────────┐                         │
+│ Submit form          │                         │
+└────┬─────────────────┘                         │
+     │                                           │
+     ▼                                           │
+┌──────────────────────┐      ┌──────────────────┴┐
+│ Validate all fields  │─────►│ Error? Show       │
+└────┬─────────────────┘      │ validation msg    │
+     │                        └───────────────────┘
+     │ Valid
      ▼
-┌──────────────────────────────────┐
-│ Submit form                      │
-│ POST /api/v1/admin/jobs          │
-└────┬───────────────────────────────┘
-     │
-     ▼
-┌──────────────────────────────────┐
-│ 🔒 PERMISSION CHECK              │
-│ @require_role('admin')           │
-│ Is user.role == 'admin'?         │
-└────┬───────────────────────────────┘
-     │
-     ├─ NO (403 Forbidden) → Return error
-     │
-     ▼ YES (admin verified)
 ┌──────────────────────┐
-│ Submit form          │
+│ Save to PostgreSQL   │
+│ (job_vacancies       │
+│  table)              │
 └────┬─────────────────┘
      │
      ▼
-┌──────────────────────┐      ┌─────────────────┐
-│ Validate all fields  │─────►│ Error? Show     │
-└────┬─────────────────┘      │ validation msg  │
-     │                        └────────┬────────┘
-     │ Valid                           │
-     ▼                                 │
-┌──────────────────────┐              │
-│ Save to PostgreSQL   │              │
-│ (job_vacancies       │              │
-│  table)              │              │
-└────┬─────────────────┘              │
-     │                                 │
-     ▼                                 │
-┌──────────────────────┐              │
-│ Create admin log     │              │
-│ entry                │              │
-└────┬─────────────────┘              │
-     │                                 │
-     ▼                                 │
-┌──────────────────────┐              │
-│ Trigger Celery Task: │              │
-│ "match_new_job_      │              │
-│  with_users"         │              │
-└────┬─────────────────┘              │
-     │                                 │
-     ▼                                 │
-┌─────────────────────────────────┐   │
-│ Celery Task Execution:          │   │
-│                                 │   │
-│ 1. Fetch all active users       │   │
-│ 2. For each user:               │   │
-│    ├─► Check profile eligibility│   │
-│    ├─► Check preferences match  │   │
-│    └─► Calculate match score    │   │
-│ 3. If eligible & preferences    │   │
-│    match:                        │   │
-│    └─► Create notification      │   │
-└────┬────────────────────────────┘   │
-     │                                 │
-     ▼                                 │
-┌──────────────────────┐              │
-│ Send notifications   │              │
-│ to matched users via:│              │
-│ - Email              │              │
-│ - Push notification  │              │
-│ - In-app alert       │              │
-└────┬─────────────────┘              │
-     │                                 │
-     ▼                                 │
-┌──────────────────────┐              │
-│ Job successfully     │◄─────────────┘
+┌──────────────────────┐
+│ Create admin log     │
+│ entry                │
+└────┬─────────────────┘
+     │
+     ▼
+┌──────────────────────┐
+│ Trigger Celery Task: │
+│ "match_new_job_      │
+│  with_users"         │
+└────┬─────────────────┘
+     │
+     ▼
+┌─────────────────────────────────┐
+│ Celery Task Execution:          │
+│                                 │
+│ 1. Fetch all active users       │
+│ 2. For each user:               │
+│    ├─► Check profile eligibility│
+│    ├─► Check preferences match  │
+│    └─► Calculate match score    │
+│ 3. If eligible & preferences    │
+│    match:                       │
+│    └─► Create notification      │
+└────┬────────────────────────────┘
+     │
+     ▼
+┌──────────────────────┐
+│ Send notifications   │
+│ to matched users via:│
+│ - Email              │
+│ - Push notification  │
+│ - In-app alert       │
+└────┬─────────────────┘
+     │
+     ▼
+┌──────────────────────┐
+│ Job successfully     │
 │ published!           │
 │ Show success message │
 └────┬─────────────────┘
@@ -365,193 +362,196 @@ Admin/Operator → Admin Frontend (port 8081)
 └─────────┬───────────┘
           │
           ▼
-     ┌────────────────────────────┐
-     │  FOR EACH USER:            │
-     │  ┌──────────────────────┐  │
-     │  │ Fetch User Profile   │  │
-     │  └──────────┬───────────┘  │
-     │             │              │
-     │             ▼              │
-     │  ┌──────────────────────┐  │
-     │  │ Check Education      │  │
-     │  │ Eligibility          │  │
-     │  └──────────┬───────────┘  │
-     │             │              │
-     │     ┌───────┴────────┐     │
-     │     │                │     │
-     │     ▼                ▼     │
-     │ ┌────────┐      ┌────────┐│
-     │ │  Not   │      │Eligible││
-     │ │Eligible│      └───┬────┘│
-     │ └───┬────┘          │     │
-     │     │               ▼     │
-     │     │    ┌──────────────┐ │
-     │     │    │ Check Stream │ │
-     │     │    │ (if required)│ │
-     │     │    └───┬──────────┘ │
-     │     │        │            │
-     │     │  ┌─────┴─────┐      │
-     │     │  │           │      │
-     │     │  ▼           ▼      │
-     │     │ No      ┌────────┐  │
-     │     │ Match   │ Match! │  │
-     │     │         └───┬────┘  │
-     │     │             │       │
-     │     │             ▼       │
-     │     │   ┌─────────────┐   │
-     │     │   │ Check Age   │   │
-     │     │   │ Eligibility │   │
-     │     │   └──────┬──────┘   │
-     │     │          │          │
-     │     │    ┌─────┴─────┐    │
-     │     │    │           │    │
-     │     │    ▼           ▼    │
-     │     │   No      ┌────────┐│
-     │     │   Match   │Eligible││
-     │     │           └───┬────┘│
-     │     │               │     │
-     │     │               ▼     │
-     │     │   ┌──────────────┐  │
-     │     │   │Check Category│  │
-     │     │   │  Vacancies   │  │
-     │     │   └──────┬───────┘  │
-     │     │          │          │
-     │     │    ┌─────┴─────┐    │
-     │     │    │           │    │
-     │     │    ▼           ▼    │
-     │     │   No     ┌─────────┐│
-     │     │   Vacancy│ Available││
-     │     │          └────┬────┘│
-     │     │               │     │
-     │     │               ▼     │
-     │     │ ┌──────────────────┐│
-     │     │ │ Check User       ││
-     │     │ │ Notification     ││
-     │     │ │ Preferences      ││
-     │     │ └────────┬─────────┘│
-     │     │          │          │
-     │     │    ┌─────┴─────┐    │
-     │     │    │           │    │
-     │     │    ▼           ▼    │
-     │     │  Doesn't  ┌────────┐│
-     │     │  Match    │ Match! ││
-     │     │           └───┬────┘│
-     │     │               │     │
-     │     │               ▼     │
-     │     │   ┌──────────────┐  │
-     │     │   │ Calculate    │  │
-     │     │   │ Match Score  │  │
-     │     │   └──────┬───────┘  │
-     │     │          │          │
-     │     │          ▼          │
-     │     │   ┌──────────────┐  │
-     │     │   │Create        │  │
-     │     │   │Notification  │  │
-     │     │   │Record in DB  │  │
-     │     │   └──────┬───────┘  │
-     │     │          │          │
-     │     └──────────┼──────────┘
-     │                │
-     └────────────────┼──────────┐
-                      │          │
-          ┌───────────┘          │
-          │                      │
-          ▼                      │ Skip
-┌──────────────────┐             │
-│ Queue Notification│            │
-│ for Sending       │            │
-└─────────┬─────────┘            │
-          │                      │
-          ▼                      │
-┌──────────────────────────┐     │
-│ Check User Preference:   │     │
-│ - Email enabled?         │     │
-│ - Push enabled?          │     │
-└─────────┬────────────────┘     │
-          │                      │
-          ▼                      │
-┌──────────────────┐             │
-│ Send via enabled │             │
-│ channels:        │             │
-│                  │             │
-│ ┌──────────────┐ │             │
-│ │ Send Email   │ │             │
-│ └──────────────┘ │             │
-│ ┌──────────────┐ │             │
-│ │ Send Push    │ │             │
-│ └──────────────┘ │             │
-└─────────┬────────┘             │
-          │                      │
-          ▼                      │
-┌──────────────────┐             │
-│ Update           │             │
-│ notification     │             │
-│ status as "sent" │             │
-└─────────┬────────┘             │
-          │                      │
-          └──────────────────────┘
-                   │
-                   ▼
-          ┌────────────────┐
-          │ Process Next   │
-          │ User           │
-          └────────────────┘
-                   │
-                   ▼ (All users processed)
-          ┌────────────────┐
-          │ END            │
-          └────────────────┘
+     ┌────────────────────────────────┐
+     │  FOR EACH USER:                │
+     │  ┌──────────────────────────┐  │
+     │  │ Fetch User Profile       │  │
+     │  └────────────┬─────────────┘  │
+     │               │                │
+     │               ▼                │
+     │  ┌──────────────────────────┐  │
+     │  │ Check Education          │  │
+     │  │ Eligibility              │  │
+     │  └────────────┬─────────────┘  │
+     │               │                │
+     │       ┌───────┴───────┐        │
+     │       │               │        │
+     │       ▼               ▼        │
+     │   ┌────────┐     ┌────────┐    │
+     │   │  Not   │     │Eligible│    │
+     │   │Eligible│     └───┬────┘    │
+     │   └───┬────┘         │         │
+     │       │              ▼         │
+     │       │  ┌──────────────────┐  │
+     │       │  │ Check Stream     │  │
+     │       │  │ (if required)    │  │
+     │       │  └────────┬─────────┘  │
+     │       │           │            │
+     │       │    ┌──────┴──────┐     │
+     │       │    │             │     │
+     │       │    ▼             ▼     │
+     │       │ ┌──────┐     ┌──────┐  │
+     │       │ │  No  │     │Match!│  │
+     │       │ │Match │     └──┬───┘  │
+     │       │ └──┬───┘        │      │
+     │       │    │            ▼      │
+     │       │    │ ┌────────────────┐│
+     │       │    │ │ Check Age      ││
+     │       │    │ │ Eligibility    ││
+     │       │    │ └────────┬───────┘│
+     │       │    │          │        │
+     │       │    │   ┌──────┴──────┐ │
+     │       │    │   │             │ │
+     │       │    │   ▼             ▼ │
+     │       │    │┌──────┐     ┌──────┐
+     │       │    ││  No  │     │Elig- │
+     │       │    ││Match │     │ible  │
+     │       │    │└──┬───┘     └──┬───┘
+     │       │    │   │            │  │
+     │       │    │   │            ▼  │
+     │       │    │   │ ┌────────────────┐
+     │       │    │   │ │ Check Category │
+     │       │    │   │ │ Vacancies      │
+     │       │    │   │ └────────┬───────┘
+     │       │    │   │          │       
+     │       │    │   │   ┌──────┴──────┐
+     │       │    │   │   │             │ 
+     │       │    │   │   ▼             ▼ 
+     │       │    │   │┌───────┐    ┌─────────┐
+     │       │    │   ││  No   │    │Available│ 
+     │       │    │   ││Vacancy│    └────┬────┘ 
+     │       │    │   │└───┬───┘         │      
+     │       │    │   │    │             ▼      
+     │  (Any Failure Merges Here)        │
+     │       ▼    ▼   ▼    ▼             │
+     │       └────┴───┴────┘             │
+     │             │                     │
+     │             │      ┌────────────────────┐
+     │             │      │ Check User         │
+     │             │      │ Notification       │
+     │             │      │ Preferences        │
+     │             │      └─────────┬──────────┘
+     │             │                │
+     │             │       ┌────────┴────────┐
+     │             │       │                 │
+     │             │       ▼                 ▼
+     │             │  ┌────────┐         ┌──────┐
+     │             │  │Doesn't │         │Match!│
+     │             │  │Match   │         └──┬───┘
+     │             │  └───┬────┘            │
+     │             │      │                 ▼
+     │             │      │      ┌────────────────┐
+     │             │      │      │ Calculate      │
+     │             │      │      │ Match Score    │
+     │             │      │      └────────┬───────┘
+     │             │      │               │
+     │             │      │               ▼
+     │             │      │      ┌────────────────┐
+     │             │      │      │ Create         │
+     │             │      │      │ Notification   │
+     │             │      │      │ Record in DB   │
+     │             │      │      └────────┬───────┘
+     │             │      │               │
+     │             └──────┴───────────────┴────────
+     │                            │
+     └────────────────────────────┼───────────┐
+                                  │           │
+                      ┌───────────┘           │
+                      │                       │
+                      │                       │ Skip
+                      ▼                       │
+            ┌──────────────────┐              │
+            │ Queue Notif      │              │
+            │ for Sending      │              │
+            └─────────┬────────┘              │
+                      │                       │
+                      ▼                       │
+          ┌───────────────────────┐           │
+          │ Check User Prefs:     │           │
+          │ - Email enabled?      │           │
+          │ - Push enabled?       │           │
+          └───────────┬───────────┘           │
+                      │                       │
+                      ▼                       │
+            ┌──────────────────┐              │
+            │ Send via enabled │              │
+            │ channels:        │              │
+            │                  │              │
+            │ ┌──────────────┐ │              │
+            │ │ Send Email   │ │              │
+            │ └──────────────┘ │              │
+            │ ┌──────────────┐ │              │
+            │ │ Send Push    │ │              │
+            │ └──────────────┘ │              │
+            └─────────┬────────┘              │
+                      │                       │
+                      ▼                       │
+            ┌──────────────────┐              │
+            │ Update           │              │
+            │ notification     │              │
+            │ status as "sent" │              │
+            └─────────┬────────┘              │
+                      │                       │
+                      └───────────────────────┘
+                               │
+                               ▼
+                      ┌────────────────┐
+                      │ Process Next   │
+                      │ User           │
+                      └────────────────┘
+                               │
+                               ▼ (All users processed)
+                      ┌────────────────┐
+                      │ END            │
+                      └────────────────┘
 ```
-
-## 5. User Job Application & Tracking Flow
-
 ```
 ┌─────────┐
 │  START  │
 └────┬────┘
      │
      ▼
-┌──────────────────────┐
-│ User browses jobs    │
-│ (Dashboard/Search)   │
-└────┬─────────────────┘
-     │
-     ▼
-┌──────────────────────┐
-│ Click on job to view │
-│ full details         │
-└────┬─────────────────┘
-     │
-     ▼
 ┌────────────────────────────────────┐
-│ Job Details Page Shows:            │
-│ - Job Title & Organization         │
-│ - Eligibility Criteria             │
-│ - Important Dates                  │
-│ - Application Fee                  │
-│ - Selection Process                │
-│ - Official Website Link            │
-│                                    │
-│ ┌────────────────────────────────┐ │
-│ │ [Apply Now] [Add to Tracker]  │ │
-│ │ [Mark as Priority]             │ │
-│ └────────────────────────────────┘ │
+│ User browses jobs                  │
+│ (Dashboard/Search)                 │
 └────┬───────────────────────────────┘
      │
      ▼
-┌──────────────────────┐
-│ User clicks          │
-│ "Add to Tracker"     │
-└────┬─────────────────┘
-     │
-     ▼
-┌──────────────────────┐
-│ Check if already     │
-│ tracked              │
-└────┬─────────────────┘
-     │
-     ▼
-┌──────────────────────┐      ┌─────────────────┐
+┌────────────────────────────────────┐
+│ Click on job to view               │◄────────┐
+│ full details                       │         │
+└────┬───────────────────────────────┘         │
+     │                                         │
+     ▼                                         │
+┌────────────────────────────────────┐         │
+│ Job Details Page Shows:            │         │
+│ - Job Title & Organization         │         │
+│ - Eligibility Criteria             │         │
+│ - Important Dates                  │         │
+│ - Application Fee                  │         │
+│ - Selection Process                │         │
+│ - Official Website Link            │         │
+│                                    │         │
+│ ┌────────────────────────────────┐ │         │
+│ │ [Apply Now] [Add to Tracker]   │ │         │
+│ │ [Mark as Priority]             │ │         │
+│ └────────────────────────────────┘ │         │
+└────┬───────────────────────────────┘         │
+     │                                         │
+     ▼                                         │
+┌──────────────────────┐                       │
+│ User clicks          │                       │
+│ "Add to Tracker"     │                       │
+└────┬─────────────────┘                       │
+     │                                         │
+     ▼                                         │
+┌──────────────────────┐                       │
+│ Check if already     │                       │
+│ tracked              │                       │
+└────┬─────────────────┘                       │
+     │                                         │
+     ▼                                         │
+┌──────────────────────┐      ┌────────────────┴┐
 │ Already tracked?     │─────►│ Show message:   │
 └────┬─────────────────┘ YES  │ "Already in     │
      │                        │  tracker"       │
@@ -586,39 +586,38 @@ Admin/Operator → Admin Frontend (port 8081)
 └────┬───────────────────────────────┘
      │
      ▼
-┌──────────────────────┐
-│ Create application   │
-│ record in DB         │
-│ (User Job            │
-│  Applications)       │
-└────┬─────────────────┘
+┌────────────────────────────────────┐
+│ Create application                 │
+│ record in DB                       │
+│ (User Job Applications)            │
+└────┬───────────────────────────────┘
      │
      ▼
-┌──────────────────────┐
-│ Generate reminder    │
-│ entries based on     │
-│ job important dates  │
-└────┬─────────────────┘
+┌────────────────────────────────────┐
+│ Generate reminder                  │
+│ entries based on                   │
+│ job important dates                │
+└────┬───────────────────────────────┘
      │
      ▼
-┌──────────────────────┐
-│ If marked as         │
-│ priority, set        │
-│ priority flag        │
-└────┬─────────────────┘
+┌────────────────────────────────────┐
+│ If marked as                       │
+│ priority, set                      │
+│ priority flag                      │
+└────┬───────────────────────────────┘
      │
      ▼
-┌──────────────────────┐
-│ Show success message │
-│ "Added to your       │
-│  application tracker"│
-└────┬─────────────────┘
+┌────────────────────────────────────┐
+│ Show success message               │
+│ "Added to your                     │
+│  application tracker"              │
+└────┬───────────────────────────────┘
      │
      ▼
-┌──────────────────────┐
-│ User navigates to    │
-│ "My Applications"    │
-└────┬─────────────────┘
+┌────────────────────────────────────┐
+│ User navigates to                  │
+│ "My Applications"                  │
+└────┬───────────────────────────────┘
      │
      ▼
 ┌────────────────────────────────────┐
@@ -656,11 +655,11 @@ Admin/Operator → Admin Frontend (port 8081)
 └────────────────────────────────────┘
      │
      ▼
-┌──────────────────────┐
-│ Background Process:  │
-│ Celery checks        │
-│ reminders daily      │
-└────┬─────────────────┘
+┌────────────────────────────────────┐
+│ Background Process:                │
+│ Celery checks                      │
+│ reminders daily                    │
+└────┬───────────────────────────────┘
      │
      ▼
 ┌────────────────────────────────────┐
@@ -677,11 +676,11 @@ Admin/Operator → Admin Frontend (port 8081)
 └────┬───────────────────────────────┘
      │
      ▼
-┌──────────────────────┐
-│ User receives        │
-│ notifications via    │
-│ email/push       │
-└────┬─────────────────┘
+┌────────────────────────────────────┐
+│ User receives                      │
+│ notifications via                  │
+│ email/push                         │
+└────┬───────────────────────────────┘
      │
      ▼
 ┌─────────┐
@@ -692,101 +691,93 @@ Admin/Operator → Admin Frontend (port 8081)
 ## 6. Priority Job Update Notification Flow
 
 ```
-┌─────────────────────┐
-│ Trigger: Admin      │
-│ updates a job       │
-│ (dates, status)     │
-└─────────┬───────────┘
-          │
-          ▼
-┌─────────────────────┐
-│ Save updated job    │
-│ to database         │
-└─────────┬───────────┘
-          │
-          ▼
+┌─────────────────────────────────┐
+│ Trigger: Admin updates a job    │
+│ (dates, status)                 │
+└───────────────┬─────────────────┘
+                │
+                ▼
+┌─────────────────────────────────┐
+│ Save updated job to database    │
+└───────────────┬─────────────────┘
+                │
+                ▼
 ┌─────────────────────────────────┐
 │ Trigger Celery Task:            │
 │ check_priority_jobs             │
 │ Queue: HIGH (priority)          │
 │ Retry: 5x exponential backoff   │
-└─────────┬───────────────────────┘
-          │
-          ▼
-┌─────────────────────┐
-│ Find all users who  │
-│ marked this job as  │
-│ priority            │
-└─────────┬───────────┘
-          │
-          ▼
-     ┌────────────────────────────┐
-     │  FOR EACH USER:            │
-     │                            │
-     │  ┌──────────────────────┐  │
-     │  │ Get user's           │  │
-     │  │ notification         │  │
-     │  │ preferences          │  │
-     │  └──────────┬───────────┘  │
-     │             │              │
-     │             ▼              │
-     │  ┌──────────────────────┐  │
-     │  │ Determine what       │  │
-     │  │ changed:             │  │
-     │  │ - Application date?  │  │
-     │  │ - Exam date?         │  │
-     │  │ - Admit card date?   │  │
-     │  │ - Result date?       │  │
-     │  │ - Job cancelled?     │  │
-     │  └──────────┬───────────┘  │
-     │             │              │
-     │             ▼              │
-     │  ┌──────────────────────┐  │
-     │  │ Create notification  │  │
-     │  │ with update details  │  │
-     │  └──────────┬───────────┘  │
-     │             │              │
-     │             ▼              │
-     │  ┌──────────────────────┐  │
-     │  │ Set priority: HIGH   │  │
-     │  │ Route to: HIGH queue │  │
-     │  └──────────┬───────────┘  │
-     │             │              │
-     │             ▼              │
-     │  ┌──────────────────────┐  │
-     │  │ Send notification    │  │
-     │  │ via all enabled      │  │
-     │  │ channels             │  │
-     │  │ Retry: 5x on failure │  │
-     │  └──────────┬───────────┘  │
-     │             │              │
-     │             ▼              │
-     │   ┌────────────────┐       │
-     │   │  Email Failed? │       │
-     │   └─────┬──────────┘       │
-     │         │                  │
-     │    ┌────┴─────┐            │
-     │    │          │            │
-     │    ▼ YES      ▼ NO         │
-     │  ┌────────┐  ┌──────────┐ │
-     │  │ Retry  │  │ Continue │ │
-     │  │ 5x with│  └────┬─────┘ │
-     │  │ exp BO │       │       │
-     │  └───┬────┘       │       │
-     │      │            │       │
-     │      ▼            ▼       │
-     │  ┌──────────────────────┐ │
-     │  │ Update user's        │ │
-     │  │ application record   │ │
-     │  │ with new dates       │ │
-     │  └──────────────────────┘ │
-     │                            │
-     └────────────────────────────┘
-                   │
-                   ▼
-          ┌────────────────┐
-          │ END            │
-          └────────────────┘
+└───────────────┬─────────────────┘
+                │
+                ▼
+┌─────────────────────────────────┐
+│ Find all users who marked this  │
+│ job as priority                 │
+└───────────────┬─────────────────┘
+                │
+                ▼
+     ┌────────────────────────────────┐
+     │  FOR EACH USER:                │
+     │                                │
+     │  ┌──────────────────────────┐  │
+     │  │ Get user's notification  │  │
+     │  │ preferences              │  │
+     │  └────────────┬─────────────┘  │
+     │               │                │
+     │               ▼                │
+     │  ┌──────────────────────────┐  │
+     │  │ Determine what changed:  │  │
+     │  │ - Application date?      │  │
+     │  │ - Exam date?             │  │
+     │  │ - Admit card date?       │  │
+     │  │ - Result date?           │  │
+     │  │ - Job cancelled?         │  │
+     │  └────────────┬─────────────┘  │
+     │               │                │
+     │               ▼                │
+     │  ┌──────────────────────────┐  │
+     │  │ Create notification      │  │
+     │  │ with update details      │  │
+     │  └────────────┬─────────────┘  │
+     │               │                │
+     │               ▼                │
+     │  ┌──────────────────────────┐  │
+     │  │ Set priority: HIGH       │  │
+     │  │ Route to: HIGH queue     │  │
+     │  └────────────┬─────────────┘  │
+     │               │                │
+     │               ▼                │
+     │  ┌──────────────────────────┐  │
+     │  │ Send notification via    │  │
+     │  │ all enabled channels     │  │
+     │  │ Retry: 5x on failure     │  │
+     │  └────────────┬─────────────┘  │
+     │               │                │
+     │               ▼                │
+     │  ┌──────────────────────────┐  │
+     │  │ Email / Push Failed?     │  │
+     │  └──────┬────────────┬──────┘  │
+     │         │            │         │
+     │   YES   ▼            ▼  NO     │
+     │   ┌───────────┐  ┌──────────┐  │
+     │   │ Retry 5x  │  │ Continue │  │
+     │   │ with      │  └────┬─────┘  │
+     │   │ Exp BO    │       │        │
+     │   └─────┬─────┘       │        │
+     │         │             │        │
+     │         ▼             ▼        │
+     │  ┌──────────────────────────┐  │
+     │  │ Update user's            │  │
+     │  │ application record       │  │
+     │  │ with new dates           │  │
+     │  └──────────────────────────┘  │
+     │                                │
+     └────────────────────────────────┘
+                │
+                ▼
+       ┌───────────────────┐
+       │        END        │
+       └───────────────────┘
 ```
 
 ## 7. Admin Dashboard Workflow
@@ -797,68 +788,71 @@ Admin/Operator → Admin Frontend (port 8081)
 └────┬────┘
      │
      ▼
+```
 ┌──────────────────────────────────────┐
 │ Admin Login                          │
 │ src/frontend-admin/ (port 8081)      │
 │ http://localhost:8081/auth/login     │
-└────┬─────────────────────────────────┘
-     │
-     ▼
+└──────────────────┬───────────────────┘
+                   │
+                   ▼
 ┌────────────────────────────────────────────────────┐
-│            ADMIN DASHBOARD                         │
+│                  ADMIN DASHBOARD                   │
 │                                                    │
-│  ┌──────────────────────────────────────────────┐ │
-│  │ Statistics Cards:                            │ │
-│  │ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ │ │
-│  │ │ Total  │ │ Active │ │  Total │ │  New   │ │ │
-│  │ │ Users  │ │  Jobs  │ │  Apps  │ │ Users  │ │ │
-│  │ │ 10,547 │ │   234  │ │ 45,231 │ │  +127  │ │ │
-│  │ └────────┘ └────────┘ └────────┘ └────────┘ │ │
-│  └──────────────────────────────────────────────┘ │
+│  ┌──────────────────────────────────────────────┐  │
+│  │ Statistics Cards:                            │  │
+│  │ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐  │  │
+│  │ │ Total  │ │ Active │ │  Total │ │  New   │  │  │
+│  │ │ Users  │ │  Jobs  │ │  Apps  │ │ Users  │  │  │
+│  │ │ 10,547 │ │   234  │ │ 45,231 │ │  +127  │  │  │
+│  │ └────────┘ └────────┘ └────────┘ └────────┘  │  │
+│  └──────────────────────────────────────────────┘  │
 │                                                    │
-│  ┌──────────────────────────────────────────────┐ │
-│  │ Quick Actions:                               │ │
-│  │ [+ Add New Job]  [View Users]  [Analytics]   │ │
-│  └──────────────────────────────────────────────┘ │
+│  ┌──────────────────────────────────────────────┐  │
+│  │ Quick Actions:                               │  │
+│  │ [+ Add New Job]  [View Users]  [Analytics]   │  │
+│  └──────────────────────────────────────────────┘  │
 │                                                    │
-│  ┌──────────────────────────────────────────────┐ │
-│  │ Recent Activity:                             │ │
-│  │ • New user registration: john@example.com    │ │
-│  │ • Job application: SSC CGL by 25 users       │ │
-│  │ • Job updated: Railway ALP dates changed     │ │
-│  └──────────────────────────────────────────────┘ │
+│  ┌──────────────────────────────────────────────┐  │
+│  │ Recent Activity:                             │  │
+│  │ • New user registration: john@example.com    │  │
+│  │ • Job application: SSC CGL by 25 users       │  │
+│  │ • Job updated: Railway ALP dates changed     │  │
+│  └──────────────────────────────────────────────┘  │
 │                                                    │
-│  ┌──────────────────────────────────────────────┐ │
-│  │ Popular Jobs (Most Applied):                 │ │
-│  │ 1. SSC CGL - 5,234 applications              │ │
-│  │ 2. Railway ALP - 4,892 applications          │ │
-│  │ 3. UPSC CSE - 3,456 applications             │ │
-│  └──────────────────────────────────────────────┘ │
-└────┬───────────────────────────────────────────────┘
-     │
-     ├──────────────┬──────────────┐
-     │              │              │
-     ▼              ▼              ▼
+│  ┌──────────────────────────────────────────────┐  │
+│  │ Popular Jobs (Most Applied):                 │  │
+│  │ 1. SSC CGL - 5,234 applications              │  │
+│  │ 2. Railway ALP - 4,892 applications          │  │
+│  │ 3. UPSC CSE - 3,456 applications             │  │
+│  └──────────────────────────────────────────────┘  │
+└──────────────────┬─────────────────────────────────┘
+                   │
+     ┌─────────────┼─────────────┐
+     │             │             │
+     ▼             ▼             ▼
 ┌──────────┐  ┌──────────┐  ┌──────────┐
 │   Job    │  │   User   │  │Analytics │
 │Management│  │Management│  │    &     │
-└────┬─────┘  └────┬─────┘  │ Reports  │
-     │            │         └────┬─────┘
-     │            │              │
-     ▼            ▼              ▼
+│          │  │          │  │ Reports  │
+└────┬─────┘  └────┬─────┘  └────┬─────┘
+     │             │             │
+     └─────────────┼─────────────┘
+                   │
+                   ▼
 ┌────────────────────────────────────────────────────┐
 │                                                    │
-│  JOB MANAGEMENT:          USER MANAGEMENT:        │
-│  • Create Job             • View All Users        │
-│  • Edit Job               • User Details          │
-│  • Delete Job             • Suspend/Activate      │
-│  • Job Status             • Change Roles          │
+│  JOB MANAGEMENT:          USER MANAGEMENT:         │
+│  • Create Job             • View All Users         │
+│  • Edit Job               • User Details           │
+│  • Delete Job             • Suspend/Activate       │
+│  • Job Status             • Change Roles           │
 │                                                    │
-│  ANALYTICS:                                       │
-│  • User Demographics                              │
-│  • Application Trends                             │
-│  • Popular Organizations                          │
-│  • Notification Stats                             │
+│  ANALYTICS:                                        │
+│  • User Demographics                               │
+│  • Application Trends                              │
+│  • Popular Organizations                           │
+│  • Notification Stats                              │
 │                                                    │
 └────────────────────────────────────────────────────┘
 ```
@@ -866,66 +860,66 @@ Admin/Operator → Admin Frontend (port 8081)
 ## 8. Database Operations Flow
 
 ```
-┌────────────────────────────────────────────────────┐
-│              POSTGRESQL TABLES                     │
-└────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────────┐
+│                        POSTGRESQL TABLES                          │
+└───────────────────────────────────────────────────────────────────┘
 
-         ┌─────────────────────────────┐
-         │        Users                │
-         │  - id (Primary Key, UUID)   │
-         │  - email                    │
-         │  - password_hash            │
-         │  - role                     │
-         └───────────┬─────────────────┘
-                     │
-                     │ (One-to-One)
-                     │
-         ┌───────────▼─────────────────┐
-         │    User Profiles            │
-         │  - id (Primary Key, UUID)   │
-         │  - user_id (Foreign Key)    │
-         │  - personal_info            │
-         │  - education                │
-         │  - preferences              │
-         └───────────┬─────────────────┘
-                     │
-                     │
-         ┌───────────┴─────────────────┐
-         │                             │
-         │ (One-to-Many)               │ (Many-to-Many)
-         │                             │
-┌────────▼──────────┐      ┌───────────▼──────────┐
-│  Notifications    │      │ User Job Applications│
-│  - id             │      │  - id                │
-│  - user_id (FK)   │      │  - user_id (FK)      │
-│  - job_id (FK)    │      │  - job_id (FK)       │
-│  - message        │      │  - is_priority       │
-│  - is_read        │      │  - status            │
-└───────────────────┘      └──────────┬───────────┘
-                                      │
-                                      │ (Many-to-One)
-                                      │
-                           ┌──────────▼───────────┐
-                           │   Job Vacancies      │
-                           │  - id (Primary Key, UUID) │
-                           │  - job_title         │
-                           │  - organization      │
-                           │  - eligibility       │
-                           │  - important_dates   │
-                           └──────────┬───────────┘
-                                      │
-                                      │ (One-to-Many)
-                                      │
-                           ┌──────────▼───────────┐
-                           │    Admin Logs        │
-                           │  - id                │
-                           │  - admin_id (FK)     │
-                           │  - action            │
-                           │  - resource_id       │
-                           └──────────────────────┘
+         ┌─────────────────────────────────┐
+         │             Users               │
+         │  - id (Primary Key, UUID)       │
+         │  - email                        │
+         │  - password_hash                │
+         │  - role                         │
+         └───────────────┬─────────────────┘
+                         │
+                         │ (One-to-One)
+                         │
+         ┌───────────────▼─────────────────┐
+         │         User Profiles           │
+         │  - id (Primary Key, UUID)       │
+         │  - user_id (Foreign Key)        │
+         │  - personal_info                │
+         │  - education                    │
+         │  - preferences                  │
+         └───────────────┬─────────────────┘
+                         │
+                         │
+         ┌───────────────┴─────────────────┐
+         │                                 │
+         │ (One-to-Many)                   │ (Many-to-Many)
+         │                                 │
+┌────────▼────────────────┐      ┌─────────▼───────────────────────┐
+│     Notifications       │      │     User Job Applications       │
+│  - id                   │      │  - id                           │
+│  - user_id (FK)         │      │  - user_id (FK)                 │
+│  - job_id (FK)          │      │  - job_id (FK)                  │
+│  - message              │      │  - is_priority                  │
+│  - is_read              │      │  - status                       │
+└─────────────────────────┘      └─────────┬───────────────────────┘
+                                           │
+                                           │ (Many-to-One)
+                                           │
+                                 ┌─────────▼───────────────────────┐
+                                 │         Job Vacancies           │
+                                 │  - id (Primary Key, UUID)       │
+                                 │  - job_title                    │
+                                 │  - organization                 │
+                                 │  - eligibility                  │
+                                 │  - important_dates              │
+                                 └─────────┬───────────────────────┘
+                                           │
+                                           │ (One-to-Many)
+                                           │
+                                 ┌─────────▼───────────────────────┐
+                                 │          Admin Logs             │
+                                 │  - id                           │
+                                 │  - admin_id (FK)                │
+                                 │  - action                       │
+                                 │  - resource_id                  │
+                                 └─────────────────────────────────┘
 
 INDEXES FOR PERFORMANCE:
-═══════════════════════
+════════════════════════
 
 Users:
   - email (unique)
@@ -953,7 +947,6 @@ Notifications:
   - created_at
   - job_id
 ```
-
 ## 9. Celery Task Scheduler Flow
 
 ```
