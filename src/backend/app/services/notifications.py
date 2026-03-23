@@ -184,17 +184,14 @@ class NotificationService:
             self._append_sent_via(notification_id, "push")
 
     def _send_fcm(self, token: str, title: str, body: str, notification_id: str) -> bool:
-        if not settings.FIREBASE_CREDENTIALS_PATH:
-            logger.info("fcm_skipped", reason="FIREBASE_CREDENTIALS_PATH not set")
+        from app.firebase import init_firebase
+
+        if not init_firebase():
+            logger.info("fcm_skipped", reason="Firebase not configured")
             return False
 
         try:
-            import firebase_admin
-            from firebase_admin import credentials, messaging
-
-            if not firebase_admin._apps:
-                cred = credentials.Certificate(settings.FIREBASE_CREDENTIALS_PATH)
-                firebase_admin.initialize_app(cred)
+            from firebase_admin import messaging
 
             msg = messaging.Message(
                 notification=messaging.Notification(title=title, body=body),

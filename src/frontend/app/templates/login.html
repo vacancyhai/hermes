@@ -1,96 +1,366 @@
 {% extends "base.html" %}
-{% block title %}Login — Hermes{% endblock %}
+{% block title %}Sign In — Hermes{% endblock %}
 
 {% block head %}
 <style>
-    .login-box{max-width:400px;margin:3rem auto;background:#fff;border:1px solid #e2e8f0;border-radius:.5rem;padding:2rem}
-    .login-box h1{font-size:1.5rem;margin-bottom:1.5rem;text-align:center}
+    .auth-box{max-width:420px;margin:3rem auto;background:#fff;border:1px solid #e2e8f0;border-radius:.5rem;padding:2rem}
+    .auth-box h1{font-size:1.5rem;margin-bottom:1.5rem;text-align:center}
     .form-group{margin-bottom:1rem}
     .form-group label{display:block;font-size:.875rem;font-weight:500;margin-bottom:.35rem;color:#334155}
     .form-group input{width:100%;padding:.5rem .75rem;border:1px solid #cbd5e1;border-radius:.375rem;font-size:.9rem}
     .form-group input:focus{outline:none;border-color:#2563eb;box-shadow:0 0 0 2px rgba(37,99,235,.15)}
-    .flash-error{background:#fee2e2;color:#991b1b;padding:.5rem .75rem;border-radius:.375rem;font-size:.85rem;margin-bottom:1rem}
+    .auth-error{background:#fee2e2;color:#991b1b;padding:.5rem .75rem;border-radius:.375rem;font-size:.85rem;margin-bottom:1rem;display:none}
+    .auth-success{background:#d1fae5;color:#065f46;padding:.5rem .75rem;border-radius:.375rem;font-size:.85rem;margin-bottom:1rem;display:none}
     .divider{display:flex;align-items:center;gap:.75rem;margin:1.25rem 0;color:#94a3b8;font-size:.8rem}
     .divider::before,.divider::after{content:"";flex:1;height:1px;background:#e2e8f0}
-    #google-btn-container{display:flex;justify-content:center;margin-bottom:.25rem}
-    #google-error{color:#991b1b;font-size:.85rem;text-align:center;margin-top:.5rem;display:none}
+    .auth-tabs{display:flex;border-bottom:2px solid #e2e8f0;margin-bottom:1.5rem}
+    .auth-tab{flex:1;text-align:center;padding:.5rem;font-size:.875rem;font-weight:500;color:#94a3b8;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px}
+    .auth-tab.active{color:#2563eb;border-bottom-color:#2563eb}
+    .auth-panel{display:none}
+    .auth-panel.active{display:block}
+    .btn-google{display:flex;align-items:center;justify-content:center;gap:.5rem;width:100%;padding:.6rem;border:1px solid #cbd5e1;border-radius:.375rem;background:#fff;font-size:.875rem;cursor:pointer;font-weight:500;color:#334155}
+    .btn-google:hover{background:#f8fafc;border-color:#94a3b8}
+    .btn-google svg{width:18px;height:18px}
+    .btn-phone{background:#059669;color:#fff;border:none}
+    .btn-phone:hover{background:#047857}
+    .link-btn{background:none;border:none;color:#2563eb;cursor:pointer;font-size:.85rem;padding:0}
+    .link-btn:hover{text-decoration:underline}
+    #phone-section .form-group input{letter-spacing:.05em}
+    .otp-input{text-align:center;font-size:1.25rem;letter-spacing:.3em!important}
+    .spinner{display:inline-block;width:16px;height:16px;border:2px solid #fff;border-top-color:transparent;border-radius:50%;animation:spin .6s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="login-box">
-    <h1>Sign In</h1>
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% for category, message in messages %}
-            <div class="flash-error">{{ message }}</div>
-        {% endfor %}
-    {% endwith %}
+<div class="auth-box">
+    <h1>Welcome to Hermes</h1>
 
-    <div id="google-btn-container"></div>
-    <div id="google-error"></div>
+    <div id="auth-error" class="auth-error"></div>
+    <div id="auth-success" class="auth-success"></div>
 
-    <div class="divider">or continue with email</div>
+    <!-- Google Sign-In -->
+    <button type="button" class="btn-google" onclick="loginWithGoogle()">
+        <svg viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+        Sign in with Google
+    </button>
 
-    <form method="POST" action="/login">
-        <input type="hidden" name="next" value="{{ next or '/dashboard' }}">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-        <div class="form-group">
-            <label for="email">Email</label>
-            <input type="email" id="email" name="email" required autofocus>
-        </div>
-        <div class="form-group">
-            <label for="password">Password</label>
-            <input type="password" id="password" name="password" required>
-        </div>
-        <button type="submit" class="btn btn-primary" style="width:100%;margin-top:.5rem">Sign In</button>
-    </form>
-    <div style="text-align:center;margin-top:.75rem;font-size:.875rem">
-        <a href="/forgot-password">Forgot password?</a>
+    <div class="divider">or</div>
+
+    <!-- Tabs: Email / Phone -->
+    <div class="auth-tabs">
+        <div class="auth-tab active" onclick="switchTab('email')">Email</div>
+        <div class="auth-tab" onclick="switchTab('phone')">Phone</div>
     </div>
-    <div style="text-align:center;margin-top:.5rem;font-size:.875rem;color:#64748b">
-        No account? <a href="/register">Create one</a>
+
+    <!-- Email Panel -->
+    <div id="email-section" class="auth-panel active">
+        <div id="email-signin-form">
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" placeholder="you@example.com" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" placeholder="Your password" required>
+            </div>
+            <button type="button" class="btn btn-primary" style="width:100%;margin-top:.5rem" onclick="loginWithEmail()">Sign In</button>
+            <div style="display:flex;justify-content:space-between;margin-top:.75rem;font-size:.85rem">
+                <button type="button" class="link-btn" onclick="showRegister()">Create account</button>
+                <button type="button" class="link-btn" onclick="forgotPassword()">Forgot password?</button>
+            </div>
+        </div>
+
+        <div id="email-register-form" style="display:none">
+            <div class="form-group">
+                <label for="reg-name">Full Name</label>
+                <input type="text" id="reg-name" placeholder="Your full name" required>
+            </div>
+            <div class="form-group">
+                <label for="reg-email">Email</label>
+                <input type="email" id="reg-email" placeholder="you@example.com" required>
+            </div>
+            <div class="form-group">
+                <label for="reg-password">Password <span style="color:#94a3b8;font-weight:400">(min 6 characters)</span></label>
+                <input type="password" id="reg-password" placeholder="Choose a password" required minlength="6">
+            </div>
+            <button type="button" class="btn btn-primary" style="width:100%;margin-top:.5rem" onclick="registerWithEmail()">Create Account</button>
+            <div style="text-align:center;margin-top:.75rem;font-size:.85rem">
+                <button type="button" class="link-btn" onclick="showSignIn()">Back to sign in</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Phone OTP Panel -->
+    <div id="phone-section" class="auth-panel">
+        <div id="phone-input-step">
+            <div class="form-group">
+                <label for="phone-number">Phone Number</label>
+                <input type="tel" id="phone-number" placeholder="+91 98765 43210" required>
+            </div>
+            <button type="button" class="btn btn-primary btn-phone" style="width:100%;margin-top:.5rem" onclick="sendPhoneOTP()">Send OTP</button>
+        </div>
+        <div id="phone-otp-step" style="display:none">
+            <p style="font-size:.85rem;color:#64748b;margin-bottom:1rem;text-align:center">Enter the 6-digit code sent to <strong id="otp-phone-display"></strong></p>
+            <div class="form-group">
+                <input type="text" id="otp-code" class="otp-input" maxlength="6" placeholder="000000" required>
+            </div>
+            <button type="button" class="btn btn-primary btn-phone" style="width:100%;margin-top:.5rem" onclick="verifyPhoneOTP()">Verify Code</button>
+            <div style="text-align:center;margin-top:.75rem;font-size:.85rem">
+                <button type="button" class="link-btn" onclick="resetPhoneStep()">Change number</button>
+            </div>
+        </div>
+        <div id="recaptcha-container"></div>
     </div>
 </div>
 
-<script src="https://accounts.google.com/gsi/client" async></script>
+<!-- Firebase JS SDK (compat v10 — CDN, no build step) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script>
-window.addEventListener("load", function () {
-    if (typeof google === "undefined" || !google.accounts) return;
+(function () {
+    var NEXT_URL = "{{ next or '/dashboard' }}";
+    var apiKey = "{{ firebase_api_key }}";
+    var authDomain = "{{ firebase_auth_domain }}";
+    var projectId = "{{ firebase_project_id }}";
 
-    google.accounts.id.initialize({
-        client_id: "{{ google_client_id }}",
-        callback: handleGoogleLogin,
-        auto_select: false,
-        cancel_on_tap_outside: true,
-    });
+    if (!apiKey) {
+        document.getElementById("auth-error").textContent = "Firebase not configured. Contact administrator.";
+        document.getElementById("auth-error").style.display = "block";
+        return;
+    }
 
-    google.accounts.id.renderButton(
-        document.getElementById("google-btn-container"),
-        { theme: "outline", size: "large", width: 352, text: "signin_with_google" }
-    );
-});
+    firebase.initializeApp({ apiKey: apiKey, authDomain: authDomain, projectId: projectId });
+    var auth = firebase.auth();
+    var confirmationResult = null;
+    var recaptchaVerifier = null;
 
-function handleGoogleLogin(response) {
-    fetch("/auth/google-callback", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({credential: response.credential}),
-    })
-    .then(r => r.json().then(data => ({ok: r.ok, data})))
-    .then(({ok, data}) => {
-        if (ok && data.redirect) {
-            window.location.href = data.redirect;
-        } else {
-            var el = document.getElementById("google-error");
-            el.textContent = data.error || "Google login failed. Please try again.";
-            el.style.display = "block";
-        }
-    })
-    .catch(() => {
-        var el = document.getElementById("google-error");
-        el.textContent = "Google login failed. Please try again.";
+    // ── Helpers ──────────────────────────────────────────────────
+
+    function showError(msg) {
+        var el = document.getElementById("auth-error");
+        el.textContent = msg;
         el.style.display = "block";
+        document.getElementById("auth-success").style.display = "none";
+    }
+
+    function showSuccess(msg) {
+        var el = document.getElementById("auth-success");
+        el.textContent = msg;
+        el.style.display = "block";
+        document.getElementById("auth-error").style.display = "none";
+    }
+
+    function clearMessages() {
+        document.getElementById("auth-error").style.display = "none";
+        document.getElementById("auth-success").style.display = "none";
+    }
+
+    function setLoading(btn, loading) {
+        if (loading) {
+            btn.disabled = true;
+            btn.dataset.origText = btn.textContent;
+            btn.innerHTML = '<span class="spinner"></span>';
+        } else {
+            btn.disabled = false;
+            btn.textContent = btn.dataset.origText || "Submit";
+        }
+    }
+
+    function sendTokenToServer(idToken, fullName) {
+        return fetch("/auth/firebase-callback", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id_token: idToken, full_name: fullName || null }),
+        })
+        .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+        .then(function (res) {
+            if (res.ok && res.data.redirect) {
+                window.location.href = res.data.redirect;
+            } else {
+                showError(res.data.error || "Authentication failed. Please try again.");
+            }
+        })
+        .catch(function () {
+            showError("Authentication failed. Please try again.");
+        });
+    }
+
+    function firebaseErrorMessage(error) {
+        var code = error.code || "";
+        var map = {
+            "auth/user-not-found": "No account found with this email.",
+            "auth/wrong-password": "Incorrect password.",
+            "auth/invalid-credential": "Invalid email or password.",
+            "auth/email-already-in-use": "An account with this email already exists.",
+            "auth/weak-password": "Password must be at least 6 characters.",
+            "auth/invalid-email": "Please enter a valid email address.",
+            "auth/too-many-requests": "Too many attempts. Please try again later.",
+            "auth/popup-closed-by-user": "Google sign-in was cancelled.",
+            "auth/invalid-phone-number": "Please enter a valid phone number (e.g. +91...).",
+            "auth/invalid-verification-code": "Invalid OTP code. Please try again.",
+            "auth/code-expired": "OTP expired. Please request a new one.",
+        };
+        return map[code] || error.message || "Something went wrong. Please try again.";
+    }
+
+    // ── Tab Switching ────────────────────────────────────────────
+
+    window.switchTab = function (tab) {
+        clearMessages();
+        document.querySelectorAll(".auth-tab").forEach(function (t) { t.classList.remove("active"); });
+        document.querySelectorAll(".auth-panel").forEach(function (p) { p.classList.remove("active"); });
+        if (tab === "phone") {
+            document.querySelectorAll(".auth-tab")[1].classList.add("active");
+            document.getElementById("phone-section").classList.add("active");
+        } else {
+            document.querySelectorAll(".auth-tab")[0].classList.add("active");
+            document.getElementById("email-section").classList.add("active");
+        }
+    };
+
+    window.showRegister = function () {
+        clearMessages();
+        document.getElementById("email-signin-form").style.display = "none";
+        document.getElementById("email-register-form").style.display = "block";
+    };
+
+    window.showSignIn = function () {
+        clearMessages();
+        document.getElementById("email-signin-form").style.display = "block";
+        document.getElementById("email-register-form").style.display = "none";
+    };
+
+    window.resetPhoneStep = function () {
+        clearMessages();
+        document.getElementById("phone-input-step").style.display = "block";
+        document.getElementById("phone-otp-step").style.display = "none";
+    };
+
+    // ── Email Auth ───────────────────────────────────────────────
+
+    window.loginWithEmail = function () {
+        clearMessages();
+        var email = document.getElementById("email").value.trim();
+        var password = document.getElementById("password").value;
+        if (!email || !password) { showError("Please enter email and password."); return; }
+
+        var btn = document.querySelector("#email-signin-form .btn-primary");
+        setLoading(btn, true);
+
+        auth.signInWithEmailAndPassword(email, password)
+            .then(function (cred) { return cred.user.getIdToken(); })
+            .then(function (idToken) { return sendTokenToServer(idToken); })
+            .catch(function (err) { showError(firebaseErrorMessage(err)); })
+            .finally(function () { setLoading(btn, false); });
+    };
+
+    window.registerWithEmail = function () {
+        clearMessages();
+        var name = document.getElementById("reg-name").value.trim();
+        var email = document.getElementById("reg-email").value.trim();
+        var password = document.getElementById("reg-password").value;
+        if (!name || !email || !password) { showError("Please fill in all fields."); return; }
+
+        var btn = document.querySelector("#email-register-form .btn-primary");
+        setLoading(btn, true);
+
+        auth.createUserWithEmailAndPassword(email, password)
+            .then(function (cred) {
+                return cred.user.updateProfile({ displayName: name })
+                    .then(function () { return cred.user.getIdToken(); });
+            })
+            .then(function (idToken) { return sendTokenToServer(idToken, name); })
+            .catch(function (err) { showError(firebaseErrorMessage(err)); })
+            .finally(function () { setLoading(btn, false); });
+    };
+
+    window.forgotPassword = function () {
+        clearMessages();
+        var email = document.getElementById("email").value.trim();
+        if (!email) { showError("Please enter your email first, then click Forgot password."); return; }
+
+        auth.sendPasswordResetEmail(email)
+            .then(function () { showSuccess("Password reset email sent. Check your inbox."); })
+            .catch(function (err) { showError(firebaseErrorMessage(err)); });
+    };
+
+    // ── Google Auth ──────────────────────────────────────────────
+
+    window.loginWithGoogle = function () {
+        clearMessages();
+        var provider = new firebase.auth.GoogleAuthProvider();
+
+        auth.signInWithPopup(provider)
+            .then(function (result) { return result.user.getIdToken(); })
+            .then(function (idToken) { return sendTokenToServer(idToken); })
+            .catch(function (err) {
+                if (err.code !== "auth/popup-closed-by-user") {
+                    showError(firebaseErrorMessage(err));
+                }
+            });
+    };
+
+    // ── Phone OTP Auth ───────────────────────────────────────────
+
+    window.sendPhoneOTP = function () {
+        clearMessages();
+        var phone = document.getElementById("phone-number").value.trim();
+        if (!phone) { showError("Please enter a phone number."); return; }
+
+        var btn = document.querySelector("#phone-input-step .btn-primary");
+        setLoading(btn, true);
+
+        if (!recaptchaVerifier) {
+            recaptchaVerifier = new firebase.auth.RecaptchaVerifier("recaptcha-container", {
+                size: "invisible",
+                callback: function () {},
+            });
+        }
+
+        auth.signInWithPhoneNumber(phone, recaptchaVerifier)
+            .then(function (result) {
+                confirmationResult = result;
+                document.getElementById("otp-phone-display").textContent = phone;
+                document.getElementById("phone-input-step").style.display = "none";
+                document.getElementById("phone-otp-step").style.display = "block";
+                document.getElementById("otp-code").focus();
+            })
+            .catch(function (err) {
+                showError(firebaseErrorMessage(err));
+                // Reset reCAPTCHA on failure
+                if (recaptchaVerifier) {
+                    recaptchaVerifier.clear();
+                    recaptchaVerifier = null;
+                }
+            })
+            .finally(function () { setLoading(btn, false); });
+    };
+
+    window.verifyPhoneOTP = function () {
+        clearMessages();
+        var code = document.getElementById("otp-code").value.trim();
+        if (!code || code.length !== 6) { showError("Please enter the 6-digit code."); return; }
+        if (!confirmationResult) { showError("Please request a new OTP."); resetPhoneStep(); return; }
+
+        var btn = document.querySelector("#phone-otp-step .btn-primary");
+        setLoading(btn, true);
+
+        confirmationResult.confirm(code)
+            .then(function (result) { return result.user.getIdToken(); })
+            .then(function (idToken) { return sendTokenToServer(idToken); })
+            .catch(function (err) { showError(firebaseErrorMessage(err)); })
+            .finally(function () { setLoading(btn, false); });
+    };
+
+    // ── Enter key support ────────────────────────────────────────
+
+    document.getElementById("password").addEventListener("keydown", function (e) {
+        if (e.key === "Enter") loginWithEmail();
     });
-}
+    document.getElementById("otp-code").addEventListener("keydown", function (e) {
+        if (e.key === "Enter") verifyPhoneOTP();
+    });
+})();
 </script>
 {% endblock %}

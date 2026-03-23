@@ -1,28 +1,21 @@
 """Authentication endpoints.
 
-User endpoints:
-  POST /api/v1/auth/register
-  POST /api/v1/auth/login
+User endpoints (Firebase Auth):
+  POST /api/v1/auth/verify-token
   POST /api/v1/auth/logout
   POST /api/v1/auth/refresh
-  POST /api/v1/auth/forgot-password
-  POST /api/v1/auth/reset-password
-  GET  /api/v1/auth/verify-email/:token
-  GET  /api/v1/auth/csrf-token
 
-Admin endpoints:
+Admin endpoints (local bcrypt + JWT):
   POST /api/v1/auth/admin/login
   POST /api/v1/auth/admin/logout
   POST /api/v1/auth/admin/refresh
 """
 
 import logging
-import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from pydantic import BaseModel
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from sqlalchemy import select
@@ -38,13 +31,9 @@ from app.models.user import User
 from app.models.user_profile import UserProfile
 from app.schemas.auth import (
     AdminLoginRequest,
-    ForgotPasswordRequest,
-    LoginRequest,
+    FirebaseVerifyRequest,
     MessageResponse,
     RefreshRequest,
-    RegisterRequest,
-    RegisterResponse,
-    ResetPasswordRequest,
     TokenResponse,
 )
 
@@ -52,6 +41,7 @@ from app.rate_limit import limiter
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
+# Used only for admin auth (users authenticate via Firebase)
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 ALGORITHM = "HS256"
@@ -79,56 +69,71 @@ def create_refresh_token(user_id: str, user_type: str, role: str | None = None) 
     return _create_token(data, timedelta(seconds=settings.JWT_REFRESH_TOKEN_EXPIRES))
 
 
-# ─── User Auth ───────────────────────────────────────────────────────────────
+# ─── User Auth (Firebase) ────────────────────────────────────────────────────
 
 
-@router.post("/register", response_model=RegisterResponse, status_code=status.HTTP_201_CREATED)
-@limiter.limit("5/minute")
-async def register(request: Request, body: RegisterRequest, db: AsyncSession = Depends(get_db)):
-    """Create a new user account."""
-    result = await db.execute(select(User).where(User.email == body.email))
-    if result.scalar_one_or_none():
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
+@router.post("/verify-token", response_model=TokenResponse)
+@limiter.limit("10/minute")
+async def verify_token(request: Request, body: FirebaseVerifyRequest, db: AsyncSession = Depends(get_db)):
+    """Verify Firebase ID token, upsert user, return internal JWT pair.
 
-    user = User(
-        email=body.email,
-        password_hash=pwd_context.hash(body.password),
-        full_name=body.full_name,
-    )
-    db.add(user)
-    await db.flush()
+    Lookup order: firebase_uid → email → create new user.
+    Replaces /register, /login, and /google-verify.
+    """
+    from app.firebase import verify_id_token
 
-    profile = UserProfile(user_id=user.id)
-    db.add(profile)
+    try:
+        decoded = verify_id_token(body.id_token)
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Firebase token")
 
-    ip = request.client.host if request.client else "unknown"
-    logger.info("user_registered", extra={"user_id": str(user.id), "ip": ip})
+    firebase_uid = decoded["uid"]
+    email = (decoded.get("email") or "").lower() or None
+    phone = decoded.get("phone_number")  # E.164 format from Firebase phone auth
+    name = decoded.get("name") or body.full_name or email or phone or "User"
+    email_verified = decoded.get("email_verified", False)
+    provider = decoded.get("firebase", {}).get("sign_in_provider", "unknown")
 
-    return RegisterResponse(id=user.id, email=user.email, full_name=user.full_name)
-
-
-@router.post("/login", response_model=TokenResponse)
-@limiter.limit("5/minute")
-async def login(request: Request, body: LoginRequest, db: AsyncSession = Depends(get_db)):
-    """Authenticate regular user and return JWT token pair."""
-    result = await db.execute(select(User).where(User.email == body.email))
+    # 1. Find by firebase_uid
+    result = await db.execute(select(User).where(User.firebase_uid == firebase_uid))
     user = result.scalar_one_or_none()
 
+    if not user and email:
+        # 2. Find by email (legacy user re-authenticating via Firebase)
+        result = await db.execute(select(User).where(User.email == email))
+        user = result.scalar_one_or_none()
+        if user:
+            user.firebase_uid = firebase_uid
+            user.migration_status = "migrated"
+
+    if user:
+        if user.status == "suspended":
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account suspended")
+        if user.status == "deleted":
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Account not found")
+        user.last_login = datetime.now(timezone.utc)
+        if email_verified and not user.is_email_verified:
+            user.is_email_verified = True
+        if phone and not user.phone:
+            user.phone = phone
+        if email and not user.email:
+            user.email = email
+    else:
+        # 3. New user — create account
+        user = User(
+            email=email,
+            firebase_uid=firebase_uid,
+            full_name=name,
+            is_email_verified=email_verified,
+            phone=phone,
+            migration_status="native",
+        )
+        db.add(user)
+        await db.flush()
+        db.add(UserProfile(user_id=user.id))
+
     ip = request.client.host if request.client else "unknown"
-    if not user or not pwd_context.verify(body.password, user.password_hash):
-        logger.warning("login_failed", extra={"email": body.email, "ip": ip})
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
-
-    if user.status == "suspended":
-        logger.warning("login_suspended_account", extra={"email": body.email, "ip": ip})
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account suspended")
-
-    if user.status == "deleted":
-        logger.warning("login_failed", extra={"email": body.email, "ip": ip})
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
-
-    user.last_login = datetime.now(timezone.utc)
-    logger.info("login_success", extra={"user_id": str(user.id), "ip": ip})
+    logger.info("firebase_auth", extra={"user_id": str(user.id), "provider": provider, "ip": ip})
 
     return TokenResponse(
         access_token=create_access_token(str(user.id), "user"),
@@ -180,155 +185,7 @@ async def refresh(body: RefreshRequest, db: AsyncSession = Depends(get_db), redi
     )
 
 
-@router.post("/forgot-password", response_model=MessageResponse)
-@limiter.limit("3/minute")
-async def forgot_password(request: Request, body: ForgotPasswordRequest, db: AsyncSession = Depends(get_db), redis=Depends(get_redis)):
-    """Send password reset email. Always returns 200 to prevent email enumeration."""
-    result = await db.execute(select(User).where(User.email == body.email))
-    user = result.scalar_one_or_none()
-
-    if user:
-        reset_token = secrets.token_urlsafe(32)
-        await redis.setex(f"{settings.REDIS_KEY_PREFIX}:reset:user:{reset_token}", 3600, str(user.id))
-        logger.info("password_reset_requested", extra={"user_id": str(user.id)})
-        from app.tasks.notifications import send_email_notification
-        reset_url = f"{settings.FRONTEND_URL}/reset-password?token={reset_token}"
-        send_email_notification.delay(
-            user.email,
-            "Reset your Hermes password",
-            "password_reset.html",
-            {"name": user.full_name or user.email, "reset_url": reset_url},
-        )
-
-    return MessageResponse(message="If the email exists, a reset link has been sent.")
-
-
-@router.post("/reset-password", response_model=MessageResponse)
-async def reset_password(body: ResetPasswordRequest, db: AsyncSession = Depends(get_db), redis=Depends(get_redis)):
-    """Reset user password using token."""
-    user_id_str = await redis.get(f"{settings.REDIS_KEY_PREFIX}:reset:user:{body.token}")
-    if not user_id_str:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired reset token")
-
-    user_id_str = user_id_str.decode() if isinstance(user_id_str, bytes) else user_id_str
-    result = await db.execute(select(User).where(User.id == uuid.UUID(user_id_str)))
-    user = result.scalar_one_or_none()
-    if not user:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired reset token")
-
-    user.password_hash = pwd_context.hash(body.new_password)
-    await redis.delete(f"{settings.REDIS_KEY_PREFIX}:reset:user:{body.token}")
-    logger.info("password_reset_completed", extra={"user_id": str(user.id)})
-
-    return MessageResponse(message="Password reset successful.")
-
-
-@router.get("/verify-email/{token}", response_model=MessageResponse)
-async def verify_email(token: str, db: AsyncSession = Depends(get_db), redis=Depends(get_redis)):
-    """Verify user email address using token."""
-    user_id_str = await redis.get(f"{settings.REDIS_KEY_PREFIX}:verify:{token}")
-    if not user_id_str:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired verification token")
-
-    user_id_str = user_id_str.decode() if isinstance(user_id_str, bytes) else user_id_str
-    result = await db.execute(select(User).where(User.id == uuid.UUID(user_id_str)))
-    user = result.scalar_one_or_none()
-    if not user:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired verification token")
-
-    user.is_email_verified = True
-    await redis.delete(f"{settings.REDIS_KEY_PREFIX}:verify:{token}")
-    logger.info("email_verified", extra={"user_id": str(user.id)})
-
-    return MessageResponse(message="Email verified successfully.")
-
-
-@router.get("/csrf-token")
-async def csrf_token(redis=Depends(get_redis)):
-    """Generate a CSRF token."""
-    token = secrets.token_urlsafe(32)
-    await redis.setex(f"{settings.REDIS_KEY_PREFIX}:csrf:{token}", 3600, "1")
-    return {"csrf_token": token}
-
-
-# ─── Google OAuth ────────────────────────────────────────────────────────────
-
-
-class GoogleVerifyRequest(BaseModel):
-    id_token: str
-
-
-@router.post("/google-verify", response_model=TokenResponse)
-@limiter.limit("10/minute")
-async def google_verify(request: Request, body: GoogleVerifyRequest, db: AsyncSession = Depends(get_db)):
-    """Verify a Google ID token and return a JWT pair.
-
-    Finds existing user by google_id or email.
-    Creates a new verified user if first Google login.
-    """
-    if not settings.GOOGLE_CLIENT_ID:
-        raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="Google login not configured")
-
-    try:
-        from google.oauth2 import id_token as google_id_token
-        from google.auth.transport import requests as google_requests
-
-        id_info = google_id_token.verify_oauth2_token(
-            body.id_token,
-            google_requests.Request(),
-            settings.GOOGLE_CLIENT_ID,
-        )
-    except Exception:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Google token")
-
-    google_id = id_info.get("sub")
-    email = id_info.get("email", "").lower()
-    full_name = id_info.get("name", "")
-    email_verified = id_info.get("email_verified", False)
-
-    if not email or not email_verified:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Google account email not verified")
-
-    # Find by google_id first, then fall back to email
-    result = await db.execute(select(User).where(User.google_id == google_id))
-    user = result.scalar_one_or_none()
-
-    if not user:
-        result = await db.execute(select(User).where(User.email == email))
-        user = result.scalar_one_or_none()
-
-    if user:
-        # Link google_id if not already set (existing email/password user logging in via Google)
-        if not user.google_id:
-            user.google_id = google_id
-        if user.status == "suspended":
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account suspended")
-        if user.status == "deleted":
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Account not found")
-        user.last_login = datetime.now(timezone.utc)
-    else:
-        # New user — create account, email already verified by Google
-        user = User(
-            email=email,
-            password_hash=pwd_context.hash(secrets.token_urlsafe(32)),  # unusable password
-            full_name=full_name or email,
-            google_id=google_id,
-            is_email_verified=True,
-        )
-        db.add(user)
-        await db.flush()
-        db.add(UserProfile(user_id=user.id))
-
-    ip = request.client.host if request.client else "unknown"
-    logger.info("google_login_success", extra={"user_id": str(user.id), "ip": ip})
-
-    return TokenResponse(
-        access_token=create_access_token(str(user.id), "user"),
-        refresh_token=create_refresh_token(str(user.id), "user"),
-    )
-
-
-# ─── Admin Auth ──────────────────────────────────────────────────────────────
+# ─── Admin Auth (local bcrypt + JWT — unchanged) ─────────────────────────────
 
 
 @router.post("/admin/login", response_model=TokenResponse)

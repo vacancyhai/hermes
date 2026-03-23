@@ -1,7 +1,6 @@
 """Hermes User Frontend — Flask + Jinja2 + HTMX."""
 
 import os
-import secrets
 
 from flask import Flask, current_app, render_template, request, session, redirect, flash
 
@@ -349,144 +348,40 @@ def create_app():
             current_app.api_client.delete(f"/organizations/{org_name}/follow", token=token)
         return redirect(request.form.get("next", "/profile"))
 
-    # --- Auth Flows ---
+    # --- Auth Flows (Firebase) ---
 
-    @app.route("/register", methods=["GET", "POST"])
-    def register():
-        """User registration form."""
-        if request.method == "GET":
-            csrf_token = secrets.token_hex(16)
-            session["csrf_token"] = csrf_token
-            return render_template("register.html", csrf_token=csrf_token)
-
-        form_csrf = request.form.get("csrf_token", "")
-        if not form_csrf or form_csrf != session.pop("csrf_token", None):
-            flash("Invalid request. Please try again.", "error")
-            return redirect("/register")
-
-        email = request.form.get("email", "").strip()
-        password = request.form.get("password", "")
-        full_name = request.form.get("full_name", "").strip()
-        resp = current_app.api_client.post("/auth/register", json={"email": email, "password": password, "full_name": full_name})
-        if resp.ok:
-            flash("Registration successful! Please check your email to verify your account.", "success")
-            return redirect("/login")
-        detail = resp.json().get("detail", "Registration failed") if resp.headers.get("content-type", "").startswith("application/json") else "Registration failed"
-        flash(detail, "error")
-        return redirect("/register")
-
-    @app.route("/forgot-password", methods=["GET", "POST"])
-    def forgot_password():
-        """Request a password reset email."""
-        if request.method == "GET":
-            csrf_token = secrets.token_hex(16)
-            session["csrf_token"] = csrf_token
-            return render_template("forgot_password.html", csrf_token=csrf_token)
-
-        form_csrf = request.form.get("csrf_token", "")
-        if not form_csrf or form_csrf != session.pop("csrf_token", None):
-            flash("Invalid request. Please try again.", "error")
-            return redirect("/forgot-password")
-
-        email = request.form.get("email", "").strip()
-        current_app.api_client.post("/auth/forgot-password", json={"email": email})
-        # Always show success to avoid email enumeration
-        flash("If that email is registered, you'll receive a reset link shortly.", "success")
-        return redirect("/login")
-
-    @app.route("/reset-password", methods=["GET", "POST"])
-    def reset_password():
-        """Reset password using token from email link."""
-        token = request.args.get("token", "") or request.form.get("token", "")
-        if not token:
-            flash("Invalid or missing reset token.", "error")
-            return redirect("/login")
-
-        if request.method == "GET":
-            csrf_token = secrets.token_hex(16)
-            session["csrf_token"] = csrf_token
-            return render_template("reset_password.html", csrf_token=csrf_token, token=token)
-
-        form_csrf = request.form.get("csrf_token", "")
-        if not form_csrf or form_csrf != session.pop("csrf_token", None):
-            flash("Invalid request. Please try again.", "error")
-            return redirect(f"/reset-password?token={token}")
-
-        new_password = request.form.get("new_password", "")
-        confirm_password = request.form.get("confirm_password", "")
-        if new_password != confirm_password:
-            flash("Passwords do not match.", "error")
-            return redirect(f"/reset-password?token={token}")
-
-        resp = current_app.api_client.post("/auth/reset-password", json={"token": token, "new_password": new_password})
-        if resp.ok:
-            flash("Password reset successful! Please sign in.", "success")
-            return redirect("/login")
-        detail = resp.json().get("detail", "Reset failed. Token may be expired.") if resp.headers.get("content-type", "").startswith("application/json") else "Reset failed."
-        flash(detail, "error")
-        return redirect(f"/reset-password?token={token}")
-
-    @app.route("/verify-email/<token>")
-    def verify_email(token):
-        """Handle email verification link."""
-        resp = current_app.api_client.get(f"/auth/verify-email/{token}")
-        if resp.ok:
-            flash("Email verified! You can now sign in.", "success")
-        else:
-            detail = resp.json().get("detail", "Verification failed. Link may be expired.") if resp.headers.get("content-type", "").startswith("application/json") else "Verification failed."
-            flash(detail, "error")
-        return redirect("/login")
-
-    @app.route("/auth/google-callback", methods=["POST"])
-    def google_callback():
-        """Receive Google ID token from JS, verify via backend, store JWT in session."""
-        import json as _json
+    @app.route("/auth/firebase-callback", methods=["POST"])
+    def firebase_callback():
+        """Receive Firebase ID token from JS, verify via backend, store JWT in session."""
         data = request.get_json(silent=True) or {}
-        id_token = data.get("credential", "")
+        id_token = data.get("id_token", "")
+        full_name = data.get("full_name")
         if not id_token:
-            return {"error": "Missing credential"}, 400
+            return {"error": "Missing token"}, 400
 
-        resp = current_app.api_client.post("/auth/google-verify", json={"id_token": id_token})
+        resp = current_app.api_client.post("/auth/verify-token", json={"id_token": id_token, "full_name": full_name})
         if not resp.ok:
-            detail = resp.json().get("detail", "Google login failed") if resp.headers.get("content-type", "").startswith("application/json") else "Google login failed"
+            detail = "Authentication failed"
+            if resp.headers.get("content-type", "").startswith("application/json"):
+                detail = resp.json().get("detail", detail)
             return {"error": detail}, resp.status_code
 
-        data = resp.json()
-        session["token"] = data.get("access_token")
-        session["refresh_token"] = data.get("refresh_token")
+        tokens = resp.json()
+        session["token"] = tokens.get("access_token")
+        session["refresh_token"] = tokens.get("refresh_token")
         me_resp = current_app.api_client.get("/users/me", token=session["token"])
         session["user_name"] = me_resp.json().get("full_name", "") if me_resp.ok else ""
         return {"redirect": "/dashboard"}, 200
 
-    @app.route("/login", methods=["GET", "POST"])
+    @app.route("/login")
     def login():
-        """Simple login form — stores JWT in session."""
-        if request.method == "GET":
-            csrf_token = secrets.token_hex(16)
-            session["csrf_token"] = csrf_token
-            google_client_id = os.environ.get("GOOGLE_CLIENT_ID", "")
-        return render_template("login.html", next=request.args.get("next", "/dashboard"), csrf_token=csrf_token, google_client_id=google_client_id)
-
-        # Validate CSRF token
-        form_csrf = request.form.get("csrf_token", "")
-        if not form_csrf or form_csrf != session.pop("csrf_token", None):
-            flash("Invalid request. Please try again.", "error")
-            return redirect("/login")
-
-        email = request.form.get("email", "")
-        password = request.form.get("password", "")
-        resp = current_app.api_client.post("/auth/login", json={"email": email, "password": password})
-        if resp.ok:
-            data = resp.json()
-            session["token"] = data.get("access_token")
-            session["refresh_token"] = data.get("refresh_token")
-            # Fetch user's full name from /users/me
-            me_resp = current_app.api_client.get("/users/me", token=session["token"])
-            session["user_name"] = me_resp.json().get("full_name", email) if me_resp.ok else email
-            next_url = request.form.get("next", "/dashboard")
-            return redirect(next_url)
-        flash("Invalid email or password", "error")
-        return redirect("/login")
+        """Render Firebase-powered login page."""
+        return render_template("login.html",
+            next=request.args.get("next", "/dashboard"),
+            firebase_api_key=os.environ.get("FIREBASE_WEB_API_KEY", ""),
+            firebase_auth_domain=os.environ.get("FIREBASE_AUTH_DOMAIN", ""),
+            firebase_project_id=os.environ.get("FIREBASE_PROJECT_ID", ""),
+        )
 
     @app.route("/logout")
     def logout():

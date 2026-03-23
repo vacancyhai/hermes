@@ -48,8 +48,13 @@ class Settings(BaseSettings):
     ANTHROPIC_API_KEY: str = ""
     AI_MODEL: str = "claude-sonnet-4-20250514"
 
-    # Google OAuth
+    # Google OAuth (legacy, kept for reference)
     GOOGLE_CLIENT_ID: str = ""
+
+    # Firebase Auth (frontend JS SDK config)
+    FIREBASE_WEB_API_KEY: str = ""
+    FIREBASE_AUTH_DOMAIN: str = ""
+    FIREBASE_PROJECT_ID: str = ""
 
     # Frontend
     FRONTEND_URL: str = "http://localhost:8080"
