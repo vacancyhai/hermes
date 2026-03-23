@@ -22,6 +22,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from pydantic import BaseModel
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from sqlalchemy import select
@@ -248,6 +249,83 @@ async def csrf_token(redis=Depends(get_redis)):
     token = secrets.token_urlsafe(32)
     await redis.setex(f"{settings.REDIS_KEY_PREFIX}:csrf:{token}", 3600, "1")
     return {"csrf_token": token}
+
+
+# ─── Google OAuth ────────────────────────────────────────────────────────────
+
+
+class GoogleVerifyRequest(BaseModel):
+    id_token: str
+
+
+@router.post("/google-verify", response_model=TokenResponse)
+@limiter.limit("10/minute")
+async def google_verify(request: Request, body: GoogleVerifyRequest, db: AsyncSession = Depends(get_db)):
+    """Verify a Google ID token and return a JWT pair.
+
+    Finds existing user by google_id or email.
+    Creates a new verified user if first Google login.
+    """
+    if not settings.GOOGLE_CLIENT_ID:
+        raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="Google login not configured")
+
+    try:
+        from google.oauth2 import id_token as google_id_token
+        from google.auth.transport import requests as google_requests
+
+        id_info = google_id_token.verify_oauth2_token(
+            body.id_token,
+            google_requests.Request(),
+            settings.GOOGLE_CLIENT_ID,
+        )
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Google token")
+
+    google_id = id_info.get("sub")
+    email = id_info.get("email", "").lower()
+    full_name = id_info.get("name", "")
+    email_verified = id_info.get("email_verified", False)
+
+    if not email or not email_verified:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Google account email not verified")
+
+    # Find by google_id first, then fall back to email
+    result = await db.execute(select(User).where(User.google_id == google_id))
+    user = result.scalar_one_or_none()
+
+    if not user:
+        result = await db.execute(select(User).where(User.email == email))
+        user = result.scalar_one_or_none()
+
+    if user:
+        # Link google_id if not already set (existing email/password user logging in via Google)
+        if not user.google_id:
+            user.google_id = google_id
+        if user.status == "suspended":
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account suspended")
+        if user.status == "deleted":
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Account not found")
+        user.last_login = datetime.now(timezone.utc)
+    else:
+        # New user — create account, email already verified by Google
+        user = User(
+            email=email,
+            password_hash=pwd_context.hash(secrets.token_urlsafe(32)),  # unusable password
+            full_name=full_name or email,
+            google_id=google_id,
+            is_email_verified=True,
+        )
+        db.add(user)
+        await db.flush()
+        db.add(UserProfile(user_id=user.id))
+
+    ip = request.client.host if request.client else "unknown"
+    logger.info("google_login_success", extra={"user_id": str(user.id), "ip": ip})
+
+    return TokenResponse(
+        access_token=create_access_token(str(user.id), "user"),
+        refresh_token=create_refresh_token(str(user.id), "user"),
+    )
 
 
 # ─── Admin Auth ──────────────────────────────────────────────────────────────

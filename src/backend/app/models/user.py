@@ -18,6 +18,7 @@ class User(Base):
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     full_name: Mapped[str] = mapped_column(String(255), nullable=False)
     phone: Mapped[str | None] = mapped_column(String(20))
+    google_id: Mapped[str | None] = mapped_column(String(255), unique=True, index=True)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="active", index=True)
     is_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     is_email_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)

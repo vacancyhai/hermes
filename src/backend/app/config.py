@@ -48,6 +48,9 @@ class Settings(BaseSettings):
     ANTHROPIC_API_KEY: str = ""
     AI_MODEL: str = "claude-sonnet-4-20250514"
 
+    # Google OAuth
+    GOOGLE_CLIENT_ID: str = ""
+
     # Frontend
     FRONTEND_URL: str = "http://localhost:8080"
 

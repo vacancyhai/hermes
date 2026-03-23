@@ -437,13 +437,35 @@ def create_app():
             flash(detail, "error")
         return redirect("/login")
 
+    @app.route("/auth/google-callback", methods=["POST"])
+    def google_callback():
+        """Receive Google ID token from JS, verify via backend, store JWT in session."""
+        import json as _json
+        data = request.get_json(silent=True) or {}
+        id_token = data.get("credential", "")
+        if not id_token:
+            return {"error": "Missing credential"}, 400
+
+        resp = current_app.api_client.post("/auth/google-verify", json={"id_token": id_token})
+        if not resp.ok:
+            detail = resp.json().get("detail", "Google login failed") if resp.headers.get("content-type", "").startswith("application/json") else "Google login failed"
+            return {"error": detail}, resp.status_code
+
+        data = resp.json()
+        session["token"] = data.get("access_token")
+        session["refresh_token"] = data.get("refresh_token")
+        me_resp = current_app.api_client.get("/users/me", token=session["token"])
+        session["user_name"] = me_resp.json().get("full_name", "") if me_resp.ok else ""
+        return {"redirect": "/dashboard"}, 200
+
     @app.route("/login", methods=["GET", "POST"])
     def login():
         """Simple login form — stores JWT in session."""
         if request.method == "GET":
             csrf_token = secrets.token_hex(16)
             session["csrf_token"] = csrf_token
-            return render_template("login.html", next=request.args.get("next", "/dashboard"), csrf_token=csrf_token)
+            google_client_id = os.environ.get("GOOGLE_CLIENT_ID", "")
+        return render_template("login.html", next=request.args.get("next", "/dashboard"), csrf_token=csrf_token, google_client_id=google_client_id)
 
         # Validate CSRF token
         form_csrf = request.form.get("csrf_token", "")

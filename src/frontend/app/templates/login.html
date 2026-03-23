@@ -10,6 +10,10 @@
     .form-group input{width:100%;padding:.5rem .75rem;border:1px solid #cbd5e1;border-radius:.375rem;font-size:.9rem}
     .form-group input:focus{outline:none;border-color:#2563eb;box-shadow:0 0 0 2px rgba(37,99,235,.15)}
     .flash-error{background:#fee2e2;color:#991b1b;padding:.5rem .75rem;border-radius:.375rem;font-size:.85rem;margin-bottom:1rem}
+    .divider{display:flex;align-items:center;gap:.75rem;margin:1.25rem 0;color:#94a3b8;font-size:.8rem}
+    .divider::before,.divider::after{content:"";flex:1;height:1px;background:#e2e8f0}
+    #google-btn-container{display:flex;justify-content:center;margin-bottom:.25rem}
+    #google-error{color:#991b1b;font-size:.85rem;text-align:center;margin-top:.5rem;display:none}
 </style>
 {% endblock %}
 
@@ -21,6 +25,12 @@
             <div class="flash-error">{{ message }}</div>
         {% endfor %}
     {% endwith %}
+
+    <div id="google-btn-container"></div>
+    <div id="google-error"></div>
+
+    <div class="divider">or continue with email</div>
+
     <form method="POST" action="/login">
         <input type="hidden" name="next" value="{{ next or '/dashboard' }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
@@ -41,4 +51,46 @@
         No account? <a href="/register">Create one</a>
     </div>
 </div>
+
+<script src="https://accounts.google.com/gsi/client" async></script>
+<script>
+window.addEventListener("load", function () {
+    if (typeof google === "undefined" || !google.accounts) return;
+
+    google.accounts.id.initialize({
+        client_id: "{{ google_client_id }}",
+        callback: handleGoogleLogin,
+        auto_select: false,
+        cancel_on_tap_outside: true,
+    });
+
+    google.accounts.id.renderButton(
+        document.getElementById("google-btn-container"),
+        { theme: "outline", size: "large", width: 352, text: "signin_with_google" }
+    );
+});
+
+function handleGoogleLogin(response) {
+    fetch("/auth/google-callback", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({credential: response.credential}),
+    })
+    .then(r => r.json().then(data => ({ok: r.ok, data})))
+    .then(({ok, data}) => {
+        if (ok && data.redirect) {
+            window.location.href = data.redirect;
+        } else {
+            var el = document.getElementById("google-error");
+            el.textContent = data.error || "Google login failed. Please try again.";
+            el.style.display = "block";
+        }
+    })
+    .catch(() => {
+        var el = document.getElementById("google-error");
+        el.textContent = "Google login failed. Please try again.";
+        el.style.display = "block";
+    });
+}
+</script>
 {% endblock %}
