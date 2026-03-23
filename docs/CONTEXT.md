@@ -76,7 +76,7 @@ PostgreSQL 16 with 10 tables:
 
 | Table | Purpose |
 |-------|---------|
-| `users` | Regular users (no role column) |
+| `users` | Regular users (no role column); `google_id` for Google OAuth linking |
 | `admin_users` | Admin/operator with role, department, permissions JSONB |
 | `user_profiles` | Extended user data + JSONB arrays (preferences, FCM tokens, followed orgs) |
 | `user_devices` | Device registry: FCM token, device_type (web/pwa/android/ios), device_fingerprint for push de-dup |
@@ -96,6 +96,7 @@ PostgreSQL 16 with 10 tables:
 - `0005_add_fee_columns.py` — `fee_general`, `fee_obc`, `fee_sc_st`, `fee_ews`, `fee_female` on job_vacancies
 - `0006_add_source_pdf_path.py` — `source_pdf_path` (Text, nullable) on job_vacancies
 - `0007_user_devices_and_delivery_log.py` — `user_devices` + `notification_delivery_log` tables (migrates JSONB fcm_tokens)
+- `0008_add_google_id_to_users.py` — `google_id VARCHAR(255)` + unique index on `users` (Google OAuth account linking)
 
 ### Key DB Constraints
 
@@ -125,7 +126,7 @@ src/backend/
       application.py, notification.py, user_device.py,
       notification_delivery_log.py, admin_log.py
     routers/
-      auth.py            # /api/v1/auth/* — user + admin login/register/logout/refresh/reset
+      auth.py            # /api/v1/auth/* — user + admin login/register/logout/refresh/reset/google-verify
       jobs.py            # /api/v1/jobs/* — public listing (FTS), recommended, detail by slug
       users.py           # /api/v1/users/* + /api/v1/organizations/* — profile CRUD, org follow
       admin.py           # /api/v1/admin/* — job CRUD, approve, user mgmt, dashboard, analytics, logs
@@ -169,7 +170,8 @@ src/frontend/
                          # /dashboard/applications/<id>/update, /dashboard/applications/<id>/delete,
                          # /dashboard/applications (HTMX partial), /notifications/*, /profile,
                          # /profile/follow, /profile/unfollow, /register, /forgot-password,
-                         # /reset-password, /verify-email/<token>, /login (CSRF), /logout, /offline
+                         # /reset-password, /verify-email/<token>, /login (CSRF), /logout,
+                         # /auth/google-callback (Google OAuth relay → backend /auth/google-verify), /offline
                          # _try_refresh() on 401
     api_client.py        # requests wrapper: get, post, put, delete, patch (10s timeout)
     static/              # PWA: manifest.json, sw.js, icons
@@ -198,7 +200,7 @@ src/frontend-admin/
     unit/test_api_client.py (18)
     integration/test_routes.py (70)
 
-migrations/versions/     # 0001–0006 Alembic migration files
+migrations/versions/     # 0001–0008 Alembic migration files
 docs/
   API.md                 # Complete endpoint reference
   DESIGN.md              # Architecture + DB schema
@@ -214,6 +216,7 @@ docs/
 - `users` table — regular users only (no role)
 - `admin_users` table — admin/operator (role, department, permissions JSONB)
 - JWT `user_type` claim: `"user"` | `"admin"` for scope isolation
+- Google OAuth: `POST /auth/google-verify` accepts Google ID token (from Google Identity Services JS), finds/creates user by `google_id`/email, returns JWT pair. Requires `GOOGLE_CLIENT_ID` env var on both backend and frontend.
 - Redis keys: `hermes:blocklist:{jti}`, `hermes:reset:{token}`, `hermes:verify:{token}`, `hermes:csrf:{token}` (prefix from `REDIS_KEY_PREFIX` setting)
 - Access token: 15 min. Refresh: 7 days. JTI blocklisted on logout + refresh rotation.
 - Frontends store `refresh_token` in session; auto-refresh on 401 via `_try_refresh()` helper.

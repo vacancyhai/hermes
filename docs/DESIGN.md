@@ -1211,6 +1211,9 @@ NOTIFY_WHATSAPP_DELAY=3600     # 1 hour (default)
 # JWT
 JWT_SECRET_KEY=<separate-random-key>
 JWT_ACCESS_TOKEN_EXPIRES=900
+
+# Google OAuth (optional — leave blank to disable Google login button)
+GOOGLE_CLIENT_ID=
 ```
 
 ### User Frontend (`src/frontend/.env`)
@@ -1220,6 +1223,7 @@ BACKEND_API_URL=http://localhost:8000/api/v1
 SECRET_KEY=<frontend-secret-key>
 FRONTEND_PORT=8080
 SESSION_TIMEOUT=3600
+GOOGLE_CLIENT_ID=
 ```
 
 ### Admin Frontend (`src/frontend-admin/.env`)

@@ -16,6 +16,7 @@ All list endpoints return: `{ "data": [...], "pagination": { "limit", "offset", 
 | POST | `/auth/login` | Public | Login → JWT token pair |
 | POST | `/auth/logout` | User JWT | Invalidate token (Redis blocklist) |
 | POST | `/auth/refresh` | Public | Rotate token pair |
+| POST | `/auth/google-verify` | Public | Verify Google ID token → JWT pair (requires `GOOGLE_CLIENT_ID` configured) |
 | POST | `/auth/forgot-password` | Public | Request password reset email |
 | POST | `/auth/reset-password` | Public | Reset password with token |
 | GET | `/auth/verify-email/:token` | Public | Verify email address |
