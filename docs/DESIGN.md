@@ -951,17 +951,15 @@ dumping unstructured text and can't filter by user, endpoint, or request ID.
 `structlog` is configured once in the FastAPI app startup and works with
 Uvicorn and Celery.
 
-### OCI Container Registry
+### Image Deployment
 
-Docker images are stored in OCI Container Registry (500 MB free). The
-deployment workflow:
+Images are built directly on the OCI ARM VM. The deployment workflow:
 
-1. Build images locally or in GitHub Actions
-2. Push to OCIR: `docker push <region>.ocir.io/<namespace>/hermes/<service>:latest`
-3. On the OCI ARM VM: `docker compose pull && docker compose up -d`
+1. `git pull origin main` on the VM
+2. `docker compose up -d --build` — rebuilds only changed services
 
-This avoids building images on the VM itself (slow on 4 OCPU) or doing
-`docker save/load` over SSH.
+This avoids the need for a container registry. The VM has 4 OCPU and 24 GB
+RAM so builds are fast enough in production.
 
 ---
 
@@ -1022,13 +1020,13 @@ All containers run via Docker Compose on this single VM.
 | Database  | PostgreSQL 16 in Docker (password-protected, Docker volume)     |
 | Redis     | Redis 7 in Docker (password-protected, AOF persistence)         |
 | Mail      | OCI Email Delivery (3,000/day free, SPF/DKIM built-in)          |
-| TLS       | OCI Load Balancer (free 10 Mbps) with OCI-managed certificates  |
-| Nginx     | Behind LB — handles rate limiting and security headers           |
+| TLS       | Nginx + Let's Encrypt (Certbot) — free SSL directly on VM       |
+| Nginx     | SSL termination, rate limiting, security headers                |
 | Uvicorn   | Workers via `WEB_CONCURRENCY` (default: CPU × 2 + 1)           |
-| Networking| OCI VCN — private subnet for VM, public subnet for LB only     |
+| Networking| OCI VCN — VM in private subnet; ports 80/443/22 via security list|
 | Monitoring| OCI Monitoring + Alarms (500M datapoints/month free)            |
 | Logging   | OCI Logging (10 GB/month free) — structured JSON via `structlog`|
-| Images    | OCI Container Registry (500 MB free) — Docker image storage     |
+| Images    | Built directly on VM via `git pull` + `docker compose up --build`|
 | CDN       | Cloudflare Free Tier — CDN cache, DDoS protection, analytics   |
 | Secrets   | OCI Vault (20 key versions free) or `.env` files                |
 | Backups   | `pg_dump` daily cron + OCI block volume snapshots (weekly)      |
@@ -1054,12 +1052,12 @@ All containers run via Docker Compose on this single VM.
 - [ ] `REDIS_PASSWORD` — strong, unique
 - [ ] `JWT_SECRET_KEY` — separate from `SECRET_KEY`
 - [ ] `MAIL_PASSWORD` — OCI Email Delivery SMTP credential
-- [ ] OCI Load Balancer configured with SSL certificate
+- [ ] Certbot installed + Let's Encrypt certificate obtained for domain
+- [ ] Nginx SSL config updated with cert paths + HTTP → HTTPS redirect
 - [ ] `CORS_ORIGINS` restricted to production domain(s)
-- [ ] VCN security lists: only LB has public ingress (80/443), VM SSH from admin IP only
+- [ ] VCN security list: ports 80/443 open to `0.0.0.0/0`; SSH (22) from admin IP only
 - [ ] OCI Monitoring alarms set for CPU > 80%, disk > 90%
 - [ ] Cloudflare DNS configured — domain proxied through Cloudflare
-- [ ] OCI Container Registry — images pushed and VM pulls from OCIR
 - [ ] Redis AOF persistence enabled (`appendonly yes` in redis.conf)
 
 ---
@@ -1072,8 +1070,8 @@ All items below are implemented.
 - **JWT with Redis blocklist:** access tokens expire in 15 min, refresh in 7 days
 - **Rate limiting:** Nginx (100 req/min per IP) + SlowAPI (1000 req/min per user, 5/min on login)
 - **CORS:** Only whitelisted origins in `CORS_ORIGINS`
-- **HTTPS/TLS:** OCI Load Balancer handles SSL termination with OCI-managed certificates (free)
-- **Network isolation:** OCI VCN with private subnet for VM — DB and Redis never exposed to internet. Only the Load Balancer sits in the public subnet.
+- **HTTPS/TLS:** Nginx handles SSL termination via Let's Encrypt (Certbot) — free, auto-renewing certificates directly on the VM
+- **Network isolation:** OCI VCN security list — only ports 80/443/22 open; DB and Redis never exposed outside Docker networks
 - **Security headers:** X-Frame-Options, X-Content-Type-Options, X-XSS-Protection, Content-Security-Policy, Strict-Transport-Security, Referrer-Policy (via Nginx behind LB)
 - **Input validation:** Pydantic models on all endpoints (FastAPI native)
 - **CSRF protection:** Redis-backed single-use tokens (1h TTL)
@@ -1152,7 +1150,7 @@ have a **different** `SECRET_KEY`.
 ### Target: OCI Always Free ARM Instance
 
 The entire stack runs on a single OCI Ampere A1 VM (4 OCPU, 24 GB RAM)
-using Docker Compose. Traffic enters via OCI Load Balancer (free 10 Mbps).
+using Docker Compose. Nginx handles SSL termination directly via Let's Encrypt.
 
 ```
 Internet
@@ -1166,19 +1164,13 @@ Internet
 └──────────────┬───────────────────┘
                │
                ▼
-┌──────────────────────────────────┐
-│  OCI Load Balancer (Free 10Mbps) │
-│  - SSL termination (OCI Certs)   │
-│  - Path-based routing            │
-└──────────────┬───────────────────┘
-               │ Private subnet
-               ▼
 ┌──────────────────────────────────────────────┐
 │  OCI ARM VM (4 OCPU, 24 GB RAM) — Always Free│
 │                                               │
 │  Docker Compose                               │
 │  ┌─────────────────────────────────────────┐  │
-│  │ Nginx (rate limiting, security headers) │  │
+│  │ Nginx (SSL/TLS via Let's Encrypt,       │  │
+│  │        rate limiting, security headers) │  │
 │  │    ├── backend:8000                     │  │
 │  │    ├── frontend:8080                    │  │
 │  │    └── frontend-admin:8081              │  │
@@ -1204,30 +1196,29 @@ Internet
 | Service | Purpose | Free Tier Limit |
 | ------- | ------- | --------------- |
 | ARM VM (Ampere A1) | Runs all Docker containers | 4 OCPU, 24 GB RAM |
-| Load Balancer | SSL termination + routing | 1 LB, 10 Mbps |
 | Email Delivery | Job notification emails (SPF/DKIM) | 3,000 emails/day |
 | Vault | Store secrets (`SECRET_KEY`, `JWT_SECRET_KEY`, passwords) | 20 key versions |
 | Monitoring + Alarms | CPU, disk, health check alerts | 500M datapoints/month |
 | Logging | Centralized container logs | 10 GB/month |
-| Container Registry | Docker image storage | 500 MB |
 | Block Volume | VM storage + backup snapshots | 200 GB total |
-| VCN + Networking | Private/public subnet isolation | Unlimited |
+| VCN + Networking | Subnet isolation + security lists | Unlimited |
 
-**External free service (not OCI):**
+**External free services (not OCI):**
 
 | Service | Purpose | Free Tier Limit |
 | ------- | ------- | --------------- |
-| Cloudflare | CDN, DDoS protection, analytics, auto-minification | Unlimited (free plan) |
+| Cloudflare | CDN, DDoS protection, analytics | Unlimited (free plan) |
+| Let's Encrypt (Certbot) | Free SSL/TLS certificates for Nginx | Unlimited |
 
-Cloudflare sits in front of the OCI Load Balancer. Since the free LB is only
-10 Mbps, Cloudflare's CDN cache handles static asset traffic (CSS, JS, images)
-without hitting that bandwidth limit. Also provides free DDoS protection and
-analytics.
+Cloudflare sits in front of the VM. Its CDN cache handles static asset traffic
+(CSS, JS, images) reducing bandwidth load on the VM. Nginx handles SSL
+termination directly using Let's Encrypt certificates (auto-renewed by Certbot).
 
-| Subnet | Resources | Ingress Rules |
-| ------ | --------- | ------------- |
-| Public | Load Balancer | 80, 443 from `0.0.0.0/0` |
-| Private | ARM VM | LB → VM (8000, 8080, 8081); SSH (22) from admin IP only |
+| Resource | Ingress Rules |
+| -------- | ------------- |
+| VM port 80 | `0.0.0.0/0` (Cloudflare → HTTP, for Certbot challenge + redirect) |
+| VM port 443 | `0.0.0.0/0` (Cloudflare → HTTPS) |
+| VM port 22 | Admin IP only |
 
 PostgreSQL (5432) and Redis (6379) are accessible only within Docker
 networks on the VM — never exposed to any OCI subnet or the internet.

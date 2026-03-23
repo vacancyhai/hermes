@@ -34,21 +34,20 @@ notifications, and an admin panel.
 | WhatsApp (future) | WhatsApp Cloud API                           |
 | User Frontend      | Flask + Jinja2 + HTMX (port 8080)           |
 | Admin Frontend     | Flask + Jinja2 + HTMX (port 8081)           |
-| Reverse Proxy      | Nginx (behind OCI Load Balancer)            |
+| Reverse Proxy      | Nginx (SSL via Let's Encrypt / Certbot)     |
 | CDN / DDoS         | Cloudflare (free tier)                      |
 | Connection Pooling | PgBouncer                                   |
 | Logging            | structlog (JSON) → OCI Logging              |
-| Image Registry     | OCI Container Registry (500 MB free)        |
 | Containerization   | Docker + Docker Compose                     |
 | Hosting            | OCI ARM VM (4 OCPU, 24 GB RAM — Always Free)|
 
 ## Architecture
 
 All services run on a single OCI ARM instance (Always Free) via Docker Compose.
-Traffic enters through an OCI Load Balancer (free 10 Mbps, SSL termination).
+Traffic enters directly through Nginx (SSL via Let's Encrypt / Certbot).
 
 ```
-Browser → Cloudflare (CDN + DDoS) → OCI Load Balancer (SSL) → Nginx
+Browser → Cloudflare (CDN + DDoS) → Nginx (SSL, port 443)
             ├── /api/*        → Backend API  (port 8000)
             ├── /*            → User Frontend (port 8080)
             └── admin.*       → Admin Frontend (port 8081)
