@@ -1009,14 +1009,14 @@ cd ../frontend-admin  && docker compose up -d
 
 **Goal:** Hardened, monitored deployment on a single OCI ARM instance.
 
-**Infrastructure:** OCI Ampere A1 VM (4 OCPU, 24 GB RAM) — Always Free.
+**Infrastructure:** OCI Ampere A1 VM (4 OCPU, 24 GB RAM, 200 GB storage) — Always Free.
 All containers run via Docker Compose on this single VM.
 
 | Aspect    | Value                                                           |
 | --------- | --------------------------------------------------------------- |
 | Config    | `config/production/`                                            |
 | `DEBUG`   | `False` (never override)                                        |
-| VM        | OCI ARM Ampere A1, 4 OCPU, 24 GB RAM (Always Free)             |
+| VM        | OCI ARM Ampere A1, 4 OCPU, 24 GB RAM, 200 GB storage (Always Free)             |
 | Database  | PostgreSQL 16 in Docker (password-protected, Docker volume)     |
 | Redis     | Redis 7 in Docker (password-protected, AOF persistence)         |
 | Mail      | OCI Email Delivery (3,000/day free, SPF/DKIM built-in)          |
@@ -1165,7 +1165,7 @@ Internet
                │
                ▼
 ┌──────────────────────────────────────────────┐
-│  OCI ARM VM (4 OCPU, 24 GB RAM) — Always Free│
+│  OCI ARM VM (4 OCPU, 24 GB RAM, 200 GB storage) — Always Free│
 │                                               │
 │  Docker Compose                               │
 │  ┌─────────────────────────────────────────┐  │
@@ -1195,7 +1195,7 @@ Internet
 
 | Service | Purpose | Free Tier Limit |
 | ------- | ------- | --------------- |
-| ARM VM (Ampere A1) | Runs all Docker containers | 4 OCPU, 24 GB RAM |
+| ARM VM (Ampere A1) | Runs all Docker containers | 4 OCPU, 24 GB RAM, 200 GB storage |
 | Email Delivery | Job notification emails (SPF/DKIM) | 3,000 emails/day |
 | Vault | Store secrets (`SECRET_KEY`, `JWT_SECRET_KEY`, passwords) | 20 key versions |
 | Monitoring + Alarms | CPU, disk, health check alerts | 500M datapoints/month |

@@ -39,7 +39,7 @@ notifications, and an admin panel.
 | Connection Pooling | PgBouncer                                   |
 | Logging            | structlog (JSON) → OCI Logging              |
 | Containerization   | Docker + Docker Compose                     |
-| Hosting            | OCI ARM VM (4 OCPU, 24 GB RAM — Always Free)|
+| Hosting            | OCI ARM VM (4 OCPU, 24 GB RAM, 200 GB storage — Always Free)|
 
 ## Architecture
 
