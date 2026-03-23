@@ -5,7 +5,10 @@
 {% block content %}
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
     <h1 style="font-size:1.35rem;">Job Management</h1>
-    <a href="/jobs/upload" class="btn btn-primary">Upload PDF</a>
+    <div style="display:flex;gap:.5rem;">
+        <a href="/jobs/new" class="btn btn-primary">+ New Job</a>
+        <a href="/jobs/upload" class="btn btn-outline">Upload PDF</a>
+    </div>
 </div>
 
 <div class="filters">

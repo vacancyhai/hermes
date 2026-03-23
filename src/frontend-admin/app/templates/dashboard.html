@@ -36,11 +36,12 @@
     </div>
 </div>
 
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem;">
     <div class="card">
         <h3 style="font-size:1rem;margin-bottom:.75rem;">Quick Actions</h3>
         <div style="display:flex;flex-direction:column;gap:.5rem;">
-            <a href="/jobs" class="btn btn-primary" style="text-align:center;">Manage Jobs</a>
+            <a href="/jobs/new" class="btn btn-primary" style="text-align:center;">+ New Job</a>
+            <a href="/jobs" class="btn btn-outline" style="text-align:center;">Manage Jobs</a>
             <a href="/users" class="btn btn-outline" style="text-align:center;">Manage Users</a>
             <a href="/logs" class="btn btn-outline" style="text-align:center;">View Audit Logs</a>
         </div>
@@ -50,7 +51,102 @@
         <ul style="list-style:none;font-size:.875rem;line-height:2;">
             <li>Logged in as: <strong>{{ session.get('admin_name', 'Admin') }}</strong></li>
             <li>Role: <strong>{{ session.get('admin_role', 'admin') | title }}</strong></li>
+            {% if analytics.get('notifications') %}
+            <li>Notifications: <strong>{{ analytics.notifications.total }}</strong> ({{ analytics.notifications.unread }} unread)</li>
+            {% endif %}
         </ul>
     </div>
 </div>
+
+{% if analytics %}
+<div class="card" style="margin-bottom:1.5rem;">
+    <h3 style="font-size:1rem;margin-bottom:1.25rem;border-bottom:1px solid #e2e8f0;padding-bottom:.75rem;">Platform Analytics</h3>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;">
+
+        <!-- Application Status Breakdown -->
+        <div>
+            <h4 style="font-size:.875rem;font-weight:600;color:#475569;margin-bottom:.75rem;text-transform:uppercase;letter-spacing:.04em">Application Status</h4>
+            {% set statuses = analytics.get('application_statuses', {}) %}
+            {% set total_apps = statuses.values()|sum or 1 %}
+            {% for status, count in statuses.items() %}
+            <div style="margin-bottom:.5rem">
+                <div style="display:flex;justify-content:space-between;font-size:.8rem;margin-bottom:.15rem">
+                    <span>{{ status | replace('_',' ') | title }}</span>
+                    <span style="color:#64748b">{{ count }}</span>
+                </div>
+                <div style="background:#f1f5f9;border-radius:9999px;height:6px">
+                    <div style="background:#2563eb;border-radius:9999px;height:6px;width:{{ [(count / total_apps * 100)|int, 2]|max }}%"></div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Top Organizations -->
+        <div>
+            <h4 style="font-size:.875rem;font-weight:600;color:#475569;margin-bottom:.75rem;text-transform:uppercase;letter-spacing:.04em">Top Organizations (Active Jobs)</h4>
+            {% set top_orgs = analytics.get('top_organizations', []) %}
+            {% if top_orgs %}
+                {% set max_jobs = top_orgs[0].job_count or 1 %}
+                {% for org in top_orgs[:8] %}
+                <div style="margin-bottom:.5rem">
+                    <div style="display:flex;justify-content:space-between;font-size:.8rem;margin-bottom:.15rem">
+                        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:75%">{{ org.organization }}</span>
+                        <span style="color:#64748b">{{ org.job_count }}</span>
+                    </div>
+                    <div style="background:#f1f5f9;border-radius:9999px;height:6px">
+                        <div style="background:#1e3a5f;border-radius:9999px;height:6px;width:{{ [(org.job_count / max_jobs * 100)|int, 2]|max }}%"></div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <p style="color:#94a3b8;font-size:.85rem">No data yet.</p>
+            {% endif %}
+        </div>
+
+        <!-- Category Demographics -->
+        <div>
+            <h4 style="font-size:.875rem;font-weight:600;color:#475569;margin-bottom:.75rem;text-transform:uppercase;letter-spacing:.04em">User Categories</h4>
+            {% set cats = analytics.get('demographics', {}).get('categories', {}) %}
+            {% set total_cats = cats.values()|sum or 1 %}
+            {% if cats %}
+                {% for cat, cnt in cats.items() %}
+                <div style="margin-bottom:.5rem">
+                    <div style="display:flex;justify-content:space-between;font-size:.8rem;margin-bottom:.15rem">
+                        <span>{{ cat }}</span><span style="color:#64748b">{{ cnt }}</span>
+                    </div>
+                    <div style="background:#f1f5f9;border-radius:9999px;height:6px">
+                        <div style="background:#7c3aed;border-radius:9999px;height:6px;width:{{ [(cnt / total_cats * 100)|int, 2]|max }}%"></div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <p style="color:#94a3b8;font-size:.85rem">No profile data yet.</p>
+            {% endif %}
+        </div>
+
+        <!-- Qualification Demographics -->
+        <div>
+            <h4 style="font-size:.875rem;font-weight:600;color:#475569;margin-bottom:.75rem;text-transform:uppercase;letter-spacing:.04em">Qualifications</h4>
+            {% set quals = analytics.get('demographics', {}).get('qualifications', {}) %}
+            {% set total_quals = quals.values()|sum or 1 %}
+            {% if quals %}
+                {% for qual, cnt in quals.items() %}
+                <div style="margin-bottom:.5rem">
+                    <div style="display:flex;justify-content:space-between;font-size:.8rem;margin-bottom:.15rem">
+                        <span>{{ qual | title }}</span><span style="color:#64748b">{{ cnt }}</span>
+                    </div>
+                    <div style="background:#f1f5f9;border-radius:9999px;height:6px">
+                        <div style="background:#059669;border-radius:9999px;height:6px;width:{{ [(cnt / total_quals * 100)|int, 2]|max }}%"></div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <p style="color:#94a3b8;font-size:.85rem">No profile data yet.</p>
+            {% endif %}
+        </div>
+
+    </div>
+</div>
+{% endif %}
 {% endblock %}

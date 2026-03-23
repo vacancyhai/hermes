@@ -171,6 +171,11 @@
         </button>
         {% endif %}
         <a href="/jobs" class="btn btn-outline">Back to Jobs</a>
+        {% if session.get('admin_role') == 'admin' %}
+        <form method="POST" action="/jobs/{{ job.id }}/delete" style="display:inline;margin-left:auto" onsubmit="return confirm('Delete this job permanently?')">
+            <button type="submit" class="btn btn-outline" style="color:#dc2626;border-color:#fca5a5;">Delete Job</button>
+        </form>
+        {% endif %}
     </div>
 </form>
 {% endblock %}

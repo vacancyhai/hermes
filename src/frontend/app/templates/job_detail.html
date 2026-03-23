@@ -71,12 +71,22 @@
     .share-btn:hover{background:#f8fafc;text-decoration:none}
     .share-btn.whatsapp{background:#25d366;color:#fff;border-color:#25d366}
     .share-btn.telegram{background:#0088cc;color:#fff;border-color:#0088cc}
+    .action-bar{display:flex;gap:.5rem;flex-wrap:wrap;margin:.75rem 0}
+    .flash-success{background:#d1fae5;color:#065f46;padding:.5rem .75rem;border-radius:.375rem;font-size:.85rem;margin-bottom:.75rem}
+    .flash-info{background:#dbeafe;color:#1e40af;padding:.5rem .75rem;border-radius:.375rem;font-size:.85rem;margin-bottom:.75rem}
+    .flash-error{background:#fee2e2;color:#991b1b;padding:.5rem .75rem;border-radius:.375rem;font-size:.85rem;margin-bottom:.75rem}
     @media(max-width:600px){.detail-grid{grid-template-columns:1fr}}
 </style>
 {% endblock %}
 
 {% block content %}
 <a href="/" class="back-link">&larr; Back to jobs</a>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, message in messages %}
+        <div class="flash-{{ category }}">{{ message }}</div>
+    {% endfor %}
+{% endwith %}
 
 <div class="job-header">
     <div class="badges">
@@ -86,6 +96,24 @@
     </div>
     <h1>{{ job.job_title }}</h1>
     <div class="org">{{ job.organization }}{% if job.department %} &mdash; {{ job.department }}{% endif %}</div>
+
+    <!-- Action buttons: Track + Follow -->
+    <div class="action-bar">
+        {% if session.get('token') %}
+        <form method="POST" action="/dashboard/track" style="display:inline">
+            <input type="hidden" name="job_id" value="{{ job.id }}">
+            <input type="hidden" name="next" value="/jobs/{{ job.slug }}">
+            <button type="submit" class="btn btn-primary">+ Track This Job</button>
+        </form>
+        <form method="POST" action="/profile/follow" style="display:inline">
+            <input type="hidden" name="org_name" value="{{ job.organization }}">
+            <input type="hidden" name="next" value="/jobs/{{ job.slug }}">
+            <button type="submit" class="btn btn-outline">Follow {{ job.organization }}</button>
+        </form>
+        {% else %}
+        <a href="/login?next=/jobs/{{ job.slug }}" class="btn btn-primary">Login to Track</a>
+        {% endif %}
+    </div>
 
     <div class="share-buttons">
         <a class="share-btn whatsapp" href="https://wa.me/?text={{ (job.job_title + ' — ' + job.organization + ' | Hermes ' + request.url) | urlencode }}" target="_blank" rel="noopener">WhatsApp</a>

@@ -1,24 +1,63 @@
 {% for app in applications %}
-<div class="app-card">
-    <div class="app-info">
+<div class="app-card" x-data="{ editing: false }">
+    <div class="app-info" style="flex:1">
         <h3>
             <a href="/jobs/{{ app.job.slug if app.job else '' }}">{{ app.job.job_title if app.job else 'Unknown Job' }}</a>
             {% if app.is_priority %}<span class="priority-mark">★</span>{% endif %}
         </h3>
         <div class="org">{{ app.job.organization if app.job else '' }}</div>
         {% if app.application_number %}
-        <div style="font-size:.8rem;color:#475569;margin-top:.25rem">App #{{ app.application_number }}</div>
+        <div style="font-size:.8rem;color:#475569;margin-top:.2rem">App #{{ app.application_number }}</div>
         {% endif %}
-        {% if app.notes %}
-        <div style="font-size:.8rem;color:#475569;margin-top:.25rem">{{ app.notes[:100] }}</div>
+        {% if app.notes and not editing %}
+        <div style="font-size:.8rem;color:#475569;margin-top:.2rem">{{ app.notes[:100] }}</div>
         {% endif %}
     </div>
-    <div class="app-meta">
+    <div class="app-meta" style="display:flex;flex-direction:column;gap:.4rem;align-items:flex-end">
         <span class="status-badge status-{{ app.status }}">{{ app.status | replace('_', ' ') | title }}</span>
         {% if app.job and app.job.application_end %}
         <div class="deadline">Deadline: {{ app.job.application_end }}</div>
         {% endif %}
+        <div style="display:flex;gap:.35rem;margin-top:.25rem">
+            <button type="button" x-on:click="editing = !editing" class="btn btn-outline" style="padding:.25rem .6rem;font-size:.75rem">Edit</button>
+            <form method="POST" action="/dashboard/applications/{{ app.id }}/delete" onsubmit="return confirm('Remove this application?')">
+                <button type="submit" class="btn btn-outline" style="padding:.25rem .6rem;font-size:.75rem;color:#dc2626;border-color:#fca5a5">Remove</button>
+            </form>
+        </div>
     </div>
+</div>
+
+<!-- Inline edit form (Alpine toggled) -->
+<div x-show="editing" x-cloak style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:.375rem;padding:1rem;margin-bottom:.75rem;margin-top:-.5rem">
+    <form method="POST" action="/dashboard/applications/{{ app.id }}/update">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:.75rem">
+            <div>
+                <label style="font-size:.8rem;font-weight:500;color:#475569;display:block;margin-bottom:.2rem">Status</label>
+                <select name="status" style="width:100%;padding:.4rem .6rem;border:1px solid #cbd5e1;border-radius:.375rem;font-size:.875rem">
+                    {% for s in ['applied','admit_card_released','exam_completed','result_pending','selected','rejected','waiting_list'] %}
+                    <option value="{{ s }}" {{ 'selected' if app.status == s else '' }}>{{ s | replace('_',' ') | title }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label style="font-size:.8rem;font-weight:500;color:#475569;display:block;margin-bottom:.2rem">Application Number</label>
+                <input type="text" name="application_number" value="{{ app.application_number or '' }}" placeholder="e.g. UPSC-2026-001" style="width:100%;padding:.4rem .6rem;border:1px solid #cbd5e1;border-radius:.375rem;font-size:.875rem">
+            </div>
+        </div>
+        <div style="margin-bottom:.75rem">
+            <label style="font-size:.8rem;font-weight:500;color:#475569;display:block;margin-bottom:.2rem">Notes</label>
+            <input type="text" name="notes" value="{{ app.notes or '' }}" placeholder="Add notes…" style="width:100%;padding:.4rem .6rem;border:1px solid #cbd5e1;border-radius:.375rem;font-size:.875rem">
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between">
+            <label style="font-size:.875rem;cursor:pointer;display:flex;align-items:center;gap:.4rem">
+                <input type="checkbox" name="is_priority" {{ 'checked' if app.is_priority else '' }}> Mark as priority ★
+            </label>
+            <div style="display:flex;gap:.5rem">
+                <button type="button" x-on:click="editing = false" class="btn btn-outline" style="padding:.35rem .85rem;font-size:.8rem">Cancel</button>
+                <button type="submit" class="btn btn-primary" style="padding:.35rem .85rem;font-size:.8rem">Save</button>
+            </div>
+        </div>
+    </form>
 </div>
 {% endfor %}
 

@@ -32,6 +32,7 @@
         .badge-type{background:#e0e7ff;color:#3730a3}
         .htmx-indicator{display:none}
         .htmx-request .htmx-indicator{display:block}
+        [x-cloak]{display:none!important}
     </style>
     {% block head %}{% endblock %}
 </head>
@@ -42,6 +43,7 @@
             <a href="/">Jobs</a>
             <a href="/dashboard">Dashboard</a>
             {% if session.get('token') %}
+                <a href="/profile">Profile</a>
                 <a href="/notifications" style="position:relative;">
                     🔔
                     <span id="notif-badge"
@@ -53,6 +55,7 @@
                 <a href="/logout">Logout</a>
             {% else %}
                 <a href="/login">Login</a>
+                <a href="/register">Register</a>
             {% endif %}
         </nav>
     </header>

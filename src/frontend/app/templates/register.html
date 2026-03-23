@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Register — Hermes{% endblock %}
+
+{% block head %}
+<style>
+    .auth-box{max-width:420px;margin:3rem auto;background:#fff;border:1px solid #e2e8f0;border-radius:.5rem;padding:2rem}
+    .auth-box h1{font-size:1.5rem;margin-bottom:1.5rem;text-align:center}
+    .form-group{margin-bottom:1rem}
+    .form-group label{display:block;font-size:.875rem;font-weight:500;margin-bottom:.35rem;color:#334155}
+    .form-group input{width:100%;padding:.5rem .75rem;border:1px solid #cbd5e1;border-radius:.375rem;font-size:.9rem}
+    .form-group input:focus{outline:none;border-color:#2563eb;box-shadow:0 0 0 2px rgba(37,99,235,.15)}
+    .flash-error{background:#fee2e2;color:#991b1b;padding:.5rem .75rem;border-radius:.375rem;font-size:.85rem;margin-bottom:1rem}
+    .flash-success{background:#d1fae5;color:#065f46;padding:.5rem .75rem;border-radius:.375rem;font-size:.85rem;margin-bottom:1rem}
+    .auth-footer{text-align:center;margin-top:1.25rem;font-size:.875rem;color:#64748b}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="auth-box">
+    <h1>Create Account</h1>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+            <div class="flash-{{ category }}">{{ message }}</div>
+        {% endfor %}
+    {% endwith %}
+    <form method="POST" action="/register">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <div class="form-group">
+            <label for="full_name">Full Name</label>
+            <input type="text" id="full_name" name="full_name" required autofocus placeholder="Your full name">
+        </div>
+        <div class="form-group">
+            <label for="email">Email</label>
+            <input type="email" id="email" name="email" required placeholder="you@example.com">
+        </div>
+        <div class="form-group">
+            <label for="password">Password <span style="color:#64748b;font-weight:400">(min 8 characters)</span></label>
+            <input type="password" id="password" name="password" required minlength="8">
+        </div>
+        <button type="submit" class="btn btn-primary" style="width:100%;margin-top:.5rem;padding:.6rem">Create Account</button>
+    </form>
+    <div class="auth-footer">
+        Already have an account? <a href="/login">Sign in</a>
+    </div>
+</div>
+{% endblock %}

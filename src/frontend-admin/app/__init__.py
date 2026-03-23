@@ -120,7 +120,12 @@ def create_app():
             stats_resp = current_app.api_client.get("/admin/stats", token=token)
         stats = stats_resp.json() if stats_resp.ok else {}
 
-        return render_template("dashboard.html", stats=stats)
+        analytics = {}
+        if session.get("admin_role") == "admin":
+            analytics_resp = current_app.api_client.get("/admin/analytics", token=token)
+            analytics = analytics_resp.json() if analytics_resp.ok else {}
+
+        return render_template("dashboard.html", stats=stats, analytics=analytics)
 
     # --- Job Management ---
 
@@ -161,6 +166,52 @@ def create_app():
         data = resp.json() if resp.ok else {"data": [], "pagination": {}}
 
         return render_template("_job_rows.html", jobs=data["data"], pagination=data.get("pagination", {}), current_status=status_filter)
+
+    @app.route("/jobs/new", methods=["GET", "POST"])
+    def new_job():
+        """Create a job vacancy directly (no PDF)."""
+        token = session.get("token")
+        if not token:
+            return redirect("/login")
+
+        if request.method == "POST":
+            form = request.form.to_dict()
+            payload = {}
+            for f in ["job_title", "organization", "department", "job_type", "qualification_level",
+                      "description", "short_description", "source_url"]:
+                if f in form:
+                    payload[f] = form[f] or None
+            for f in ["total_vacancies", "fee_general", "fee_obc", "fee_sc_st",
+                      "fee_ews", "fee_female", "salary_initial", "salary_max"]:
+                if f in form:
+                    val = form[f].strip()
+                    payload[f] = int(val) if val else None
+            for f in ["notification_date", "application_start", "application_end", "exam_start"]:
+                if f in form:
+                    val = form[f].strip()
+                    payload[f] = val if val else None
+            payload["status"] = form.get("status", "draft")
+
+            resp = current_app.api_client.post("/admin/jobs", token=token, json=payload)
+            if resp.ok:
+                job_id = resp.json().get("id")
+                flash("Job created successfully.", "success")
+                return redirect(f"/jobs/{job_id}/review")
+            detail = resp.json().get("detail", "Failed to create job") if resp.headers.get("content-type", "").startswith("application/json") else "Failed to create job"
+            flash(detail, "error")
+            return render_template("job_new.html")
+
+        return render_template("job_new.html")
+
+    @app.route("/jobs/<job_id>/delete", methods=["POST"])
+    def delete_job(job_id):
+        """Soft-delete a job (admin role only)."""
+        token = session.get("token")
+        if not token:
+            return redirect("/login")
+        current_app.api_client.delete(f"/admin/jobs/{job_id}", token=token)
+        flash("Job deleted.", "success")
+        return redirect("/jobs")
 
     @app.route("/jobs/<job_id>/approve", methods=["POST"])
     def approve_job(job_id):
@@ -300,6 +351,32 @@ def create_app():
         data = resp.json() if resp.ok else {"data": [], "pagination": {}}
 
         return render_template("_user_rows.html", users=data["data"], pagination=data.get("pagination", {}), current_status=status_filter, search_q=q or "")
+
+    @app.route("/users/<user_id>")
+    def user_detail(user_id):
+        """User detail view."""
+        token = session.get("token")
+        if not token:
+            return redirect("/login")
+
+        resp = current_app.api_client.get(f"/admin/users/{user_id}", token=token)
+        if not resp.ok:
+            flash("User not found.", "error")
+            return redirect("/users")
+        user = resp.json()
+        return render_template("user_detail.html", user=user)
+
+    @app.route("/users/<user_id>/role", methods=["POST"])
+    def change_user_role(user_id):
+        """Change an admin user's role (admin role only)."""
+        token = session.get("token")
+        if not token:
+            return redirect("/login")
+        new_role = request.form.get("role", "")
+        if new_role:
+            current_app.api_client.put(f"/admin/users/{user_id}/role", token=token, json={"role": new_role})
+        flash("Role updated.", "success")
+        return redirect(f"/users/{user_id}")
 
     @app.route("/users/<user_id>/suspend", methods=["POST"])
     def toggle_user_status(user_id):

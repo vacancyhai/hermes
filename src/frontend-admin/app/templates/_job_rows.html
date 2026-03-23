@@ -23,6 +23,11 @@
             <button type="submit" class="btn btn-success btn-sm">Approve</button>
         </form>
         {% endif %}
+        {% if session.get('admin_role') == 'admin' and job.status != 'cancelled' %}
+        <form method="POST" action="/jobs/{{ job.id }}/delete" style="display:inline;" onsubmit="return confirm('Delete this job?')">
+            <button type="submit" class="btn btn-sm" style="color:#dc2626;border-color:#fca5a5;background:#fff;">Delete</button>
+        </form>
+        {% endif %}
     </td>
 </tr>
 {% endfor %}

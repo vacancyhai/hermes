@@ -10,6 +10,7 @@
     <td>{{ 'Yes' if user.is_email_verified else 'No' }}</td>
     <td>{{ user.created_at[:10] if user.created_at else '—' }}</td>
     <td>
+        <a href="/users/{{ user.id }}" class="btn btn-outline btn-sm">View</a>
         {% if user.status == 'active' %}
         <form method="POST" action="/users/{{ user.id }}/suspend" style="display:inline;">
             <input type="hidden" name="status" value="suspended">

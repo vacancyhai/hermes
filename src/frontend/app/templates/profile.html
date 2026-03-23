@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+{% block title %}My Profile — Hermes{% endblock %}
+
+{% block head %}
+<style>
+    .section{background:#fff;border:1px solid #e2e8f0;border-radius:.5rem;padding:1.5rem;margin-bottom:1.5rem}
+    .section h2{font-size:1.1rem;font-weight:600;margin-bottom:1.25rem;color:#1e3a5f;border-bottom:1px solid #e2e8f0;padding-bottom:.75rem}
+    .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+    @media(max-width:600px){.form-grid{grid-template-columns:1fr}}
+    .form-group{margin-bottom:.75rem}
+    .form-group label{display:block;font-size:.8rem;font-weight:500;margin-bottom:.3rem;color:#475569}
+    .form-group input,.form-group select{width:100%;padding:.45rem .7rem;border:1px solid #cbd5e1;border-radius:.375rem;font-size:.9rem}
+    .form-group input:focus,.form-group select:focus{outline:none;border-color:#2563eb;box-shadow:0 0 0 2px rgba(37,99,235,.1)}
+    .check-group{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.25rem}
+    .check-label{display:flex;align-items:center;gap:.35rem;font-size:.875rem;cursor:pointer;padding:.3rem .6rem;border:1px solid #cbd5e1;border-radius:.375rem}
+    .check-label input[type=checkbox]:checked + span{color:#1e3a5f;font-weight:500}
+    .flash-success{background:#d1fae5;color:#065f46;padding:.5rem .75rem;border-radius:.375rem;font-size:.85rem;margin-bottom:1rem}
+    .flash-error{background:#fee2e2;color:#991b1b;padding:.5rem .75rem;border-radius:.375rem;font-size:.85rem;margin-bottom:1rem}
+    .org-tag{display:inline-flex;align-items:center;gap:.4rem;background:#e0e7ff;color:#3730a3;padding:.2rem .6rem;border-radius:9999px;font-size:.8rem;margin:.25rem}
+    .org-tag form{display:inline}
+    .toggle-row{display:flex;align-items:center;justify-content:space-between;padding:.5rem 0;border-bottom:1px solid #f1f5f9}
+    .toggle-row:last-child{border-bottom:none}
+    .toggle-row label{font-size:.9rem;color:#334155}
+    .hint{font-size:.78rem;color:#94a3b8;margin-top:.2rem}
+    .no-profile-banner{background:#fef3c7;border:1px solid #fde68a;color:#92400e;padding:.75rem 1rem;border-radius:.375rem;margin-bottom:1.5rem;font-size:.875rem}
+</style>
+{% endblock %}
+
+{% block content %}
+<h1 style="margin-bottom:1.5rem">My Profile</h1>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, message in messages %}
+        <div class="flash-{{ category }}">{{ message }}</div>
+    {% endfor %}
+{% endwith %}
+
+{% if not profile %}
+<div class="no-profile-banner">
+    Your profile hasn't been set up yet. Fill in the form below to get started.
+</div>
+{% endif %}
+
+<!-- Personal Info + Preferences -->
+<form method="POST" action="/profile">
+    <input type="hidden" name="action" value="profile">
+
+    <div class="section">
+        <h2>Personal Information</h2>
+        <div class="form-grid">
+            <div class="form-group">
+                <label>Full Name</label>
+                <input type="text" value="{{ user.get('full_name', '') }}" disabled style="background:#f8fafc;color:#64748b">
+            </div>
+            <div class="form-group">
+                <label>Email</label>
+                <input type="email" value="{{ user.get('email', '') }}" disabled style="background:#f8fafc;color:#64748b">
+            </div>
+            <div class="form-group">
+                <label for="phone">Phone Number</label>
+                <input type="tel" id="phone" name="phone" value="{{ user.get('phone', '') or '' }}" placeholder="10-digit mobile number">
+            </div>
+            <div class="form-group">
+                <label for="gender">Gender</label>
+                <select id="gender" name="gender">
+                    <option value="">— Select —</option>
+                    {% for g in ['Male', 'Female', 'Other'] %}
+                    <option value="{{ g }}" {{ 'selected' if profile.get('gender') == g else '' }}>{{ g }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="state">State</label>
+                <input type="text" id="state" name="state" value="{{ profile.get('state', '') or '' }}" placeholder="e.g. Uttar Pradesh">
+            </div>
+            <div class="form-group">
+                <label for="city">City</label>
+                <input type="text" id="city" name="city" value="{{ profile.get('city', '') or '' }}" placeholder="e.g. Lucknow">
+            </div>
+            <div class="form-group">
+                <label for="pincode">Pincode</label>
+                <input type="text" id="pincode" name="pincode" value="{{ profile.get('pincode', '') or '' }}" placeholder="6-digit pincode">
+            </div>
+        </div>
+        <div class="form-group" style="margin-top:.25rem">
+            <div style="display:flex;gap:1.5rem">
+                <label class="check-label">
+                    <input type="checkbox" name="is_pwd" {{ 'checked' if profile.get('is_pwd') else '' }}>
+                    <span>Person with Disability (PwD)</span>
+                </label>
+                <label class="check-label">
+                    <input type="checkbox" name="is_ex_serviceman" {{ 'checked' if profile.get('is_ex_serviceman') else '' }}>
+                    <span>Ex-Serviceman</span>
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>Job Preferences <span style="font-size:.8rem;font-weight:400;color:#64748b">— Used for personalised recommendations</span></h2>
+        <div class="form-group">
+            <label for="highest_qualification">Highest Qualification</label>
+            <select id="highest_qualification" name="highest_qualification">
+                <option value="">— Select —</option>
+                {% for q in [('10th','Class 10th'),('12th','Class 12th'),('diploma','Diploma'),('graduate','Graduate'),('postgraduate','Post Graduate'),('phd','PhD')] %}
+                <option value="{{ q[0] }}" {{ 'selected' if profile.get('highest_qualification') == q[0] else '' }}>{{ q[1] }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Preferred States <span class="hint">(comma-separated, e.g. Delhi, Bihar)</span></label>
+            <input type="text" name="preferred_states" value="{{ profile.get('preferred_states', [])|join(', ') }}" placeholder="Delhi, Uttar Pradesh, Bihar">
+        </div>
+        <div class="form-group">
+            <label>Preferred Categories</label>
+            <div class="check-group">
+                {% for cat in [('general','General'),('obc','OBC'),('sc','SC'),('st','ST'),('ews','EWS')] %}
+                <label class="check-label">
+                    <input type="checkbox" name="preferred_categories" value="{{ cat[0] }}" {{ 'checked' if cat[0] in profile.get('preferred_categories', []) else '' }}>
+                    <span>{{ cat[1] }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary" style="padding:.55rem 1.5rem">Save Profile</button>
+</form>
+
+<!-- Followed Organizations -->
+<div class="section" style="margin-top:1.5rem">
+    <h2>Followed Organizations</h2>
+    {% if following %}
+        <div style="margin-bottom:1rem">
+            {% for org in following %}
+            <span class="org-tag">
+                {{ org }}
+                <form method="POST" action="/profile/unfollow">
+                    <input type="hidden" name="org_name" value="{{ org }}">
+                    <input type="hidden" name="next" value="/profile">
+                    <button type="submit" style="background:none;border:none;cursor:pointer;color:#6366f1;font-size:.75rem;padding:0" title="Unfollow">✕</button>
+                </form>
+            </span>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p style="color:#64748b;font-size:.875rem">You're not following any organizations yet. Follow orgs from job listings to get notified about new openings.</p>
+    {% endif %}
+</div>
+
+<!-- Notification Preferences -->
+<form method="POST" action="/profile">
+    <input type="hidden" name="action" value="notification_prefs">
+    <div class="section">
+        <h2>Notification Preferences</h2>
+        {% set prefs = profile.get('notification_preferences', {}) if profile else {} %}
+        <div class="toggle-row">
+            <label for="email_notif">Email Notifications <span class="hint">Deadline reminders, new job alerts</span></label>
+            <input type="checkbox" id="email_notif" name="email_notif" {{ 'checked' if prefs.get('email', True) != False else '' }}>
+        </div>
+        <div class="toggle-row">
+            <label for="push_notif">Push Notifications <span class="hint">Mobile app alerts (requires app)</span></label>
+            <input type="checkbox" id="push_notif" name="push_notif" {{ 'checked' if prefs.get('push', False) else '' }}>
+        </div>
+        <button type="submit" class="btn btn-outline" style="margin-top:1rem;padding:.45rem 1.25rem">Save Preferences</button>
+    </div>
+</form>
+{% endblock %}
