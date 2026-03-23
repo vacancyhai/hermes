@@ -2,7 +2,6 @@
 
 GET    /api/v1/applications            — List own tracked applications
 POST   /api/v1/applications            — Track / save a job
-GET    /api/v1/applications/:id        — Get single application detail
 PUT    /api/v1/applications/:id        — Update application (status, notes, priority)
 DELETE /api/v1/applications/:id        — Remove from tracker
 GET    /api/v1/applications/stats      — Application stats (counts by status)
@@ -155,38 +154,6 @@ async def track_job(
         "organization": job.organization,
         "application_end": job.application_end.isoformat() if job.application_end else None,
     }
-    return item
-
-
-@router.get("/{application_id}")
-async def get_application(
-    application_id: uuid.UUID,
-    current_user=Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """Get a single tracked application."""
-    user, _ = current_user
-    result = await db.execute(
-        select(UserJobApplication).where(
-            UserJobApplication.id == application_id,
-            UserJobApplication.user_id == user.id,
-        )
-    )
-    app = result.scalar_one_or_none()
-    if not app:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found")
-
-    job_result = await db.execute(select(JobVacancy).where(JobVacancy.id == app.job_id))
-    job = job_result.scalar_one_or_none()
-
-    item = ApplicationResponse.model_validate(app).model_dump()
-    if job:
-        item["job"] = {
-            "job_title": job.job_title,
-            "slug": job.slug,
-            "organization": job.organization,
-            "application_end": job.application_end.isoformat() if job.application_end else None,
-        }
     return item
 
 

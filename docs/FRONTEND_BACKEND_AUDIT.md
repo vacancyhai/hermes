@@ -9,7 +9,7 @@
 | Category | Count |
 |----------|-------|
 | ✅ Bugs (all fixed) | 1 fixed |
-| 🟡 Backend endpoints unused by any frontend | 4 |
+| 🟡 Backend endpoints unused by any frontend (intentional — Phase 9 mobile) | 2 |
 | ✅ Endpoints correctly wired | 38+ |
 
 ---
@@ -38,10 +38,10 @@ These endpoints exist in the backend and are documented in `API.md` but no front
 
 | Endpoint | Reason |
 |----------|--------|
-| `POST /users/me/fcm-token` | FCM token registration for push notifications. Requires JS service worker to call this after Firebase messaging setup. Not implemented in the Flask frontend yet (planned for Phase 9 / PWA enhancement). |
-| `DELETE /users/me/fcm-token` | Same — part of push notification teardown on logout. |
-| `GET /auth/csrf-token` | Admin frontend generates CSRF tokens locally in Flask session (`secrets.token_hex(16)`), so it never fetches from the backend. This is intentional design — the backend endpoint is available for non-Flask clients (e.g. mobile, third-party). |
-| `GET /applications/{id}` | Single application detail endpoint. The dashboard shows an inline list + inline edit without navigating to a dedicated detail page, so this endpoint is never triggered. Can be used when a detail view is added. |
+| `POST /users/me/fcm-token` | FCM token registration for push notifications. Requires JS service worker to call this after Firebase messaging setup. Not implemented in the Flask frontend yet (planned for Phase 9 / PWA / React Native). |
+| `DELETE /users/me/fcm-token` | Same — part of push notification teardown on logout for mobile clients. |
+
+> `GET /auth/csrf-token` and `GET /applications/{id}` were listed here previously but have been removed: the CSRF endpoint never existed in the backend, and the application detail endpoint was dead code (removed — dashboard uses inline list, no detail page planned).
 
 ---
 

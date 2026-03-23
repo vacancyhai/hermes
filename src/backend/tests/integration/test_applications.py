@@ -122,12 +122,10 @@ async def test_delete_application(client: AsyncClient, user_token: str, active_j
     )
     assert resp.status_code == 204
 
-    # Verify gone
-    resp = await client.get(
-        f"/api/v1/applications/{app_id}",
-        headers=auth_header(user_token),
-    )
-    assert resp.status_code == 404
+    # Verify gone from list
+    resp = await client.get("/api/v1/applications", headers=auth_header(user_token))
+    ids = [a["id"] for a in resp.json()["data"]]
+    assert app_id not in ids
 
 
 async def test_application_requires_auth(client: AsyncClient):
@@ -135,17 +133,3 @@ async def test_application_requires_auth(client: AsyncClient):
     assert resp.status_code in (401, 403)
 
 
-async def test_get_single_application(client: AsyncClient, user_token: str, active_job):
-    create_resp = await client.post(
-        "/api/v1/applications",
-        json={"job_id": active_job["id"], "notes": "Detail test"},
-        headers=auth_header(user_token),
-    )
-    app_id = create_resp.json()["id"]
-
-    resp = await client.get(
-        f"/api/v1/applications/{app_id}",
-        headers=auth_header(user_token),
-    )
-    assert resp.status_code == 200
-    assert resp.json()["notes"] == "Detail test"

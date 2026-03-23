@@ -221,56 +221,6 @@ async def test_track_job_duplicate():
     assert exc_info.value.status_code == 409
 
 
-# ─── get_application ──────────────────────────────────────────────────────────
-
-@pytest.mark.asyncio
-async def test_get_application_found():
-    from app.routers.applications import get_application
-    user_id = uuid.uuid4()
-    app_obj = _make_app(user_id=user_id)
-    app_obj.notes = "My notes"
-
-    db = AsyncMock()
-    app_result = MagicMock()
-    app_result.scalar_one_or_none.return_value = app_obj
-
-    job = MagicMock()
-    job.job_title = "RRB NTPC"
-    job.slug = "rrb-ntpc"
-    job.organization = "RRB"
-    job.application_end = None
-    job_result = MagicMock()
-    job_result.scalar_one_or_none.return_value = job
-
-    db.execute.side_effect = [app_result, job_result]
-
-    output = await get_application(
-        application_id=app_obj.id,
-        current_user=(MagicMock(id=user_id), {}),
-        db=db,
-    )
-    assert output["notes"] == "My notes"
-    assert output["job"]["job_title"] == "RRB NTPC"
-
-
-@pytest.mark.asyncio
-async def test_get_application_not_found():
-    from fastapi import HTTPException
-    from app.routers.applications import get_application
-    db = AsyncMock()
-    result = MagicMock()
-    result.scalar_one_or_none.return_value = None
-    db.execute.return_value = result
-
-    with pytest.raises(HTTPException) as exc_info:
-        await get_application(
-            application_id=uuid.uuid4(),
-            current_user=_make_current_user(),
-            db=db,
-        )
-    assert exc_info.value.status_code == 404
-
-
 # ─── update_application ───────────────────────────────────────────────────────
 
 @pytest.mark.asyncio
