@@ -8,13 +8,14 @@ notifications, and an admin panel.
 > **Status:** Phases 1–7 + Testing complete. Auth system, job CRUD, full-text search,
 > user profiles, job matching & recommendations, org follow with Celery
 > notifications, application tracking with deadline reminders, user dashboard,
-> email notifications (Mailpit in dev), FCM push notifications, in-app
-> notification endpoints, notification preferences, full admin frontend
-> (dashboard, job/user management, audit logs), SEO (sitemap, meta tags,
-> JSON-LD structured data), application fee display by category,
-> WhatsApp/Telegram share buttons, PDF upload with AI extraction (Anthropic
-> Claude), draft review & approve workflow, PWA (manifest, service worker,
-> offline fallback), comprehensive test suite (406 tests — 292 backend + 52 frontend + 62 admin),
+> smart multi-channel notifications (in-app + FCM push + email + WhatsApp) with
+> device registry and fingerprint-based push de-duplication, notification
+> preferences, full admin frontend (dashboard, job/user management, audit logs),
+> SEO (sitemap, meta tags, JSON-LD structured data), application fee display by
+> category, WhatsApp/Telegram share buttons, PDF upload with AI extraction
+> (Anthropic Claude), draft review & approve workflow, PWA (manifest, service
+> worker, offline fallback), comprehensive test suite
+> (406 tests — 292 backend + 52 frontend + 62 admin),
 > and security audit (JWT, RBAC, file upload, OWASP) — all implemented.
 
 ## Tech Stack
@@ -58,32 +59,39 @@ Frontends communicate with the backend exclusively via REST API
 (`BACKEND_API_URL`). They cannot access the database or Redis directly.
 PostgreSQL and Redis are isolated inside Docker networks — never exposed to the internet.
 
-## Planned Features
+## Features
 
-- **Job Matching** — Automatically match jobs to users by education level,
-  stream, age, and category
-- **Multi-Channel Notifications** — Email, push (FCM), in-app alerts, and
-  future Telegram + WhatsApp integration for job alerts and reminders
+- **Job Matching** — Automatically matches jobs to users by education level,
+  stream, age, and category; scoring engine in `services/matching.py`
+- **Multi-Channel Notifications** — In-app, FCM push (device-fingerprint
+  de-duplicated across web/PWA/app), email (OCI Email Delivery), and WhatsApp
+  (placeholder, activated when API token is set); instant mode for OTP/auth,
+  staggered mode for job alerts with configurable delays
 - **Application Tracker** — Users save jobs, set priority, add notes, and get
   deadline reminders
-- **Smart Reminders** — Automatic alerts at 7, 3, and 1 day before deadlines
+- **Smart Reminders** — Celery Beat tasks fire automatic alerts at 7, 3, and
+  1 day before application deadlines
 - **Dynamic UI** — HTMX for live search, infinite scroll, and real-time
   updates without JavaScript frameworks
-- **Full-Text Search** — PostgreSQL tsvector-based ranked search on job titles,
-  organizations, and descriptions (no Elasticsearch needed)
+- **Full-Text Search** — PostgreSQL tsvector/GIN-indexed ranked search on job
+  titles, organisations, and descriptions (no Elasticsearch needed)
 - **SEO Optimized** — Dynamic sitemap, meta tags, and Google JobPosting
-  structured data for organic traffic
-- **PDF Job Ingestion** — Upload government notification PDFs, AI extracts
-  structured data, operator reviews and publishes
-- **PWA Support** — Add-to-home-screen, offline caching, and web push
-  notifications before a full mobile app
-- **Admin Dashboard** — Job CRUD, user management, analytics
-- **Three-Role RBAC** — User, Operator, Admin with scoped permissions
-- **Organization Follow** — Follow SSC, UPSC, Railway, etc. to get notified
-  on every new job from that org
-- **Social Share** — WhatsApp and Telegram share buttons on every job page
-- **Fee by Category** — Show "Your application fee: ₹0" based on user's
-  category (General/OBC/SC/ST/EWS)
+  JSON-LD structured data for organic traffic
+- **PDF Job Ingestion** — Upload government notification PDFs; AI (Claude)
+  extracts structured data; operator reviews, edits, and publishes
+- **PWA Support** — Add-to-home-screen, offline fallback page, and web push
+  notifications via service worker
+- **Admin Panel** — Job CRUD, draft/approve workflow, user management, and
+  audit log viewer on a separate frontend (port 8081)
+- **Two-Tier RBAC** — Regular users (`users` table, user frontend port 8080)
+  and Operator/Admin (`admin_users` table with role column, admin frontend
+  port 8081); JWT `user_type` claim (`"user"` | `"admin"`) enforces strict
+  scope isolation — admin tokens are rejected by user endpoints and vice versa
+- **Organisation Follow** — Follow SSC, UPSC, Railway, etc. to get notified
+  on every new vacancy from that organisation
+- **Social Share** — WhatsApp share button on every job page for easy sharing
+- **Fee by Category** — Shows personalised application fee (₹0 for SC/ST/EWS,
+  reduced for OBC) based on the logged-in user's category
 
 ## Documentation
 
@@ -154,7 +162,7 @@ hermes/
 │   │   │   │   ├── applications.py       # /api/v1/applications/*
 │   │   │   │   ├── notifications.py      # /api/v1/notifications/*
 │   │   │   │   └── admin.py              # /api/v1/admin/*
-│   │   │   ├── models/                   # SQLAlchemy models (7 core tables)
+│   │   │   ├── models/                   # SQLAlchemy models (9 core tables)
 │   │   │   │   ├── base.py               # DeclarativeBase
 │   │   │   │   ├── user.py               # Regular users (no role column)
 │   │   │   │   ├── admin_user.py          # Admin/operator accounts
@@ -162,6 +170,8 @@ hermes/
 │   │   │   │   ├── job_vacancy.py
 │   │   │   │   ├── application.py
 │   │   │   │   ├── notification.py
+│   │   │   │   ├── user_device.py         # Device registry (FCM, fingerprint, type)
+│   │   │   │   ├── notification_delivery_log.py  # Per-channel delivery tracking
 │   │   │   │   └── admin_log.py
 │   │   │   ├── schemas/                  # Pydantic request/response models
 │   │   │   │   ├── auth.py
@@ -171,10 +181,11 @@ hermes/
 │   │   │   │   └── notifications.py
 │   │   │   ├── services/                 # Business logic
 │   │   │   │   ├── matching.py           # Job recommendation scoring engine
+│   │   │   │   ├── notifications.py      # NotificationService — smart multi-channel routing
 │   │   │   │   ├── pdf_extractor.py      # PDF text extraction (pdfplumber)
 │   │   │   │   └── ai_extractor.py       # AI structured extraction (Anthropic Claude)
 │   │   │   └── tasks/                    # Celery tasks
-│   │   │       ├── notifications.py      # Deadline reminders, job alerts
+│   │   │       ├── notifications.py      # smart_notify, deadline reminders, job alerts
 │   │   │       ├── cleanup.py            # Purge expired records
 │   │   │       ├── jobs.py               # Close expired listings, PDF extraction
 │   │   │       └── seo.py                # Generate sitemap
@@ -187,7 +198,8 @@ hermes/
 │   │   │       ├── 0003_profile_preferences.py   # Matching prefs + org follows
 │   │   │       ├── 0004_fcm_tokens.py            # FCM tokens for push notifications
 │   │   │       ├── 0005_add_fee_columns.py       # Application fee by category
-│   │   │       └── 0006_add_source_pdf_path.py   # PDF upload source tracking
+│   │   │       ├── 0006_add_source_pdf_path.py   # PDF upload source tracking
+│   │   │       └── 0007_user_devices_and_delivery_log.py  # Device registry + delivery tracking
 │   │   ├── tests/                               # pytest test suite (292 tests)
 │   │   │   ├── conftest.py                      # Async fixtures (DB, client, tokens)
 │   │   │   ├── unit/                            # Pure logic tests (no DB/Redis)
@@ -205,9 +217,9 @@ hermes/
 │   │   ├── Dockerfile
 │   │   ├── docker-compose.yml
 │   │   ├── requirements.txt
-│   │   ├── tests/                        # (empty — no tests yet)
-│   │   │   ├── unit/
-│   │   │   ├── integration/
+│   │   ├── tests/                        # pytest test suite (52 tests)
+│   │   │   ├── unit/                     # API client tests
+│   │   │   ├── integration/              # Route + template tests
 │   │   │   └── e2e/
 │   │   └── app/
 │   │       ├── __init__.py               # Flask app factory
@@ -232,9 +244,9 @@ hermes/
 │   │   ├── Dockerfile
 │   │   ├── docker-compose.yml
 │   │   ├── requirements.txt
-│   │   ├── tests/                        # (empty — no tests yet)
-│   │   │   ├── unit/
-│   │   │   ├── integration/
+│   │   ├── tests/                        # pytest test suite (62 tests)
+│   │   │   ├── unit/                     # API client tests
+│   │   │   ├── integration/              # Route + template tests
 │   │   │   └── e2e/
 │   │   └── app/
 │   │       ├── __init__.py               # Flask routes (dashboard, jobs, upload, review, users, logs)
@@ -290,7 +302,7 @@ hermes/
 | 2     | Job vacancy CRUD, full-text search, user profile, admin dashboard, frontend job listing | Done |
 | 3     | Job matching algorithm, recommendations, org follow + alerts | Done |
 | 4     | Application tracking, deadline reminders, user dashboard | Done |
-| 5     | Notification engine (email, push, in-app, future: Telegram + WhatsApp) | Done |
+| 5     | Notification engine (in-app, FCM push, email, WhatsApp placeholder) | Done |
 | 6     | Admin frontend (dashboard, job/user mgmt, logs), SEO (sitemap, meta, JSON-LD), fee display, share buttons | Done |
 | 7     | PDF ingestion (AI extraction + operator review), PWA | Done |
 | 7.5   | Testing (406 tests — 91/100/97% coverage), security audit (JWT, RBAC, OWASP) | Done |

@@ -72,16 +72,18 @@ Browser → Nginx (80/443)
 
 ## Database
 
-PostgreSQL 16 with 8 tables:
+PostgreSQL 16 with 10 tables:
 
 | Table | Purpose |
 |-------|---------|
 | `users` | Regular users (no role column) |
 | `admin_users` | Admin/operator with role, department, permissions JSONB |
 | `user_profiles` | Extended user data + JSONB arrays (preferences, FCM tokens, followed orgs) |
+| `user_devices` | Device registry: FCM token, device_type (web/pwa/android/ios), device_fingerprint for push de-dup |
 | `job_vacancies` | 30+ columns, JSONB fields, tsvector GENERATED column for FTS |
 | `user_job_applications` | Application tracking with status, notes, reminders JSONB |
 | `notifications` | In-app notifications with expiry (90 days) |
+| `notification_delivery_log` | Per-channel delivery tracking (in_app/push/email/whatsapp) with status |
 | `admin_logs` | Audit trail with expiry (30 days) |
 | `alembic_version` | Migration state |
 
@@ -93,11 +95,15 @@ PostgreSQL 16 with 8 tables:
 - `0004_fcm_tokens.py` — `fcm_tokens` JSONB on user_profiles
 - `0005_add_fee_columns.py` — `fee_general`, `fee_obc`, `fee_sc_st`, `fee_ews`, `fee_female` on job_vacancies
 - `0006_add_source_pdf_path.py` — `source_pdf_path` (Text, nullable) on job_vacancies
+- `0007_user_devices_and_delivery_log.py` — `user_devices` + `notification_delivery_log` tables (migrates JSONB fcm_tokens)
 
 ### Key DB Constraints
 
 - `ck_applications_status`: applied, admit_card_released, exam_completed, result_pending, selected, rejected, waiting_list
 - `ck_notifications_priority`: low, medium, high
+- `ck_devices_device_type`: web, pwa, android, ios
+- `ck_delivery_channel`: in_app, push, email, whatsapp
+- `ck_delivery_status`: pending, sent, delivered, failed, skipped
 - `ck_profiles_gender`: Male, Female, Other (capitalized)
 - `ck_profiles_category`: General, OBC, SC, ST, EWS
 
@@ -116,7 +122,8 @@ src/backend/
     rate_limit.py        # SlowAPI limiter singleton
     models/              # SQLAlchemy 2.0 Mapped models
       base.py, user.py, admin_user.py, user_profile.py, job_vacancy.py,
-      application.py, notification.py, admin_log.py
+      application.py, notification.py, user_device.py,
+      notification_delivery_log.py, admin_log.py
     routers/
       auth.py            # /api/v1/auth/* — user + admin login/register/logout/refresh/reset
       jobs.py            # /api/v1/jobs/* — public listing (FTS), recommended, detail by slug
@@ -129,11 +136,13 @@ src/backend/
       auth.py, jobs.py, users.py, applications.py, notifications.py
     services/
       matching.py        # Job scoring: state +3, category +3, education +2, recency +1; CANDIDATE_LIMIT=500 caps DB fetch
+      notifications.py   # NotificationService — instant/staggered delivery (in-app + FCM + email + WhatsApp), fingerprint de-dup
       pdf_extractor.py   # PDF text extraction (pdfplumber)
       ai_extractor.py    # AI structured extraction (Anthropic Claude API)
     tasks/
-      notifications.py   # send_deadline_reminders, send_new_job_notifications,
-                         # send_email_notification, send_push_notification, notify_priority_subscribers
+      notifications.py   # smart_notify (instant/staggered), deliver_delayed_email, deliver_delayed_whatsapp,
+                         # send_deadline_reminders, send_new_job_notifications, send_email_notification,
+                         # send_push_notification, notify_priority_subscribers
       cleanup.py         # purge_expired_notifications, purge_expired_admin_logs, purge_soft_deleted_jobs
       jobs.py            # close_expired_job_listings (bind, max_retries=3), extract_job_from_pdf (deletes PDF after use)
       seo.py             # generate_sitemap

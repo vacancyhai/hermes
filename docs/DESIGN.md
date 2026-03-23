@@ -442,6 +442,53 @@ CREATE INDEX idx_admin_logs_admin_ts ON admin_logs (admin_id, timestamp DESC);
 CREATE INDEX idx_admin_logs_expires  ON admin_logs (expires_at);
 ```
 
+#### 7. `user_devices` (device registry with fingerprint de-duplication)
+
+```sql
+CREATE TABLE user_devices (
+  id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id             UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  fcm_token           VARCHAR(500),
+  device_name         VARCHAR(255) NOT NULL DEFAULT 'Unknown',
+  device_type         VARCHAR(20) NOT NULL DEFAULT 'web'
+                        CHECK (device_type IN ('web', 'pwa', 'android', 'ios')),
+  device_fingerprint  VARCHAR(255),
+  is_active           BOOLEAN NOT NULL DEFAULT TRUE,
+  last_active_at      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  created_at          TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_devices_user_id ON user_devices (user_id);
+CREATE UNIQUE INDEX idx_devices_fcm_token ON user_devices (fcm_token) WHERE fcm_token IS NOT NULL;
+CREATE INDEX idx_devices_fingerprint ON user_devices (user_id, device_fingerprint);
+```
+
+`device_fingerprint` enables push de-duplication: if a user is logged into
+Chrome web + Chrome PWA on the same laptop, both share the same fingerprint.
+Push is sent once per physical device, not per login.
+
+#### 8. `notification_delivery_log` (per-channel delivery tracking)
+
+```sql
+CREATE TABLE notification_delivery_log (
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  notification_id   UUID NOT NULL REFERENCES notifications(id) ON DELETE CASCADE,
+  user_id           UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  channel           VARCHAR(20) NOT NULL
+                      CHECK (channel IN ('in_app', 'push', 'email', 'whatsapp')),
+  status            VARCHAR(20) NOT NULL DEFAULT 'pending'
+                      CHECK (status IN ('pending', 'sent', 'delivered', 'failed', 'skipped')),
+  device_id         UUID REFERENCES user_devices(id) ON DELETE SET NULL,
+  error_message     TEXT,
+  attempted_at      TIMESTAMP WITH TIME ZONE,
+  delivered_at      TIMESTAMP WITH TIME ZONE,
+  created_at        TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_delivery_notification ON notification_delivery_log (notification_id);
+CREATE INDEX idx_delivery_user_channel ON notification_delivery_log (user_id, channel);
+```
+
 ### Future Expansion Tables
 
 These tables support features beyond the core job-notification system. They
@@ -646,7 +693,7 @@ Subsequent operators are created by inserting into `admin_users` with
 
 | Task                            | Schedule        | Description                            |
 | ------------------------------- | --------------- | -------------------------------------- |
-| `send-deadline-reminders`       | Daily 08:00 UTC | Email reminders at T-7, T-3, T-1 days |
+| `send-deadline-reminders`       | Daily 08:00 UTC | T-7, T-3, T-1 reminders → delegates to `smart_notify` |
 | `purge-expired-notifications`   | Daily 01:00 UTC | Delete notifications past `expires_at` |
 | `purge-expired-admin-logs`      | Daily 01:30 UTC | Delete admin logs past `expires_at`    |
 | `purge-soft-deleted-jobs`       | Daily 02:00 UTC | Hard-delete jobs soft-deleted > 90 days|
@@ -655,10 +702,13 @@ Subsequent operators are created by inserting into `admin_users` with
 
 ### Event-Triggered Tasks
 
-| Trigger                  | Task                          | Description                            |
-| ------------------------ | ----------------------------- | -------------------------------------- |
-| New job created (active) | `send_new_job_notifications`  | Match job to user profiles, notify     |
-| Admin updates a job      | `notify_priority_subscribers` | Notify users who marked job as priority|
+| Trigger                  | Task                           | Description                            |
+| ------------------------ | ------------------------------ | -------------------------------------- |
+| Any notification needed  | `smart_notify`                 | Unified entry — instant or staggered delivery to all 4 channels |
+| New job created (active) | `send_new_job_notifications`   | Match org followers → `smart_notify(staggered)` per user |
+| Admin updates a job      | `notify_priority_subscribers`  | Notify priority trackers → `smart_notify(staggered)` per user |
+| Staggered email delivery | `deliver_delayed_email`        | Fires after `NOTIFY_EMAIL_DELAY` — sends the email |
+| Staggered WhatsApp       | `deliver_delayed_whatsapp`     | Fires after `NOTIFY_WHATSAPP_DELAY` — sends the WhatsApp |
 
 ---
 
@@ -811,12 +861,20 @@ This costs zero infrastructure — only Jinja2 template changes.
 
 ### Notification Channels
 
-| Channel    | Technology          | Fallback                               | Status  |
-| ---------- | ------------------- | -------------------------------------- | ------- |
-| Email      | fastapi-mail        | Queue in Redis, retry 5× (exp backoff) | Phase 5 |
-| Push       | Firebase FCM        | In-app notification + email            | Phase 5 |
-| In-app     | PostgreSQL row      | Always available                       | Phase 5 |
-| WhatsApp   | WhatsApp Cloud API  | Email + in-app                         | Future  |
+| Channel    | Technology          | Instant Mode (T+0) | Staggered Mode                     | Status      |
+| ---------- | ------------------- | ------------------- | ---------------------------------- | ----------- |
+| In-app     | PostgreSQL row      | T+0                 | T+0                                | Implemented |
+| Push (FCM) | Firebase FCM        | T+0                 | T+0 (fingerprint de-dup)           | Implemented |
+| Email      | OCI Email Delivery  | T+0                 | T+`NOTIFY_EMAIL_DELAY` (default 15min) | Implemented |
+| WhatsApp   | WhatsApp Cloud API  | T+0                 | T+`NOTIFY_WHATSAPP_DELAY` (default 1hr) | Implemented (API placeholder) |
+
+**Two delivery modes** via `smart_notify(delivery_mode="instant"|"staggered")`:
+- **instant** — all 4 channels at T+0 (OTP, password reset, email verification, welcome)
+- **staggered** — in-app + push at T+0, email delayed, WhatsApp delayed (job alerts, reminders)
+
+Delays are configurable via env vars (`NOTIFY_EMAIL_DELAY`, `NOTIFY_WHATSAPP_DELAY`).
+All channels always deliver — staggered just adds a time gap to avoid bombarding simultaneously.
+User preferences (`notification_preferences` JSONB) control per-channel opt-out.
 
 #### Telegram & WhatsApp (Future)
 
@@ -1114,6 +1172,10 @@ MAIL_DEFAULT_SENDER=noreply@yourdomain.com
 
 # Firebase (push notifications)
 FIREBASE_CREDENTIALS_PATH=path/to/firebase-credentials.json
+
+# Notification delivery delays (staggered mode, in seconds)
+NOTIFY_EMAIL_DELAY=900         # 15 minutes (default)
+NOTIFY_WHATSAPP_DELAY=3600     # 1 hour (default)
 
 # JWT
 JWT_SECRET_KEY=<separate-random-key>

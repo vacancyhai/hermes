@@ -188,6 +188,45 @@ All notification endpoints require a user JWT.
 
 ---
 
+## Smart Notification Routing
+
+All notifications are routed through `NotificationService` via the `smart_notify` Celery task.
+
+### Two Delivery Modes
+
+| Mode | In-app + Push | Email | WhatsApp | Use Case |
+|------|--------------|-------|----------|----------|
+| **instant** | T+0 | T+0 | T+0 | OTP, password reset, email verification, welcome |
+| **staggered** | T+0 | T+15min* | T+1hr* | Job alerts, deadline reminders, admit cards |
+
+*Configurable via `NOTIFY_EMAIL_DELAY` and `NOTIFY_WHATSAPP_DELAY` env vars (in seconds).
+
+All channels always deliver — staggered just adds a time gap so the user isn't bombarded simultaneously.
+
+### Channel Delivery
+
+| Channel | Delivery | De-duplication |
+|---------|----------|----------------|
+| In-app | Always (persistent record in `notifications` table) | — |
+| FCM Push | All physical devices | `device_fingerprint` — 1 push per physical device, not per login |
+| Email | Always (unless user disabled or OCI 3k/day limit) | — |
+| WhatsApp | Always (unless user disabled or not configured) | — |
+
+### Push De-duplication Example
+
+| Device | Login | Fingerprint | Gets Push? |
+|--------|-------|-------------|------------|
+| Phone | Android app | `phone_abc` | Yes |
+| Laptop | Chrome web | `laptop_xyz` | Yes |
+| Laptop | Chrome PWA | `laptop_xyz` | No (same physical device) |
+| Tablet | Safari PWA | `tablet_def` | Yes |
+
+3 physical devices → 3 pushes. Not 4.
+
+Every delivery attempt is logged in `notification_delivery_log` with status (pending/sent/delivered/failed/skipped).
+
+---
+
 ## Request/Response Examples
 
 ### Register
