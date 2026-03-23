@@ -31,6 +31,7 @@ logger = logging.getLogger(__name__)
 
 from app.config import settings
 from app.dependencies import get_current_admin, get_current_user, get_db, get_redis
+from app.models.admin_log import AdminLog
 from app.models.admin_user import AdminUser
 from app.models.user import User
 from app.models.user_profile import UserProfile
@@ -270,6 +271,14 @@ async def admin_login(request: Request, body: AdminLoginRequest, db: AsyncSessio
     admin.last_login = datetime.now(timezone.utc)
     logger.info("admin_login_success", extra={"admin_id": str(admin.id), "role": admin.role, "ip": ip})
 
+    db.add(AdminLog(
+        admin_id=admin.id,
+        action="admin_login",
+        details=f"Login from {ip}",
+        ip_address=ip,
+        user_agent=request.headers.get("user-agent"),
+    ))
+
     return TokenResponse(
         access_token=create_access_token(str(admin.id), "admin", admin.role),
         refresh_token=create_refresh_token(str(admin.id), "admin", admin.role),
@@ -277,7 +286,12 @@ async def admin_login(request: Request, body: AdminLoginRequest, db: AsyncSessio
 
 
 @router.post("/admin/logout", status_code=status.HTTP_204_NO_CONTENT)
-async def admin_logout(current_admin=Depends(get_current_admin), redis=Depends(get_redis)):
+async def admin_logout(
+    request: Request,
+    current_admin=Depends(get_current_admin),
+    redis=Depends(get_redis),
+    db: AsyncSession = Depends(get_db),
+):
     """Invalidate current admin JWT by adding JTI to Redis blocklist."""
     admin, payload = current_admin
     jti = payload.get("jti")
@@ -287,9 +301,23 @@ async def admin_logout(current_admin=Depends(get_current_admin), redis=Depends(g
         await redis.setex(f"{settings.REDIS_KEY_PREFIX}:blocklist:{jti}", ttl, "1")
     logger.info("admin_logout", extra={"admin_id": str(admin.id)})
 
+    ip = request.client.host if request.client else "unknown"
+    db.add(AdminLog(
+        admin_id=admin.id,
+        action="admin_logout",
+        details=f"Logout from {ip}",
+        ip_address=ip,
+        user_agent=request.headers.get("user-agent"),
+    ))
+
 
 @router.post("/admin/refresh", response_model=TokenResponse)
-async def admin_refresh(body: RefreshRequest, db: AsyncSession = Depends(get_db), redis=Depends(get_redis)):
+async def admin_refresh(
+    request: Request,
+    body: RefreshRequest,
+    db: AsyncSession = Depends(get_db),
+    redis=Depends(get_redis),
+):
     """Refresh admin JWT token pair."""
     try:
         payload = jwt.decode(body.refresh_token, settings.JWT_SECRET_KEY, algorithms=[ALGORITHM])
@@ -312,6 +340,15 @@ async def admin_refresh(body: RefreshRequest, db: AsyncSession = Depends(get_db)
     exp = payload.get("exp", 0)
     ttl = max(int(exp - datetime.now(timezone.utc).timestamp()), 1)
     await redis.setex(f"{settings.REDIS_KEY_PREFIX}:blocklist:{jti}", ttl, "1")
+
+    ip = request.client.host if request.client else "unknown"
+    db.add(AdminLog(
+        admin_id=admin.id,
+        action="admin_token_refresh",
+        details=f"Token refreshed from {ip}",
+        ip_address=ip,
+        user_agent=request.headers.get("user-agent"),
+    ))
 
     return TokenResponse(
         access_token=create_access_token(str(admin.id), "admin", admin.role),
