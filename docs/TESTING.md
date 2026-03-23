@@ -19,6 +19,16 @@ docker exec -w /app hermes_frontend python -m pytest tests/ --cov=app --cov-repo
 docker exec -w /app hermes_frontend_admin python -m pytest tests/ --cov=app --cov-report=term-missing -q
 ```
 
+## Manual Firebase Test Credentials
+
+These phone numbers are configured in **Firebase Console → Authentication → Phone numbers for testing** and bypass real SMS.
+
+| Phone | OTP | Use |
+|-------|-----|-----|
+| +917777777777 | 123456 | Phone OTP login on `/login` page |
+
+For email/password and Google login, use the accounts in `src/backend/app/data/seed.py` or create a new account via the `/login` page.
+
 ---
 
 ## Backend — 93% (313 tests)
