@@ -1131,7 +1131,39 @@ All items below are implemented.
 - **CSRF protection:** Redis-backed single-use tokens (1h TTL)
 - **Secrets:** `.env` files in `.gitignore`; never committed to version control
 - **Redis persistence:** AOF (append-only file) enabled — prevents JWT blocklist loss on Redis restart. Without AOF, a Redis restart would make previously logged-out tokens valid again.
-- **Security event logging:** Failed logins, successful logins, logouts, and password resets are logged via `logging` with user ID and client IP for audit purposes.
+- **Audit logging — admin actions (DB):** All state-changing admin operations write a row to `admin_logs` (30-day expiry, queryable from admin frontend `/admin/logs`):
+
+  | Event | Action stored |
+  |-------|---------------|
+  | Admin login | `admin_login` — IP + user-agent |
+  | Admin logout | `admin_logout` — IP + user-agent |
+  | Admin token refresh | `admin_token_refresh` — IP + user-agent |
+  | Create job | `create_job` — job title |
+  | Update job | `update_job` — full before/after diff per field |
+  | Approve job | `approve_job` — job title |
+  | Delete job (soft) | `delete_job` — job title |
+  | PDF upload | `upload_pdf` — filename |
+  | Suspend/activate user | `update_user_status` — old → new status |
+  | Change admin role | `update_user_role` — old → new role |
+
+- **Audit logging — user events (structlog → stdout → OCI Logging):** User actions emit JSON-structured log lines. Shipped to OCI Logging via Unified Monitoring Agent in production.
+
+  | Event | Key fields logged |
+  |-------|-------------------|
+  | Register | `user_id`, IP |
+  | Login success / failure | `user_id`, IP |
+  | Logout | `user_id` |
+  | Email verified | `user_id` |
+  | Password reset requested | `user_id` |
+  | Password reset completed | `user_id` |
+  | Profile updated | `user_id`, changed fields |
+  | Phone updated | `user_id` |
+  | Org followed / unfollowed | `user_id`, org name |
+  | FCM token registered / removed | `user_id`, device name |
+  | Notification preferences updated | `user_id`, channels changed |
+  | Application tracked | `user_id`, `job_id` |
+  | Application updated | `user_id`, changed fields |
+  | Application removed | `user_id`, `application_id` |
 
 ---
 
