@@ -16,6 +16,7 @@ Admin endpoints:
   POST /api/v1/auth/admin/refresh
 """
 
+import logging
 import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -25,6 +26,8 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
+logger = logging.getLogger(__name__)
 
 from app.config import settings
 from app.dependencies import get_current_admin, get_current_user, get_db, get_redis
@@ -106,16 +109,21 @@ async def login(request: Request, body: LoginRequest, db: AsyncSession = Depends
     result = await db.execute(select(User).where(User.email == body.email))
     user = result.scalar_one_or_none()
 
+    ip = request.client.host if request.client else "unknown"
     if not user or not pwd_context.verify(body.password, user.password_hash):
+        logger.warning("login_failed", extra={"email": body.email, "ip": ip})
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
 
     if user.status == "suspended":
+        logger.warning("login_suspended_account", extra={"email": body.email, "ip": ip})
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account suspended")
 
     if user.status == "deleted":
+        logger.warning("login_failed", extra={"email": body.email, "ip": ip})
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
 
     user.last_login = datetime.now(timezone.utc)
+    logger.info("login_success", extra={"user_id": str(user.id), "ip": ip})
 
     return TokenResponse(
         access_token=create_access_token(str(user.id), "user"),
@@ -131,7 +139,8 @@ async def logout(current_user=Depends(get_current_user), redis=Depends(get_redis
     if jti:
         exp = payload.get("exp", 0)
         ttl = max(int(exp - datetime.now(timezone.utc).timestamp()), 1)
-        await redis.setex(f"blocklist:{jti}", ttl, "1")
+        await redis.setex(f"{settings.REDIS_KEY_PREFIX}:blocklist:{jti}", ttl, "1")
+    logger.info("logout", extra={"user_id": str(user.id)})
 
 
 @router.post("/refresh", response_model=TokenResponse)
@@ -146,7 +155,7 @@ async def refresh(body: RefreshRequest, db: AsyncSession = Depends(get_db), redi
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token type")
 
     jti = payload.get("jti")
-    if jti and await redis.get(f"blocklist:{jti}"):
+    if jti and await redis.get(f"{settings.REDIS_KEY_PREFIX}:blocklist:{jti}"):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token revoked")
 
     user_id = payload.get("sub")
@@ -157,7 +166,7 @@ async def refresh(body: RefreshRequest, db: AsyncSession = Depends(get_db), redi
 
     exp = payload.get("exp", 0)
     ttl = max(int(exp - datetime.now(timezone.utc).timestamp()), 1)
-    await redis.setex(f"blocklist:{jti}", ttl, "1")
+    await redis.setex(f"{settings.REDIS_KEY_PREFIX}:blocklist:{jti}", ttl, "1")
 
     return TokenResponse(
         access_token=create_access_token(str(user.id), "user"),
@@ -174,7 +183,8 @@ async def forgot_password(request: Request, body: ForgotPasswordRequest, db: Asy
 
     if user:
         reset_token = secrets.token_urlsafe(32)
-        await redis.setex(f"reset:user:{reset_token}", 3600, str(user.id))
+        await redis.setex(f"{settings.REDIS_KEY_PREFIX}:reset:user:{reset_token}", 3600, str(user.id))
+        logger.info("password_reset_requested", extra={"user_id": str(user.id)})
         from app.tasks.notifications import send_email_notification
         reset_url = f"{settings.FRONTEND_URL}/reset-password?token={reset_token}"
         send_email_notification.delay(
@@ -190,7 +200,7 @@ async def forgot_password(request: Request, body: ForgotPasswordRequest, db: Asy
 @router.post("/reset-password", response_model=MessageResponse)
 async def reset_password(body: ResetPasswordRequest, db: AsyncSession = Depends(get_db), redis=Depends(get_redis)):
     """Reset user password using token."""
-    user_id_str = await redis.get(f"reset:user:{body.token}")
+    user_id_str = await redis.get(f"{settings.REDIS_KEY_PREFIX}:reset:user:{body.token}")
     if not user_id_str:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired reset token")
 
@@ -201,7 +211,8 @@ async def reset_password(body: ResetPasswordRequest, db: AsyncSession = Depends(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired reset token")
 
     user.password_hash = pwd_context.hash(body.new_password)
-    await redis.delete(f"reset:user:{body.token}")
+    await redis.delete(f"{settings.REDIS_KEY_PREFIX}:reset:user:{body.token}")
+    logger.info("password_reset_completed", extra={"user_id": str(user.id)})
 
     return MessageResponse(message="Password reset successful.")
 
@@ -209,7 +220,7 @@ async def reset_password(body: ResetPasswordRequest, db: AsyncSession = Depends(
 @router.get("/verify-email/{token}", response_model=MessageResponse)
 async def verify_email(token: str, db: AsyncSession = Depends(get_db), redis=Depends(get_redis)):
     """Verify user email address using token."""
-    user_id_str = await redis.get(f"verify:{token}")
+    user_id_str = await redis.get(f"{settings.REDIS_KEY_PREFIX}:verify:{token}")
     if not user_id_str:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired verification token")
 
@@ -220,7 +231,7 @@ async def verify_email(token: str, db: AsyncSession = Depends(get_db), redis=Dep
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired verification token")
 
     user.is_email_verified = True
-    await redis.delete(f"verify:{token}")
+    await redis.delete(f"{settings.REDIS_KEY_PREFIX}:verify:{token}")
 
     return MessageResponse(message="Email verified successfully.")
 
@@ -229,7 +240,7 @@ async def verify_email(token: str, db: AsyncSession = Depends(get_db), redis=Dep
 async def csrf_token(redis=Depends(get_redis)):
     """Generate a CSRF token."""
     token = secrets.token_urlsafe(32)
-    await redis.setex(f"csrf:{token}", 3600, "1")
+    await redis.setex(f"{settings.REDIS_KEY_PREFIX}:csrf:{token}", 3600, "1")
     return {"csrf_token": token}
 
 
@@ -243,16 +254,21 @@ async def admin_login(request: Request, body: AdminLoginRequest, db: AsyncSessio
     result = await db.execute(select(AdminUser).where(AdminUser.email == body.email))
     admin = result.scalar_one_or_none()
 
+    ip = request.client.host if request.client else "unknown"
     if not admin or not pwd_context.verify(body.password, admin.password_hash):
+        logger.warning("admin_login_failed", extra={"email": body.email, "ip": ip})
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
 
     if admin.status == "suspended":
+        logger.warning("admin_login_suspended", extra={"email": body.email, "ip": ip})
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account suspended")
 
     if admin.status == "deleted":
+        logger.warning("admin_login_failed", extra={"email": body.email, "ip": ip})
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
 
     admin.last_login = datetime.now(timezone.utc)
+    logger.info("admin_login_success", extra={"admin_id": str(admin.id), "role": admin.role, "ip": ip})
 
     return TokenResponse(
         access_token=create_access_token(str(admin.id), "admin", admin.role),
@@ -268,7 +284,8 @@ async def admin_logout(current_admin=Depends(get_current_admin), redis=Depends(g
     if jti:
         exp = payload.get("exp", 0)
         ttl = max(int(exp - datetime.now(timezone.utc).timestamp()), 1)
-        await redis.setex(f"blocklist:{jti}", ttl, "1")
+        await redis.setex(f"{settings.REDIS_KEY_PREFIX}:blocklist:{jti}", ttl, "1")
+    logger.info("admin_logout", extra={"admin_id": str(admin.id)})
 
 
 @router.post("/admin/refresh", response_model=TokenResponse)
@@ -283,7 +300,7 @@ async def admin_refresh(body: RefreshRequest, db: AsyncSession = Depends(get_db)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token type")
 
     jti = payload.get("jti")
-    if jti and await redis.get(f"blocklist:{jti}"):
+    if jti and await redis.get(f"{settings.REDIS_KEY_PREFIX}:blocklist:{jti}"):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token revoked")
 
     admin_id = payload.get("sub")
@@ -294,7 +311,7 @@ async def admin_refresh(body: RefreshRequest, db: AsyncSession = Depends(get_db)
 
     exp = payload.get("exp", 0)
     ttl = max(int(exp - datetime.now(timezone.utc).timestamp()), 1)
-    await redis.setex(f"blocklist:{jti}", ttl, "1")
+    await redis.setex(f"{settings.REDIS_KEY_PREFIX}:blocklist:{jti}", ttl, "1")
 
     return TokenResponse(
         access_token=create_access_token(str(admin.id), "admin", admin.role),

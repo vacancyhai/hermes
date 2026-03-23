@@ -378,7 +378,7 @@ def notify_priority_subscribers(job_id: str):
             session.execute(
                 text("""
                     INSERT INTO notifications (id, user_id, entity_type, entity_id, type, title, message, action_url, priority, sent_via, created_at)
-                    VALUES (:id, :uid, 'job', :jid, 'priority_job_update', :title, :msg, :url, 'high', '{in_app}', :now)
+                    VALUES (:id, :uid, 'job', :jid, 'priority_job_update', :title, :msg, :url, 'high', :sent_via, :now)
                 """),
                 {
                     "id": str(uuid.uuid4()),
@@ -387,6 +387,7 @@ def notify_priority_subscribers(job_id: str):
                     "title": f"Update: {job_title}",
                     "msg": f"A priority job you're tracking ({job_title} by {org}) has been updated.",
                     "url": f"/jobs/{job_slug}",
+                    "sent_via": ["in_app"],
                     "now": now,
                 },
             )
@@ -411,6 +412,8 @@ def _queue_email_for_user(session, user_id: str, subject: str, template_name: st
         return
 
     email, full_name, prefs = row
+    if not email:
+        return
     prefs = prefs or {}
 
     # Default: email enabled unless explicitly disabled

@@ -30,7 +30,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
-
+from app.rate_limit import limiter
 from app.dependencies import get_current_admin, get_db, require_admin, require_operator
 from app.models.admin_log import AdminLog
 from app.models.admin_user import AdminUser
@@ -245,14 +245,15 @@ async def create_job(
     """Create a job vacancy."""
     admin = current_admin
 
-    # Generate unique slug
+    # Generate unique slug: fetch all collisions in one query, pick next free suffix
     base_slug = _slugify(body.job_title)
+    existing_slugs_result = await db.execute(
+        select(JobVacancy.slug).where(JobVacancy.slug.like(f"{base_slug}%"))
+    )
+    existing_slugs = {row[0] for row in existing_slugs_result.all()}
     slug = base_slug
     counter = 1
-    while True:
-        existing = await db.execute(select(JobVacancy.id).where(JobVacancy.slug == slug))
-        if not existing.scalar_one_or_none():
-            break
+    while slug in existing_slugs:
         slug = f"{base_slug}-{counter}"
         counter += 1
 
@@ -310,6 +311,7 @@ async def create_job(
 
 
 @router.post("/jobs/upload-pdf", status_code=status.HTTP_202_ACCEPTED)
+@limiter.limit("5/minute")
 async def upload_pdf(
     file: UploadFile,
     request: Request,

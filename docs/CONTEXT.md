@@ -128,14 +128,14 @@ src/backend/
     schemas/
       auth.py, jobs.py, users.py, applications.py, notifications.py
     services/
-      matching.py        # Job scoring: state +3, category +3, education +2, recency +1
+      matching.py        # Job scoring: state +3, category +3, education +2, recency +1; CANDIDATE_LIMIT=500 caps DB fetch
       pdf_extractor.py   # PDF text extraction (pdfplumber)
       ai_extractor.py    # AI structured extraction (Anthropic Claude API)
     tasks/
       notifications.py   # send_deadline_reminders, send_new_job_notifications,
                          # send_email_notification, send_push_notification, notify_priority_subscribers
       cleanup.py         # purge_expired_notifications, purge_expired_admin_logs, purge_soft_deleted_jobs
-      jobs.py            # close_expired_job_listings, extract_job_from_pdf
+      jobs.py            # close_expired_job_listings (bind, max_retries=3), extract_job_from_pdf (deletes PDF after use)
       seo.py             # generate_sitemap
     templates/email/     # Jinja2: base, welcome, verification, password_reset, deadline_reminder, new_job_alert
   tests/                 # 292 tests — 91% coverage
@@ -156,7 +156,7 @@ src/backend/
 
 src/frontend/
   app/
-    __init__.py          # Routes: /, /jobs, /jobs/<slug>, /dashboard, /notifications/*, /login, /logout, /offline
+    __init__.py          # Routes: /, /jobs, /jobs/<slug>, /dashboard, /notifications/*, /login (CSRF), /logout, /offline; _try_refresh() on 401
     api_client.py        # requests wrapper: get, post, put, delete, patch (10s timeout)
     static/              # PWA: manifest.json, sw.js, icons
     templates/           # base.html, index.html, _job_cards.html, job_detail.html,
@@ -168,9 +168,9 @@ src/frontend/
 
 src/frontend-admin/
   app/
-    __init__.py          # Routes: /, /login, /logout, /jobs, /jobs/list, /jobs/<id>/approve,
+    __init__.py          # Routes: /, /login (CSRF), /logout, /jobs, /jobs/list, /jobs/<id>/approve,
                          # /jobs/upload, /jobs/<id>/review, /users, /users/list,
-                         # /users/<id>/suspend, /logs, /logs/list
+                         # /users/<id>/suspend, /logs, /logs/list; _try_refresh() on 401; JWT role decoded from token payload
     api_client.py        # Same as frontend + post_file() for PDF uploads (60s timeout)
     templates/           # login.html, dashboard.html, jobs.html, job_upload.html, job_review.html,
                          # users.html, logs.html, _job_rows.html, _user_rows.html, _log_rows.html
@@ -195,8 +195,9 @@ docs/
 - `users` table — regular users only (no role)
 - `admin_users` table — admin/operator (role, department, permissions JSONB)
 - JWT `user_type` claim: `"user"` | `"admin"` for scope isolation
-- Redis keys: `blocklist:{jti}`, `reset:{token}`, `verify:{token}`, `csrf:{token}`
+- Redis keys: `hermes:blocklist:{jti}`, `hermes:reset:{token}`, `hermes:verify:{token}`, `hermes:csrf:{token}` (prefix from `REDIS_KEY_PREFIX` setting)
 - Access token: 15 min. Refresh: 7 days. JTI blocklisted on logout + refresh rotation.
+- Frontends store `refresh_token` in session; auto-refresh on 401 via `_try_refresh()` helper.
 - Dependency tuple: `get_current_user()` → `(User, payload_dict)`, `get_current_admin()` → `(AdminUser, payload_dict)`
 
 ---
@@ -205,10 +206,9 @@ docs/
 
 | Role | Email | Password | Notes |
 |------|-------|----------|-------|
-| User | user1@test.com | UserPass123 | Prefs: graduate, Delhi, general/obc, follows UPSC |
-| Admin | admin@hermes.gov.in | AdminPass123 | role=admin, dept=IT Department |
-| Operator | operator@hermes.gov.in | OperPass123 | role=operator, dept=Content Team |
-| User | test@example.com | NewPass456 | Legacy Phase 1 test user |
+| User | user@test.com | User1234 | active, email verified |
+| Admin | admin@test.com | Admin1234 | role=admin, dept=IT Department |
+| Operator | operator@test.com | Operator1234 | role=operator, dept=Content Team |
 
 ---
 

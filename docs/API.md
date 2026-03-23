@@ -33,7 +33,7 @@ All list endpoints return: `{ "data": [...], "pagination": { "limit", "offset", 
 - `user_type`: `"user"` or `"admin"` — determines which table to look up
 - `role`: (admin tokens only) `"admin"` or `"operator"`
 - `sub`: UUID of the user/admin
-- `jti`: unique token ID (used for blocklist)
+- `jti`: unique token ID (stored in Redis as `hermes:blocklist:{jti}` on logout/refresh)
 
 ---
 

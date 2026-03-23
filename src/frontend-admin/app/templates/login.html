@@ -7,6 +7,7 @@
     <div class="card">
         <h2 style="margin-bottom:1rem;text-align:center;">Admin Login</h2>
         <form method="POST" action="/login">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <div style="margin-bottom:.75rem;">
                 <label style="display:block;font-size:.85rem;font-weight:500;margin-bottom:.25rem;">Email</label>
                 <input type="email" name="email" required style="width:100%;padding:.5rem .75rem;border:1px solid #cbd5e1;border-radius:.375rem;font-size:.9rem;">

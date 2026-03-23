@@ -59,7 +59,7 @@ async def _decode_and_validate_token(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid token scope")
 
     jti = payload.get("jti")
-    if jti and await redis.get(f"blocklist:{jti}"):
+    if jti and await redis.get(f"{settings.REDIS_KEY_PREFIX}:blocklist:{jti}"):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token revoked")
 
     if not payload.get("sub"):

@@ -12,6 +12,7 @@ import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import get_current_user, get_db
@@ -74,11 +75,16 @@ async def list_applications(
     result = await db.execute(query)
     apps = result.scalars().all()
 
-    # Enrich with job info
+    # Batch-fetch all related jobs in a single query (avoids N+1)
+    job_ids = [app.job_id for app in apps]
+    jobs_map: dict = {}
+    if job_ids:
+        jobs_result = await db.execute(select(JobVacancy).where(JobVacancy.id.in_(job_ids)))
+        jobs_map = {j.id: j for j in jobs_result.scalars().all()}
+
     data = []
     for app in apps:
-        job_result = await db.execute(select(JobVacancy).where(JobVacancy.id == app.job_id))
-        job = job_result.scalar_one_or_none()
+        job = jobs_map.get(app.job_id)
         item = ApplicationResponse.model_validate(app).model_dump()
         if job:
             item["job"] = {
@@ -110,7 +116,7 @@ async def track_job(
     if not job:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
 
-    # Check duplicate
+    # Check duplicate (fast path for UX)
     existing = await db.execute(
         select(UserJobApplication).where(
             UserJobApplication.user_id == user.id,
@@ -129,7 +135,11 @@ async def track_job(
         status=body.status or "applied",
     )
     db.add(app)
-    await db.flush()
+    try:
+        await db.flush()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Already tracking this job")
 
     # Increment applications_count on the job
     job.applications_count = (job.applications_count or 0) + 1

@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     # Redis
     REDIS_URL: str = "redis://redis:6379/0"
     REDIS_PASSWORD: str = ""
+    REDIS_KEY_PREFIX: str = "hermes"
 
     # Celery
     CELERY_BROKER_URL: str = "redis://redis:6379/0"

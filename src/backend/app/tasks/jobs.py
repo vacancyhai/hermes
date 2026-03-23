@@ -8,6 +8,7 @@ Event-driven:
 """
 
 import logging
+import os
 import uuid
 
 from sqlalchemy import text
@@ -19,22 +20,26 @@ from app.database import sync_engine
 logger = logging.getLogger(__name__)
 
 
-@celery.task(name="app.tasks.jobs.close_expired_job_listings")
-def close_expired_job_listings():
+@celery.task(name="app.tasks.jobs.close_expired_job_listings", bind=True, max_retries=3, default_retry_delay=60)
+def close_expired_job_listings(self):
     """Auto-close jobs past application_end. Daily 02:30 UTC."""
-    with Session(sync_engine) as session:
-        result = session.execute(
-            text("""
-                UPDATE job_vacancies
-                SET status = 'cancelled', updated_at = NOW()
-                WHERE status = 'active'
-                  AND application_end IS NOT NULL
-                  AND application_end < CURRENT_DATE
-                RETURNING id
-            """)
-        )
-        closed_ids = [str(row[0]) for row in result.fetchall()]
-        session.commit()
+    try:
+        with Session(sync_engine) as session:
+            result = session.execute(
+                text("""
+                    UPDATE job_vacancies
+                    SET status = 'cancelled', updated_at = NOW()
+                    WHERE status = 'active'
+                      AND application_end IS NOT NULL
+                      AND application_end < CURRENT_DATE
+                    RETURNING id
+                """)
+            )
+            closed_ids = [str(row[0]) for row in result.fetchall()]
+            session.commit()
+    except Exception as exc:
+        logger.error(f"close_expired_job_listings failed: {exc}")
+        raise self.retry(exc=exc)
 
     logger.info(f"Closed {len(closed_ids)} expired job listings")
     return {"closed_count": len(closed_ids)}
@@ -55,6 +60,10 @@ def extract_job_from_pdf(self, pdf_path: str, admin_id: str):
 
     if not pdf_text.strip():
         logger.warning(f"PDF has no extractable text: {pdf_path}")
+        try:
+            os.unlink(pdf_path)
+        except OSError:
+            pass
         return {"status": "error", "detail": "PDF has no extractable text"}
 
     # Step 2: AI extraction
@@ -131,4 +140,11 @@ def extract_job_from_pdf(self, pdf_path: str, admin_id: str):
         session.commit()
 
     logger.info(f"Created draft job {job_id} from PDF: {pdf_path}")
+
+    # Clean up the uploaded PDF file to prevent disk exhaustion
+    try:
+        os.unlink(pdf_path)
+    except OSError as e:
+        logger.warning(f"Could not delete PDF file {pdf_path}: {e}")
+
     return {"status": "ok", "job_id": job_id, "extracted_fields": list(extracted.keys())}

@@ -597,7 +597,7 @@ client) that propagates through all services and into logs for tracing.
 
 - **Access token:** 15-minute expiry. Sent in `Authorization: Bearer <token>`.
 - **Refresh token:** 7-day expiry. Used to obtain a new access token without re-login.
-- **Blocklist:** On logout, the token's JTI is stored in Redis (`blocklist:{jti}`) until expiry.
+- **Blocklist:** On logout, the token's JTI is stored in Redis (`hermes:blocklist:{jti}`) until expiry. Key prefix is set via `REDIS_KEY_PREFIX` in config.
 
 ### Three Roles
 
@@ -1079,6 +1079,7 @@ All items below are implemented.
 - **CSRF protection:** Redis-backed single-use tokens (1h TTL)
 - **Secrets:** `.env` files in `.gitignore`; production secrets in OCI Vault (20 free key versions)
 - **Redis persistence:** AOF (append-only file) enabled — prevents JWT blocklist loss on Redis restart. Without AOF, a Redis restart would make previously logged-out tokens valid again.
+- **Security event logging:** Failed logins, successful logins, logouts, and password resets are logged via `logging` with user ID and client IP for audit purposes.
 
 ---
 

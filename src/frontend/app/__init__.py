@@ -1,8 +1,9 @@
 """Hermes User Frontend — Flask + Jinja2 + HTMX."""
 
 import os
+import secrets
 
-from flask import Flask, current_app, render_template, request, session, redirect, url_for, flash
+from flask import Flask, current_app, render_template, request, session, redirect, flash
 
 from app.api_client import ApiClient
 
@@ -14,6 +15,21 @@ def create_app():
     app.api_client = ApiClient(
         base_url=os.environ.get("BACKEND_API_URL", "http://localhost:8000/api/v1")
     )
+
+    def _try_refresh():
+        """Refresh access token using stored refresh token. Updates session. Returns new token or None."""
+        refresh_token = session.get("refresh_token")
+        if not refresh_token:
+            session.clear()
+            return None
+        r = current_app.api_client.post("/auth/refresh", json={"refresh_token": refresh_token})
+        if not r.ok:
+            session.clear()
+            return None
+        data = r.json()
+        session["token"] = data.get("access_token")
+        session["refresh_token"] = data.get("refresh_token", refresh_token)
+        return session["token"]
 
     @app.route("/health")
     def health():
@@ -53,8 +69,13 @@ def create_app():
         if not token:
             return render_template("login.html", next="/dashboard")
 
-        # Fetch stats
+        # Fetch stats (refresh token on 401)
         stats_resp = current_app.api_client.get("/applications/stats", token=token)
+        if stats_resp.status_code == 401:
+            token = _try_refresh()
+            if not token:
+                return redirect("/login")
+            stats_resp = current_app.api_client.get("/applications/stats", token=token)
         stats = stats_resp.json() if stats_resp.ok else {"total": 0}
 
         # Fetch applications
@@ -105,8 +126,13 @@ def create_app():
         if not token:
             return render_template("login.html", next="/notifications")
 
-        # Fetch unread count
+        # Fetch unread count (refresh token on 401)
         count_resp = current_app.api_client.get("/notifications/count", token=token)
+        if count_resp.status_code == 401:
+            token = _try_refresh()
+            if not token:
+                return redirect("/login")
+            count_resp = current_app.api_client.get("/notifications/count", token=token)
         unread_count = count_resp.json().get("count", 0) if count_resp.ok else 0
 
         # Fetch notifications
@@ -195,7 +221,15 @@ def create_app():
     def login():
         """Simple login form — stores JWT in session."""
         if request.method == "GET":
-            return render_template("login.html", next=request.args.get("next", "/dashboard"))
+            csrf_token = secrets.token_hex(16)
+            session["csrf_token"] = csrf_token
+            return render_template("login.html", next=request.args.get("next", "/dashboard"), csrf_token=csrf_token)
+
+        # Validate CSRF token
+        form_csrf = request.form.get("csrf_token", "")
+        if not form_csrf or form_csrf != session.pop("csrf_token", None):
+            flash("Invalid request. Please try again.", "error")
+            return redirect("/login")
 
         email = request.form.get("email", "")
         password = request.form.get("password", "")
@@ -203,11 +237,14 @@ def create_app():
         if resp.ok:
             data = resp.json()
             session["token"] = data.get("access_token")
-            session["user_name"] = data.get("user", {}).get("full_name", email)
+            session["refresh_token"] = data.get("refresh_token")
+            # Fetch user's full name from /users/me
+            me_resp = current_app.api_client.get("/users/me", token=session["token"])
+            session["user_name"] = me_resp.json().get("full_name", email) if me_resp.ok else email
             next_url = request.form.get("next", "/dashboard")
             return redirect(next_url)
         flash("Invalid email or password", "error")
-        return render_template("login.html", next=request.form.get("next", "/dashboard"))
+        return redirect("/login")
 
     @app.route("/logout")
     def logout():

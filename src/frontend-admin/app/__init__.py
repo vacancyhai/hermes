@@ -17,11 +17,24 @@ Routes:
   /logs/list           — HTMX partial for log rows
 """
 
+import base64
+import json
 import os
+import secrets
 
-from flask import Flask, current_app, flash, redirect, render_template, request, session, url_for
+from flask import Flask, current_app, flash, redirect, render_template, request, session
 
 from app.api_client import ApiClient
+
+
+def _jwt_payload(token: str) -> dict:
+    """Decode JWT payload without signature verification (read-only)."""
+    try:
+        part = token.split(".")[1]
+        part += "=" * (4 - len(part) % 4)
+        return json.loads(base64.b64decode(part))
+    except Exception:
+        return {}
 
 
 def create_app():
@@ -31,6 +44,21 @@ def create_app():
     app.api_client = ApiClient(
         base_url=os.environ.get("BACKEND_API_URL", "http://backend:8000/api/v1")
     )
+
+    def _try_refresh():
+        """Refresh admin access token using stored refresh token. Updates session. Returns new token or None."""
+        refresh_token = session.get("refresh_token")
+        if not refresh_token:
+            session.clear()
+            return None
+        r = current_app.api_client.post("/auth/admin/refresh", json={"refresh_token": refresh_token})
+        if not r.ok:
+            session.clear()
+            return None
+        data = r.json()
+        session["token"] = data.get("access_token")
+        session["refresh_token"] = data.get("refresh_token", refresh_token)
+        return session["token"]
 
     # --- Health ---
 
@@ -43,7 +71,15 @@ def create_app():
     @app.route("/login", methods=["GET", "POST"])
     def login():
         if request.method == "GET":
-            return render_template("login.html")
+            csrf_token = secrets.token_hex(16)
+            session["csrf_token"] = csrf_token
+            return render_template("login.html", csrf_token=csrf_token)
+
+        # Validate CSRF token
+        form_csrf = request.form.get("csrf_token", "")
+        if not form_csrf or form_csrf != session.pop("csrf_token", None):
+            flash("Invalid request. Please try again.", "error")
+            return redirect("/login")
 
         email = request.form.get("email", "")
         password = request.form.get("password", "")
@@ -51,11 +87,14 @@ def create_app():
         if resp.ok:
             data = resp.json()
             session["token"] = data.get("access_token")
-            session["admin_name"] = data.get("admin", {}).get("full_name", email)
-            session["admin_role"] = data.get("admin", {}).get("role", "operator")
+            session["refresh_token"] = data.get("refresh_token")
+            # Decode role from JWT payload (avoids an extra API call)
+            payload = _jwt_payload(session["token"])
+            session["admin_name"] = email
+            session["admin_role"] = payload.get("role", "operator")
             return redirect("/")
         flash("Invalid credentials", "error")
-        return render_template("login.html")
+        return redirect("/login")
 
     @app.route("/logout")
     def logout():
@@ -74,6 +113,11 @@ def create_app():
             return redirect("/login")
 
         stats_resp = current_app.api_client.get("/admin/stats", token=token)
+        if stats_resp.status_code == 401:
+            token = _try_refresh()
+            if not token:
+                return redirect("/login")
+            stats_resp = current_app.api_client.get("/admin/stats", token=token)
         stats = stats_resp.json() if stats_resp.ok else {}
 
         return render_template("dashboard.html", stats=stats)

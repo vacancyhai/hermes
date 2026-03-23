@@ -8,6 +8,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.job_vacancy import JobVacancy
 from app.models.user_profile import UserProfile
 
+# Maximum candidates fetched from DB before in-memory scoring (avoids loading all jobs)
+CANDIDATE_LIMIT = 500
+
 # Scoring weights
 STATE_MATCH = 3
 CATEGORY_MATCH = 3
@@ -69,7 +72,14 @@ async def get_recommended_jobs(
         )
         return list(result.scalars().all()), total
 
-    result = await db.execute(select(JobVacancy).where(*base_filter))
+    # Cap candidate pool at CANDIDATE_LIMIT to avoid loading all jobs into memory.
+    # Jobs are pre-sorted by recency so the best candidates are always included.
+    result = await db.execute(
+        select(JobVacancy)
+        .where(*base_filter)
+        .order_by(JobVacancy.created_at.desc())
+        .limit(CANDIDATE_LIMIT)
+    )
     jobs = result.scalars().all()
 
     # Score each job

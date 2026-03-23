@@ -3,7 +3,7 @@
 import uuid
 from datetime import date, datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 # --- Request schemas ---
@@ -43,6 +43,13 @@ class JobCreateRequest(BaseModel):
     is_featured: bool = False
     is_urgent: bool = False
 
+    @model_validator(mode="after")
+    def validate_dates(self) -> "JobCreateRequest":
+        if self.application_start and self.application_end:
+            if self.application_end <= self.application_start:
+                raise ValueError("application_end must be after application_start")
+        return self
+
 
 class JobUpdateRequest(BaseModel):
     job_title: str | None = None
@@ -78,6 +85,13 @@ class JobUpdateRequest(BaseModel):
     status: str | None = None
     is_featured: bool | None = None
     is_urgent: bool | None = None
+
+    @model_validator(mode="after")
+    def validate_dates(self) -> "JobUpdateRequest":
+        if self.application_start and self.application_end:
+            if self.application_end <= self.application_start:
+                raise ValueError("application_end must be after application_start")
+        return self
 
 
 # --- Response schemas ---
