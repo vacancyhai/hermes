@@ -405,4 +405,5 @@ git push origin main
 | `docs/DESIGN.md` | Architecture, DB schema, API design decisions |
 | `docs/TESTING.md` | Coverage report for backend + frontend + admin |
 | `docs/DIAGRAMS.md` | ASCII workflow diagrams for all major user and system flows |
+| `docs/FRONTEND_BACKEND_AUDIT.md` | Backend ↔ frontend endpoint audit — wired routes, unused endpoints, and known bugs |
 | `docs/hermes.postman_collection.json` | Postman v2.1 collection (auto-saves tokens) |
