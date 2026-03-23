@@ -86,7 +86,7 @@ Admin/Operator → Admin Frontend (port 8081)
      → Admin Frontend renders result
 ```
 
-## 2. User Registration & Profile Setup Flow
+## 2. User Sign-In & Profile Setup Flow (Firebase Auth)
 
 ```
 ┌─────────┐
@@ -95,90 +95,105 @@ Admin/Operator → Admin Frontend (port 8081)
      │
      ▼
 ┌─────────────────────────┐
-│ User visits website     │
+│ User visits /login      │
+│ (Firebase JS SDK loaded)│
 └────┬────────────────────┘
+     │
+     ▼
+┌──────────────────────────────────────────────────┐
+│ Choose sign-in method                            │
+│                                                  │
+│  A) Email / Password  B) Google  C) Phone OTP   │
+└────┬─────────────────────────────────────────────┘
+     │
+     ├─────────────────────────────────────────────┐
+     │ A) Email/Password                           │
+     ▼                                             │
+┌─────────────────────────┐                        │
+│ signInWithEmailAndPassword│                      │
+│ or createUserWithEmail  │                        │
+│ (Firebase JS SDK)       │                        │
+└────┬────────────────────┘                        │
+     │                                             │
+     │              B) Google                      │
+     │         ┌─────────────────────────┐         │
+     │         │ signInWithPopup         │         │
+     │         │ (GoogleAuthProvider)    │         │
+     │         └────┬────────────────────┘         │
+     │              │                              │
+     │              │       C) Phone OTP           │
+     │              │  ┌──────────────────────┐    │
+     │              │  │ signInWithPhone       │    │
+     │              │  │ Number + RecaptchaV.  │    │
+     │              │  │ → SMS sent            │    │
+     │              │  │ User enters OTP 6-dig │    │
+     │              │  │ confirmResult.confirm │    │
+     │              │  └──────┬───────────────┘    │
+     │              │         │                    │
+     ▼              ▼         ▼                    │
+┌──────────────────────────────────────┐           │
+│ Firebase returns ID Token            │◄──────────┘
+│ (JWT signed by Firebase, ~1hr TTL)   │
+└────┬─────────────────────────────────┘
+     │
+     ▼
+┌──────────────────────────────────────┐
+│ POST /auth/firebase-callback         │
+│ (Flask frontend relay)               │
+│ { id_token, full_name? }             │
+└────┬─────────────────────────────────┘
+     │
+     ▼
+┌──────────────────────────────────────┐
+│ POST /api/v1/auth/verify-token       │
+│ (FastAPI backend)                    │
+└────┬─────────────────────────────────┘
+     │
+     ▼
+┌──────────────────────────────────────┐
+│ firebase-admin SDK verifies token    │
+│ Decodes: uid, email, phone, name,    │
+│ email_verified, sign_in_provider     │
+└────┬─────────────────────────────────┘
+     │
+     ▼
+┌──────────────────────────────────────┐      ┌─────────────────────────┐
+│ Upsert user in PostgreSQL            │─────►│ Existing by firebase_uid│
+│                                      │      │ → update last_login     │
+│ Lookup order:                        │      └─────────────────────────┘
+│ 1. firebase_uid → found → update     │      ┌─────────────────────────┐
+│ 2. email       → found → link uid    │─────►│ Legacy user linked:     │
+│                    migration_status  │      │ migration_status =      │
+│                    = "migrated"      │      │ "migrated"              │
+│ 3. not found   → create new user +  │      └─────────────────────────┘
+│                    UserProfile row   │      ┌─────────────────────────┐
+│                    migration_status  │─────►│ New user created        │
+│                    = "native"        │      │ migration_status =      │
+└────┬─────────────────────────────────┘      │ "native"                │
+     │                                        └─────────────────────────┘
+     ▼
+┌──────────────────────────────────────┐
+│ Return internal JWT pair             │
+│ { access_token (15m),               │
+│   refresh_token (7d) }              │
+└────┬─────────────────────────────────┘
+     │
+     ▼
+┌──────────────────────────────────────┐
+│ Flask stores tokens in session       │
+│ Redirect → /dashboard                │
+└────┬─────────────────────────────────┘
      │
      ▼
 ┌─────────────────────────┐
-│ Click on "Register"     │
-└────┬────────────────────┘
-     │
-     ▼
-┌─────────────────────────┐
-│ Fill registration form: │
-│ - Email                 │
-│ - Password              │
-│ - Full Name             │
-│ - Phone                 │
-└────┬────────────────────┘
-     │
-     ▼
-┌─────────────────────────┐
-│ Submit form             │
-└────┬────────────────────┘
-     │
-     ▼
-┌─────────────────────────┐      ┌─────────────────────────┐
-│ Validate input          │─────►│ Error? Show validation  │
-└────┬────────────────────┘      │ message & ask to fix    │
-     │                           └────────┬────────────────┘
-     │ Valid                              │
-     ▼                                    │
-┌─────────────────────────┐               │
-│ Hash password           │               │
-└────┬────────────────────┘               │
-     │                                    │
-     ▼                                    │
-┌─────────────────────────┐               │
-│ Save to PostgreSQL      │               │
-│ (users table)           │               │
-└────┬────────────────────┘               │
-     │                                    │
-     ▼                                    │
-┌─────────────────────────┐               │
-│ Generate JWT token      │               │
-└────┬────────────────────┘               │
-     │                                    │
-     ▼                                    │
-┌─────────────────────────┐               │
-│ Send verification       │               │
-│ email                   │               │
-└────┬────────────────────┘               │
-     │                                    │
-     ▼                                    │
-┌─────────────────────────┐               │
-│ Redirect to profile     │◄──────────────┘
-│ setup page              │
-└────┬────────────────────┘
-     │
-     ▼
-┌─────────────────────────┐
-│ Complete Profile Setup: │
+│ Complete Profile Setup  │
+│ (optional, on /profile) │
 │                         │
-│ 1. Personal Info        │
-│    - DOB, Category      │
-│    - State, City        │
-│                         │
-│ 2. Education Details    │
-│    - 10th, 12th, Degree │
-│    - Stream, Percentage │
-│                         │
-│ 3. Preferences          │
-│    - Organizations      │
-│    - Job Types          │
-│    - Notif. Channels    │
-└────┬────────────────────┘
-     │
-     ▼
-┌─────────────────────────┐
-│ Save profile to         │
-│ user_profiles table     │
-└────┬────────────────────┘
-     │
-     ▼
-┌─────────────────────────┐
-│ Profile Complete!       │
-│ Redirect to Dashboard   │
+│ - Category, State, City │
+│ - Qualification level   │
+│ - Preferred states      │
+│ - Org follows           │
+│ - Notification prefs    │
 └────┬────────────────────┘
      │
      ▼

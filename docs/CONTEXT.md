@@ -16,7 +16,7 @@ A **Government Job Vacancy Portal** (India-focused). Users register, browse jobs
 
 - **Path**: `/home/sumant/workspace/hermes`
 - **Remote**: `git@github.com:SumanKr7/hermes.git`, branch `main`
-- **Latest commit**: `e66d12b` — docs: fix documentation gaps and sync api and DB diagrams with codebase
+- **Latest commit**: `5dc93f0` — docs: add FRONTEND_BACKEND_AUDIT.md — backend vs frontend endpoint gap report
 - **GitHub Issues**: #114–#154 (41 issues, 11 phases)
   - Phases 1–7 + Testing (#139–#140) + Phase 10–11 (#144–#154): **CLOSED**
   - Phase 8 (#141, OCI deployment): **OPEN — deferred to future**
@@ -127,9 +127,9 @@ src/backend/
       base.py, user.py, admin_user.py, user_profile.py, job_vacancy.py,
       application.py, notification.py, user_device.py,
       notification_delivery_log.py, admin_log.py
+    firebase.py          # Firebase Admin SDK — shared init for Auth + FCM (verify_id_token + init_firebase)
     routers/
       auth.py            # /api/v1/auth/* — user: verify-token/logout/refresh; admin: login/logout/refresh
-      firebase.py        # Firebase Admin SDK — shared init for Auth + FCM
       jobs.py            # /api/v1/jobs/* — public listing (FTS), recommended, detail by slug
       users.py           # /api/v1/users/* + /api/v1/organizations/* — profile CRUD, org follow
       admin.py           # /api/v1/admin/* — job CRUD, approve, user mgmt, dashboard, analytics, logs
@@ -151,20 +151,21 @@ src/backend/
       jobs.py            # close_expired_job_listings (bind, max_retries=3), extract_job_from_pdf (deletes PDF after use)
       seo.py             # generate_sitemap
     templates/email/     # Jinja2: base, welcome, verification, password_reset, deadline_reminder, new_job_alert
-  tests/                 # 292 tests — 91% coverage
-    conftest.py          # Async fixtures: engine-per-test, AsyncClient, auth tokens, test jobs
+  tests/                 # 313 tests — 93% coverage
+    conftest.py          # Async fixtures: engine-per-test, AsyncClient, user_token via create_access_token()
     unit/                # Direct function tests — no DB/Redis, uses AsyncMock
       test_route_admin.py (34), test_route_applications.py (17),
-      test_route_notifications.py (13), test_route_users.py (18),
-      test_route_jobs.py (7), test_matching.py (12),
-      test_services.py (7), test_tasks.py (12), test_notification_tasks.py (20)
+      test_route_notifications.py (15), test_route_users.py (18),
+      test_route_jobs.py (7), test_matching.py (14),
+      test_services.py (10), test_tasks.py (12), test_notification_tasks.py (29),
+      test_notification_service.py (22)
     integration/         # API tests against real DB + Redis
-      test_auth.py (~30), test_jobs.py (~25), test_applications.py (~25),
+      test_auth.py (20), test_jobs.py (~25), test_applications.py (~25),
       test_admin.py (~40), test_users.py (~30), test_notifications.py (~25)
     security/
-      test_security.py (18)   # JWT, RBAC, XSS, SQLi, CORS, file upload
+      test_security.py (17)   # JWT structure, RBAC, token revocation, admin bcrypt, CORS, upload, XSS, SQLi
     e2e/
-      test_user_flow.py (4)   # Full lifecycle flows
+      test_user_flow.py (4)   # Full lifecycle flows (Firebase verify-token + mocked Firebase)
   .coveragerc              # concurrency = thread,greenlet
 
 src/frontend/
@@ -181,10 +182,10 @@ src/frontend/
     templates/           # base.html, index.html, _job_cards.html, job_detail.html,
                          # dashboard.html, _application_rows.html, notifications.html,
                          # profile.html, login.html (Firebase JS SDK auth), offline.html, 404.html
-  tests/                 # 96 tests — 100% coverage
+  tests/                 # 80 tests — 91% coverage
     conftest.py
     unit/test_api_client.py (17)
-    integration/test_routes.py (79)
+    integration/test_routes.py (63)   # firebase-callback tests; register/forgot/reset/verify-email removed
 
 src/frontend-admin/
   app/
@@ -202,7 +203,12 @@ src/frontend-admin/
     unit/test_api_client.py (18)
     integration/test_routes.py (70)
 
-migrations/versions/     # 0001–0009 Alembic migration files
+migrations/versions/     # 0001–0010 Alembic migration files
+
+src/mobile-app/          # Firebase SDK configs for React Native (Phase 9 — planned)
+  google-services.json   # Android (com.hermes.app, project hermes-7)
+  GoogleService-Info.plist  # iOS (com.hermes.app, project hermes-7)
+
 docs/
   API.md                 # Complete endpoint reference
   DESIGN.md              # Architecture + DB schema
@@ -243,7 +249,7 @@ docs/
 | Service | Tests | Coverage | Command |
 |---------|-------|----------|---------|
 | Backend | 313 | 93% | `docker exec -w /app hermes_backend pytest tests/ --cov=app -q` |
-| User Frontend | 96 | 100% | `docker exec -w /app hermes_frontend python -m pytest tests/ --cov=app -q` |
+| User Frontend | 80 | 91% | `docker exec -w /app hermes_frontend python -m pytest tests/ --cov=app -q` |
 | Admin Frontend | 88 | 97% | `docker exec -w /app hermes_frontend_admin python -m pytest tests/ --cov=app -q` |
 
 See `docs/TESTING.md` for per-file breakdown and notes on uncovered lines.
@@ -293,9 +299,10 @@ docker exec hermes_celery_worker celery -A app.celery_app inspect registered
 | 5 | #130–#132 | ✅ | In-app notifications, email (Mailpit dev), FCM push, notification preferences, frontend bell |
 | 6 | #133–#135 | ✅ | Admin frontend, SEO (sitemap, meta, JSON-LD), fee display by category, share buttons |
 | 7 | #136–#138 | ✅ | PDF upload + AI extraction (Anthropic Claude), draft review workflow, PWA |
-| Testing | #139–#140 | ✅ | 406 tests (291 backend + 52 frontend + 62 admin), 91/100/97% coverage, security audit |
-| 10 | #144–#148 | ✅ | Complete user frontend: register, forgot/reset password, verify email, profile, org follow/unfollow, recommended jobs tab, application tracking inline edit |
-| 11 | #149–#154 | ✅ | Complete admin frontend: analytics dashboard, new job form, job delete, user detail, role management; 476 tests (292 backend + 96 frontend + 88 admin) |
+| Testing | #139–#140 | ✅ | 481 tests (313 backend + 80 frontend + 88 admin), 93/91/97% coverage, security audit |
+| Firebase | — | ✅ | Firebase Auth migration: verify-token endpoint, phone OTP support, legacy user migration (migration 0009–0010) |
+| 10 | #144–#148 | ✅ | Complete user frontend: profile, org follow/unfollow, recommended jobs tab, application tracking inline edit; Firebase JS SDK login (email, Google, phone OTP) |
+| 11 | #149–#154 | ✅ | Complete admin frontend: analytics dashboard, new job form, job delete, user detail, role management |
 | 8 | #141 | ⏳ Deferred | Production deployment to OCI ARM VM — planned for future |
 | 9 | #142–#143 | ⏳ Deferred | React Native mobile app + push notifications — planned for future |
 
@@ -405,5 +412,4 @@ git push origin main
 | `docs/DESIGN.md` | Architecture, DB schema, API design decisions |
 | `docs/TESTING.md` | Coverage report for backend + frontend + admin |
 | `docs/DIAGRAMS.md` | ASCII workflow diagrams for all major user and system flows |
-| `docs/FRONTEND_BACKEND_AUDIT.md` | Backend ↔ frontend endpoint audit — wired routes, unused endpoints, and known bugs |
 | `docs/hermes.postman_collection.json` | Postman v2.1 collection (auto-saves tokens) |

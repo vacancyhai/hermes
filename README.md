@@ -308,7 +308,7 @@ hermes/
 
 | Phase | Scope | Status |
 | ----- | ----- | ------ |
-| 1     | Database schema, user auth (register, login, JWT, logout, refresh, password reset, email verify, CSRF) | Done |
+| 1     | Database schema, user auth (JWT, logout, refresh, Redis blocklist, admin bcrypt login), PgBouncer setup | Done |
 | 2     | Job vacancy CRUD, full-text search, user profile, admin dashboard, frontend job listing | Done |
 | 3     | Job matching algorithm, recommendations, org follow + alerts | Done |
 | 4     | Application tracking, deadline reminders, user dashboard | Done |
