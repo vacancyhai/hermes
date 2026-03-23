@@ -30,7 +30,6 @@ notifications, and an admin panel.
 | Task Queue         | Celery 5.4 + Redis 7 broker                |
 | Email              | OCI Email Delivery (3,000/day free)         |
 | Push Notifications | Firebase Cloud Messaging                    |
-| Telegram (future) | Telegram Bot API                             |
 | WhatsApp (future) | WhatsApp Cloud API                           |
 | User Frontend      | Flask + Jinja2 + HTMX (port 8080)           |
 | Admin Frontend     | Flask + Jinja2 + HTMX (port 8081)           |

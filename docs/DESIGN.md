@@ -816,7 +816,6 @@ This costs zero infrastructure — only Jinja2 template changes.
 | Email      | fastapi-mail        | Queue in Redis, retry 5× (exp backoff) | Phase 5 |
 | Push       | Firebase FCM        | In-app notification + email            | Phase 5 |
 | In-app     | PostgreSQL row      | Always available                       | Phase 5 |
-| Telegram   | Telegram Bot API    | Email + in-app                         | Future  |
 | WhatsApp   | WhatsApp Cloud API  | Email + in-app                         | Future  |
 
 #### Telegram & WhatsApp (Future)
