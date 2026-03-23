@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "492255450359",
+    "project_id": "hermes-7",
+    "storage_bucket": "hermes-7.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:492255450359:android:d48608b7db669bffc8aff2",
+        "android_client_info": {
+          "package_name": "com.hermes.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "492255450359-ta8f8rcpjgmu5dtg5l07jmfvkcrkrfjn.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBe5LZQruJIz5pw2doqE-Nx82qjVhsOhTQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "492255450359-ta8f8rcpjgmu5dtg5l07jmfvkcrkrfjn.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
