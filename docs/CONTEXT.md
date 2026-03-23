@@ -304,7 +304,30 @@ docker exec hermes_celery_worker celery -A app.celery_app inspect registered
 | 10 | #144–#148 | ✅ | Complete user frontend: profile, org follow/unfollow, recommended jobs tab, application tracking inline edit; Firebase JS SDK login (email, Google, phone OTP) |
 | 11 | #149–#154 | ✅ | Complete admin frontend: analytics dashboard, new job form, job delete, user detail, role management |
 | 8 | #141 | ⏳ Deferred | Production deployment to OCI ARM VM — planned for future |
-| 9 | #142–#143 | ⏳ Deferred | React Native mobile app + push notifications — planned for future |
+| 9 | #142–#143 | ⏳ Deferred (pre-work done) | React Native mobile app + push notifications — planned for future. Backend and config groundwork already complete (see below) |
+
+### Phase 9 Pre-Work Already Implemented
+
+The following was built ahead of Phase 9 during the Firebase Auth migration and earlier phases:
+
+| What | Where | Detail |
+|------|-------|--------|
+| Firebase Admin SDK (shared) | `src/backend/app/firebase.py` | `init_firebase()` + `verify_id_token()` — used by both Auth and FCM |
+| `POST /auth/verify-token` | `src/backend/app/routers/auth.py` | Accepts Firebase ID token, upserts user by `firebase_uid` → email → create, returns internal JWT pair. Supports email, Google, and phone OTP providers |
+| `firebase_uid` on users | migration `0009_firebase_auth.py` | `firebase_uid VARCHAR(128)` unique index + `migration_status VARCHAR(20)` + `password_hash` nullable |
+| Phone-only users | migration `0010_email_nullable.py` | `users.email` made nullable — phone-only Firebase users (no email) can be stored |
+| `POST /users/me/fcm-token` | `src/backend/app/routers/users.py` | Register device FCM token (device name, dedup). Ready for RN app to call after login |
+| `DELETE /users/me/fcm-token` | `src/backend/app/routers/users.py` | Unregister FCM token on logout. Ready for RN app to call |
+| Android Firebase config | `src/mobile-app/google-services.json` | Project `hermes-7`, package `com.hermes.app` — move to `android/app/` when RN project is initialized |
+| iOS Firebase config | `src/mobile-app/GoogleService-Info.plist` | Same project — move to `ios/` when RN project is initialized |
+| Test phone number | Firebase Console | `+917777777777` / OTP `123456` configured as a test phone number for development |
+
+**Remaining Phase 9 work** (issues #142–#143):
+- Initialize React Native CLI project in `src/mobile-app/`
+- Move SDK config files into RN project structure (`android/app/`, `ios/`)
+- Build all screens: job listing, job detail, dashboard, notifications, profile
+- Implement `@react-native-firebase/auth` sign-in (email, Google, phone OTP) → call `POST /auth/verify-token`
+- Implement `@react-native-firebase/messaging` → call `POST/DELETE /users/me/fcm-token`
 
 ---
 

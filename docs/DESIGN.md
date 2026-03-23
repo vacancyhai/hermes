@@ -152,25 +152,36 @@ Frontend (port 8080 or 8081)
 This means any frontend can be replaced (e.g. Flask → React, or a React Native
 mobile app) with zero backend changes — only the HTTP client layer changes.
 
-### Future: Mobile App (React Native)
+### Phase 9: Mobile App (React Native) — Pre-Work Done
 
-The FastAPI backend already serves as a headless REST API. A mobile app would be
+The FastAPI backend already serves as a headless REST API. A mobile app will be
 an additional client calling the same `/api/v1/*` endpoints:
 
 ```
 React Native App (Android + iOS)
-  ├── Calls same /api/v1/* endpoints via fetch/axios
-  ├── JWT auth (same flow — login, refresh, logout)
-  ├── Firebase FCM push (already designed, same token registration)
+  ├── @react-native-firebase/auth → POST /api/v1/auth/verify-token → internal JWT
+  ├── Calls same /api/v1/* endpoints via axios + JWT interceptor
+  ├── @react-native-firebase/messaging → POST/DELETE /users/me/fcm-token
   └── Offline job caching (AsyncStorage / MMKV)
 ```
 
-**No backend changes required.** The mobile app is just another HTTP client,
-exactly like the Flask frontends. React Native is chosen over Flutter for:
+**Backend is fully ready — no changes required.** The following is already implemented:
+
+| Component | Status | Detail |
+|-----------|--------|--------|
+| `POST /auth/verify-token` | ✅ Done | Firebase ID token → internal JWT (email, Google, phone OTP) |
+| `POST /users/me/fcm-token` | ✅ Done | Register device FCM token |
+| `DELETE /users/me/fcm-token` | ✅ Done | Unregister on logout |
+| `firebase_uid` on `users` | ✅ Done | Migration 0009 — unique index |
+| Phone-only users | ✅ Done | Migration 0010 — `email` nullable |
+| Android config | ✅ Done | `src/mobile-app/google-services.json` (project: hermes-7) |
+| iOS config | ✅ Done | `src/mobile-app/GoogleService-Info.plist` |
+| Test phone | ✅ Done | `+917777777777` / OTP `123456` in Firebase Console |
+
+React Native is chosen over Flutter for:
 - Native JSON consumption (JavaScript)
 - Larger developer ecosystem in India
-- Expo for simplified builds without Android Studio/Xcode
-- Future option: share components with a Next.js web rewrite (Phase 3)
+- `@react-native-firebase` SDK for seamless Firebase Auth + FCM integration
 
 ### Future: PWA (Progressive Web App)
 
