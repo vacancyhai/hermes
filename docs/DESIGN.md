@@ -1,9 +1,9 @@
 # Hermes — System Design Document
 
-> **Status:** Phases 1–7.5 complete. Auth, job CRUD, full-text search,
+> **Status:** Phases 1–7.5 complete. Auth (Firebase — Email/Password, Google OAuth, Phone OTP), job CRUD, full-text search,
 > user profiles, job matching, org follow, application tracking, notifications
 > (email, push, in-app), admin panel, SEO, PDF AI extraction, PWA, test suite
-> (406 tests — 91/100/97% coverage), and security audit — all implemented. Phase 8 (OCI deployment) next.
+> (481 tests — 93/91/97% coverage), and security audit — all implemented. Phase 8 (OCI deployment) next.
 
 ---
 
@@ -521,16 +521,18 @@ All endpoints are versioned under `/api/v1/`.
 
 ### Authentication
 
-| Method | Endpoint                         | Description              | Access |
-| ------ | -------------------------------- | ------------------------ | ------ |
-| POST   | `/api/v1/auth/register`          | User registration        | Public |
-| POST   | `/api/v1/auth/login`             | User login               | Public |
-| POST   | `/api/v1/auth/logout`            | Logout (blocklist token) | Auth   |
-| POST   | `/api/v1/auth/refresh`           | Refresh JWT token pair   | Auth   |
-| POST   | `/api/v1/auth/forgot-password`   | Request password reset   | Public |
-| POST   | `/api/v1/auth/reset-password`    | Submit new password      | Public |
-| GET    | `/api/v1/auth/verify-email/:token` | Email verification     | Public |
-| GET    | `/api/v1/auth/csrf-token`        | Get CSRF token           | Public |
+User auth is fully handled by the Firebase JS SDK on the client. The backend only receives a verified Firebase ID token.
+
+| Method | Endpoint                           | Description                                          | Access    |
+| ------ | ---------------------------------- | ---------------------------------------------------- | --------- |
+| POST   | `/api/v1/auth/verify-token`        | Verify Firebase ID token → upsert user → JWT pair   | Public    |
+| POST   | `/api/v1/auth/logout`              | Invalidate user token (Redis blocklist)              | User JWT  |
+| POST   | `/api/v1/auth/refresh`             | Rotate user JWT pair                                 | Public    |
+| POST   | `/api/v1/auth/admin/login`         | Admin/operator login (bcrypt)                        | Public    |
+| POST   | `/api/v1/auth/admin/logout`        | Invalidate admin token (Redis blocklist + audit log) | Admin JWT |
+| POST   | `/api/v1/auth/admin/refresh`       | Rotate admin JWT pair                                | Public    |
+
+**verify-token upsert order:** `firebase_uid` → `email` (links existing account, sets `migration_status = "migrated"`) → create new user
 
 ### User Profile
 
@@ -873,8 +875,8 @@ This costs zero infrastructure — only Jinja2 template changes.
 | WhatsApp   | WhatsApp Cloud API  | T+0                 | T+`NOTIFY_WHATSAPP_DELAY` (default 1hr) | Implemented (API placeholder) |
 
 **Two delivery modes** via `smart_notify(delivery_mode="instant"|"staggered")`:
-- **instant** — all 4 channels at T+0 (OTP, password reset, email verification, welcome)
-- **staggered** — in-app + push at T+0, email delayed, WhatsApp delayed (job alerts, reminders)
+- **instant** — all 4 channels at T+0 (welcome message, urgent alerts)
+- **staggered** — in-app + push at T+0, email delayed, WhatsApp delayed (job alerts, deadline reminders)
 
 Delays are configurable via env vars (`NOTIFY_EMAIL_DELAY`, `NOTIFY_WHATSAPP_DELAY`).
 All channels always deliver — staggered just adds a time gap to avoid bombarding simultaneously.
