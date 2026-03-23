@@ -30,3 +30,4 @@ class Notification(Base):
 
     # Relationships
     user = relationship("User", back_populates="notifications")
+    delivery_logs = relationship("NotificationDeliveryLog", back_populates="notification")

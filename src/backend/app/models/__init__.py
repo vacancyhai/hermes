@@ -8,3 +8,5 @@ from app.models.application import UserJobApplication  # noqa: F401
 from app.models.notification import Notification  # noqa: F401
 from app.models.admin_user import AdminUser  # noqa: F401
 from app.models.admin_log import AdminLog  # noqa: F401
+from app.models.user_device import UserDevice  # noqa: F401
+from app.models.notification_delivery_log import NotificationDeliveryLog  # noqa: F401

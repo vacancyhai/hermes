@@ -1,10 +1,11 @@
 """Notification-related Celery tasks.
 
-send_deadline_reminders     — Daily Beat task: T-7, T-3, T-1 deadline reminders
-send_new_job_notifications  — Event: notify org followers on job approve
+smart_notify                — Unified entry: routes to in-app + FCM + email + WhatsApp via NotificationService
+send_deadline_reminders     — Daily Beat task: T-7, T-3, T-1 deadline reminders → delegates to smart_notify
+send_new_job_notifications  — Event: notify org followers on job approve → delegates to smart_notify
 send_email_notification     — Sync email via SMTP (retries 3x)
-send_push_notification      — FCM push (retries 3x, graceful no-op if unconfigured)
-notify_priority_subscribers — Event: notify priority trackers on job update
+send_push_notification      — Legacy FCM push (retries 3x, kept for backward compat)
+notify_priority_subscribers — Event: notify priority trackers on job update → delegates to smart_notify
 """
 
 import json
@@ -73,6 +74,15 @@ def _send_smtp(to: str, subject: str, html_body: str) -> bool:
         raise
 
 
+def _get_sync_redis():
+    """Return a synchronous Redis client for Celery tasks."""
+    import redis
+    return redis.from_url(settings.REDIS_URL, decode_responses=True)
+
+
+# ─── Email Task (used by NotificationService) ──────────────────────────────
+
+
 @celery.task(
     name="app.tasks.notifications.send_email_notification",
     bind=True,
@@ -90,22 +100,99 @@ def send_email_notification(self, to: str, subject: str, template_name: str, con
         raise self.retry(exc=exc, countdown=countdown)
 
 
+# ─── Smart Notify — unified entry point ─────────────────────────────────────
+
+
+@celery.task(name="app.tasks.notifications.smart_notify")
+def smart_notify(
+    user_id: str,
+    title: str,
+    message: str,
+    notification_type: str,
+    priority: str = "medium",
+    entity_type: str | None = None,
+    entity_id: str | None = None,
+    action_url: str | None = None,
+    email_template: str | None = None,
+    email_context: dict | None = None,
+    delivery_mode: str = "staggered",
+):
+    """Unified notification entry point.
+
+    delivery_mode:
+      "instant"   — all 4 channels at T+0 (OTP, auth, welcome)
+      "staggered" — in-app + push T+0, email T+15min, whatsapp T+1hr
+
+    All channels always deliver — staggered just adds a time gap.
+    """
+    from app.services.notifications import NotificationService
+
+    redis_client = _get_sync_redis()
+
+    with Session(sync_engine) as session:
+        svc = NotificationService(session, redis_sync=redis_client)
+        notification_id = svc.send(
+            user_id=user_id,
+            title=title,
+            message=message,
+            notification_type=notification_type,
+            priority=priority,
+            entity_type=entity_type,
+            entity_id=entity_id,
+            action_url=action_url,
+            email_template=email_template,
+            email_context=email_context,
+            delivery_mode=delivery_mode,
+        )
+    logger.info("smart_notify_complete", notification_id=notification_id, user_id=user_id, mode=delivery_mode)
+
+
+@celery.task(name="app.tasks.notifications.deliver_delayed_email")
+def deliver_delayed_email(notification_id: str, user_id: str, subject: str, template_name: str, context: dict):
+    """Delayed email delivery for staggered mode. Fired T+15min after smart_notify."""
+    from app.services.notifications import NotificationService
+
+    redis_client = _get_sync_redis()
+    now = datetime.now(timezone.utc)
+
+    with Session(sync_engine) as session:
+        svc = NotificationService(session, redis_sync=redis_client)
+        svc._send_email(notification_id, user_id, subject, template_name, context, now)
+        session.commit()
+    logger.info("delayed_email_sent", notification_id=notification_id, user_id=user_id)
+
+
+@celery.task(name="app.tasks.notifications.deliver_delayed_whatsapp")
+def deliver_delayed_whatsapp(notification_id: str, user_id: str, title: str, message: str):
+    """Delayed WhatsApp delivery for staggered mode. Fired T+1hr after smart_notify."""
+    from app.services.notifications import NotificationService
+
+    redis_client = _get_sync_redis()
+    now = datetime.now(timezone.utc)
+
+    with Session(sync_engine) as session:
+        svc = NotificationService(session, redis_sync=redis_client)
+        svc._send_whatsapp(notification_id, user_id, title, message, now)
+        session.commit()
+    logger.info("delayed_whatsapp_sent", notification_id=notification_id, user_id=user_id)
+
+
+# ─── Deadline Reminders (Beat schedule) ──────────────────────────────────────
+
+
 @celery.task(name="app.tasks.notifications.send_deadline_reminders")
 def send_deadline_reminders():
-    """Create in-app notifications at T-7, T-3, T-1 days before application_end.
+    """Create notifications at T-7, T-3, T-1 days before application_end.
 
     Runs daily at 08:00 UTC via Beat schedule.
-    Only notifies users who have tracked the job and haven't withdrawn.
-    Also sends email if user has email notifications enabled.
+    Delegates to smart_notify for multi-channel delivery.
     """
     today = date.today()
-    now = datetime.now(timezone.utc)
 
     with Session(sync_engine) as session:
         for days_before in REMINDER_DAYS:
             target_date = today + timedelta(days=days_before)
 
-            # Find tracked applications where the job deadline matches target_date
             rows = session.execute(
                 text("""
                     SELECT uja.id, uja.user_id, uja.job_id, jv.job_title, jv.slug, jv.organization, jv.application_end
@@ -121,19 +208,14 @@ def send_deadline_reminders():
             for row in rows:
                 app_id, user_id, job_id, job_title, slug, org, app_end = row
 
-                # Skip if reminder already sent for this (user, job, days_before) combo
+                # Skip if reminder already sent
                 existing = session.execute(
                     text("""
                         SELECT 1 FROM notifications
-                        WHERE user_id = :uid AND entity_id = :jid
-                          AND type = :ntype
+                        WHERE user_id = :uid AND entity_id = :jid AND type = :ntype
                         LIMIT 1
                     """),
-                    {
-                        "uid": str(user_id),
-                        "jid": str(job_id),
-                        "ntype": f"deadline_reminder_{days_before}d",
-                    },
+                    {"uid": str(user_id), "jid": str(job_id), "ntype": f"deadline_reminder_{days_before}d"},
                 ).fetchone()
                 if existing:
                     continue
@@ -151,33 +233,17 @@ def send_deadline_reminders():
                     msg = f"Application deadline for {job_title} ({org}) is in 7 days."
                     priority = "medium"
 
-                sent_via = ["in_app"]
-
-                session.execute(
-                    text("""
-                        INSERT INTO notifications (id, user_id, entity_type, entity_id, type, title, message, action_url, priority, sent_via, created_at)
-                        VALUES (:id, :uid, 'job', :jid, :ntype, :title, :msg, :url, :priority, :sent_via, :now)
-                    """),
-                    {
-                        "id": str(uuid.uuid4()),
-                        "uid": str(user_id),
-                        "jid": str(job_id),
-                        "ntype": f"deadline_reminder_{days_before}d",
-                        "title": title,
-                        "msg": msg,
-                        "url": f"/jobs/{slug}",
-                        "priority": priority,
-                        "sent_via": sent_via,
-                        "now": now,
-                    },
-                )
-
-                # Queue email if user has email notifications enabled
-                _queue_email_for_user(
-                    session, str(user_id),
-                    subject=title,
-                    template_name="deadline_reminder.html",
-                    context={
+                smart_notify.delay(
+                    user_id=str(user_id),
+                    title=title,
+                    message=msg,
+                    notification_type=f"deadline_reminder_{days_before}d",
+                    priority=priority,
+                    entity_type="job",
+                    entity_id=str(job_id),
+                    action_url=f"/jobs/{slug}",
+                    email_template="deadline_reminder.html",
+                    email_context={
                         "title": title,
                         "message": msg,
                         "job_title": job_title,
@@ -187,18 +253,17 @@ def send_deadline_reminders():
                     },
                 )
 
-        session.commit()
+
+# ─── New Job Notifications (event-triggered) ─────────────────────────────────
 
 
 @celery.task(name="app.tasks.notifications.send_new_job_notifications")
 def send_new_job_notifications(job_id: str):
-    """Match a new active job to user profiles via org follows, then create notifications.
+    """Notify org followers when a job is approved (draft → active).
 
-    Triggered when admin approves a job (draft → active).
-    Also sends email to followers with email notifications enabled.
+    Delegates to smart_notify for multi-channel delivery.
     """
     with Session(sync_engine) as session:
-        # Get the job
         row = session.execute(
             text("SELECT id, job_title, slug, organization, application_end FROM job_vacancies WHERE id = :jid"),
             {"jid": job_id},
@@ -206,16 +271,11 @@ def send_new_job_notifications(job_id: str):
         if not row:
             return
 
-        job_title = row[1]
-        job_slug = row[2]
-        org = row[3]
-        app_end = row[4]
+        job_title, job_slug, org, app_end = row[1], row[2], row[3], row[4]
 
-        # Find users following this organization (case-insensitive JSONB array search)
         profiles = session.execute(
             text("""
-                SELECT up.user_id
-                FROM user_profiles up
+                SELECT up.user_id FROM user_profiles up
                 WHERE EXISTS (
                     SELECT 1 FROM jsonb_array_elements_text(up.followed_organizations) AS elem
                     WHERE lower(elem) = lower(:org)
@@ -227,33 +287,18 @@ def send_new_job_notifications(job_id: str):
         if not profiles:
             return
 
-        now = datetime.now(timezone.utc)
         for (user_id,) in profiles:
-            sent_via = ["in_app"]
-
-            session.execute(
-                text("""
-                    INSERT INTO notifications (id, user_id, entity_type, entity_id, type, title, message, action_url, sent_via, created_at)
-                    VALUES (:id, :uid, 'job', :jid, 'new_job_from_followed_org', :title, :msg, :url, :sent_via, :now)
-                """),
-                {
-                    "id": str(uuid.uuid4()),
-                    "uid": str(user_id),
-                    "jid": job_id,
-                    "title": f"New job from {org}",
-                    "msg": f"{job_title} has been posted by {org}.",
-                    "url": f"/jobs/{job_slug}",
-                    "sent_via": sent_via,
-                    "now": now,
-                },
-            )
-
-            # Queue email if user has email notifications enabled
-            _queue_email_for_user(
-                session, str(user_id),
-                subject=f"New job from {org}: {job_title}",
-                template_name="new_job_alert.html",
-                context={
+            smart_notify.delay(
+                user_id=str(user_id),
+                title=f"New job from {org}",
+                message=f"{job_title} has been posted by {org}.",
+                notification_type="new_job_from_followed_org",
+                priority="medium",
+                entity_type="job",
+                entity_id=job_id,
+                action_url=f"/jobs/{job_slug}",
+                email_template="new_job_alert.html",
+                email_context={
                     "job_title": job_title,
                     "organization": org,
                     "slug": job_slug,
@@ -261,7 +306,8 @@ def send_new_job_notifications(job_id: str):
                 },
             )
 
-        session.commit()
+
+# ─── Legacy FCM Push (kept for backward compat) ──────────────────────────────
 
 
 @celery.task(
@@ -271,7 +317,10 @@ def send_new_job_notifications(job_id: str):
     default_retry_delay=30,
 )
 def send_push_notification(self, user_id: str, title: str, body: str, data: dict | None = None):
-    """Send push notification via FCM. Graceful no-op if Firebase not configured."""
+    """Send push notification via FCM. Graceful no-op if Firebase not configured.
+
+    Legacy task — new code should use smart_notify instead.
+    """
     if not settings.FIREBASE_CREDENTIALS_PATH:
         logger.info("push_skipped", reason="FIREBASE_CREDENTIALS_PATH not set", user_id=user_id)
         return
@@ -280,12 +329,10 @@ def send_push_notification(self, user_id: str, title: str, body: str, data: dict
         import firebase_admin
         from firebase_admin import credentials, messaging
 
-        # Initialize Firebase app (once)
         if not firebase_admin._apps:
             cred = credentials.Certificate(settings.FIREBASE_CREDENTIALS_PATH)
             firebase_admin.initialize_app(cred)
 
-        # Get user's FCM tokens
         with Session(sync_engine) as session:
             row = session.execute(
                 text("SELECT fcm_tokens FROM user_profiles WHERE user_id = :uid"),
@@ -296,7 +343,6 @@ def send_push_notification(self, user_id: str, title: str, body: str, data: dict
                 logger.info("push_skipped", reason="no_fcm_tokens", user_id=user_id)
                 return
 
-            # Check notification preferences
             prefs_row = session.execute(
                 text("SELECT notification_preferences FROM user_profiles WHERE user_id = :uid"),
                 {"uid": user_id},
@@ -317,7 +363,6 @@ def send_push_notification(self, user_id: str, title: str, body: str, data: dict
             )
             response = messaging.send_each_for_multicast(message)
 
-            # Clean up invalid tokens
             invalid_tokens = []
             for idx, send_response in enumerate(response.responses):
                 if send_response.exception and hasattr(send_response.exception, "code"):
@@ -342,13 +387,16 @@ def send_push_notification(self, user_id: str, title: str, body: str, data: dict
         raise self.retry(exc=exc, countdown=countdown)
 
 
+# ─── Priority Subscribers (event-triggered) ───────────────────────────────────
+
+
 @celery.task(name="app.tasks.notifications.notify_priority_subscribers")
 def notify_priority_subscribers(job_id: str):
     """Notify users who marked a job as priority when it's updated.
-    Triggered on admin job update (event-triggered).
+
+    Delegates to smart_notify for multi-channel delivery.
     """
     with Session(sync_engine) as session:
-        # Get job details
         job_row = session.execute(
             text("SELECT id, job_title, slug, organization FROM job_vacancies WHERE id = :jid"),
             {"jid": job_id},
@@ -356,11 +404,8 @@ def notify_priority_subscribers(job_id: str):
         if not job_row:
             return
 
-        job_title = job_row[1]
-        job_slug = job_row[2]
-        org = job_row[3]
+        job_title, job_slug, org = job_row[1], job_row[2], job_row[3]
 
-        # Find users with priority tracking for this job
         apps = session.execute(
             text("""
                 SELECT user_id FROM user_job_applications
@@ -373,31 +418,29 @@ def notify_priority_subscribers(job_id: str):
         if not apps:
             return
 
-        now = datetime.now(timezone.utc)
         for (user_id,) in apps:
-            session.execute(
-                text("""
-                    INSERT INTO notifications (id, user_id, entity_type, entity_id, type, title, message, action_url, priority, sent_via, created_at)
-                    VALUES (:id, :uid, 'job', :jid, 'priority_job_update', :title, :msg, :url, 'high', :sent_via, :now)
-                """),
-                {
-                    "id": str(uuid.uuid4()),
-                    "uid": str(user_id),
-                    "jid": job_id,
-                    "title": f"Update: {job_title}",
-                    "msg": f"A priority job you're tracking ({job_title} by {org}) has been updated.",
-                    "url": f"/jobs/{job_slug}",
-                    "sent_via": ["in_app"],
-                    "now": now,
-                },
+            smart_notify.delay(
+                user_id=str(user_id),
+                title=f"Update: {job_title}",
+                message=f"A priority job you're tracking ({job_title} by {org}) has been updated.",
+                notification_type="priority_job_update",
+                priority="high",
+                entity_type="job",
+                entity_id=job_id,
+                action_url=f"/jobs/{job_slug}",
             )
 
-        session.commit()
-        logger.info("priority_notifications_sent", job_id=job_id, count=len(apps))
+        logger.info("priority_notifications_queued", job_id=job_id, count=len(apps))
+
+
+# ─── Legacy helper (kept for any direct callers) ─────────────────────────────
 
 
 def _queue_email_for_user(session, user_id: str, subject: str, template_name: str, context: dict):
-    """Check user's email preference and queue email task if enabled."""
+    """Check user's email preference and queue email task if enabled.
+
+    Legacy helper — new code uses NotificationService._send_email instead.
+    """
     row = session.execute(
         text("""
             SELECT u.email, u.full_name, up.notification_preferences
@@ -416,7 +459,6 @@ def _queue_email_for_user(session, user_id: str, subject: str, template_name: st
         return
     prefs = prefs or {}
 
-    # Default: email enabled unless explicitly disabled
     if prefs.get("email") is False:
         return
 

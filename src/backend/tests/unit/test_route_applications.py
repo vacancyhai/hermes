@@ -134,10 +134,11 @@ async def test_list_applications_with_job_enrichment():
     job.slug = "ssc-cgl-2024"
     job.organization = "SSC"
     job.application_end = date(2025, 6, 30)
-    job_result = MagicMock()
-    job_result.scalar_one_or_none.return_value = job
 
-    db.execute.side_effect = [count_result, data_result, job_result]
+    jobs_result = MagicMock()
+    jobs_result.scalars.return_value.all.return_value = [job]
+
+    db.execute.side_effect = [count_result, data_result, jobs_result]
 
     output = await list_applications(
         status_filter=None, is_priority=None, limit=20, offset=0,

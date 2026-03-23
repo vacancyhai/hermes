@@ -291,3 +291,43 @@ async def test_delete_notification_success():
         current_user=(user, {}), db=db,
     )
     db.delete.assert_called_once_with(n)
+
+
+# ─── has_more pagination edge case ────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_list_notifications_has_more_true():
+    """has_more is True when total > offset + limit."""
+    from app.routers.notifications import list_notifications
+    db = AsyncMock()
+    count_result = MagicMock()
+    count_result.scalar.return_value = 50  # total=50
+    data_result = MagicMock()
+    data_result.scalars.return_value.all.return_value = []
+    db.execute.side_effect = [count_result, data_result]
+
+    output = await list_notifications(
+        limit=20, offset=0, type=None, is_read=None,
+        current_user=_make_current_user(), db=db,
+    )
+    # offset(0) + limit(20) = 20 < total(50) → has_more = True
+    assert output["pagination"]["has_more"] is True
+
+
+@pytest.mark.asyncio
+async def test_list_notifications_has_more_false_when_last_page():
+    """has_more is False on the last page."""
+    from app.routers.notifications import list_notifications
+    db = AsyncMock()
+    count_result = MagicMock()
+    count_result.scalar.return_value = 5  # total=5
+    data_result = MagicMock()
+    data_result.scalars.return_value.all.return_value = []
+    db.execute.side_effect = [count_result, data_result]
+
+    output = await list_notifications(
+        limit=20, offset=0, type=None, is_read=None,
+        current_user=_make_current_user(), db=db,
+    )
+    # offset(0) + limit(20) = 20 >= total(5) → has_more = False
+    assert output["pagination"]["has_more"] is False

@@ -55,6 +55,10 @@ class Settings(BaseSettings):
     SITE_URL: str = "http://localhost:8080"
     SITEMAP_PATH: str = "/app/sitemap.xml"
 
+    # Notification delivery delays (staggered mode, in seconds)
+    NOTIFY_EMAIL_DELAY: int = 900       # 15 minutes
+    NOTIFY_WHATSAPP_DELAY: int = 3600   # 1 hour
+
     # CORS
     CORS_ORIGINS: list[str] = ["http://localhost:8080", "http://localhost:8081"]
 

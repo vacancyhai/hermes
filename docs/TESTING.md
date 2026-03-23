@@ -21,21 +21,24 @@ docker exec -w /app hermes_frontend_admin python -m pytest tests/ --cov=app --co
 
 ---
 
-## Backend — 91% (292 tests)
+## Backend — 88% (309 tests)
 
 | Module | Coverage | Notes |
 |--------|----------|-------|
-| `routers/applications.py` | 100% | |
+| `routers/applications.py` | 96% | |
 | `routers/jobs.py` | 100% | |
 | `routers/notifications.py` | 100% | |
 | `routers/users.py` | 97% | |
-| `routers/admin.py` | 95% | PDF file-write + Celery dispatch path |
-| `routers/auth.py` | 65% | Token refresh/verify require live Redis |
-| `tasks/notifications.py` | 72% | Firebase push requires credentials |
+| `routers/admin.py` | 92% | PDF file-write + Celery dispatch path |
+| `routers/auth.py` | 60% | Token refresh/verify require live Redis |
+| `tasks/notifications.py` | 62% | Firebase push, delayed email/WhatsApp |
 | `tasks/cleanup.py` | 100% | |
-| `tasks/jobs.py` | 93% | |
+| `tasks/jobs.py` | 89% | |
 | `tasks/seo.py` | 100% | |
-| `services/*` | 99–100% | |
+| `services/matching.py` | 99% | |
+| `services/notifications.py` | 82% | FCM fallback, WhatsApp placeholder |
+| `services/pdf_extractor.py` | 100% | |
+| `services/ai_extractor.py` | 100% | |
 | `models/*` / `schemas/*` | 100% | |
 
 ### Backend Test Files
@@ -43,14 +46,15 @@ docker exec -w /app hermes_frontend_admin python -m pytest tests/ --cov=app --co
 | File | Tests | Covers |
 |------|-------|--------|
 | `unit/test_route_admin.py` | 34 | Dashboard stats, jobs CRUD, user mgmt, audit logs |
-| `unit/test_route_applications.py` | 17 | Track/list/update/remove applications |
+| `unit/test_route_applications.py` | 18 | Track/list/update/remove applications |
 | `unit/test_route_notifications.py` | 13 | List, mark read/all, delete |
 | `unit/test_route_users.py` | 18 | Profile, phone, follow orgs, FCM tokens |
 | `unit/test_route_jobs.py` | 7 | Listing filters, recommended, detail |
 | `unit/test_matching.py` | 12 | Job recommendation scoring |
 | `unit/test_services.py` | 7 | PDF extraction, AI parsing |
 | `unit/test_tasks.py` | 12 | Cleanup, sitemap, job extraction |
-| `unit/test_notification_tasks.py` | 20 | Email, push, deadline reminders |
+| `unit/test_notification_tasks.py` | 22 | Email, push, deadline reminders, new job notifications |
+| `unit/test_notification_service.py` | **22** | **Multi-channel delivery, FCM de-duplication, email/WhatsApp scheduling** |
 | `integration/test_auth.py` | ~30 | Login, register, password reset, email verify |
 | `integration/test_admin.py` | ~40 | Admin API, analytics, RBAC |
 | `integration/test_jobs.py` | ~25 | Public job listing and search |
@@ -67,8 +71,9 @@ Route handlers are called **directly as async functions** with `AsyncMock` db se
 ### Why Some Backend Lines Are Uncovered
 
 - **`auth.py`** — email verify + password reset endpoints depend on pre-seeded Redis tokens; covered at integration level but not unit.
-- **`admin.py:306–319`** — PDF file-write + Celery dispatch block; validation paths (wrong extension/MIME) are covered.
-- **`tasks/notifications.py:278–341`** — Firebase push code requires `FIREBASE_CREDENTIALS_JSON`, absent in the test environment.
+- **`admin.py`** — PDF file-write + Celery dispatch paths; validation paths (wrong extension/MIME) are covered.
+- **`tasks/notifications.py`** — Delayed email/WhatsApp scheduling and legacy FCM code; core multi-channel logic tested via NotificationService unit tests.
+- **`services/notifications.py`** — Firebase credentials fallback (82% covered); WhatsApp placeholder returns False; unit tests cover all main code paths.
 
 ---
 

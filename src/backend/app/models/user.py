@@ -29,3 +29,4 @@ class User(Base):
     profile = relationship("UserProfile", back_populates="user", uselist=False)
     applications = relationship("UserJobApplication", back_populates="user")
     notifications = relationship("Notification", back_populates="user")
+    devices = relationship("UserDevice", back_populates="user")
