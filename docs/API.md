@@ -100,6 +100,7 @@ All admin endpoints require an admin JWT token (`user_type: "admin"`).
 | GET | `/admin/jobs` | Operator+ | List all jobs (any status) |
 | POST | `/admin/jobs` | Operator+ | Create job vacancy |
 | POST | `/admin/jobs/upload-pdf` | Operator+ | Upload PDF → AI extraction → draft job |
+| GET | `/admin/jobs/:id` | Operator+ | Get single job detail |
 | PUT | `/admin/jobs/:id` | Operator+ | Update job |
 | PUT | `/admin/jobs/:id/approve` | Operator+ | Approve draft → active |
 | DELETE | `/admin/jobs/:id` | Admin only | Soft-delete (→ cancelled) |
@@ -110,6 +111,7 @@ All admin endpoints require an admin JWT token (`user_type: "admin"`).
 |--------|----------|------|-------------|
 | GET | `/admin/users` | Operator+ | List users (search by name/email) |
 | GET | `/admin/users/:id` | Operator+ | User detail with profile |
+| PUT | `/admin/users/:id/role` | Admin only | Change user role (admin/operator) |
 | PUT | `/admin/users/:id/status` | Admin only | Suspend or activate user |
 
 ### Dashboard & Logs
@@ -117,6 +119,7 @@ All admin endpoints require an admin JWT token (`user_type: "admin"`).
 | Method | Endpoint | Role | Description |
 |--------|----------|------|-------------|
 | GET | `/admin/stats` | Operator+ | Job/user/application counts (includes new_this_week) |
+| GET | `/admin/analytics` | Admin only | Platform analytics (demographics, trends, etc.) |
 | GET | `/admin/logs` | Admin only | Admin audit trail |
 
 ---
@@ -498,4 +501,6 @@ The user frontend supports Progressive Web App features:
 | `job_vacancies` | Job postings with FTS vector |
 | `user_job_applications` | Application tracking |
 | `notifications` | User notifications |
+| `notification_delivery_log` | Per-channel delivery tracking (push/email/whatsapp) |
+| `user_devices` | Device registry (FCM token, fingerprint de-duplication) |
 | `admin_logs` | Admin audit trail |

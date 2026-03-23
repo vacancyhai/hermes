@@ -861,66 +861,60 @@ Admin/Operator → Admin Frontend (port 8081)
 │                        POSTGRESQL TABLES                          │
 └───────────────────────────────────────────────────────────────────┘
 
-         ┌─────────────────────────────────┐
-         │             Users               │
-         │  - id (Primary Key, UUID)       │
-         │  - email                        │
-         │  - password_hash                │
-         │  - role                         │
-         └───────────────┬─────────────────┘
-                         │
-                         │ (One-to-One)
-                         │
-         ┌───────────────▼─────────────────┐
-         │         User Profiles           │
-         │  - id (Primary Key, UUID)       │
-         │  - user_id (Foreign Key)        │
-         │  - personal_info                │
-         │  - education                    │
-         │  - preferences                  │
-         └───────────────┬─────────────────┘
-                         │
-                         │
-         ┌───────────────┴─────────────────┐
-         │                                 │
-         │ (One-to-Many)                   │ (Many-to-Many)
-         │                                 │
-┌────────▼────────────────┐      ┌─────────▼───────────────────────┐
-│     Notifications       │      │     User Job Applications       │
-│  - id                   │      │  - id                           │
-│  - user_id (FK)         │      │  - user_id (FK)                 │
-│  - job_id (FK)          │      │  - job_id (FK)                  │
-│  - message              │      │  - is_priority                  │
-│  - is_read              │      │  - status                       │
-└─────────────────────────┘      └─────────┬───────────────────────┘
-                                           │
-                                           │ (Many-to-One)
-                                           │
-                                 ┌─────────▼───────────────────────┐
-                                 │         Job Vacancies           │
-                                 │  - id (Primary Key, UUID)       │
-                                 │  - job_title                    │
-                                 │  - organization                 │
-                                 │  - eligibility                  │
-                                 │  - important_dates              │
-                                 └─────────┬───────────────────────┘
-                                           │
-                                           │ (One-to-Many)
-                                           │
-                                 ┌─────────▼───────────────────────┐
-                                 │          Admin Logs             │
-                                 │  - id                           │
-                                 │  - admin_id (FK)                │
-                                 │  - action                       │
-                                 │  - resource_id                  │
-                                 └─────────────────────────────────┘
+┌─────────────────────────────────┐      ┌─────────────────────────────────┐
+│           Admin Users           │      │             Users               │
+│  - id (Primary Key, UUID)       │      │  - id (Primary Key, UUID)       │
+│  - email, password_hash         │      │  - email, password_hash         │
+│  - role (admin/operator)        │      │  - status                       │
+└───────────────┬─────────────────┘      └───────────────┬─────────────────┘
+                │                                        │
+                │ (One-to-Many)                          │ (One-to-One)
+                │                                        │
+┌───────────────▼─────────────────┐      ┌───────────────▼─────────────────┐
+│          Admin Logs             │      │         User Profiles           │
+│  - id                           │      │  - id (Primary Key, UUID)       │
+│  - admin_id (FK)                │      │  - user_id (Foreign Key)        │
+│  - action, resource_id          │      │  - personal_info, education     │
+└─────────────────────────────────┘      └───────────────┬─────────────────┘
+                                                         │
+                                         ┌───────────────┼─────────────────┐
+                                         │               │                 │
+                         ┌───────────────▼───────┐ ┌─────▼─────────┐ ┌─────▼───────────────┐
+                         │      User Devices     │ │ Notifications │ │User Job Applications│
+                         │  - id                 │ │  - id         │ │  - id               │
+                         │  - user_id (FK)       │ │  - user_id    │ │  - user_id (FK)     │
+                         │  - fcm_token          │ │  - message    │ │  - job_id (FK)      │
+                         └───────────────┬───────┘ └─────┬─────────┘ └─────┬───────────────┘
+                                         │               │                 │
+                                         │               ▼                 │
+                                         │ ┌─────────────────────────┐     │
+                                         └─►Notification Delivery Log│     │
+                                           │  - id                   │     │
+                                           │  - notification_id (FK) │     │
+                                           │  - channel, status      │     │
+                                           └─────────────────────────┘     │
+                                                                           │
+                                                                 ┌─────────▼───────────────┐
+                                                                 │      Job Vacancies      │
+                                                                 │  - id (PK, UUID)        │
+                                                                 │  - job_title, org       │
+                                                                 │  - eligibility        │
+                                                                 │  - important_dates    │
+                                                                 └─────────┬───────────────┘
+                                                                           │
+                                                                           │ (Tracked By)
+                                                                           │
+                                                                 ┌─────────▼───────────────┐
+                                                                 │   Target Organizations  │
+                                                                 │   (In User Preferences) │
+                                                                 └─────────────────────────┘
 
 INDEXES FOR PERFORMANCE:
 ════════════════════════
 
-Users:
+Users & Admin Users:
   - email (unique)
-  - role
+  - role (Admin Users)
 
 User Profiles:
   - user_id (unique)
@@ -930,19 +924,17 @@ User Profiles:
 Job Vacancies:
   - organization
   - eligibility.min_qualification
-  - important_dates.application_end
-  - status
-  - created_at
+  - status, created_at
 
 User Job Applications:
   - user_id + job_id (compound, unique)
   - user_id + is_priority
-  - job_id
 
-Notifications:
-  - user_id + is_read
-  - created_at
-  - job_id
+Notifications & Devices:
+  - user_id + is_read (Notifications)
+  - notification_id (Delivery Log)
+  - fcm_token (unique, User Devices)
+  - user_id + device_fingerprint (User Devices)
 ```
 
 ## 9. Celery Task Scheduler Flow
