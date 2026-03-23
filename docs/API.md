@@ -8,19 +8,15 @@ All list endpoints return: `{ "data": [...], "pagination": { "limit", "offset", 
 
 ## Authentication
 
-### User Auth
+### User Auth (Firebase)
 
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
-| POST | `/auth/register` | Public | Create user account |
-| POST | `/auth/login` | Public | Login → JWT token pair |
+| POST | `/auth/verify-token` | Public | Verify Firebase ID token → upsert user → internal JWT pair |
 | POST | `/auth/logout` | User JWT | Invalidate token (Redis blocklist) |
-| POST | `/auth/refresh` | Public | Rotate token pair |
-| POST | `/auth/google-verify` | Public | Verify Google ID token → JWT pair (requires `GOOGLE_CLIENT_ID` configured) |
-| POST | `/auth/forgot-password` | Public | Request password reset email |
-| POST | `/auth/reset-password` | Public | Reset password with token |
-| GET | `/auth/verify-email/:token` | Public | Verify email address |
-| GET | `/auth/csrf-token` | Public | Generate CSRF token |
+| POST | `/auth/refresh` | Public | Rotate internal token pair |
+
+User registration, email/password login, Google sign-in, phone OTP, password reset, and email verification are all handled client-side by the Firebase JS SDK. The backend only receives the resulting Firebase ID token via `/auth/verify-token`.
 
 ### Admin Auth
 
@@ -30,11 +26,16 @@ All list endpoints return: `{ "data": [...], "pagination": { "limit", "offset", 
 | POST | `/auth/admin/logout` | Admin JWT | Invalidate admin token |
 | POST | `/auth/admin/refresh` | Public | Rotate admin token pair |
 
-**JWT Claims:**
+**Internal JWT Claims** (issued by backend after Firebase verification):
 - `user_type`: `"user"` or `"admin"` — determines which table to look up
 - `role`: (admin tokens only) `"admin"` or `"operator"`
 - `sub`: UUID of the user/admin
 - `jti`: unique token ID (stored in Redis as `hermes:blocklist:{jti}` on logout/refresh)
+
+**Firebase verify-token upsert logic:**
+1. Find user by `firebase_uid` → return existing user
+2. Find user by `email` → link `firebase_uid`, set `migration_status = "migrated"`
+3. No match → create new user with `migration_status = "native"`
 
 ---
 
@@ -200,7 +201,7 @@ All notifications are routed through `NotificationService` via the `smart_notify
 
 | Mode | In-app + Push | Email | WhatsApp | Use Case |
 |------|--------------|-------|----------|----------|
-| **instant** | T+0 | T+0 | T+0 | OTP, password reset, email verification, welcome |
+| **instant** | T+0 | T+0 | T+0 | OTP, welcome, urgent alerts |
 | **staggered** | T+0 | T+15min* | T+1hr* | Job alerts, deadline reminders, admit cards |
 
 *Configurable via `NOTIFY_EMAIL_DELAY` and `NOTIFY_WHATSAPP_DELAY` env vars (in seconds).
@@ -233,23 +234,14 @@ Every delivery attempt is logged in `notification_delivery_log` with status (pen
 
 ## Request/Response Examples
 
-### Register
+### Verify Firebase Token (unified login/register)
 ```
-POST /api/v1/auth/register
-{
-  "email": "user@example.com",
-  "password": "SecurePass123",
-  "full_name": "Test User"
-}
-→ 201 { "id": "uuid", "email": "...", "full_name": "...", "message": "Registration successful..." }
-```
-
-### Login
-```
-POST /api/v1/auth/login
-{ "email": "user@example.com", "password": "SecurePass123" }
+POST /api/v1/auth/verify-token
+{ "id_token": "<Firebase-ID-token>", "full_name": "Test User" }
 → 200 { "access_token": "eyJ...", "refresh_token": "eyJ...", "token_type": "bearer" }
 ```
+
+The `full_name` field is optional — only used when creating a new user. The Firebase ID token is obtained client-side via the Firebase JS SDK (email/password, Google popup, or phone OTP).
 
 ### Create Job (Admin)
 ```

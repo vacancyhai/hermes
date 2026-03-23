@@ -5,7 +5,7 @@ matched to their education, age, category, and preferences. Includes user
 authentication, profile-based job matching, application tracking, multi-channel
 notifications, and an admin panel.
 
-> **Status:** Phases 1–7 + Testing complete. Auth system (including Google OAuth login), job CRUD, full-text search,
+> **Status:** Phases 1–7 + Testing complete. Auth system (Firebase Auth — Email/Password, Google OAuth, Phone OTP), job CRUD, full-text search,
 > user profiles, job matching & recommendations, org follow with Celery
 > notifications, application tracking with deadline reminders, user dashboard,
 > smart multi-channel notifications (in-app + FCM push + email + WhatsApp) with
@@ -26,7 +26,7 @@ notifications, and an admin panel.
 | Database           | PostgreSQL 16                               |
 | ORM                | SQLAlchemy 2.0 (async) + Alembic            |
 | Async DB Driver    | asyncpg                                     |
-| Auth               | python-jose (JWT + Redis blocklist), google-auth (Google OAuth ID token verification) |
+| Auth               | Firebase Auth (Email/Password, Google, Phone OTP), firebase-admin SDK, python-jose (internal JWT + Redis blocklist) |
 | Validation         | Pydantic v2 (FastAPI native)                |
 | Task Queue         | Celery 5.4 + Redis 7 broker                |
 | Email              | OCI Email Delivery (3,000/day free)         |
@@ -83,7 +83,7 @@ PostgreSQL and Redis are isolated inside Docker networks — never exposed to th
   notifications via service worker
 - **Admin Panel** — Job CRUD, draft/approve workflow, user management, and
   audit log viewer on a separate frontend (port 8081)
-- **Google OAuth** — Sign in with Google via Google Identity Services (one-tap/popup); ID token verified server-side; links to existing account by email or creates new one; `GOOGLE_CLIENT_ID` env var required
+- **Firebase Auth** — Email/password, Google OAuth (popup), and Phone OTP login via Firebase JS SDK; backend verifies Firebase ID tokens and issues internal JWTs; auto-links existing accounts by email; supports legacy user migration
 - **Two-Tier RBAC** — Regular users (`users` table, user frontend port 8080)
   and Operator/Admin (`admin_users` table with role column, admin frontend
   port 8081); JWT `user_type` claim (`"user"` | `"admin"`) enforces strict

@@ -39,7 +39,7 @@ Browser → Nginx (80/443)
 
 | Layer | Stack |
 |-------|-------|
-| **Backend** | Python 3.12, FastAPI + Uvicorn, SQLAlchemy 2.0 async (asyncpg), Pydantic v2, python-jose HS256 JWT, passlib+bcrypt, Celery 5.4 + Redis 7, SlowAPI, PgBouncer (transaction mode, scram-sha-256) |
+| **Backend** | Python 3.12, FastAPI + Uvicorn, SQLAlchemy 2.0 async (asyncpg), Pydantic v2, Firebase Auth (firebase-admin SDK), python-jose HS256 JWT (internal tokens), passlib+bcrypt (admin auth only), Celery 5.4 + Redis 7, SlowAPI, PgBouncer (transaction mode, scram-sha-256) |
 | **User Frontend** | Flask 3.1 + Jinja2 + HTMX 2.0 + Alpine.js 3.14 |
 | **Admin Frontend** | Flask 3.1 + Jinja2 + HTMX 2.0 |
 | **Database** | PostgreSQL 16 — 8 tables, tsvector/GIN full-text search |
@@ -76,7 +76,7 @@ PostgreSQL 16 with 10 tables:
 
 | Table | Purpose |
 |-------|---------|
-| `users` | Regular users (no role column); `google_id` for Google OAuth linking |
+| `users` | Regular users (no role column); `firebase_uid` for Firebase Auth, `google_id` (legacy) |
 | `admin_users` | Admin/operator with role, department, permissions JSONB |
 | `user_profiles` | Extended user data + JSONB arrays (preferences, FCM tokens, followed orgs) |
 | `user_devices` | Device registry: FCM token, device_type (web/pwa/android/ios), device_fingerprint for push de-dup |
@@ -96,7 +96,8 @@ PostgreSQL 16 with 10 tables:
 - `0005_add_fee_columns.py` — `fee_general`, `fee_obc`, `fee_sc_st`, `fee_ews`, `fee_female` on job_vacancies
 - `0006_add_source_pdf_path.py` — `source_pdf_path` (Text, nullable) on job_vacancies
 - `0007_user_devices_and_delivery_log.py` — `user_devices` + `notification_delivery_log` tables (migrates JSONB fcm_tokens)
-- `0008_add_google_id_to_users.py` — `google_id VARCHAR(255)` + unique index on `users` (Google OAuth account linking)
+- `0008_add_google_id_to_users.py` — `google_id VARCHAR(255)` + unique index on `users` (legacy Google OAuth)
+- `0009_firebase_auth.py` — `firebase_uid VARCHAR(128)` + unique index, `migration_status VARCHAR(20)`, `password_hash` made nullable (Firebase Auth migration)
 
 ### Key DB Constraints
 
@@ -126,7 +127,8 @@ src/backend/
       application.py, notification.py, user_device.py,
       notification_delivery_log.py, admin_log.py
     routers/
-      auth.py            # /api/v1/auth/* — user + admin login/register/logout/refresh/reset/google-verify
+      auth.py            # /api/v1/auth/* — user: verify-token/logout/refresh; admin: login/logout/refresh
+      firebase.py        # Firebase Admin SDK — shared init for Auth + FCM
       jobs.py            # /api/v1/jobs/* — public listing (FTS), recommended, detail by slug
       users.py           # /api/v1/users/* + /api/v1/organizations/* — profile CRUD, org follow
       admin.py           # /api/v1/admin/* — job CRUD, approve, user mgmt, dashboard, analytics, logs
@@ -169,16 +171,15 @@ src/frontend/
     __init__.py          # Routes: /, /jobs, /jobs/<slug>, /dashboard, /dashboard/track,
                          # /dashboard/applications/<id>/update, /dashboard/applications/<id>/delete,
                          # /dashboard/applications (HTMX partial), /notifications/*, /profile,
-                         # /profile/follow, /profile/unfollow, /register, /forgot-password,
-                         # /reset-password, /verify-email/<token>, /login (CSRF), /logout,
-                         # /auth/google-callback (Google OAuth relay → backend /auth/google-verify), /offline
+                         # /profile/follow, /profile/unfollow,
+                         # /login (Firebase JS SDK), /logout,
+                         # /auth/firebase-callback (relay Firebase ID token → backend /auth/verify-token), /offline
                          # _try_refresh() on 401
     api_client.py        # requests wrapper: get, post, put, delete, patch (10s timeout)
     static/              # PWA: manifest.json, sw.js, icons
     templates/           # base.html, index.html, _job_cards.html, job_detail.html,
                          # dashboard.html, _application_rows.html, notifications.html,
-                         # profile.html, register.html, forgot_password.html, reset_password.html,
-                         # login.html, offline.html, 404.html
+                         # profile.html, login.html (Firebase JS SDK auth), offline.html, 404.html
   tests/                 # 96 tests — 100% coverage
     conftest.py
     unit/test_api_client.py (17)
@@ -200,7 +201,7 @@ src/frontend-admin/
     unit/test_api_client.py (18)
     integration/test_routes.py (70)
 
-migrations/versions/     # 0001–0008 Alembic migration files
+migrations/versions/     # 0001–0009 Alembic migration files
 docs/
   API.md                 # Complete endpoint reference
   DESIGN.md              # Architecture + DB schema
@@ -213,14 +214,16 @@ docs/
 
 ## Auth Design
 
-- `users` table — regular users only (no role)
-- `admin_users` table — admin/operator (role, department, permissions JSONB)
-- JWT `user_type` claim: `"user"` | `"admin"` for scope isolation
-- Google OAuth: `POST /auth/google-verify` accepts Google ID token (from Google Identity Services JS), finds/creates user by `google_id`/email, returns JWT pair. Requires `GOOGLE_CLIENT_ID` env var on both backend and frontend.
-- Redis keys: `hermes:blocklist:{jti}`, `hermes:reset:{token}`, `hermes:verify:{token}`, `hermes:csrf:{token}` (prefix from `REDIS_KEY_PREFIX` setting)
+- `users` table — regular users only (no role); authenticated via **Firebase Auth**
+- `admin_users` table — admin/operator (role, department, permissions JSONB); authenticated via **local bcrypt + JWT**
+- **User auth flow:** Firebase JS SDK (email/password, Google, phone OTP) → Firebase ID token → `POST /auth/verify-token` → backend verifies via `firebase-admin` SDK → upserts user by `firebase_uid`/email → returns internal JWT pair
+- **Admin auth flow:** `POST /auth/admin/login` with email/password → bcrypt verify → JWT pair (unchanged)
+- Internal JWT `user_type` claim: `"user"` | `"admin"` for scope isolation
+- Redis keys: `hermes:blocklist:{jti}`, `hermes:csrf:{token}` (prefix from `REDIS_KEY_PREFIX` setting)
 - Access token: 15 min. Refresh: 7 days. JTI blocklisted on logout + refresh rotation.
 - Frontends store `refresh_token` in session; auto-refresh on 401 via `_try_refresh()` helper.
 - Dependency tuple: `get_current_user()` → `(User, payload_dict)`, `get_current_admin()` → `(AdminUser, payload_dict)`
+- Firebase credentials: `FIREBASE_CREDENTIALS_PATH` env var (shared by Auth verification + FCM push)
 
 ---
 
@@ -228,9 +231,9 @@ docs/
 
 | Role | Email | Password | Notes |
 |------|-------|----------|-------|
-| User | user@test.com | User1234 | active, email verified |
-| Admin | admin@test.com | Admin1234 | role=admin, dept=IT Department |
-| Operator | operator@test.com | Operator1234 | role=operator, dept=Content Team |
+| User | user@test.com | *(Firebase Auth)* | Legacy user — login via Firebase to auto-link `firebase_uid` |
+| Admin | admin@test.com | Admin1234 | role=admin, dept=IT Department (local bcrypt, not Firebase) |
+| Operator | operator@test.com | Operator1234 | role=operator, dept=Content Team (local bcrypt, not Firebase) |
 
 ---
 

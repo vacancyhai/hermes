@@ -199,10 +199,13 @@ Six tables for the initial release.
 ```sql
 CREATE TABLE users (
   id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  email               VARCHAR(255) UNIQUE NOT NULL,
-  password_hash       VARCHAR(255) NOT NULL,
+  email               VARCHAR(255) UNIQUE,          -- nullable (phone-only users)
+  password_hash       VARCHAR(255),                  -- nullable (Firebase handles auth)
   full_name           VARCHAR(255) NOT NULL,
   phone               VARCHAR(20),
+  firebase_uid        VARCHAR(128) UNIQUE,           -- Firebase Authentication UID
+  google_id           VARCHAR(255) UNIQUE,           -- legacy Google OAuth linking
+  migration_status    VARCHAR(20) NOT NULL DEFAULT 'native',  -- legacy | migrated | native
   status              VARCHAR(20) NOT NULL DEFAULT 'active'
                         CHECK (status IN ('active','suspended','deleted')),
   is_verified         BOOLEAN NOT NULL DEFAULT FALSE,
@@ -212,8 +215,9 @@ CREATE TABLE users (
   updated_at          TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_users_email  ON users (email);
-CREATE INDEX idx_users_status ON users (status);
+CREATE INDEX idx_users_email        ON users (email);
+CREATE INDEX idx_users_status       ON users (status);
+CREATE INDEX ix_users_firebase_uid  ON users (firebase_uid);
 ```
 
 > **Note:** The original design had a `role` column on `users`. Migration 0002
@@ -673,8 +677,8 @@ delete jobs.
 
 ### Initial Admin Setup
 
-No self-registration for admin accounts. The first admin is created via a direct
-database insert into the `admin_users` table:
+No self-registration for admin accounts. Admin auth uses local bcrypt + JWT
+(not Firebase). The first admin is created via a direct database insert:
 
 ```sql
 INSERT INTO admin_users (email, password_hash, full_name, role, department, status)
@@ -1118,15 +1122,16 @@ All containers run via Docker Compose on this single VM.
 
 All items below are implemented.
 
-- **Password hashing:** bcrypt (salted)
-- **JWT with Redis blocklist:** access tokens expire in 15 min, refresh in 7 days
-- **Rate limiting:** Nginx (100 req/min per IP) + SlowAPI (1000 req/min per user, 5/min on login)
+- **User authentication:** Firebase Auth (Email/Password, Google OAuth, Phone OTP) — client-side Firebase JS SDK, backend verifies Firebase ID tokens via `firebase-admin` SDK
+- **Admin authentication:** Local bcrypt (salted) password hashing — admin accounts do not use Firebase
+- **Internal JWT with Redis blocklist:** After Firebase verification, backend issues its own JWT — access tokens expire in 15 min, refresh in 7 days
+- **Rate limiting:** Nginx (100 req/min per IP) + SlowAPI (1000 req/min per user, 10/min on verify-token)
 - **CORS:** Only whitelisted origins in `CORS_ORIGINS`
 - **HTTPS/TLS:** Nginx handles SSL termination via Let's Encrypt (Certbot) — free, auto-renewing certificates directly on the VM
 - **Network isolation:** OCI VCN security list — only ports 80/443/22 open; DB and Redis never exposed outside Docker networks
 - **Security headers:** X-Frame-Options, X-Content-Type-Options, X-XSS-Protection, Content-Security-Policy, Strict-Transport-Security, Referrer-Policy (via Nginx behind LB)
 - **Input validation:** Pydantic models on all endpoints (FastAPI native)
-- **CSRF protection:** Redis-backed single-use tokens (1h TTL)
+- **CSRF protection:** Redis-backed single-use tokens (1h TTL, admin login forms only)
 - **Secrets:** `.env` files in `.gitignore`; never committed to version control
 - **Redis persistence:** AOF (append-only file) enabled — prevents JWT blocklist loss on Redis restart. Without AOF, a Redis restart would make previously logged-out tokens valid again.
 - **Audit logging — admin actions (DB):** All state-changing admin operations write a row to `admin_logs` (30-day expiry, queryable from admin frontend `/admin/logs`):
@@ -1201,19 +1206,19 @@ MAIL_USERNAME=<OCI-SMTP-credential-OCID>
 MAIL_PASSWORD=<OCI-SMTP-credential-password>
 MAIL_DEFAULT_SENDER=noreply@yourdomain.com
 
-# Firebase (push notifications)
+# Firebase (Auth + FCM push — shared credentials)
 FIREBASE_CREDENTIALS_PATH=path/to/firebase-credentials.json
+FIREBASE_WEB_API_KEY=<from-firebase-console>
+FIREBASE_AUTH_DOMAIN=<project-id>.firebaseapp.com
+FIREBASE_PROJECT_ID=<project-id>
 
 # Notification delivery delays (staggered mode, in seconds)
 NOTIFY_EMAIL_DELAY=900         # 15 minutes (default)
 NOTIFY_WHATSAPP_DELAY=3600     # 1 hour (default)
 
-# JWT
+# JWT (internal tokens issued after Firebase verification)
 JWT_SECRET_KEY=<separate-random-key>
 JWT_ACCESS_TOKEN_EXPIRES=900
-
-# Google OAuth (optional — leave blank to disable Google login button)
-GOOGLE_CLIENT_ID=
 ```
 
 ### User Frontend (`src/frontend/.env`)
@@ -1223,7 +1228,9 @@ BACKEND_API_URL=http://localhost:8000/api/v1
 SECRET_KEY=<frontend-secret-key>
 FRONTEND_PORT=8080
 SESSION_TIMEOUT=3600
-GOOGLE_CLIENT_ID=
+FIREBASE_WEB_API_KEY=<from-firebase-console>
+FIREBASE_AUTH_DOMAIN=<project-id>.firebaseapp.com
+FIREBASE_PROJECT_ID=<project-id>
 ```
 
 ### Admin Frontend (`src/frontend-admin/.env`)
