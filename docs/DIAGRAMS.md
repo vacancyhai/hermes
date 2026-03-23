@@ -505,6 +505,9 @@ Admin/Operator → Admin Frontend (port 8081)
                       │ END            │
                       └────────────────┘
 ```
+
+## 5. User Job Application & Tracking Flow
+
 ```
 ┌─────────┐
 │  START  │
@@ -783,12 +786,6 @@ Admin/Operator → Admin Frontend (port 8081)
 ## 7. Admin Dashboard Workflow
 
 ```
-┌─────────┐
-│  START  │
-└────┬────┘
-     │
-     ▼
-```
 ┌──────────────────────────────────────┐
 │ Admin Login                          │
 │ src/frontend-admin/ (port 8081)      │
@@ -947,10 +944,11 @@ Notifications:
   - created_at
   - job_id
 ```
+
 ## 9. Celery Task Scheduler Flow
 
 ```
-┌────────────────────────────────────────────────────┐
+┌──────────────────────────────────────────────────┐
 │              CELERY BEAT SCHEDULER                 │
 │            (Background Tasks Runner)               │
 └────────────────────────────────────────────────────┘
