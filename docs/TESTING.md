@@ -72,11 +72,11 @@ Route handlers are called **directly as async functions** with `AsyncMock` db se
 
 ---
 
-## User Frontend — 100% (52 tests)
+## User Frontend — 100% (96 tests)
 
 | Module | Coverage | Notes |
 |--------|----------|-------|
-| `app/__init__.py` | 100% | All 15 routes covered |
+| `app/__init__.py` | 100% | All routes covered |
 | `app/api_client.py` | 100% | All HTTP methods covered |
 
 ### Frontend Test Files
@@ -84,30 +84,28 @@ Route handlers are called **directly as async functions** with `AsyncMock` db se
 | File | Tests | Covers |
 |------|-------|--------|
 | `unit/test_api_client.py` | 17 | `__init__`, `_headers`, `get`, `post`, `put`, `delete`, `patch` |
-| `integration/test_routes.py` | 35 | All routes: index, job listing, job detail, dashboard, notifications, login/logout |
+| `integration/test_routes.py` | 79 | All routes: index, job listing, job detail, dashboard, notifications, login/logout, register, forgot/reset password, verify email, profile, org follow/unfollow, recommended jobs, application track/update/delete |
 
 ### Frontend Test Strategy
 
-Flask `test_client()` with `app.api_client` replaced by a `MagicMock`. No real backend calls are made. Auth-required routes are tested both with and without a session token.
+Flask `test_client()` with `app.api_client` replaced by a `MagicMock`. No real backend calls are made. Auth-required routes are tested both with and without a session token. CSRF-protected routes use `_set_csrf()` helper to pre-populate session token before POSTs.
 
 ---
 
-## Admin Frontend — 97% (62 tests)
+## Admin Frontend — 97% (88 tests)
 
 | Module | Coverage | Notes |
 |--------|----------|-------|
-| `app/__init__.py` | 97% | Missing: int/date field parsing in review form, users/list status filter |
+| `app/__init__.py` | 97% | All routes covered; `patch()` in api_client unused |
 | `app/api_client.py` | 94% | `patch()` method not used by any admin route |
 
 ### Admin Frontend Test Files
 
 | File | Tests | Covers |
 |------|-------|--------|
-| `unit/test_api_client.py` | 20 | All methods including `post_file` (timeout, headers, files) |
-| `integration/test_routes.py` | 42 | All routes: dashboard, jobs, PDF upload, draft review, users, logs |
+| `unit/test_api_client.py` | 18 | All methods including `post_file` (timeout, headers, files) |
+| `integration/test_routes.py` | 70 | All routes: dashboard (analytics for admin vs operator), jobs, new job, job delete, PDF upload, draft review, users, user detail, role management, logs |
 
 ### Why Some Admin Frontend Lines Are Uncovered
 
-- **`__init__.py:182–189`** — `int_fields` and `date_fields` parsing in `review_job` POST handler (numeric/date form fields like `total_vacancies`, `notification_date`). Tests cover the text-field path only.
-- **`__init__.py:259`** — `status` filter branch in `users/list` HTMX partial. Covered for `/users` full page but not for the partial with combined `q` + `status` params.
 - **`api_client.py:63–69`** — `patch()` method exists for completeness but no admin frontend route currently calls it.

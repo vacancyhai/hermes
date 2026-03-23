@@ -16,9 +16,9 @@ A **Government Job Vacancy Portal** (India-focused). Users register, browse jobs
 
 - **Path**: `/home/sumant/workspace/hermes`
 - **Remote**: `git@github.com:SumanKr7/hermes.git`, branch `main`
-- **Latest commit**: `f624e7f` — fix: resolve all 15 code review issues across backend and frontends
-- **GitHub Issues**: #114–#143 (30 issues, 9 phases)
-  - Phases 1–7 + Testing (#139–#140): **CLOSED**
+- **Latest commit**: `1836397` — feat: Phase 10 + 11 — complete user and admin frontend
+- **GitHub Issues**: #114–#154 (41 issues, 11 phases)
+  - Phases 1–7 + Testing (#139–#140) + Phase 10–11 (#144–#154): **CLOSED**
   - Phase 8 (#141, OCI deployment): **OPEN — next**
   - Phase 9 (#142–#143, React Native): **OPEN**
 
@@ -156,28 +156,38 @@ src/backend/
 
 src/frontend/
   app/
-    __init__.py          # Routes: /, /jobs, /jobs/<slug>, /dashboard, /notifications/*, /login (CSRF), /logout, /offline; _try_refresh() on 401
+    __init__.py          # Routes: /, /jobs, /jobs/<slug>, /dashboard, /dashboard/track,
+                         # /dashboard/applications/<id>/update, /dashboard/applications/<id>/delete,
+                         # /dashboard/applications (HTMX partial), /notifications/*, /profile,
+                         # /profile/follow, /profile/unfollow, /register, /forgot-password,
+                         # /reset-password, /verify-email/<token>, /login (CSRF), /logout, /offline
+                         # _try_refresh() on 401
     api_client.py        # requests wrapper: get, post, put, delete, patch (10s timeout)
     static/              # PWA: manifest.json, sw.js, icons
     templates/           # base.html, index.html, _job_cards.html, job_detail.html,
-                         # dashboard.html, _application_rows.html, notifications.html, login.html, offline.html, 404.html
-  tests/                 # 52 tests — 100% coverage
+                         # dashboard.html, _application_rows.html, notifications.html,
+                         # profile.html, register.html, forgot_password.html, reset_password.html,
+                         # login.html, offline.html, 404.html
+  tests/                 # 96 tests — 100% coverage
     conftest.py
     unit/test_api_client.py (17)
-    integration/test_routes.py (35)
+    integration/test_routes.py (79)
 
 src/frontend-admin/
   app/
-    __init__.py          # Routes: /, /login (CSRF), /logout, /jobs, /jobs/list, /jobs/<id>/approve,
-                         # /jobs/upload, /jobs/<id>/review, /users, /users/list,
-                         # /users/<id>/suspend, /logs, /logs/list; _try_refresh() on 401; JWT role decoded from token payload
+    __init__.py          # Routes: /, /login (CSRF), /logout, /jobs, /jobs/list, /jobs/new,
+                         # /jobs/<id>/approve, /jobs/<id>/delete, /jobs/upload, /jobs/<id>/review,
+                         # /users, /users/list, /users/<id>, /users/<id>/suspend, /users/<id>/role,
+                         # /logs, /logs/list; _try_refresh() on 401; JWT role decoded from token payload
     api_client.py        # Same as frontend + post_file() for PDF uploads (60s timeout)
-    templates/           # login.html, dashboard.html, jobs.html, job_upload.html, job_review.html,
-                         # users.html, logs.html, _job_rows.html, _user_rows.html, _log_rows.html
-  tests/                 # 62 tests — 97% coverage
+    templates/           # login.html, dashboard.html (analytics for admin role), jobs.html,
+                         # job_new.html, job_upload.html, job_review.html (delete button for admin),
+                         # users.html, user_detail.html, logs.html,
+                         # _job_rows.html, _user_rows.html (View link), _log_rows.html
+  tests/                 # 88 tests — 97% coverage
     conftest.py
-    unit/test_api_client.py (20)
-    integration/test_routes.py (42)
+    unit/test_api_client.py (18)
+    integration/test_routes.py (70)
 
 migrations/versions/     # 0001–0006 Alembic migration files
 docs/
@@ -217,8 +227,8 @@ docs/
 | Service | Tests | Coverage | Command |
 |---------|-------|----------|---------|
 | Backend | 292 | 91% | `docker exec -w /app hermes_backend pytest tests/ --cov=app -q` |
-| User Frontend | 52 | 100% | `docker exec -w /app hermes_frontend python -m pytest tests/ --cov=app -q` |
-| Admin Frontend | 62 | 97% | `docker exec -w /app hermes_frontend_admin python -m pytest tests/ --cov=app -q` |
+| User Frontend | 96 | 100% | `docker exec -w /app hermes_frontend python -m pytest tests/ --cov=app -q` |
+| Admin Frontend | 88 | 97% | `docker exec -w /app hermes_frontend_admin python -m pytest tests/ --cov=app -q` |
 
 See `docs/TESTING.md` for per-file breakdown and notes on uncovered lines.
 
@@ -268,6 +278,8 @@ docker exec hermes_celery_worker celery -A app.celery_app inspect registered
 | 6 | #133–#135 | ✅ | Admin frontend, SEO (sitemap, meta, JSON-LD), fee display by category, share buttons |
 | 7 | #136–#138 | ✅ | PDF upload + AI extraction (Anthropic Claude), draft review workflow, PWA |
 | Testing | #139–#140 | ✅ | 406 tests (291 backend + 52 frontend + 62 admin), 91/100/97% coverage, security audit |
+| 10 | #144–#148 | ✅ | Complete user frontend: register, forgot/reset password, verify email, profile, org follow/unfollow, recommended jobs tab, application tracking inline edit |
+| 11 | #149–#154 | ✅ | Complete admin frontend: analytics dashboard, new job form, job delete, user detail, role management; 476 tests (292 backend + 96 frontend + 88 admin) |
 | 8 | #141 | 🔲 | Production deployment to OCI ARM VM |
 | 9 | #142–#143 | 🔲 | React Native mobile app + push notifications |
 
