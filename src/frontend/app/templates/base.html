@@ -78,7 +78,7 @@
     <div style="background:#162d4a;border-top:1px solid #2d4f7f">
         <nav class="sec-nav" style="max-width:960px;margin:0 auto;padding:0 1rem;display:flex;overflow-x:auto;scrollbar-width:none">
             {% set _path = request.path %}
-            {% for href, label, icon in [('/', 'Jobs', '💼'), ('/admit-cards', 'Admit Cards', '📄'), ('/answer-keys', 'Answer Keys', '✏️'), ('/results', 'Results', '🏆')] %}
+            {% for href, label, icon in [('/', 'Jobs', '💼'), ('/admit-cards', 'Admit Cards', '📄'), ('/answer-keys', 'Answer Keys', '✏️'), ('/results', 'Results', '🏆'), ('/admissions', 'Admissions', '🎓')] %}
             <a href="{{ href }}" class="{{ 'active' if _path == href }}">{{ icon }} {{ label }}</a>
             {% endfor %}
         </nav>

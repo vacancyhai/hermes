@@ -366,8 +366,74 @@ def upgrade() -> None:
     op.create_index("idx_results_job", "job_results", ["job_id", "phase_number"])
     op.create_index("idx_results_pub", "job_results", ["published_at"])
 
+    # ─── 13. entrance_exams ─────────────────────────────────────────
+    op.create_table(
+        "entrance_exams",
+        sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
+        sa.Column("slug", sa.String(500), unique=True, nullable=False),
+        sa.Column("exam_name", sa.String(500), nullable=False),
+        sa.Column("conducting_body", sa.String(255), nullable=False),
+        sa.Column("counselling_body", sa.String(255), nullable=True),
+        sa.Column("exam_type", sa.String(20), nullable=False, server_default="pg"),
+        sa.Column("stream", sa.String(30), nullable=False, server_default="general"),
+        sa.Column("eligibility", JSONB, nullable=False, server_default="{}"),
+        sa.Column("exam_details", JSONB, nullable=False, server_default="{}"),
+        sa.Column("selection_process", JSONB, nullable=False, server_default="[]"),
+        sa.Column("seats_info", JSONB, nullable=True),
+        sa.Column("application_start", sa.Date, nullable=True),
+        sa.Column("application_end", sa.Date, nullable=True),
+        sa.Column("exam_date", sa.Date, nullable=True),
+        sa.Column("result_date", sa.Date, nullable=True),
+        sa.Column("counselling_start", sa.Date, nullable=True),
+        sa.Column("fee_general", sa.Integer, nullable=True),
+        sa.Column("fee_obc", sa.Integer, nullable=True),
+        sa.Column("fee_sc_st", sa.Integer, nullable=True),
+        sa.Column("fee_ews", sa.Integer, nullable=True),
+        sa.Column("fee_female", sa.Integer, nullable=True),
+        sa.Column("description", sa.Text, nullable=True),
+        sa.Column("short_description", sa.Text, nullable=True),
+        sa.Column("source_url", sa.Text, nullable=True),
+        sa.Column("status", sa.String(20), nullable=False, server_default="active"),
+        sa.Column("is_featured", sa.Boolean, nullable=False, server_default=sa.text("FALSE")),
+        sa.Column("views", sa.Integer, nullable=False, server_default="0"),
+        sa.Column("published_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
+        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
+        sa.CheckConstraint("exam_type IN ('ug','pg','doctoral','lateral')", name="ck_exam_type"),
+        sa.CheckConstraint("stream IN ('medical','engineering','law','management','arts_science','general')", name="ck_exam_stream"),
+        sa.CheckConstraint("status IN ('upcoming','active','completed','cancelled')", name="ck_exam_status"),
+    )
+    op.create_index("idx_exams_slug", "entrance_exams", ["slug"], unique=True)
+    op.create_index("idx_exams_stream_status", "entrance_exams", ["stream", "status", "created_at"])
+    op.execute("""
+        ALTER TABLE entrance_exams ADD COLUMN search_vector tsvector
+        GENERATED ALWAYS AS (
+            setweight(to_tsvector('english', coalesce(exam_name, '')), 'A') ||
+            setweight(to_tsvector('english', coalesce(conducting_body, '')), 'B') ||
+            setweight(to_tsvector('english', coalesce(description, '')), 'C')
+        ) STORED
+    """)
+    op.create_index("idx_exams_search", "entrance_exams", ["search_vector"], postgresql_using="gin")
+
+    # Add exam_id FK to document tables (nullable; one of job_id/exam_id must be set)
+    for tbl in ("job_admit_cards", "job_answer_keys", "job_results"):
+        op.add_column(tbl, sa.Column("exam_id", UUID(as_uuid=True),
+            sa.ForeignKey("entrance_exams.id", ondelete="CASCADE"), nullable=True))
+        op.alter_column(tbl, "job_id", nullable=True)
+        op.create_check_constraint(
+            f"ck_{tbl}_source", tbl,
+            "(job_id IS NOT NULL AND exam_id IS NULL) OR (job_id IS NULL AND exam_id IS NOT NULL)",
+        )
+        op.create_index(f"idx_{tbl}_exam", tbl, ["exam_id", "phase_number"])
+
 
 def downgrade() -> None:
+    for tbl in ("job_admit_cards", "job_answer_keys", "job_results"):
+        op.drop_constraint(f"ck_{tbl}_source", tbl, type_="check")
+        op.drop_index(f"idx_{tbl}_exam", table_name=tbl)
+        op.drop_column(tbl, "exam_id")
+        op.alter_column(tbl, "job_id", nullable=False)
+    op.drop_table("entrance_exams")
     op.drop_table("job_results")
     op.drop_table("job_answer_keys")
     op.drop_table("job_admit_cards")

@@ -1,0 +1,196 @@
+{% extends "base.html" %}
+
+{% block title %}{{ exam.exam_name }} | Hermes{% endblock %}
+
+{% block meta %}
+<meta name="description" content="{{ (exam.description or exam.short_description or '')[:160] }}">
+<meta property="og:title" content="{{ exam.exam_name }}">
+<meta property="og:description" content="{{ (exam.short_description or '')[:160] }}">
+<meta property="og:url" content="{{ request.url }}">
+{% endblock %}
+
+{% block head %}
+<style>
+    .back-link{display:inline-block;margin-bottom:1rem;font-size:.9rem}
+    .exam-header{margin-bottom:1.5rem}
+    .exam-header h1{font-size:1.45rem;margin-bottom:.3rem;color:#1e293b}
+    .exam-header .org{font-size:.95rem;color:#475569;margin-bottom:.5rem}
+    .badges-row{display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.75rem}
+    .stream-badge{font-size:.75rem;font-weight:600;padding:.2rem .65rem;border-radius:9999px}
+    .stream-medical{background:#fce7f3;color:#9d174d}
+    .stream-engineering{background:#dbeafe;color:#1e40af}
+    .stream-law{background:#fef3c7;color:#92400e}
+    .stream-management{background:#dcfce7;color:#166534}
+    .stream-arts_science{background:#e0e7ff;color:#3730a3}
+    .stream-general{background:#f1f5f9;color:#475569}
+    .detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:1.5rem}
+    .detail-item{background:#fff;border:1px solid #e2e8f0;border-radius:.375rem;padding:.75rem}
+    .detail-item .label{font-size:.75rem;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em}
+    .detail-item .value{font-size:.95rem;font-weight:500;margin-top:.15rem}
+    .section{margin-bottom:1.5rem}
+    .section h2{font-size:1.05rem;margin-bottom:.5rem;color:#4c1d95;border-bottom:2px solid #ede9fe;padding-bottom:.25rem}
+    .section p,.section li{font-size:.9rem;color:#334155}
+    .fee-table{width:100%;border-collapse:collapse;font-size:.9rem;margin-top:.5rem}
+    .fee-table th,.fee-table td{padding:.4rem .75rem;border:1px solid #e2e8f0;text-align:left}
+    .fee-table th{background:#faf5ff;font-size:.8rem;text-transform:uppercase;color:#475569}
+    .share-btn{display:inline-flex;align-items:center;gap:.3rem;padding:.4rem .75rem;border-radius:.375rem;font-size:.8rem;font-weight:500;text-decoration:none;border:1px solid #ede9fe;background:#faf5ff;color:#7c3aed;cursor:pointer}
+    .share-btn:hover{background:#ede9fe;text-decoration:none}
+    .doc-tabs{display:flex;gap:0;border-bottom:2px solid #e2e8f0;margin-bottom:1rem;overflow-x:auto}
+    .doc-tab{padding:.5rem 1rem;font-size:.875rem;font-weight:500;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;color:#64748b;background:none;border-left:none;border-right:none;border-top:none;white-space:nowrap}
+    .doc-tab.active{color:#7c3aed;border-bottom-color:#7c3aed;font-weight:600}
+    @media(max-width:600px){.detail-grid{grid-template-columns:1fr}}
+</style>
+{% endblock %}
+
+{% block content %}
+<a href="/admissions" class="back-link">&larr; Back to Admissions</a>
+
+<div class="exam-header">
+    <div class="badges-row">
+        <span class="stream-badge stream-{{ exam.stream }}">{{ exam.stream | replace('_', ' ') | title }}</span>
+        <span style="font-size:.75rem;font-weight:600;padding:.2rem .65rem;border-radius:9999px;background:#ede9fe;color:#5b21b6">{{ exam.exam_type | upper }}</span>
+        {% if exam.is_featured %}<span class="badge badge-featured">Featured</span>{% endif %}
+    </div>
+    <h1>{{ exam.exam_name }}</h1>
+    <div class="org">
+        🏛 {{ exam.conducting_body }}{% if exam.counselling_body %} &nbsp;·&nbsp; Counselling: {{ exam.counselling_body }}{% endif %}
+    </div>
+
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.5rem">
+        <button class="share-btn"
+            data-slug="{{ exam.slug }}"
+            data-title="{{ exam.exam_name | e }}"
+            onclick="(function(b){var u=window.location.origin+'/admissions/'+b.dataset.slug,t=b.dataset.title;if(navigator.share){navigator.share({title:t,url:u})}else{navigator.clipboard.writeText(u);b.textContent='\u2713 Copied';setTimeout(function(){b.textContent='Share'},1800)}})(this)">
+            Share
+        </button>
+        {% if exam.source_url %}
+        <a class="share-btn" href="{{ exam.source_url }}" target="_blank" rel="noopener">Official Website →</a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="detail-grid">
+    {% if exam.application_start %}
+    <div class="detail-item">
+        <div class="label">Application Start</div>
+        <div class="value">{{ exam.application_start }}</div>
+    </div>
+    {% endif %}
+    {% if exam.application_end %}
+    <div class="detail-item">
+        <div class="label">Application Deadline</div>
+        <div class="value" style="color:#dc2626">{{ exam.application_end }}</div>
+    </div>
+    {% endif %}
+    {% if exam.exam_date %}
+    <div class="detail-item">
+        <div class="label">Exam Date</div>
+        <div class="value">{{ exam.exam_date }}</div>
+    </div>
+    {% endif %}
+    {% if exam.result_date %}
+    <div class="detail-item">
+        <div class="label">Result Date</div>
+        <div class="value">{{ exam.result_date }}</div>
+    </div>
+    {% endif %}
+    {% if exam.counselling_start %}
+    <div class="detail-item">
+        <div class="label">Counselling Start</div>
+        <div class="value">{{ exam.counselling_start }}</div>
+    </div>
+    {% endif %}
+    <div class="detail-item">
+        <div class="label">Views</div>
+        <div class="value">{{ exam.views }}</div>
+    </div>
+</div>
+
+{% if exam.fee_general is not none or exam.fee_sc_st is not none %}
+<div class="section">
+    <h2>Application Fee</h2>
+    <table class="fee-table">
+        <thead><tr><th>Category</th><th>Fee (INR)</th></tr></thead>
+        <tbody>
+            {% if exam.fee_general is not none %}<tr><td>General</td><td>{{ 'Free' if exam.fee_general == 0 else '₹' ~ exam.fee_general }}</td></tr>{% endif %}
+            {% if exam.fee_obc is not none %}<tr><td>OBC</td><td>{{ 'Free' if exam.fee_obc == 0 else '₹' ~ exam.fee_obc }}</td></tr>{% endif %}
+            {% if exam.fee_sc_st is not none %}<tr><td>SC / ST</td><td>{{ 'Free' if exam.fee_sc_st == 0 else '₹' ~ exam.fee_sc_st }}</td></tr>{% endif %}
+            {% if exam.fee_ews is not none %}<tr><td>EWS</td><td>{{ 'Free' if exam.fee_ews == 0 else '₹' ~ exam.fee_ews }}</td></tr>{% endif %}
+            {% if exam.fee_female is not none %}<tr><td>Female</td><td>{{ 'Free' if exam.fee_female == 0 else '₹' ~ exam.fee_female }}</td></tr>{% endif %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+{% if exam.description %}
+<div class="section">
+    <h2>About this Exam</h2>
+    <p>{{ exam.description | safe }}</p>
+</div>
+{% endif %}
+
+{% if exam.eligibility %}
+<div class="section">
+    <h2>Eligibility</h2>
+    <ul>
+    {% for key, val in exam.eligibility.items() %}
+        <li><strong>{{ key | replace('_', ' ') | title }}:</strong>
+        {% if val is mapping %}{{ val | tojson }}{% else %}{{ val }}{% endif %}</li>
+    {% endfor %}
+    </ul>
+</div>
+{% endif %}
+
+{% if exam.seats_info %}
+<div class="section">
+    <h2>Seats / Intake</h2>
+    <ul>
+    {% for key, val in exam.seats_info.items() %}
+        <li><strong>{{ key | replace('_', ' ') | title }}:</strong>
+        {% if val is number %}{{ '{:,}'.format(val | int) }}{% else %}{{ val }}{% endif %}</li>
+    {% endfor %}
+    </ul>
+</div>
+{% endif %}
+
+{% if exam.selection_process %}
+<div class="section">
+    <h2>Selection Process</h2>
+    <ol>
+    {% for step in exam.selection_process %}
+        <li>
+            <strong>Phase {{ step.phase }}:</strong> {{ step.name }}
+            {% if step.get('qualifying') %}<span style="font-size:.75rem;color:#16a34a;margin-left:.4rem">(qualifying)</span>{% endif %}
+        </li>
+    {% endfor %}
+    </ol>
+</div>
+{% endif %}
+
+<div class="section" style="margin-top:2rem">
+    <h2>📋 Exam Documents</h2>
+    <p style="font-size:.85rem;color:#64748b;margin-bottom:.75rem">Admit cards, answer keys, and results linked to this exam.</p>
+
+    <div class="doc-tabs" x-data="{tab:'admit_cards'}">
+        <button class="doc-tab" :class="{active: tab==='admit_cards'}" @click="tab='admit_cards'">📄 Admit Cards</button>
+        <button class="doc-tab" :class="{active: tab==='answer_keys'}" @click="tab='answer_keys'">✏️ Answer Keys</button>
+        <button class="doc-tab" :class="{active: tab==='results'}" @click="tab='results'">🏆 Results</button>
+
+        <div x-show="tab==='admit_cards'" style="width:100%;padding-top:.75rem"
+             hx-get="/partials/exams/{{ exam.id }}/admit-cards"
+             hx-trigger="load" hx-swap="innerHTML">
+            <span style="color:#94a3b8;font-size:.85rem">Loading…</span>
+        </div>
+        <div x-show="tab==='answer_keys'" style="width:100%;padding-top:.75rem"
+             hx-get="/partials/exams/{{ exam.id }}/answer-keys"
+             hx-trigger="intersect once" hx-swap="innerHTML">
+            <span style="color:#94a3b8;font-size:.85rem">Loading…</span>
+        </div>
+        <div x-show="tab==='results'" style="width:100%;padding-top:.75rem"
+             hx-get="/partials/exams/{{ exam.id }}/results"
+             hx-trigger="intersect once" hx-swap="innerHTML">
+            <span style="color:#94a3b8;font-size:.85rem">Loading…</span>
+        </div>
+    </div>
+</div>
+{% endblock %}

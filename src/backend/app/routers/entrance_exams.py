@@ -1,0 +1,342 @@
+"""Entrance exam endpoints (NEET, JEE, CLAT, CAT etc.).
+
+Public (read-only):
+  GET  /api/v1/exams              — list with stream/status/search filters
+  GET  /api/v1/exams/:slug        — detail by slug
+  GET  /api/v1/exams/:id/admit-cards   — per-phase admit cards
+  GET  /api/v1/exams/:id/answer-keys   — per-phase answer keys
+  GET  /api/v1/exams/:id/results       — per-phase results
+
+Admin CRUD (operator+):
+  POST   /api/v1/admin/exams
+  PUT    /api/v1/admin/exams/:id
+  DELETE /api/v1/admin/exams/:id
+
+  POST/PUT/DELETE /api/v1/admin/exams/:id/admit-cards[/:doc_id]
+  POST/PUT/DELETE /api/v1/admin/exams/:id/answer-keys[/:doc_id]
+  POST/PUT/DELETE /api/v1/admin/exams/:id/results[/:doc_id]
+"""
+
+import re
+import uuid
+from datetime import datetime, timezone
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import func, select, text, update
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.dependencies import get_db, require_operator
+from app.models.entrance_exam import EntranceExam
+from app.models.job_admit_card import JobAdmitCard
+from app.models.job_answer_key import JobAnswerKey
+from app.models.job_result import JobResult
+from app.schemas.entrance_exams import (
+    EntranceExamCreateRequest, EntranceExamUpdateRequest,
+    EntranceExamListItem, EntranceExamResponse,
+)
+from app.schemas.jobs import (
+    AdmitCardCreateRequest, AdmitCardUpdateRequest, AdmitCardResponse,
+    AnswerKeyCreateRequest, AnswerKeyUpdateRequest, AnswerKeyResponse,
+    ResultCreateRequest, ResultUpdateRequest, ResultResponse,
+)
+
+public_router = APIRouter(prefix="/api/v1/exams", tags=["exams"])
+admin_router = APIRouter(prefix="/api/v1/admin/exams", tags=["admin"])
+
+
+def _slugify(text_: str) -> str:
+    slug = text_.lower().strip()
+    slug = re.sub(r"[^\w\s-]", "", slug)
+    slug = re.sub(r"[\s_]+", "-", slug)
+    return re.sub(r"-+", "-", slug).strip("-")
+
+
+async def _require_exam(exam_id: uuid.UUID, db: AsyncSession) -> EntranceExam:
+    result = await db.execute(select(EntranceExam).where(EntranceExam.id == exam_id))
+    exam = result.scalar_one_or_none()
+    if not exam:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Exam not found")
+    return exam
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# PUBLIC
+# ══════════════════════════════════════════════════════════════════════════════
+
+
+@public_router.get("")
+async def list_exams(
+    q: str | None = Query(None),
+    stream: str | None = Query(None),
+    exam_type: str | None = Query(None),
+    is_featured: bool | None = Query(None),
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db),
+):
+    """List entrance exams — active only."""
+    query = select(EntranceExam).where(EntranceExam.status == "active")
+    count_query = select(func.count(EntranceExam.id)).where(EntranceExam.status == "active")
+
+    if q:
+        query = query.where(text("search_vector @@ plainto_tsquery('english', :q)")).params(q=q)
+        count_query = count_query.where(text("search_vector @@ plainto_tsquery('english', :q)")).params(q=q)
+        query = query.order_by(text("ts_rank(search_vector, plainto_tsquery('english', :q)) DESC").params(q=q))
+    else:
+        query = query.order_by(EntranceExam.created_at.desc())
+
+    if stream:
+        query = query.where(EntranceExam.stream == stream)
+        count_query = count_query.where(EntranceExam.stream == stream)
+    if exam_type:
+        query = query.where(EntranceExam.exam_type == exam_type)
+        count_query = count_query.where(EntranceExam.exam_type == exam_type)
+    if is_featured is not None:
+        query = query.where(EntranceExam.is_featured == is_featured)
+        count_query = count_query.where(EntranceExam.is_featured == is_featured)
+
+    total = (await db.execute(count_query)).scalar()
+    rows = (await db.execute(query.offset(offset).limit(limit))).scalars().all()
+
+    # Increment views asynchronously (fire-and-forget style via bulk update)
+    return {
+        "data": [EntranceExamListItem.model_validate(r).model_dump() for r in rows],
+        "pagination": {"limit": limit, "offset": offset, "total": total, "has_more": (offset + limit) < total},
+    }
+
+
+@public_router.get("/{slug}")
+async def get_exam_by_slug(slug: str, db: AsyncSession = Depends(get_db)):
+    """Get entrance exam detail by slug."""
+    result = await db.execute(
+        select(EntranceExam).where(EntranceExam.slug == slug, EntranceExam.status == "active")
+    )
+    exam = result.scalar_one_or_none()
+    if not exam:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Exam not found")
+    # Increment view count
+    await db.execute(
+        update(EntranceExam).where(EntranceExam.id == exam.id).values(views=EntranceExam.views + 1)
+    )
+    await db.commit()
+    return EntranceExamResponse.model_validate(exam).model_dump()
+
+
+@public_router.get("/{exam_id}/admit-cards", response_model=list[AdmitCardResponse])
+async def list_exam_admit_cards(exam_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    """Per-phase admit cards for an active entrance exam."""
+    rows = await db.execute(
+        select(JobAdmitCard)
+        .where(JobAdmitCard.exam_id == exam_id)
+        .order_by(JobAdmitCard.phase_number.nulls_last(), JobAdmitCard.published_at.desc())
+    )
+    return [AdmitCardResponse.model_validate(r) for r in rows.scalars().all()]
+
+
+@public_router.get("/{exam_id}/answer-keys", response_model=list[AnswerKeyResponse])
+async def list_exam_answer_keys(exam_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    """Per-phase answer keys for an active entrance exam."""
+    rows = await db.execute(
+        select(JobAnswerKey)
+        .where(JobAnswerKey.exam_id == exam_id)
+        .order_by(JobAnswerKey.phase_number.nulls_last(), JobAnswerKey.answer_key_type, JobAnswerKey.published_at.desc())
+    )
+    return [AnswerKeyResponse.model_validate(r) for r in rows.scalars().all()]
+
+
+@public_router.get("/{exam_id}/results", response_model=list[ResultResponse])
+async def list_exam_results(exam_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    """Per-phase results for an active entrance exam."""
+    rows = await db.execute(
+        select(JobResult)
+        .where(JobResult.exam_id == exam_id)
+        .order_by(JobResult.phase_number.nulls_last(), JobResult.published_at.desc())
+    )
+    return [ResultResponse.model_validate(r) for r in rows.scalars().all()]
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# ADMIN — exam CRUD
+# ══════════════════════════════════════════════════════════════════════════════
+
+
+@admin_router.get("")
+async def admin_list_exams(
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    admin=Depends(require_operator),
+    db: AsyncSession = Depends(get_db),
+):
+    total = (await db.execute(select(func.count(EntranceExam.id)))).scalar()
+    rows = (await db.execute(
+        select(EntranceExam).order_by(EntranceExam.created_at.desc()).offset(offset).limit(limit)
+    )).scalars().all()
+    return {
+        "data": [EntranceExamListItem.model_validate(r).model_dump() for r in rows],
+        "pagination": {"limit": limit, "offset": offset, "total": total, "has_more": (offset + limit) < total},
+    }
+
+
+@admin_router.post("", status_code=status.HTTP_201_CREATED)
+async def create_exam(
+    body: EntranceExamCreateRequest,
+    admin=Depends(require_operator),
+    db: AsyncSession = Depends(get_db),
+):
+    base_slug = _slugify(body.exam_name)
+    existing = {r[0] for r in (await db.execute(
+        select(EntranceExam.slug).where(EntranceExam.slug.like(f"{base_slug}%"))
+    )).all()}
+    slug, counter = base_slug, 1
+    while slug in existing:
+        slug = f"{base_slug}-{counter}"
+        counter += 1
+
+    exam = EntranceExam(
+        **body.model_dump(),
+        slug=slug,
+        published_at=datetime.now(timezone.utc),
+    )
+    db.add(exam)
+    await db.flush()
+    return EntranceExamResponse.model_validate(exam).model_dump()
+
+
+@admin_router.put("/{exam_id}")
+async def update_exam(
+    exam_id: uuid.UUID,
+    body: EntranceExamUpdateRequest,
+    admin=Depends(require_operator),
+    db: AsyncSession = Depends(get_db),
+):
+    exam = await _require_exam(exam_id, db)
+    for field, value in body.model_dump(exclude_unset=True).items():
+        setattr(exam, field, value)
+    await db.flush()
+    return EntranceExamResponse.model_validate(exam).model_dump()
+
+
+@admin_router.delete("/{exam_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_exam(
+    exam_id: uuid.UUID,
+    admin=Depends(require_operator),
+    db: AsyncSession = Depends(get_db),
+):
+    exam = await _require_exam(exam_id, db)
+    await db.delete(exam)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# ADMIN — per-exam document CRUD (mirrors job_documents admin routes)
+# ══════════════════════════════════════════════════════════════════════════════
+
+
+@admin_router.post("/{exam_id}/admit-cards", status_code=status.HTTP_201_CREATED, response_model=AdmitCardResponse)
+async def create_exam_admit_card(
+    exam_id: uuid.UUID, body: AdmitCardCreateRequest,
+    admin=Depends(require_operator), db: AsyncSession = Depends(get_db),
+):
+    await _require_exam(exam_id, db)
+    doc = JobAdmitCard(id=uuid.uuid4(), exam_id=exam_id, **body.model_dump())
+    db.add(doc)
+    await db.flush()
+    return AdmitCardResponse.model_validate(doc)
+
+
+@admin_router.put("/{exam_id}/admit-cards/{doc_id}", response_model=AdmitCardResponse)
+async def update_exam_admit_card(
+    exam_id: uuid.UUID, doc_id: uuid.UUID, body: AdmitCardUpdateRequest,
+    admin=Depends(require_operator), db: AsyncSession = Depends(get_db),
+):
+    r = (await db.execute(select(JobAdmitCard).where(JobAdmitCard.id == doc_id, JobAdmitCard.exam_id == exam_id))).scalar_one_or_none()
+    if not r:
+        raise HTTPException(status_code=404, detail="Admit card not found")
+    for f, v in body.model_dump(exclude_unset=True).items():
+        setattr(r, f, v)
+    await db.flush()
+    return AdmitCardResponse.model_validate(r)
+
+
+@admin_router.delete("/{exam_id}/admit-cards/{doc_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_exam_admit_card(
+    exam_id: uuid.UUID, doc_id: uuid.UUID,
+    admin=Depends(require_operator), db: AsyncSession = Depends(get_db),
+):
+    r = (await db.execute(select(JobAdmitCard).where(JobAdmitCard.id == doc_id, JobAdmitCard.exam_id == exam_id))).scalar_one_or_none()
+    if not r:
+        raise HTTPException(status_code=404, detail="Admit card not found")
+    await db.delete(r)
+
+
+@admin_router.post("/{exam_id}/answer-keys", status_code=status.HTTP_201_CREATED, response_model=AnswerKeyResponse)
+async def create_exam_answer_key(
+    exam_id: uuid.UUID, body: AnswerKeyCreateRequest,
+    admin=Depends(require_operator), db: AsyncSession = Depends(get_db),
+):
+    await _require_exam(exam_id, db)
+    doc = JobAnswerKey(id=uuid.uuid4(), exam_id=exam_id, **body.model_dump())
+    db.add(doc)
+    await db.flush()
+    return AnswerKeyResponse.model_validate(doc)
+
+
+@admin_router.put("/{exam_id}/answer-keys/{doc_id}", response_model=AnswerKeyResponse)
+async def update_exam_answer_key(
+    exam_id: uuid.UUID, doc_id: uuid.UUID, body: AnswerKeyUpdateRequest,
+    admin=Depends(require_operator), db: AsyncSession = Depends(get_db),
+):
+    r = (await db.execute(select(JobAnswerKey).where(JobAnswerKey.id == doc_id, JobAnswerKey.exam_id == exam_id))).scalar_one_or_none()
+    if not r:
+        raise HTTPException(status_code=404, detail="Answer key not found")
+    for f, v in body.model_dump(exclude_unset=True).items():
+        setattr(r, f, v)
+    await db.flush()
+    return AnswerKeyResponse.model_validate(r)
+
+
+@admin_router.delete("/{exam_id}/answer-keys/{doc_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_exam_answer_key(
+    exam_id: uuid.UUID, doc_id: uuid.UUID,
+    admin=Depends(require_operator), db: AsyncSession = Depends(get_db),
+):
+    r = (await db.execute(select(JobAnswerKey).where(JobAnswerKey.id == doc_id, JobAnswerKey.exam_id == exam_id))).scalar_one_or_none()
+    if not r:
+        raise HTTPException(status_code=404, detail="Answer key not found")
+    await db.delete(r)
+
+
+@admin_router.post("/{exam_id}/results", status_code=status.HTTP_201_CREATED, response_model=ResultResponse)
+async def create_exam_result(
+    exam_id: uuid.UUID, body: ResultCreateRequest,
+    admin=Depends(require_operator), db: AsyncSession = Depends(get_db),
+):
+    await _require_exam(exam_id, db)
+    doc = JobResult(id=uuid.uuid4(), exam_id=exam_id, **body.model_dump())
+    db.add(doc)
+    await db.flush()
+    return ResultResponse.model_validate(doc)
+
+
+@admin_router.put("/{exam_id}/results/{doc_id}", response_model=ResultResponse)
+async def update_exam_result(
+    exam_id: uuid.UUID, doc_id: uuid.UUID, body: ResultUpdateRequest,
+    admin=Depends(require_operator), db: AsyncSession = Depends(get_db),
+):
+    r = (await db.execute(select(JobResult).where(JobResult.id == doc_id, JobResult.exam_id == exam_id))).scalar_one_or_none()
+    if not r:
+        raise HTTPException(status_code=404, detail="Result not found")
+    for f, v in body.model_dump(exclude_unset=True).items():
+        setattr(r, f, v)
+    await db.flush()
+    return ResultResponse.model_validate(r)
+
+
+@admin_router.delete("/{exam_id}/results/{doc_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_exam_result(
+    exam_id: uuid.UUID, doc_id: uuid.UUID,
+    admin=Depends(require_operator), db: AsyncSession = Depends(get_db),
+):
+    r = (await db.execute(select(JobResult).where(JobResult.id == doc_id, JobResult.exam_id == exam_id))).scalar_one_or_none()
+    if not r:
+        raise HTTPException(status_code=404, detail="Result not found")
+    await db.delete(r)

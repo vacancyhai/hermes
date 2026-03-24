@@ -161,6 +161,64 @@ def create_app():
         docs = resp.json() if resp.ok else []
         return render_template("_results_panel.html", docs=docs)
 
+    @app.route("/admissions")
+    def admissions():
+        """Admissions & entrance exams section page."""
+        params = {}
+        for key in ("q", "stream", "exam_type"):
+            val = request.args.get(key)
+            if val:
+                params[key] = val
+        params["limit"] = min(_int_arg("limit", 20), 100)
+        params["offset"] = _int_arg("offset", 0)
+        resp = current_app.api_client.get("/exams", params=params)
+        data = resp.json() if resp.ok else {"data": [], "pagination": {}}
+        return render_template("admissions.html", exams=data["data"], pagination=data.get("pagination", {}), params=params)
+
+    @app.route("/admissions/partial")
+    def admissions_partial():
+        """HTMX partial for admissions load-more."""
+        params = {}
+        for key in ("q", "stream", "exam_type"):
+            val = request.args.get(key)
+            if val:
+                params[key] = val
+        params["limit"] = 20
+        params["offset"] = _int_arg("offset", 0)
+        resp = current_app.api_client.get("/exams", params=params)
+        data = resp.json() if resp.ok else {"data": [], "pagination": {}}
+        return render_template("admissions.html", exams=data["data"], pagination=data.get("pagination", {}), params=params)
+
+    @app.route("/admissions/<slug>")
+    def admission_detail(slug):
+        """Admission / entrance exam detail page."""
+        resp = current_app.api_client.get(f"/exams/{slug}")
+        if not resp.ok:
+            return render_template("404.html"), 404
+        exam = resp.json()
+        return render_template("admission_detail.html", exam=exam)
+
+    @app.route("/partials/exams/<exam_id>/admit-cards")
+    def partials_exam_admit_cards(exam_id):
+        """HTMX partial — per-phase admit cards for admission_detail."""
+        resp = current_app.api_client.get(f"/exams/{exam_id}/admit-cards")
+        docs = resp.json() if resp.ok else []
+        return render_template("_admit_cards_panel.html", docs=docs)
+
+    @app.route("/partials/exams/<exam_id>/answer-keys")
+    def partials_exam_answer_keys(exam_id):
+        """HTMX partial — per-phase answer keys for admission_detail."""
+        resp = current_app.api_client.get(f"/exams/{exam_id}/answer-keys")
+        docs = resp.json() if resp.ok else []
+        return render_template("_answer_keys_panel.html", docs=docs)
+
+    @app.route("/partials/exams/<exam_id>/results")
+    def partials_exam_results(exam_id):
+        """HTMX partial — per-phase results for admission_detail."""
+        resp = current_app.api_client.get(f"/exams/{exam_id}/results")
+        docs = resp.json() if resp.ok else []
+        return render_template("_results_panel.html", docs=docs)
+
     # --- Application Dashboard ---
 
     @app.route("/dashboard")

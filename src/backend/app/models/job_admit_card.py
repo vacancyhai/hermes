@@ -6,6 +6,7 @@ from datetime import date, datetime
 from sqlalchemy import Date, DateTime, ForeignKey, SmallInteger, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from typing import Optional
 
 from app.models.base import Base
 
@@ -14,7 +15,8 @@ class JobAdmitCard(Base):
     __tablename__ = "job_admit_cards"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    job_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("job_vacancies.id", ondelete="CASCADE"), nullable=False, index=True)
+    job_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey("job_vacancies.id", ondelete="CASCADE"), nullable=True, index=True)
+    exam_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey("entrance_exams.id", ondelete="CASCADE"), nullable=True, index=True)
     phase_number: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     download_url: Mapped[str] = mapped_column(Text, nullable=False)
@@ -26,3 +28,4 @@ class JobAdmitCard(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
 
     job = relationship("JobVacancy", back_populates="admit_cards")
+    exam = relationship("EntranceExam", back_populates="admit_cards")

@@ -21,6 +21,7 @@ from sqlalchemy.orm import Session
 
 from app.database import sync_engine
 from app.models.admin_user import AdminUser
+from app.models.entrance_exam import EntranceExam
 from app.models.job_admit_card import JobAdmitCard
 from app.models.job_answer_key import JobAnswerKey
 from app.models.job_result import JobResult
@@ -39,14 +40,23 @@ def _get_job_id(session: Session, slug: str) -> uuid.UUID | None:
     return row
 
 
+def _exam_slug_exists(session: Session, slug: str) -> bool:
+    return session.execute(select(EntranceExam).where(EntranceExam.slug == slug)).scalar_one_or_none() is not None
+
+
+def _get_exam_id(session: Session, slug: str) -> uuid.UUID | None:
+    return session.execute(select(EntranceExam.id).where(EntranceExam.slug == slug)).scalar_one_or_none()
+
+
 def _get_admin_id(session: Session) -> uuid.UUID | None:
     admin = session.execute(select(AdminUser).where(AdminUser.role == "admin").limit(1)).scalar_one_or_none()
     return admin.id if admin else None
 
 
-# Old slugs that were restructured and should be replaced
+# Old job_vacancies slugs to remove (restructured into entrance_exams)
 SLUGS_TO_REPLACE = [
-    "nta-neet-pg-2026-admit-card",  # Was incorrectly admit_card type; now a latest_job under nta-neet-pg-2026
+    "nta-neet-pg-2026-admit-card",  # Was incorrectly admit_card type
+    "nta-neet-pg-2026",             # Was latest_job; now entrance_exam
 ]
 
 
@@ -430,72 +440,8 @@ JOBS = [
     },
 
     # ------------------------------------------------------------------
-    # 5. NTA NEET PG 2026 (Medical PG Entrance Exam)
-    # ------------------------------------------------------------------
-    {
-        "job_title": "NTA NEET PG 2026 — Medical PG Entrance Examination",
-        "slug": "nta-neet-pg-2026",
-        "organization": "National Testing Agency",
-        "department": "Ministry of Health & Family Welfare",
-        "job_type": "latest_job",
-        "employment_type": "contract",
-        "qualification_level": "postgraduate",
-        "total_vacancies": None,
-        "vacancy_breakdown": {},
-        "description": "<p>NTA conducts <strong>NEET PG 2026</strong> for admission to MD/MS/PG Diploma courses at medical colleges across India. MBBS doctors who have completed 12-month rotating internship on or before 31 March 2026 are eligible to apply.</p>",
-        "short_description": "NEET PG 2026: National entrance for MD/MS/PG Diploma admissions. MBBS with completed internship eligible. 300 MCQs, 3.5 hrs.",
-        "eligibility": {
-            "min_qualification": "MBBS",
-            "qualification_details": "MBBS degree with 12-month rotating internship completed on or before 31 March 2026 from MCI/NMC-recognised institution",
-            "age_limit": {"note": "No upper age limit for NEET PG"},
-            "registration": "Must have valid permanent/provisional MCI/NMC registration",
-        },
-        "application_details": {
-            "application_mode": "Online",
-            "application_link": "https://nta.ac.in/neet-pg/apply",
-            "official_website": "https://nta.ac.in",
-            "notification_pdf": "https://nta.ac.in/neet-pg-2026-notification.pdf",
-            "important_links": [
-                {"type": "apply_online", "text": "Apply Online", "url": "https://nta.ac.in/neet-pg/apply"},
-                {"type": "official_website", "text": "Official Website", "url": "https://nta.ac.in"},
-                {"type": "counselling", "text": "MCC Counselling", "url": "https://mcc.nic.in"},
-            ],
-        },
-        "documents": [
-            {"name": "MBBS Degree / Provisional Certificate", "mandatory": True, "format": "PDF", "max_size_kb": 500},
-            {"name": "Internship Completion Certificate", "mandatory": True, "format": "PDF", "max_size_kb": 500},
-            {"name": "NMC / MCI Registration Certificate", "mandatory": True, "format": "PDF", "max_size_kb": 300},
-            {"name": "Photo", "mandatory": True, "format": "JPG", "max_size_kb": 100},
-            {"name": "Signature", "mandatory": True, "format": "JPG", "max_size_kb": 50},
-        ],
-        "notification_date": date(2025, 11, 1),
-        "application_start": date(2025, 11, 1),
-        "application_end": date(2025, 11, 30),
-        "exam_start": date(2026, 3, 9),
-        "result_date": date(2026, 4, 15),
-        "exam_details": {
-            "exam_pattern": [
-                {"phase": "NEET PG CBT", "subjects": [
-                    {"name": "Pre-Clinical Subjects (Anatomy, Physiology, Biochemistry)", "questions": 50, "marks": 200},
-                    {"name": "Para-Clinical Subjects (Pathology, Pharmacology, Microbiology)", "questions": 100, "marks": 400},
-                    {"name": "Clinical Subjects (Medicine, Surgery, OBG, Paediatrics etc.)", "questions": 150, "marks": 600},
-                ], "total_questions": 300, "total_marks": 1200, "duration_minutes": 210, "negative_marking": 1.0, "exam_mode": "Online CBT"},
-            ],
-            "exam_language": ["English"],
-            "total_phases": 2,
-        },
-        "salary": {},
-        "salary_initial": None, "salary_max": None,
-        "selection_process": [
-            {"phase": 1, "name": "NEET PG Written Test (CBT)", "qualifying": False},
-            {"phase": 2, "name": "MCC Merit-Based Counselling", "qualifying": True},
-        ],
-        "fee_general": 4250, "fee_obc": 4250, "fee_sc_st": 2625, "fee_ews": 4250, "fee_female": 4250,
-        "status": "active", "is_featured": False, "is_urgent": True,
-    },
-
-    # ------------------------------------------------------------------
-    # 6. SSC CGL 2025
+    # 5. SSC CGL 2025  (NEET PG moved to entrance_exams table)
+    # Note: item 5 was NEET PG — now correctly in entrance_exams table
     # ------------------------------------------------------------------
     {
         "job_title": "SSC CGL (Combined Graduate Level) Examination 2025",
@@ -913,6 +859,397 @@ JOBS = [
         "status": "active", "is_featured": False, "is_urgent": False,
     },
 ]
+
+
+# ---------------------------------------------------------------------------
+# Entrance Exams (9 entries) — goes into entrance_exams table, NOT job_vacancies
+# Covers NEET PG/UG, JEE, CLAT, CAT, CUET, NEET SS, CET etc.
+# ---------------------------------------------------------------------------
+
+ADMISSIONS = [
+    {
+        "slug": "nta-neet-pg-2026",
+        "exam_name": "NTA NEET PG 2026 — Medical PG Entrance Examination",
+        "conducting_body": "National Testing Agency",
+        "counselling_body": "Medical Counselling Committee (MCC)",
+        "exam_type": "pg",
+        "stream": "medical",
+        "short_description": "NEET PG 2026: National entrance for MD/MS/PG Diploma admissions. MBBS with completed internship eligible. 300 MCQs, 3.5 hrs.",
+        "description": "<p>NTA conducts <strong>NEET PG 2026</strong> for admission to MD/MS/PG Diploma courses at 6,000+ medical colleges across India. MBBS doctors who have completed 12-month rotating internship by 31 March 2026 are eligible to apply.</p>",
+        "eligibility": {
+            "min_qualification": "MBBS",
+            "qualification_details": "MBBS with 12-month rotating internship completed on or before 31 March 2026 from NMC-recognised institution",
+            "registration": "Valid permanent/provisional NMC/MCI registration mandatory",
+            "attempts_limit": "No attempt limit for NEET PG",
+        },
+        "exam_details": {
+            "exam_pattern": [
+                {"phase": "NEET PG CBT", "subjects": [
+                    {"name": "Pre-Clinical (Anatomy, Physiology, Biochemistry)", "questions": 50, "marks": 200},
+                    {"name": "Para-Clinical (Pathology, Pharmacology, Microbiology)", "questions": 100, "marks": 400},
+                    {"name": "Clinical (Medicine, Surgery, OBG, Paediatrics)", "questions": 150, "marks": 600},
+                ], "total_questions": 300, "total_marks": 1200, "duration_minutes": 210, "negative_marking": 1.0, "exam_mode": "Online CBT"},
+            ],
+            "exam_language": ["English"],
+        },
+        "selection_process": [
+            {"phase": 1, "name": "NEET PG Written Test (CBT)", "qualifying": False},
+            {"phase": 2, "name": "MCC Merit-Based Counselling (AIQ + State)", "qualifying": True},
+        ],
+        "seats_info": {"total_pg_seats": 52000, "aiq_seats": 50, "note": "50% All India Quota + 50% State Quota"},
+        "application_start": date(2025, 11, 1),
+        "application_end": date(2025, 11, 30),
+        "exam_date": date(2026, 3, 9),
+        "result_date": date(2026, 4, 15),
+        "counselling_start": date(2026, 5, 1),
+        "fee_general": 4250, "fee_obc": 4250, "fee_sc_st": 2625, "fee_ews": 4250, "fee_female": 4250,
+        "source_url": "https://nta.ac.in/neet-pg",
+        "status": "active", "is_featured": True,
+    },
+    {
+        "slug": "nta-neet-ug-2026",
+        "exam_name": "NTA NEET UG 2026 — Medical UG Entrance Examination",
+        "conducting_body": "National Testing Agency",
+        "counselling_body": "Medical Counselling Committee (MCC)",
+        "exam_type": "ug",
+        "stream": "medical",
+        "short_description": "NEET UG 2026: National entrance for MBBS/BDS/BAMS/BHMS admissions. 12th (PCB) eligible. 720 marks, 3.5 hrs.",
+        "eligibility": {
+            "min_qualification": "12th",
+            "qualification_details": "10+2 with Physics, Chemistry, Biology/Biotechnology — minimum 50% aggregate (40% for SC/ST/OBC/PwBD)",
+            "age_limit": {"min": 17, "note": "Must be 17 on or before 31 December 2026"},
+            "attempts_limit": "No limit on attempts",
+        },
+        "exam_details": {
+            "exam_pattern": [
+                {"phase": "NEET UG", "subjects": [
+                    {"name": "Physics", "questions": 50, "marks": 180},
+                    {"name": "Chemistry", "questions": 50, "marks": 180},
+                    {"name": "Biology (Botany + Zoology)", "questions": 100, "marks": 360},
+                ], "total_questions": 200, "total_marks": 720, "duration_minutes": 200, "negative_marking": 1.0, "exam_mode": "OMR (Offline)"},
+            ],
+            "exam_language": ["English", "Hindi", "Assamese", "Bengali", "Gujarati", "Kannada", "Malayalam", "Marathi", "Odia", "Punjabi", "Tamil", "Telugu", "Urdu"],
+        },
+        "selection_process": [
+            {"phase": 1, "name": "NEET UG Written Exam (OMR)", "qualifying": False},
+            {"phase": 2, "name": "MCC / State Counselling & Seat Allotment", "qualifying": True},
+        ],
+        "seats_info": {"total_mbbs_seats": 108000, "bds_seats": 28000, "aiq_seats": 15, "note": "15% AIQ + 85% State Quota for govt colleges"},
+        "application_start": date(2025, 12, 1),
+        "application_end": date(2026, 1, 10),
+        "exam_date": date(2026, 5, 4),
+        "result_date": date(2026, 6, 14),
+        "counselling_start": date(2026, 7, 1),
+        "fee_general": 1700, "fee_obc": 1600, "fee_sc_st": 1000, "fee_ews": 1600, "fee_female": 1600,
+        "source_url": "https://nta.ac.in/neet",
+        "status": "active", "is_featured": True,
+    },
+    {
+        "slug": "jee-mains-2026",
+        "exam_name": "JEE Main 2026 — Joint Entrance Examination",
+        "conducting_body": "National Testing Agency",
+        "counselling_body": "Joint Seat Allocation Authority (JoSAA)",
+        "exam_type": "ug",
+        "stream": "engineering",
+        "short_description": "JEE Main 2026: Session 1 & 2 for B.Tech/B.Arch admissions in NITs, IIITs & CFTIs. 12th (PCM) eligible.",
+        "eligibility": {
+            "min_qualification": "12th",
+            "qualification_details": "10+2 with Physics, Chemistry, Mathematics from any recognised board",
+            "age_limit": {"note": "No upper age limit for JEE Main 2026"},
+            "attempts_limit": "3 consecutive years",
+        },
+        "exam_details": {
+            "exam_pattern": [
+                {"phase": "Paper 1 (B.Tech)", "subjects": [
+                    {"name": "Physics", "questions": 30, "marks": 100},
+                    {"name": "Chemistry", "questions": 30, "marks": 100},
+                    {"name": "Mathematics", "questions": 30, "marks": 100},
+                ], "total_marks": 300, "duration_minutes": 180, "negative_marking": 1.0, "exam_mode": "CBT"},
+            ],
+            "sessions": "Session 1: Jan 2026; Session 2: Apr 2026",
+        },
+        "selection_process": [
+            {"phase": 1, "name": "JEE Main (Qualifying for JEE Advanced)", "qualifying": True},
+            {"phase": 2, "name": "JoSAA Counselling & Seat Allotment (NITs/IIITs/CFTIs)", "qualifying": True},
+        ],
+        "seats_info": {"nit_seats": 23000, "iiit_seats": 8000, "cfti_seats": 11000},
+        "application_start": date(2025, 11, 1),
+        "application_end": date(2025, 11, 30),
+        "exam_date": date(2026, 1, 22),
+        "result_date": date(2026, 2, 15),
+        "counselling_start": date(2026, 7, 1),
+        "fee_general": 1000, "fee_obc": 1000, "fee_sc_st": 500, "fee_ews": 1000, "fee_female": 800,
+        "source_url": "https://jeemain.nta.ac.in",
+        "status": "active", "is_featured": True,
+    },
+    {
+        "slug": "jee-advanced-2026",
+        "exam_name": "JEE Advanced 2026 — IIT Joint Entrance Examination",
+        "conducting_body": "IIT Bombay (on behalf of IIT Council)",
+        "counselling_body": "Joint Seat Allocation Authority (JoSAA)",
+        "exam_type": "ug",
+        "stream": "engineering",
+        "short_description": "JEE Advanced 2026: Gateway to B.Tech at 23 IITs. Top 2.5 lakh JEE Main qualifiers eligible. 2 papers, 6 hrs.",
+        "eligibility": {
+            "min_qualification": "12th",
+            "qualification_details": "Must qualify JEE Main 2026 (top 2.5 lakh rank). 12th with PCM, 75% aggregate (65% for SC/ST/PwD)",
+            "attempts_limit": "Maximum 2 attempts in consecutive years",
+        },
+        "exam_details": {
+            "exam_pattern": [
+                {"phase": "Paper 1", "subjects": ["Physics", "Chemistry", "Mathematics"], "duration_minutes": 180, "marks": 186, "exam_mode": "CBT"},
+                {"phase": "Paper 2", "subjects": ["Physics", "Chemistry", "Mathematics"], "duration_minutes": 180, "marks": 186, "exam_mode": "CBT"},
+            ],
+        },
+        "selection_process": [
+            {"phase": 1, "name": "Paper 1 & Paper 2 (same day)", "qualifying": False},
+            {"phase": 2, "name": "JoSAA IIT Seat Allotment", "qualifying": True},
+        ],
+        "seats_info": {"iit_seats": 17385, "note": "23 IITs across India"},
+        "exam_date": date(2026, 5, 25),
+        "result_date": date(2026, 6, 9),
+        "counselling_start": date(2026, 7, 1),
+        "fee_general": 3200, "fee_obc": 3200, "fee_sc_st": 1600, "fee_ews": 3200, "fee_female": 1600,
+        "source_url": "https://jeeadv.ac.in",
+        "status": "active", "is_featured": True,
+    },
+    {
+        "slug": "clat-2026",
+        "exam_name": "CLAT 2026 — Common Law Admission Test",
+        "conducting_body": "Consortium of NLUs",
+        "counselling_body": "Consortium of NLUs",
+        "exam_type": "ug",
+        "stream": "law",
+        "short_description": "CLAT 2026: Entrance for LLB (5-yr) at 24 NLUs. 12th pass eligible. 120 MCQs, 2 hrs. Score valid for all NLUs.",
+        "eligibility": {
+            "min_qualification": "12th",
+            "qualification_details": "10+2 or equivalent — 45% marks (40% for SC/ST). No age limit from 2023.",
+            "attempts_limit": "No limit",
+        },
+        "exam_details": {
+            "exam_pattern": [
+                {"phase": "CLAT UG", "subjects": [
+                    {"name": "English Language", "questions": 28},
+                    {"name": "Current Affairs & GK", "questions": 35},
+                    {"name": "Legal Reasoning", "questions": 35},
+                    {"name": "Logical Reasoning", "questions": 28},
+                    {"name": "Quantitative Techniques", "questions": 14},
+                ], "total_questions": 120, "total_marks": 120, "duration_minutes": 120, "negative_marking": 0.25, "exam_mode": "Offline (OMR)"},
+            ],
+        },
+        "selection_process": [
+            {"phase": 1, "name": "CLAT Written Exam", "qualifying": False},
+            {"phase": 2, "name": "NLU Centralised Counselling & Seat Allotment", "qualifying": True},
+        ],
+        "seats_info": {"total_nlu_seats": 3660, "nlu_count": 24},
+        "application_start": date(2025, 11, 1),
+        "application_end": date(2025, 12, 31),
+        "exam_date": date(2026, 12, 1),
+        "result_date": date(2026, 12, 10),
+        "fee_general": 4000, "fee_sc_st": 3500, "fee_obc": 4000, "fee_ews": 4000, "fee_female": 4000,
+        "source_url": "https://consortiumofnlus.ac.in",
+        "status": "active", "is_featured": False,
+    },
+    {
+        "slug": "cat-2025",
+        "exam_name": "CAT 2025 — Common Admission Test (IIM)",
+        "conducting_body": "IIM Calcutta (on behalf of IIM consortium)",
+        "counselling_body": "Individual IIMs",
+        "exam_type": "pg",
+        "stream": "management",
+        "short_description": "CAT 2025: Gateway to PGP/MBA at 20 IIMs and 1,200+ B-schools. Any graduate eligible. 3 slots, CBT mode.",
+        "eligibility": {
+            "min_qualification": "graduate",
+            "qualification_details": "Bachelor's Degree with 50% (45% for SC/ST/PwD) from any recognised university",
+            "attempts_limit": "No limit",
+        },
+        "exam_details": {
+            "exam_pattern": [
+                {"phase": "CAT", "sections": [
+                    {"name": "Verbal Ability & Reading Comprehension (VARC)", "questions": 24},
+                    {"name": "Data Interpretation & Logical Reasoning (DILR)", "questions": 20},
+                    {"name": "Quantitative Ability (QA)", "questions": 22},
+                ], "total_questions": 66, "total_marks": 198, "duration_minutes": 120, "negative_marking": 1.0, "exam_mode": "CBT"},
+            ],
+        },
+        "selection_process": [
+            {"phase": 1, "name": "CAT Written Exam (CBT)", "qualifying": False},
+            {"phase": 2, "name": "WAT + PI at IIMs / B-schools", "qualifying": False},
+            {"phase": 3, "name": "Final Merit List & Admission Offer", "qualifying": True},
+        ],
+        "seats_info": {"iim_seats_approx": 4500, "participating_bschools": 1200},
+        "application_start": date(2025, 8, 1),
+        "application_end": date(2025, 9, 13),
+        "exam_date": date(2025, 11, 23),
+        "result_date": date(2026, 1, 5),
+        "counselling_start": date(2026, 2, 1),
+        "fee_general": 2400, "fee_obc": 2400, "fee_sc_st": 1200, "fee_ews": 2400, "fee_female": 1200,
+        "source_url": "https://iimcat.ac.in",
+        "status": "active", "is_featured": False,
+    },
+    {
+        "slug": "cuet-ug-2026",
+        "exam_name": "CUET UG 2026 — Common University Entrance Test",
+        "conducting_body": "National Testing Agency",
+        "counselling_body": "Individual Central Universities",
+        "exam_type": "ug",
+        "stream": "general",
+        "short_description": "CUET UG 2026: Central admission test for 280+ universities including DU, BHU, JNU, Hyderabad. 12th pass eligible.",
+        "eligibility": {
+            "min_qualification": "12th",
+            "qualification_details": "10+2 from any recognised board. Minimum percentage varies by university and course.",
+        },
+        "exam_details": {
+            "exam_pattern": [
+                {"section": "Section 1A: Language", "note": "13 languages", "questions_per_language": 50, "duration_minutes": 45},
+                {"section": "Section 2: Domain", "note": "27 domain subjects, max 6 allowed", "questions": 45, "duration_minutes": 45},
+                {"section": "Section 3: General Test", "questions": 60, "duration_minutes": 60},
+            ],
+            "exam_mode": "CBT",
+        },
+        "selection_process": [
+            {"phase": 1, "name": "CUET UG Exam (CBT)", "qualifying": False},
+            {"phase": 2, "name": "University-wise Counselling / Merit List", "qualifying": True},
+        ],
+        "seats_info": {"participating_universities": 280, "note": "Includes all Central Universities; DU alone has 70,000+ seats"},
+        "application_start": date(2026, 2, 1),
+        "application_end": date(2026, 3, 1),
+        "exam_date": date(2026, 5, 8),
+        "result_date": date(2026, 6, 30),
+        "fee_general": 750, "fee_obc": 700, "fee_sc_st": 650, "fee_ews": 700, "fee_female": 650,
+        "source_url": "https://cuet.nta.nic.in",
+        "status": "upcoming", "is_featured": False,
+    },
+    {
+        "slug": "neet-ss-2025",
+        "exam_name": "NEET SS 2025 — Super Speciality Medical Entrance",
+        "conducting_body": "National Board of Examinations in Medical Sciences (NBEMS)",
+        "counselling_body": "Medical Counselling Committee (MCC)",
+        "exam_type": "doctoral",
+        "stream": "medical",
+        "short_description": "NEET SS 2025: Entrance for DM/M.Ch (Super Speciality) courses. MD/MS in relevant speciality eligible.",
+        "eligibility": {
+            "min_qualification": "MD/MS",
+            "qualification_details": "MD/MS degree in the relevant broad speciality from NMC-recognised institution",
+        },
+        "exam_details": {
+            "exam_pattern": [
+                {"phase": "NEET SS", "questions": 100, "marks": 100, "duration_minutes": 90, "negative_marking": 0.25, "exam_mode": "CBT"},
+            ],
+        },
+        "selection_process": [
+            {"phase": 1, "name": "NEET SS Written Exam", "qualifying": False},
+            {"phase": 2, "name": "MCC DM/M.Ch Counselling", "qualifying": True},
+        ],
+        "application_start": date(2025, 7, 1),
+        "application_end": date(2025, 7, 31),
+        "exam_date": date(2025, 9, 1),
+        "result_date": date(2025, 10, 1),
+        "fee_general": 4000, "fee_sc_st": 2500,
+        "source_url": "https://natboard.edu.in",
+        "status": "active", "is_featured": False,
+    },
+    {
+        "slug": "gate-2026",
+        "exam_name": "GATE 2026 — Graduate Aptitude Test in Engineering",
+        "conducting_body": "IIT Roorkee (on behalf of GATE Committee)",
+        "counselling_body": "Individual IITs / IISc / PSUs for recruitment",
+        "exam_type": "pg",
+        "stream": "engineering",
+        "short_description": "GATE 2026: M.Tech/Ph.D admissions at IITs/IISc + PSU recruitment. B.E./B.Tech or equivalent eligible. Score valid 3 years.",
+        "eligibility": {
+            "min_qualification": "graduate",
+            "qualification_details": "B.E./B.Tech/B.Sc.(Research)/B.S. or 3rd year students of these programmes",
+            "score_validity": "3 years from declaration of result",
+        },
+        "exam_details": {
+            "exam_pattern": [
+                {"phase": "GATE", "questions": 65, "marks": 100, "duration_minutes": 180,
+                 "note": "29 papers; candidates appear in 1-2 papers", "exam_mode": "CBT"},
+            ],
+        },
+        "selection_process": [
+            {"phase": 1, "name": "GATE Written Exam (CBT)", "qualifying": False},
+            {"phase": 2, "name": "Institute/PSU Admission Process (CCMT / individual)", "qualifying": True},
+        ],
+        "seats_info": {"note": "Score used by 900+ PG programmes + PSU direct recruitment (DRDO, IOCL, NTPC, ONGC etc.)"},
+        "application_start": date(2025, 9, 1),
+        "application_end": date(2025, 9, 26),
+        "exam_date": date(2026, 2, 1),
+        "result_date": date(2026, 3, 19),
+        "fee_general": 1800, "fee_obc": 1800, "fee_sc_st": 900, "fee_ews": 1800, "fee_female": 900,
+        "source_url": "https://gate2026.iitr.ac.in",
+        "status": "active", "is_featured": False,
+    },
+]
+
+# Per-phase linked documents for entrance_exams
+EXAM_PHASE_DOCS = {
+    "nta-neet-pg-2026": {
+        "admit_cards": [
+            {
+                "phase_number": 1, "title": "NEET PG 2026 Admit Card",
+                "download_url": "https://nta.ac.in/neet-pg/admit-card",
+                "valid_from": date(2026, 3, 1), "valid_until": date(2026, 3, 9),
+                "notes": "Carry printout + valid government-issued photo ID to exam centre.",
+                "published_at": datetime(2026, 3, 1, tzinfo=timezone.utc),
+            },
+        ],
+        "answer_keys": [
+            {
+                "phase_number": 1, "title": "NEET PG 2026 Provisional Answer Key",
+                "answer_key_type": "provisional",
+                "files": [{"label": "Answer Key PDF", "url": "https://nta.ac.in/neet-pg/ak.pdf"}],
+                "objection_url": "https://nta.ac.in/neet-pg/objection",
+                "objection_deadline": date(2026, 3, 20),
+                "published_at": datetime(2026, 3, 15, tzinfo=timezone.utc),
+            },
+        ],
+        "results": [
+            {
+                "phase_number": 1, "title": "NEET PG 2026 Result & Score Card",
+                "result_type": "merit_list",
+                "download_url": "https://nta.ac.in/neet-pg/result",
+                "cutoff_marks": {"UR_50th_percentile": 350, "OBC_SC_ST_40th_percentile": 315, "PwBD_45th_percentile": 315},
+                "notes": "Score card valid for MCC counselling rounds.",
+                "published_at": datetime(2026, 4, 15, tzinfo=timezone.utc),
+            },
+        ],
+    },
+    "jee-mains-2026": {
+        "admit_cards": [
+            {
+                "phase_number": 1, "title": "JEE Main 2026 Session 1 Admit Card",
+                "download_url": "https://jeemain.nta.ac.in/admit-card",
+                "valid_from": date(2026, 1, 14), "valid_until": date(2026, 1, 22),
+                "notes": "Download from jeemain.nta.ac.in using Application No. & DOB.",
+                "published_at": datetime(2026, 1, 14, tzinfo=timezone.utc),
+            },
+        ],
+        "answer_keys": [
+            {
+                "phase_number": 1, "title": "JEE Main Session 1 2026 Provisional Answer Key",
+                "answer_key_type": "provisional",
+                "files": [
+                    {"label": "Paper 1 (B.Tech)", "url": "https://jeemain.nta.ac.in/ak-paper1.pdf"},
+                ],
+                "objection_url": "https://jeemain.nta.ac.in/objection",
+                "objection_deadline": date(2026, 2, 1),
+                "published_at": datetime(2026, 1, 28, tzinfo=timezone.utc),
+            },
+        ],
+        "results": [
+            {
+                "phase_number": 1, "title": "JEE Main Session 1 2026 Result (NTA Score)",
+                "result_type": "merit_list",
+                "download_url": "https://jeemain.nta.ac.in/result",
+                "cutoff_marks": {"JEE_Advanced_Qualifying": 93.5, "NIT_General_approx": 88},
+                "notes": "NTA Score (percentile) used for NIT/IIIT/CFTI allotment via JoSAA.",
+                "published_at": datetime(2026, 2, 15, tzinfo=timezone.utc),
+            },
+        ],
+    },
+}
 
 
 # ---------------------------------------------------------------------------
@@ -1405,37 +1742,7 @@ PHASE_DOCS = {
         ],
     },
 
-    "nta-neet-pg-2026": {
-        "admit_cards": [
-            {
-                "phase_number": 1, "title": "NEET PG 2026 Admit Card",
-                "download_url": "https://nta.ac.in/neet-pg/admit-card",
-                "valid_from": date(2026, 3, 1), "valid_until": date(2026, 3, 9),
-                "notes": "Carry printout along with valid government-issued photo ID to the exam centre.",
-                "published_at": datetime(2026, 3, 1, tzinfo=timezone.utc),
-            },
-        ],
-        "answer_keys": [
-            {
-                "phase_number": 1, "title": "NEET PG 2026 Provisional Answer Key",
-                "answer_key_type": "provisional",
-                "files": [{"label": "Answer Key PDF", "url": "https://nta.ac.in/neet-pg/answer-key.pdf"}],
-                "objection_url": "https://nta.ac.in/neet-pg/objection",
-                "objection_deadline": date(2026, 3, 20),
-                "published_at": datetime(2026, 3, 15, tzinfo=timezone.utc),
-            },
-        ],
-        "results": [
-            {
-                "phase_number": 1, "title": "NEET PG 2026 Result & Score Card",
-                "result_type": "merit_list",
-                "download_url": "https://nta.ac.in/neet-pg/result",
-                "cutoff_marks": {"UR_50th_percentile": 350, "OBC_SC_ST_40th_percentile": 315, "PwBD_45th_percentile": 315},
-                "notes": "Score card valid for MCC counselling rounds. Check eligibility percentile.",
-                "published_at": datetime(2026, 4, 15, tzinfo=timezone.utc),
-            },
-        ],
-    },
+    # Note: nta-neet-pg-2026 phase docs are in EXAM_PHASE_DOCS (exam_id FK)
 }
 
 
@@ -1489,14 +1796,63 @@ def _make_job(data: dict, admin_id) -> JobVacancy:
     )
 
 
+def _insert_phase_docs(session, phase_docs_dict: dict, id_by_slug: dict, use_exam_id: bool = False):
+    """Insert linked phase documents; returns count inserted."""
+    count = 0
+    for slug, docs in phase_docs_dict.items():
+        parent_id = id_by_slug.get(slug)
+        if not parent_id:
+            print(f"  PHASE DOCS SKIP (parent not found): {slug}")
+            continue
+        kw_job = {} if use_exam_id else {}
+
+        for ac in docs.get("admit_cards", []):
+            kwargs = {"exam_id": parent_id} if use_exam_id else {"job_id": parent_id}
+            exists = session.execute(
+                select(JobAdmitCard).where(
+                    JobAdmitCard.exam_id == parent_id if use_exam_id else JobAdmitCard.job_id == parent_id,
+                    JobAdmitCard.title == ac["title"],
+                )
+            ).scalar_one_or_none()
+            if not exists:
+                session.add(JobAdmitCard(id=uuid.uuid4(), **kwargs, **ac))
+                count += 1
+
+        for ak in docs.get("answer_keys", []):
+            kwargs = {"exam_id": parent_id} if use_exam_id else {"job_id": parent_id}
+            exists = session.execute(
+                select(JobAnswerKey).where(
+                    JobAnswerKey.exam_id == parent_id if use_exam_id else JobAnswerKey.job_id == parent_id,
+                    JobAnswerKey.title == ak["title"],
+                )
+            ).scalar_one_or_none()
+            if not exists:
+                session.add(JobAnswerKey(id=uuid.uuid4(), **kwargs, **ak))
+                count += 1
+
+        for res in docs.get("results", []):
+            kwargs = {"exam_id": parent_id} if use_exam_id else {"job_id": parent_id}
+            exists = session.execute(
+                select(JobResult).where(
+                    JobResult.exam_id == parent_id if use_exam_id else JobResult.job_id == parent_id,
+                    JobResult.title == res["title"],
+                )
+            ).scalar_one_or_none()
+            if not exists:
+                session.add(JobResult(id=uuid.uuid4(), **kwargs, **res))
+                count += 1
+    return count
+
+
 def seed():
     with Session(sync_engine) as session:
         admin_id = _get_admin_id(session)
         inserted = 0
+        exam_inserted = 0
         skipped = 0
         docs_inserted = 0
 
-        # ── Step 1: Remove restructured slugs ──────────────────────────
+        # ── Step 1: Remove restructured job_vacancies slugs ────────────
         for old_slug in SLUGS_TO_REPLACE:
             old = session.execute(
                 select(JobVacancy).where(JobVacancy.slug == old_slug)
@@ -1506,7 +1862,7 @@ def seed():
                 print(f"  REMOVE (restructured): {old_slug}")
         session.flush()
 
-        # ── Step 2: Insert all job lists ───────────────────────────────
+        # ── Step 2: Insert job_vacancies (jobs + section posts) ────────
         all_jobs = JOBS + ADMIT_CARD_POSTS + ANSWER_KEY_POSTS + RESULT_POSTS
         job_id_by_slug: dict[str, uuid.UUID] = {}
 
@@ -1515,61 +1871,50 @@ def seed():
                 select(JobVacancy).where(JobVacancy.slug == data["slug"])
             ).scalar_one_or_none()
             if existing:
-                print(f"  SKIP  (already exists): {data['slug']}")
                 job_id_by_slug[data["slug"]] = existing.id
                 skipped += 1
+                print(f"  SKIP  (job exists): {data['slug']}")
                 continue
-
             job = _make_job(data, admin_id)
             session.add(job)
             job_id_by_slug[data["slug"]] = job.id
-            print(f"  INSERT: {data['slug']}")
             inserted += 1
+            print(f"  INSERT job: {data['slug']}")
 
         session.flush()
 
-        # ── Step 3: Insert per-phase linked documents ──────────────────
-        for slug, docs in PHASE_DOCS.items():
-            job_id = job_id_by_slug.get(slug)
-            if not job_id:
-                print(f"  PHASE DOCS SKIP (job not found): {slug}")
+        # ── Step 3: Insert entrance_exams ──────────────────────────────
+        exam_id_by_slug: dict[str, uuid.UUID] = {}
+
+        for data in ADMISSIONS:
+            existing = session.execute(
+                select(EntranceExam).where(EntranceExam.slug == data["slug"])
+            ).scalar_one_or_none()
+            if existing:
+                exam_id_by_slug[data["slug"]] = existing.id
+                skipped += 1
+                print(f"  SKIP  (exam exists): {data['slug']}")
                 continue
+            exam = EntranceExam(
+                id=uuid.uuid4(),
+                published_at=datetime.now(timezone.utc),
+                **{k: v for k, v in data.items()},
+            )
+            session.add(exam)
+            exam_id_by_slug[data["slug"]] = exam.id
+            exam_inserted += 1
+            print(f"  INSERT exam: {data['slug']}")
 
-            for ac in docs.get("admit_cards", []):
-                exists = session.execute(
-                    select(JobAdmitCard).where(
-                        JobAdmitCard.job_id == job_id,
-                        JobAdmitCard.title == ac["title"],
-                    )
-                ).scalar_one_or_none()
-                if not exists:
-                    session.add(JobAdmitCard(id=uuid.uuid4(), job_id=job_id, **ac))
-                    docs_inserted += 1
+        session.flush()
 
-            for ak in docs.get("answer_keys", []):
-                exists = session.execute(
-                    select(JobAnswerKey).where(
-                        JobAnswerKey.job_id == job_id,
-                        JobAnswerKey.title == ak["title"],
-                    )
-                ).scalar_one_or_none()
-                if not exists:
-                    session.add(JobAnswerKey(id=uuid.uuid4(), job_id=job_id, **ak))
-                    docs_inserted += 1
+        # ── Step 4: Insert job phase docs (job_id) ────────────────────
+        docs_inserted += _insert_phase_docs(session, PHASE_DOCS, job_id_by_slug, use_exam_id=False)
 
-            for res in docs.get("results", []):
-                exists = session.execute(
-                    select(JobResult).where(
-                        JobResult.job_id == job_id,
-                        JobResult.title == res["title"],
-                    )
-                ).scalar_one_or_none()
-                if not exists:
-                    session.add(JobResult(id=uuid.uuid4(), job_id=job_id, **res))
-                    docs_inserted += 1
+        # ── Step 5: Insert exam phase docs (exam_id) ──────────────────
+        docs_inserted += _insert_phase_docs(session, EXAM_PHASE_DOCS, exam_id_by_slug, use_exam_id=True)
 
         session.commit()
-        print(f"\nDone — {inserted} jobs inserted, {docs_inserted} phase docs inserted, {skipped} skipped.")
+        print(f"\nDone — {inserted} jobs + {exam_inserted} exams inserted, {docs_inserted} phase docs, {skipped} skipped.")
 
 
 if __name__ == "__main__":
