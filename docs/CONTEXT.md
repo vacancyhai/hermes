@@ -432,7 +432,9 @@ git push origin main
 |------|---------|
 | `docs/CONTEXT.md` | **This file** — load at session start |
 | `docs/API.md` | Complete endpoint reference with request/response examples |
-| `docs/DESIGN.md` | Architecture, DB schema, API design decisions |
+| `docs/DESIGN.md` | Architecture and high-level design decisions |
+| `docs/DATABASE.md` | **Database Design** — ERD and table schemas |
+| `docs/FRONTEND_BACKEND_AUDIT.md` | Backend ↔ frontend endpoint audit and wired routes |
 | `docs/TESTING.md` | Coverage report for backend + frontend + admin |
-| `docs/DIAGRAMS.md` | ASCII workflow diagrams for all major user and system flows |
+| `docs/DIAGRAMS.md` | ASCII/Mermaid workflow diagrams for all major flows |
 | `docs/hermes.postman_collection.json` | Postman v2.1 collection (auto-saves tokens) |
