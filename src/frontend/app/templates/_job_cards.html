@@ -1,40 +1,50 @@
 {% if jobs %}
 {% for job in jobs %}
-<div class="job-card">
-    <div class="badges">
-        {% if job.is_featured %}<span class="badge badge-featured">Featured</span>{% endif %}
-        {% if job.is_urgent %}<span class="badge badge-urgent">Urgent</span>{% endif %}
-        {% if job.job_type == 'answer_key' and job.exam_details and job.exam_details.get('answer_key_type') %}
-        <span class="badge" style="background:#fef9c3;color:#713f12">{{ job.exam_details.get('answer_key_type') | title }}</span>
-        {% endif %}
+{% if job.job_type == 'admit_card' %}{% set _cls = 'card-admit' %}{% set _ppill = 'pill-blue' %}
+{% elif job.job_type == 'answer_key' %}{% set _cls = 'card-answer' %}{% set _ppill = 'pill-amber' %}
+{% elif job.job_type == 'result' %}{% set _cls = 'card-result' %}{% set _ppill = 'pill-green' %}
+{% else %}{% set _cls = 'card-latest' %}{% set _ppill = 'pill-purple' %}{% endif %}
+<div class="job-card {{ _cls }}">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem">
+        <div style="flex:1;min-width:0">
+            <div class="badges" style="margin-bottom:.4rem">
+                <span class="card-type-tag {{ _cls }} ">{{ job.job_type | replace('_', ' ') | title }}</span>
+                {% if job.is_featured %}<span class="badge badge-featured">Featured</span>{% endif %}
+                {% if job.is_urgent %}<span class="badge badge-urgent">🔥 Urgent</span>{% endif %}
+            </div>
+            <h3 style="margin-bottom:.2rem"><a href="/jobs/{{ job.slug }}" style="color:#1e293b;font-size:1rem">{{ job.job_title }}</a></h3>
+            <div class="meta" style="margin-bottom:.25rem">
+                🏛 {{ job.organization }}{% if job.department %} · {{ job.department }}{% endif %}
+            </div>
+            {% if job.short_description %}
+            <div style="font-size:.825rem;color:#64748b;line-height:1.45;margin-bottom:.35rem">
+                {{ job.short_description[:130] }}{% if job.short_description|length > 130 %}&hellip;{% endif %}
+            </div>
+            {% endif %}
+        </div>
+        <button
+            data-slug="{{ job.slug }}"
+            data-title="{{ job.job_title | e }}"
+            onclick="(function(b){var u=window.location.origin+'/jobs/'+b.dataset.slug,t=b.dataset.title;if(navigator.share){navigator.share({title:t,url:u})}else{navigator.clipboard.writeText(u);b.textContent='\u2713 Copied';setTimeout(function(){b.textContent='Share'},1800)}})(this)"
+            style="flex-shrink:0;font-size:.75rem;padding:.3rem .65rem;border-radius:.375rem;border:1px solid #cbd5e1;background:#fff;color:#475569;cursor:pointer;white-space:nowrap">
+            Share
+        </button>
     </div>
-    <h3><a href="/jobs/{{ job.slug }}">{{ job.job_title }}</a></h3>
-    <div class="meta">{{ job.organization }}{% if job.department %} &mdash; {{ job.department }}{% endif %}</div>
-    {% if job.short_description %}
-    <div class="meta">{{ job.short_description[:120] }}{% if job.short_description|length > 120 %}&hellip;{% endif %}</div>
-    {% endif %}
-    <div class="dates">
+    <div style="display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;margin-top:.35rem">
         {% if job.job_type == 'admit_card' %}
-            {% if job.exam_start %}📅 Exam: {{ job.exam_start }}{% endif %}
-            {% if job.exam_start and job.published_at %} &nbsp;|&nbsp; {% endif %}
-            {% if job.published_at %}Released: {{ job.published_at[:10] }}{% endif %}
+            {% if job.exam_start %}<span class="meta-pill pill-blue">📅 Exam: {{ job.exam_start }}</span>{% endif %}
+            {% if job.published_at %}<span style="font-size:.78rem;color:#64748b">Released: {{ job.published_at[:10] }}</span>{% endif %}
         {% elif job.job_type == 'answer_key' %}
-            {% if job.exam_start %}📅 Exam: {{ job.exam_start }}{% endif %}
-            {% if job.exam_start and job.published_at %} &nbsp;|&nbsp; {% endif %}
-            {% if job.published_at %}Released: {{ job.published_at[:10] }}{% endif %}
+            {% if job.exam_start %}<span class="meta-pill pill-amber">📅 Exam: {{ job.exam_start }}</span>{% endif %}
+            {% if job.published_at %}<span style="font-size:.78rem;color:#64748b">Released: {{ job.published_at[:10] }}</span>{% endif %}
         {% elif job.job_type == 'result' %}
-            {% if job.result_date %}🏆 Result: {{ job.result_date }}{% endif %}
-            {% if job.result_date and job.published_at %} &nbsp;|&nbsp; {% endif %}
-            {% if not job.result_date and job.published_at %}Released: {{ job.published_at[:10] }}{% endif %}
+            {% if job.result_date %}<span class="meta-pill pill-green">🏆 Result: {{ job.result_date }}</span>{% endif %}
+            {% if not job.result_date and job.published_at %}<span style="font-size:.78rem;color:#64748b">Released: {{ job.published_at[:10] }}</span>{% endif %}
         {% else %}
-            {% if job.total_vacancies %}Vacancies: {{ job.total_vacancies }} &nbsp;|&nbsp; {% endif %}
-            {% if job.qualification_level %}{{ job.qualification_level | title }} &nbsp;|&nbsp; {% endif %}
-            {% if job.application_end %}Apply by {{ job.application_end }}{% endif %}
+            {% if job.total_vacancies %}<span class="meta-pill pill-purple">{{ '{:,}'.format(job.total_vacancies) }} Vacancies</span>{% endif %}
+            {% if job.qualification_level %}<span style="font-size:.78rem;color:#64748b">{{ job.qualification_level | title }}</span>{% endif %}
+            {% if job.application_end %}<span class="meta-pill pill-red">⏰ Apply by {{ job.application_end }}</span>{% endif %}
         {% endif %}
-    </div>
-    <div style="margin-top:.4rem;display:flex;gap:.35rem;">
-        <a style="font-size:.75rem;color:#25d366;border:1px solid #25d366;padding:.15rem .5rem;border-radius:.25rem;" href="https://wa.me/?text={{ (job.job_title + ' — Hermes /jobs/' + job.slug) | urlencode }}" target="_blank" rel="noopener">WhatsApp</a>
-        <a style="font-size:.75rem;color:#0088cc;border:1px solid #0088cc;padding:.15rem .5rem;border-radius:.25rem;" href="https://t.me/share/url?url={{ ('/jobs/' + job.slug) | urlencode }}&text={{ job.job_title | urlencode }}" target="_blank" rel="noopener">Telegram</a>
     </div>
 </div>
 {% endfor %}
