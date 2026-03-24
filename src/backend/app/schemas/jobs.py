@@ -205,7 +205,8 @@ class AdmitCardUpdateRequest(BaseModel):
 
 class AdmitCardResponse(BaseModel):
     id: uuid.UUID
-    job_id: uuid.UUID
+    job_id: uuid.UUID | None
+    exam_id: uuid.UUID | None
     phase_number: int | None
     title: str
     download_url: str
@@ -246,7 +247,8 @@ class AnswerKeyUpdateRequest(BaseModel):
 
 class AnswerKeyResponse(BaseModel):
     id: uuid.UUID
-    job_id: uuid.UUID
+    job_id: uuid.UUID | None
+    exam_id: uuid.UUID | None
     phase_number: int | None
     title: str
     answer_key_type: str
@@ -289,7 +291,8 @@ class ResultUpdateRequest(BaseModel):
 
 class ResultResponse(BaseModel):
     id: uuid.UUID
-    job_id: uuid.UUID
+    job_id: uuid.UUID | None
+    exam_id: uuid.UUID | None
     phase_number: int | None
     title: str
     result_type: str
