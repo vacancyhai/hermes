@@ -1,7 +1,16 @@
-"""Seed script — inserts 9 realistic government job vacancies into the database.
+"""Seed script — inserts realistic government job data for all 4 portal sections.
+
+Sections seeded:
+  - 10 latest_job entries (recruitment posts)
+  - 9  admit_card entries (standalone admit card announcements)
+  - 9  answer_key entries (standalone answer key announcements)
+  - 9  result entries  (standalone result announcements)
+  - Per-phase linked documents (job_admit_cards, job_answer_keys, job_results)
 
 Usage (inside Docker):
     docker exec -w /app hermes_backend python -m app.data.seed_jobs
+
+Re-runnable: existing slugs are skipped, phase docs deduplicated by title.
 """
 
 import uuid
@@ -12,6 +21,9 @@ from sqlalchemy.orm import Session
 
 from app.database import sync_engine
 from app.models.admin_user import AdminUser
+from app.models.job_admit_card import JobAdmitCard
+from app.models.job_answer_key import JobAnswerKey
+from app.models.job_result import JobResult
 from app.models.job_vacancy import JobVacancy
 
 # ---------------------------------------------------------------------------
@@ -22,9 +34,20 @@ def _slug_exists(session: Session, slug: str) -> bool:
     return session.execute(select(JobVacancy).where(JobVacancy.slug == slug)).scalar_one_or_none() is not None
 
 
+def _get_job_id(session: Session, slug: str) -> uuid.UUID | None:
+    row = session.execute(select(JobVacancy.id).where(JobVacancy.slug == slug)).scalar_one_or_none()
+    return row
+
+
 def _get_admin_id(session: Session) -> uuid.UUID | None:
     admin = session.execute(select(AdminUser).where(AdminUser.role == "admin").limit(1)).scalar_one_or_none()
     return admin.id if admin else None
+
+
+# Old slugs that were restructured and should be replaced
+SLUGS_TO_REPLACE = [
+    "nta-neet-pg-2026-admit-card",  # Was incorrectly admit_card type; now a latest_job under nta-neet-pg-2026
+]
 
 
 # ---------------------------------------------------------------------------
@@ -407,59 +430,65 @@ JOBS = [
     },
 
     # ------------------------------------------------------------------
-    # 5. NEET PG Admit Card 2026
+    # 5. NTA NEET PG 2026 (Medical PG Entrance Exam)
     # ------------------------------------------------------------------
     {
-        "job_title": "NTA NEET PG 2026 Admit Card Released",
-        "slug": "nta-neet-pg-2026-admit-card",
+        "job_title": "NTA NEET PG 2026 — Medical PG Entrance Examination",
+        "slug": "nta-neet-pg-2026",
         "organization": "National Testing Agency",
         "department": "Ministry of Health & Family Welfare",
-        "job_type": "admit_card",
+        "job_type": "latest_job",
         "employment_type": "contract",
-        "qualification_level": "post-graduate",
+        "qualification_level": "postgraduate",
         "total_vacancies": None,
         "vacancy_breakdown": {},
-        "description": "<p>NTA has released the <strong>NEET PG 2026 Admit Card</strong>. Candidates can download their hall ticket from the official website using their application number and date of birth.</p>",
-        "short_description": "NEET PG 2026 Admit Card released. Download your hall ticket from nta.ac.in using Application No. & DOB.",
+        "description": "<p>NTA conducts <strong>NEET PG 2026</strong> for admission to MD/MS/PG Diploma courses at medical colleges across India. MBBS doctors who have completed 12-month rotating internship on or before 31 March 2026 are eligible to apply.</p>",
+        "short_description": "NEET PG 2026: National entrance for MD/MS/PG Diploma admissions. MBBS with completed internship eligible. 300 MCQs, 3.5 hrs.",
         "eligibility": {
             "min_qualification": "MBBS",
-            "qualification_details": "MBBS degree or equivalent from a recognized university with 12-month Internship completed",
-            "age_limit": {"min": 0, "max": 0, "note": "No upper age limit"},
+            "qualification_details": "MBBS degree with 12-month rotating internship completed on or before 31 March 2026 from MCI/NMC-recognised institution",
+            "age_limit": {"note": "No upper age limit for NEET PG"},
+            "registration": "Must have valid permanent/provisional MCI/NMC registration",
         },
         "application_details": {
             "application_mode": "Online",
-            "application_link": "https://nta.ac.in/neet-pg",
+            "application_link": "https://nta.ac.in/neet-pg/apply",
             "official_website": "https://nta.ac.in",
+            "notification_pdf": "https://nta.ac.in/neet-pg-2026-notification.pdf",
             "important_links": [
-                {"type": "admit_card", "text": "Download Admit Card", "url": "https://nta.ac.in/neet-pg/admit-card"},
+                {"type": "apply_online", "text": "Apply Online", "url": "https://nta.ac.in/neet-pg/apply"},
                 {"type": "official_website", "text": "Official Website", "url": "https://nta.ac.in"},
+                {"type": "counselling", "text": "MCC Counselling", "url": "https://mcc.nic.in"},
             ],
         },
         "documents": [
-            {"name": "Admit Card (Print)", "mandatory": True, "format": "PDF"},
-            {"name": "Government Photo ID", "mandatory": True, "format": "Original"},
+            {"name": "MBBS Degree / Provisional Certificate", "mandatory": True, "format": "PDF", "max_size_kb": 500},
+            {"name": "Internship Completion Certificate", "mandatory": True, "format": "PDF", "max_size_kb": 500},
+            {"name": "NMC / MCI Registration Certificate", "mandatory": True, "format": "PDF", "max_size_kb": 300},
+            {"name": "Photo", "mandatory": True, "format": "JPG", "max_size_kb": 100},
+            {"name": "Signature", "mandatory": True, "format": "JPG", "max_size_kb": 50},
         ],
-        "notification_date": date(2026, 2, 10),
+        "notification_date": date(2025, 11, 1),
         "application_start": date(2025, 11, 1),
         "application_end": date(2025, 11, 30),
         "exam_start": date(2026, 3, 9),
         "result_date": date(2026, 4, 15),
         "exam_details": {
             "exam_pattern": [
-                {"phase": "NEET PG", "subjects": [
-                    {"name": "Pre-Clinical Subjects", "questions": 50, "marks": 200},
-                    {"name": "Para-Clinical Subjects", "questions": 100, "marks": 400},
-                    {"name": "Clinical Subjects", "questions": 150, "marks": 600},
+                {"phase": "NEET PG CBT", "subjects": [
+                    {"name": "Pre-Clinical Subjects (Anatomy, Physiology, Biochemistry)", "questions": 50, "marks": 200},
+                    {"name": "Para-Clinical Subjects (Pathology, Pharmacology, Microbiology)", "questions": 100, "marks": 400},
+                    {"name": "Clinical Subjects (Medicine, Surgery, OBG, Paediatrics etc.)", "questions": 150, "marks": 600},
                 ], "total_questions": 300, "total_marks": 1200, "duration_minutes": 210, "negative_marking": 1.0, "exam_mode": "Online CBT"},
             ],
             "exam_language": ["English"],
-            "total_phases": 1,
+            "total_phases": 2,
         },
         "salary": {},
         "salary_initial": None, "salary_max": None,
         "selection_process": [
-            {"phase": 1, "name": "NEET PG Written Test", "qualifying": False},
-            {"phase": 2, "name": "Merit-Based Counselling", "qualifying": True},
+            {"phase": 1, "name": "NEET PG Written Test (CBT)", "qualifying": False},
+            {"phase": 2, "name": "MCC Merit-Based Counselling", "qualifying": True},
         ],
         "fee_general": 4250, "fee_obc": 4250, "fee_sc_st": 2625, "fee_ews": 4250, "fee_female": 4250,
         "status": "active", "is_featured": False, "is_urgent": True,
@@ -809,73 +838,738 @@ JOBS = [
         "fee_general": 100, "fee_obc": 100, "fee_sc_st": 0, "fee_ews": 100, "fee_female": 0,
         "status": "active", "is_featured": False, "is_urgent": False,
     },
+
+    # ------------------------------------------------------------------
+    # 10. IBPS Clerk XV 2025
+    # ------------------------------------------------------------------
+    {
+        "job_title": "IBPS Clerk (CRP Clerk XV) Recruitment 2025",
+        "slug": "ibps-clerk-crp-xv-2025",
+        "organization": "Institute of Banking Personnel Selection",
+        "department": "IBPS",
+        "job_type": "latest_job",
+        "employment_type": "permanent",
+        "qualification_level": "graduate",
+        "total_vacancies": 6128,
+        "vacancy_breakdown": {
+            "by_category": {"UR": 2452, "OBC": 1655, "EWS": 613, "SC": 919, "ST": 489},
+            "by_post": [{"post_name": "Clerical Cadre", "total": 6128, "pay_scale": "₹17,900–₹47,920"}],
+        },
+        "description": "<p>IBPS invites online applications for <strong>6,128 Clerical Cadre</strong> vacancies across 11 participating public sector banks. Selected candidates serve as Clerk / Single Window Operator at various bank branches across India.</p>",
+        "short_description": "IBPS Clerk 2025: 6,128 vacancies in 11 public sector banks. Any graduate eligible. Prelims + Mains + LPT.",
+        "eligibility": {
+            "min_qualification": "graduate",
+            "qualification_details": "Graduation in any discipline from a recognised University",
+            "age_limit": {
+                "min": 20, "max": 28, "cutoff_date": "2025-11-01",
+                "relaxation": {"OBC": 3, "SC": 5, "ST": 5, "PwBD": 10, "Ex_Serviceman": 5},
+            },
+        },
+        "application_details": {
+            "application_mode": "Online",
+            "application_link": "https://ibps.in/apply",
+            "official_website": "https://ibps.in",
+            "fee_payment_mode": "Online (Debit/Credit Card, Net Banking, UPI)",
+        },
+        "documents": [
+            {"name": "Degree Certificate", "mandatory": True, "format": "PDF", "max_size_kb": 500},
+            {"name": "Photo", "mandatory": True, "format": "JPG", "max_size_kb": 50},
+            {"name": "Signature", "mandatory": True, "format": "JPG", "max_size_kb": 20},
+        ],
+        "notification_date": date(2025, 9, 12),
+        "application_start": date(2025, 9, 12),
+        "application_end": date(2025, 10, 2),
+        "exam_start": date(2025, 11, 22),
+        "result_date": date(2026, 4, 1),
+        "exam_details": {
+            "exam_pattern": [
+                {"phase": "Prelims", "subjects": [
+                    {"name": "English Language", "questions": 30, "marks": 30},
+                    {"name": "Numerical Ability", "questions": 35, "marks": 35},
+                    {"name": "Reasoning Ability", "questions": 35, "marks": 35},
+                ], "total_marks": 100, "duration_minutes": 60, "qualifying": True},
+                {"phase": "Mains", "subjects": [
+                    {"name": "General/Financial Awareness", "questions": 50, "marks": 50},
+                    {"name": "General English", "questions": 40, "marks": 40},
+                    {"name": "Reasoning Ability & Computer Aptitude", "questions": 50, "marks": 60},
+                    {"name": "Quantitative Aptitude", "questions": 50, "marks": 50},
+                ], "total_marks": 200, "duration_minutes": 160},
+            ],
+            "exam_language": ["Hindi", "English"],
+            "total_phases": 3,
+        },
+        "salary": {
+            "pay_scale": "₹17,900–₹47,920",
+            "allowances": ["DA", "HRA", "CCA", "Medical Aid"],
+            "other_benefits": "Pension, PF, Staff Loan at concessional rate",
+        },
+        "salary_initial": 17900, "salary_max": 47920,
+        "selection_process": [
+            {"phase": 1, "name": "Preliminary Examination (Online)", "qualifying": True},
+            {"phase": 2, "name": "Main Examination (Online)", "qualifying": False},
+            {"phase": 3, "name": "Language Proficiency Test (LPT)", "qualifying": True},
+        ],
+        "fee_general": 850, "fee_obc": 850, "fee_sc_st": 175, "fee_ews": 850, "fee_female": 175,
+        "status": "active", "is_featured": False, "is_urgent": False,
+    },
 ]
+
+
+# ---------------------------------------------------------------------------
+# Section 2: Admit Card standalone posts (9 entries)
+# These appear on the /admit-cards section page.
+# Keep compact — just the essential fields for an admit card announcement.
+# ---------------------------------------------------------------------------
+
+ADMIT_CARD_POSTS = [
+    {
+        "job_title": "SSC CGL Tier-1 2025 Admit Card Released",
+        "slug": "ssc-cgl-tier1-2025-admit-card",
+        "organization": "Staff Selection Commission", "department": "SSC",
+        "job_type": "admit_card",
+        "short_description": "SSC CGL Tier-1 2025 admit card available for download. Carry printout to exam centre with valid photo ID.",
+        "source_url": "https://ssc.nic.in/admit-card",
+        "notification_date": date(2025, 12, 28),
+        "exam_start": date(2026, 1, 5),
+        "status": "active", "is_featured": False, "is_urgent": True,
+        "vacancy_breakdown": {}, "salary": {}, "eligibility": {}, "application_details": {}, "documents": [], "selection_process": [], "exam_details": {},
+    },
+    {
+        "job_title": "SSC GD Constable CBT 2025 Admit Card",
+        "slug": "ssc-gd-cbt-2025-admit-card",
+        "organization": "Staff Selection Commission", "department": "SSC",
+        "job_type": "admit_card",
+        "short_description": "SSC GD Constable CBT Admit Card 2025 released. Download from ssc.nic.in using registration number and DOB.",
+        "source_url": "https://ssc.nic.in/admit-card",
+        "notification_date": date(2026, 2, 1),
+        "exam_start": date(2026, 2, 15),
+        "status": "active", "is_featured": False, "is_urgent": True,
+        "vacancy_breakdown": {}, "salary": {}, "eligibility": {}, "application_details": {}, "documents": [], "selection_process": [], "exam_details": {},
+    },
+    {
+        "job_title": "RRB NTPC CBT-1 2026 Admit Card",
+        "slug": "rrb-ntpc-cbt1-2026-admit-card",
+        "organization": "Railway Recruitment Board", "department": "Ministry of Railways",
+        "job_type": "admit_card",
+        "short_description": "RRB NTPC CBT-1 2026 Admit Card released on RRB regional websites. Download using Registration No. & DOB.",
+        "source_url": "https://rrbapply.gov.in/admit-card",
+        "notification_date": date(2026, 2, 10),
+        "exam_start": date(2026, 3, 1),
+        "status": "active", "is_featured": False, "is_urgent": True,
+        "vacancy_breakdown": {}, "salary": {}, "eligibility": {}, "application_details": {}, "documents": [], "selection_process": [], "exam_details": {},
+    },
+    {
+        "job_title": "IBPS PO Prelims 2025 Admit Card",
+        "slug": "ibps-po-prelims-2025-admit-card",
+        "organization": "Institute of Banking Personnel Selection", "department": "IBPS",
+        "job_type": "admit_card",
+        "short_description": "IBPS PO Prelims 2025 Call Letter released. Download from ibps.in. Exam scheduled across multiple dates.",
+        "source_url": "https://ibps.in/call-letter",
+        "notification_date": date(2025, 10, 10),
+        "exam_start": date(2025, 10, 18),
+        "status": "active", "is_featured": False, "is_urgent": False,
+        "vacancy_breakdown": {}, "salary": {}, "eligibility": {}, "application_details": {}, "documents": [], "selection_process": [], "exam_details": {},
+    },
+    {
+        "job_title": "UPSC CSE Prelims 2026 Admit Card",
+        "slug": "upsc-cse-prelims-2026-admit-card",
+        "organization": "Union Public Service Commission", "department": "UPSC",
+        "job_type": "admit_card",
+        "short_description": "UPSC Civil Services Prelims 2026 e-Admit Card available on upsc.gov.in. Carry printout to IFoS exam hall.",
+        "source_url": "https://upsc.gov.in/admit-card",
+        "notification_date": date(2026, 5, 10),
+        "exam_start": date(2026, 5, 25),
+        "status": "active", "is_featured": False, "is_urgent": True,
+        "vacancy_breakdown": {}, "salary": {}, "eligibility": {}, "application_details": {}, "documents": [], "selection_process": [], "exam_details": {},
+    },
+    {
+        "job_title": "SSC CHSL Tier-1 2025 Admit Card Released",
+        "slug": "ssc-chsl-tier1-2025-admit-card",
+        "organization": "Staff Selection Commission", "department": "SSC",
+        "job_type": "admit_card",
+        "short_description": "SSC CHSL Tier-1 2025 Hall Ticket available. Download from ssc.nic.in. Exam for LDC/DEO/JSA posts.",
+        "source_url": "https://ssc.nic.in/chsl-admit-card",
+        "notification_date": date(2025, 11, 20),
+        "exam_start": date(2025, 12, 1),
+        "status": "active", "is_featured": False, "is_urgent": False,
+        "vacancy_breakdown": {}, "salary": {}, "eligibility": {}, "application_details": {}, "documents": [], "selection_process": [], "exam_details": {},
+    },
+    {
+        "job_title": "IBPS RRB PO Prelims 2025 Admit Card",
+        "slug": "ibps-rrb-po-prelims-2025-admit-card",
+        "organization": "Institute of Banking Personnel Selection", "department": "IBPS",
+        "job_type": "admit_card",
+        "short_description": "IBPS RRB Officer Scale-I Prelims 2025 Admit Card available on ibps.in. Download using Reg. No. & DOB.",
+        "source_url": "https://ibps.in/rrb-call-letter",
+        "notification_date": date(2025, 7, 25),
+        "exam_start": date(2025, 8, 3),
+        "status": "active", "is_featured": False, "is_urgent": False,
+        "vacancy_breakdown": {}, "salary": {}, "eligibility": {}, "application_details": {}, "documents": [], "selection_process": [], "exam_details": {},
+    },
+    {
+        "job_title": "NTA NEET PG 2026 Admit Card",
+        "slug": "nta-neet-pg-2026-hall-ticket",
+        "organization": "National Testing Agency", "department": "Ministry of Health & Family Welfare",
+        "job_type": "admit_card",
+        "short_description": "NEET PG 2026 Admit Card released on nta.ac.in. Candidates must carry printout with valid photo ID to exam centre.",
+        "source_url": "https://nta.ac.in/neet-pg/admit-card",
+        "notification_date": date(2026, 3, 1),
+        "exam_start": date(2026, 3, 9),
+        "status": "active", "is_featured": False, "is_urgent": True,
+        "vacancy_breakdown": {}, "salary": {}, "eligibility": {}, "application_details": {}, "documents": [], "selection_process": [], "exam_details": {},
+    },
+    {
+        "job_title": "CTET December 2025 Admit Card Released",
+        "slug": "ctet-december-2025-admit-card",
+        "organization": "Central Board of Secondary Education", "department": "CBSE",
+        "job_type": "admit_card",
+        "short_description": "CTET December 2025 Hall Ticket available on ctet.nic.in. Download using Application No. & DOB for Paper I & II.",
+        "source_url": "https://ctet.nic.in/admit-card",
+        "notification_date": date(2025, 12, 5),
+        "exam_start": date(2025, 12, 14),
+        "status": "active", "is_featured": False, "is_urgent": False,
+        "vacancy_breakdown": {}, "salary": {}, "eligibility": {}, "application_details": {}, "documents": [], "selection_process": [], "exam_details": {},
+    },
+]
+
+
+# ---------------------------------------------------------------------------
+# Section 3: Answer Key standalone posts (9 entries)
+# These appear on the /answer-keys section page.
+# ---------------------------------------------------------------------------
+
+ANSWER_KEY_POSTS = [
+    {
+        "job_title": "SSC CGL Tier-1 2025 Provisional Answer Key",
+        "slug": "ssc-cgl-tier1-2025-answer-key-provisional",
+        "organization": "Staff Selection Commission", "department": "SSC",
+        "job_type": "answer_key",
+        "short_description": "SSC CGL Tier-1 2025 Provisional Answer Key released. Check all sets (A/B/C/D). Raise objections by 18 Jan 2026.",
+        "source_url": "https://ssc.nic.in/answer-key",
+        "notification_date": date(2026, 1, 12),
+        "exam_start": date(2026, 1, 5),
+        "status": "active", "is_featured": False, "is_urgent": False,
+        "vacancy_breakdown": {}, "salary": {}, "eligibility": {}, "application_details": {}, "documents": [], "selection_process": [], "exam_details": {},
+    },
+    {
+        "job_title": "SSC CGL Tier-1 2025 Final Answer Key",
+        "slug": "ssc-cgl-tier1-2025-answer-key-final",
+        "organization": "Staff Selection Commission", "department": "SSC",
+        "job_type": "answer_key",
+        "short_description": "SSC CGL Tier-1 2025 Final Answer Key published after objection review. Download PDF from ssc.nic.in.",
+        "source_url": "https://ssc.nic.in/answer-key-final",
+        "notification_date": date(2026, 2, 5),
+        "exam_start": date(2026, 1, 5),
+        "status": "active", "is_featured": False, "is_urgent": False,
+        "vacancy_breakdown": {}, "salary": {}, "eligibility": {}, "application_details": {}, "documents": [], "selection_process": [], "exam_details": {},
+    },
+    {
+        "job_title": "RRB NTPC CBT-1 2025 Provisional Answer Key",
+        "slug": "rrb-ntpc-cbt1-2025-answer-key",
+        "organization": "Railway Recruitment Board", "department": "Ministry of Railways",
+        "job_type": "answer_key",
+        "short_description": "RRB NTPC CBT-1 2025 Provisional Answer Key available. Download question paper + answer key. Objections open till 5 Dec.",
+        "source_url": "https://rrbapply.gov.in/answer-key",
+        "notification_date": date(2025, 11, 25),
+        "exam_start": date(2025, 11, 1),
+        "status": "active", "is_featured": False, "is_urgent": False,
+        "vacancy_breakdown": {}, "salary": {}, "eligibility": {}, "application_details": {}, "documents": [], "selection_process": [], "exam_details": {},
+    },
+    {
+        "job_title": "IBPS PO Prelims 2025 Answer Key",
+        "slug": "ibps-po-prelims-2025-answer-key",
+        "organization": "Institute of Banking Personnel Selection", "department": "IBPS",
+        "job_type": "answer_key",
+        "short_description": "IBPS PO Prelims 2025 Answer Key with question paper available on ibps.in. Check your provisional score.",
+        "source_url": "https://ibps.in/answer-key",
+        "notification_date": date(2025, 10, 28),
+        "exam_start": date(2025, 10, 18),
+        "status": "active", "is_featured": False, "is_urgent": False,
+        "vacancy_breakdown": {}, "salary": {}, "eligibility": {}, "application_details": {}, "documents": [], "selection_process": [], "exam_details": {},
+    },
+    {
+        "job_title": "UPSC CAPF AC 2025 Provisional Answer Key",
+        "slug": "upsc-capf-ac-2025-answer-key",
+        "organization": "Union Public Service Commission", "department": "UPSC",
+        "job_type": "answer_key",
+        "short_description": "UPSC CAPF Assistant Commandant 2025 Provisional Answer Key for Paper I & II. Representation window open.",
+        "source_url": "https://upsc.gov.in/answer-key",
+        "notification_date": date(2025, 8, 15),
+        "exam_start": date(2025, 8, 3),
+        "status": "active", "is_featured": False, "is_urgent": False,
+        "vacancy_breakdown": {}, "salary": {}, "eligibility": {}, "application_details": {}, "documents": [], "selection_process": [], "exam_details": {},
+    },
+    {
+        "job_title": "NTA NEET UG 2025 Final Answer Key",
+        "slug": "nta-neet-ug-2025-answer-key-final",
+        "organization": "National Testing Agency", "department": "NTA",
+        "job_type": "answer_key",
+        "short_description": "NEET UG 2025 Final Answer Key released on nta.ac.in. All objections resolved. Result based on final key.",
+        "source_url": "https://nta.ac.in/neet-ug/answer-key",
+        "notification_date": date(2025, 6, 14),
+        "exam_start": date(2025, 5, 4),
+        "status": "active", "is_featured": False, "is_urgent": False,
+        "vacancy_breakdown": {}, "salary": {}, "eligibility": {}, "application_details": {}, "documents": [], "selection_process": [], "exam_details": {},
+    },
+    {
+        "job_title": "SSC CHSL Tier-1 2024 Final Answer Key",
+        "slug": "ssc-chsl-tier1-2024-answer-key-final",
+        "organization": "Staff Selection Commission", "department": "SSC",
+        "job_type": "answer_key",
+        "short_description": "SSC CHSL Tier-1 2024 Final Answer Key published. Download all shift PDFs from ssc.nic.in.",
+        "source_url": "https://ssc.nic.in/chsl-answer-key",
+        "notification_date": date(2024, 7, 15),
+        "exam_start": date(2024, 7, 1),
+        "status": "active", "is_featured": False, "is_urgent": False,
+        "vacancy_breakdown": {}, "salary": {}, "eligibility": {}, "application_details": {}, "documents": [], "selection_process": [], "exam_details": {},
+    },
+    {
+        "job_title": "IBPS RRB PO Prelims 2025 Answer Key",
+        "slug": "ibps-rrb-po-prelims-2025-answer-key",
+        "organization": "Institute of Banking Personnel Selection", "department": "IBPS",
+        "job_type": "answer_key",
+        "short_description": "IBPS RRB Officer Scale-I Prelims 2025 Answer Key released. Download question paper and answer key from ibps.in.",
+        "source_url": "https://ibps.in/rrb-answer-key",
+        "notification_date": date(2025, 8, 12),
+        "exam_start": date(2025, 8, 3),
+        "status": "active", "is_featured": False, "is_urgent": False,
+        "vacancy_breakdown": {}, "salary": {}, "eligibility": {}, "application_details": {}, "documents": [], "selection_process": [], "exam_details": {},
+    },
+    {
+        "job_title": "SSC MTS Tier-1 2024 Final Answer Key",
+        "slug": "ssc-mts-tier1-2024-answer-key-final",
+        "organization": "Staff Selection Commission", "department": "SSC",
+        "job_type": "answer_key",
+        "short_description": "SSC MTS & Havaldar Tier-1 2024 Final Answer Key published. All 20 shifts PDFs available on ssc.nic.in.",
+        "source_url": "https://ssc.nic.in/mts-answer-key",
+        "notification_date": date(2024, 10, 20),
+        "exam_start": date(2024, 9, 30),
+        "status": "active", "is_featured": False, "is_urgent": False,
+        "vacancy_breakdown": {}, "salary": {}, "eligibility": {}, "application_details": {}, "documents": [], "selection_process": [], "exam_details": {},
+    },
+]
+
+
+# ---------------------------------------------------------------------------
+# Section 4: Result standalone posts (9 entries)
+# These appear on the /results section page.
+# ---------------------------------------------------------------------------
+
+RESULT_POSTS = [
+    {
+        "job_title": "SSC CGL 2024 Final Result Declared",
+        "slug": "ssc-cgl-2024-final-result",
+        "organization": "Staff Selection Commission", "department": "SSC",
+        "job_type": "result",
+        "short_description": "SSC CGL 2024 Final Result declared. Check merit list, cut-off marks and post-wise allocation on ssc.nic.in.",
+        "source_url": "https://ssc.nic.in/result",
+        "notification_date": date(2025, 4, 1),
+        "result_date": date(2025, 4, 1),
+        "status": "active", "is_featured": False, "is_urgent": False,
+        "vacancy_breakdown": {}, "salary": {}, "eligibility": {}, "application_details": {}, "documents": [], "selection_process": [], "exam_details": {},
+    },
+    {
+        "job_title": "IBPS PO 2024 Final Result Announced",
+        "slug": "ibps-po-2024-final-result",
+        "organization": "Institute of Banking Personnel Selection", "department": "IBPS",
+        "job_type": "result",
+        "short_description": "IBPS PO 2024 Final Result released. Provisionally selected candidates called for document verification by participating banks.",
+        "source_url": "https://ibps.in/result",
+        "notification_date": date(2025, 2, 1),
+        "result_date": date(2025, 2, 1),
+        "status": "active", "is_featured": False, "is_urgent": False,
+        "vacancy_breakdown": {}, "salary": {}, "eligibility": {}, "application_details": {}, "documents": [], "selection_process": [], "exam_details": {},
+    },
+    {
+        "job_title": "RRB NTPC CBT-1 2025 Shortlist Result",
+        "slug": "rrb-ntpc-cbt1-2025-result",
+        "organization": "Railway Recruitment Board", "department": "Ministry of Railways",
+        "job_type": "result",
+        "short_description": "RRB NTPC CBT-1 2025 shortlisting result declared. Check category-wise cut-off and candidates shortlisted for CBT-2.",
+        "source_url": "https://rrbapply.gov.in/result",
+        "notification_date": date(2026, 1, 15),
+        "result_date": date(2026, 1, 15),
+        "status": "active", "is_featured": False, "is_urgent": False,
+        "vacancy_breakdown": {}, "salary": {}, "eligibility": {}, "application_details": {}, "documents": [], "selection_process": [], "exam_details": {},
+    },
+    {
+        "job_title": "UPSC Civil Services 2025 Final Result",
+        "slug": "upsc-cse-2025-final-result",
+        "organization": "Union Public Service Commission", "department": "UPSC",
+        "job_type": "result",
+        "short_description": "UPSC IAS/IPS 2025 Final Result declared. 1016 candidates recommended for various civil services. Check complete merit list.",
+        "source_url": "https://upsc.gov.in/result",
+        "notification_date": date(2026, 4, 25),
+        "result_date": date(2026, 4, 25),
+        "status": "active", "is_featured": True, "is_urgent": False,
+        "vacancy_breakdown": {}, "salary": {}, "eligibility": {}, "application_details": {}, "documents": [], "selection_process": [], "exam_details": {},
+    },
+    {
+        "job_title": "SSC CHSL 2024 Final Result Declared",
+        "slug": "ssc-chsl-2024-final-result",
+        "organization": "Staff Selection Commission", "department": "SSC",
+        "job_type": "result",
+        "short_description": "SSC CHSL 2024 Final Result for LDC/DEO/JSA posts declared. Cut-off marks and post-wise allocation available.",
+        "source_url": "https://ssc.nic.in/chsl-result",
+        "notification_date": date(2025, 6, 10),
+        "result_date": date(2025, 6, 10),
+        "status": "active", "is_featured": False, "is_urgent": False,
+        "vacancy_breakdown": {}, "salary": {}, "eligibility": {}, "application_details": {}, "documents": [], "selection_process": [], "exam_details": {},
+    },
+    {
+        "job_title": "NTA NEET PG 2025 Result Declared",
+        "slug": "nta-neet-pg-2025-result",
+        "organization": "National Testing Agency", "department": "Ministry of Health & Family Welfare",
+        "job_type": "result",
+        "short_description": "NEET PG 2025 Result and score card available on nta.ac.in. AIR-wise score and percentile published.",
+        "source_url": "https://nta.ac.in/neet-pg/result",
+        "notification_date": date(2025, 5, 1),
+        "result_date": date(2025, 5, 1),
+        "status": "active", "is_featured": False, "is_urgent": False,
+        "vacancy_breakdown": {}, "salary": {}, "eligibility": {}, "application_details": {}, "documents": [], "selection_process": [], "exam_details": {},
+    },
+    {
+        "job_title": "IBPS Clerk 2024 Prelims Result Out",
+        "slug": "ibps-clerk-2024-prelims-result",
+        "organization": "Institute of Banking Personnel Selection", "department": "IBPS",
+        "job_type": "result",
+        "short_description": "IBPS Clerk XIV Prelims 2024 Result declared. Shortlisted candidates proceed to Main Examination. Check ibps.in.",
+        "source_url": "https://ibps.in/clerk-result",
+        "notification_date": date(2025, 1, 10),
+        "result_date": date(2025, 1, 10),
+        "status": "active", "is_featured": False, "is_urgent": False,
+        "vacancy_breakdown": {}, "salary": {}, "eligibility": {}, "application_details": {}, "documents": [], "selection_process": [], "exam_details": {},
+    },
+    {
+        "job_title": "SSC GD Constable 2024 Final Result",
+        "slug": "ssc-gd-constable-2024-final-result",
+        "organization": "Staff Selection Commission", "department": "SSC",
+        "job_type": "result",
+        "short_description": "SSC GD Constable 2024 Final Result declared. Category-wise cut-off and merit list published on ssc.nic.in.",
+        "source_url": "https://ssc.nic.in/gd-result",
+        "notification_date": date(2025, 3, 20),
+        "result_date": date(2025, 3, 20),
+        "status": "active", "is_featured": False, "is_urgent": False,
+        "vacancy_breakdown": {}, "salary": {}, "eligibility": {}, "application_details": {}, "documents": [], "selection_process": [], "exam_details": {},
+    },
+    {
+        "job_title": "Railway ALP & Technician 2024 Final Result",
+        "slug": "rrb-alp-technician-2024-final-result",
+        "organization": "Railway Recruitment Board", "department": "Ministry of Railways",
+        "job_type": "result",
+        "short_description": "RRB ALP & Technician 2024 Final Result declared. Selected candidates called for document verification. Check rrb regional website.",
+        "source_url": "https://rrbapply.gov.in/alp-result",
+        "notification_date": date(2025, 2, 28),
+        "result_date": date(2025, 2, 28),
+        "status": "active", "is_featured": False, "is_urgent": False,
+        "vacancy_breakdown": {}, "salary": {}, "eligibility": {}, "application_details": {}, "documents": [], "selection_process": [], "exam_details": {},
+    },
+]
+
+
+# ---------------------------------------------------------------------------
+# Per-phase linked documents for latest_job entries
+# Keys are job slugs; values have lists for admit_cards, answer_keys, results.
+# These populate job_admit_cards / job_answer_keys / job_results tables.
+# phase_number maps to selection_process[?].phase in the parent job.
+# ---------------------------------------------------------------------------
+
+PHASE_DOCS = {
+    "ssc-cgl-combined-graduate-level-2025": {
+        "admit_cards": [
+            {
+                "phase_number": 1, "title": "SSC CGL Tier-1 2025 Admit Card",
+                "download_url": "https://ssc.nic.in/admit-card/cgl-tier1",
+                "valid_from": date(2025, 12, 28), "valid_until": date(2026, 1, 15),
+                "notes": "Download from ssc.nic.in using Registration No. & DOB. Carry printout to exam.",
+                "published_at": datetime(2025, 12, 28, tzinfo=timezone.utc),
+            },
+            {
+                "phase_number": 2, "title": "SSC CGL Tier-2 2026 Admit Card",
+                "download_url": "https://ssc.nic.in/admit-card/cgl-tier2",
+                "valid_from": date(2026, 2, 20), "valid_until": date(2026, 3, 1),
+                "notes": "Applicable only for candidates qualified in Tier-1.",
+                "published_at": datetime(2026, 2, 20, tzinfo=timezone.utc),
+            },
+        ],
+        "answer_keys": [
+            {
+                "phase_number": 1, "title": "SSC CGL Tier-1 2025 Provisional Answer Key",
+                "answer_key_type": "provisional",
+                "files": [
+                    {"label": "Set A", "url": "https://ssc.nic.in/ak/cgl-t1-seta.pdf"},
+                    {"label": "Set B", "url": "https://ssc.nic.in/ak/cgl-t1-setb.pdf"},
+                    {"label": "Set C", "url": "https://ssc.nic.in/ak/cgl-t1-setc.pdf"},
+                    {"label": "Set D", "url": "https://ssc.nic.in/ak/cgl-t1-setd.pdf"},
+                ],
+                "objection_url": "https://ssc.nic.in/objection",
+                "objection_deadline": date(2026, 1, 18),
+                "published_at": datetime(2026, 1, 12, tzinfo=timezone.utc),
+            },
+            {
+                "phase_number": 1, "title": "SSC CGL Tier-1 2025 Final Answer Key",
+                "answer_key_type": "final",
+                "files": [
+                    {"label": "Set A", "url": "https://ssc.nic.in/fak/cgl-t1-seta.pdf"},
+                    {"label": "Set B", "url": "https://ssc.nic.in/fak/cgl-t1-setb.pdf"},
+                    {"label": "Set C", "url": "https://ssc.nic.in/fak/cgl-t1-setc.pdf"},
+                    {"label": "Set D", "url": "https://ssc.nic.in/fak/cgl-t1-setd.pdf"},
+                ],
+                "published_at": datetime(2026, 2, 5, tzinfo=timezone.utc),
+            },
+        ],
+        "results": [
+            {
+                "phase_number": 1, "title": "SSC CGL Tier-1 2025 Result — Shortlist for Tier-2",
+                "result_type": "shortlist",
+                "download_url": "https://ssc.nic.in/result/cgl-tier1-2025",
+                "cutoff_marks": {"UR": 148.75, "OBC": 143.25, "EWS": 141.50, "SC": 128.00, "ST": 119.50},
+                "total_qualified": 175200,
+                "notes": "Candidates scoring above cut-off in respective categories are shortlisted for Tier-2.",
+                "published_at": datetime(2026, 3, 10, tzinfo=timezone.utc),
+            },
+        ],
+    },
+
+    "ibps-po-recruitment-2025": {
+        "admit_cards": [
+            {
+                "phase_number": 1, "title": "IBPS PO Prelims 2025 Call Letter",
+                "download_url": "https://ibps.in/call-letter/po-prelims",
+                "valid_from": date(2025, 10, 10), "valid_until": date(2025, 10, 26),
+                "notes": "Download using Registration No. & Password/DOB. Exam on multiple dates.",
+                "published_at": datetime(2025, 10, 10, tzinfo=timezone.utc),
+            },
+            {
+                "phase_number": 2, "title": "IBPS PO Mains 2025 Call Letter",
+                "download_url": "https://ibps.in/call-letter/po-mains",
+                "valid_from": date(2025, 11, 20), "valid_until": date(2025, 11, 30),
+                "notes": "Only for candidates who cleared Prelims.",
+                "published_at": datetime(2025, 11, 20, tzinfo=timezone.utc),
+            },
+        ],
+        "answer_keys": [
+            {
+                "phase_number": 1, "title": "IBPS PO Prelims 2025 Answer Key",
+                "answer_key_type": "provisional",
+                "files": [
+                    {"label": "English Language", "url": "https://ibps.in/ak/po-eng.pdf"},
+                    {"label": "Quantitative Aptitude", "url": "https://ibps.in/ak/po-qa.pdf"},
+                    {"label": "Reasoning Ability", "url": "https://ibps.in/ak/po-ra.pdf"},
+                ],
+                "published_at": datetime(2025, 10, 28, tzinfo=timezone.utc),
+            },
+        ],
+        "results": [
+            {
+                "phase_number": 1, "title": "IBPS PO Prelims 2025 Result",
+                "result_type": "shortlist",
+                "download_url": "https://ibps.in/result/po-prelims",
+                "cutoff_marks": {"UR": 64.25, "OBC": 60.50, "EWS": 61.75, "SC": 52.00, "ST": 48.75},
+                "total_qualified": 41800,
+                "published_at": datetime(2025, 11, 15, tzinfo=timezone.utc),
+            },
+        ],
+    },
+
+    "rrb-ntpc-graduate-level-recruitment-2025": {
+        "admit_cards": [
+            {
+                "phase_number": 1, "title": "RRB NTPC CBT-1 2026 Admit Card",
+                "download_url": "https://rrbapply.gov.in/admit-card",
+                "valid_from": date(2026, 2, 10), "valid_until": date(2026, 3, 31),
+                "notes": "Download from your respective RRB regional website using Registration No. & DOB.",
+                "published_at": datetime(2026, 2, 10, tzinfo=timezone.utc),
+            },
+        ],
+        "answer_keys": [
+            {
+                "phase_number": 1, "title": "RRB NTPC CBT-1 2026 Provisional Answer Key",
+                "answer_key_type": "provisional",
+                "files": [{"label": "Question Paper + Answer Key", "url": "https://rrbapply.gov.in/answer-key/ntpc-cbt1.pdf"}],
+                "objection_url": "https://rrbapply.gov.in/objection",
+                "objection_deadline": date(2026, 4, 10),
+                "published_at": datetime(2026, 4, 1, tzinfo=timezone.utc),
+            },
+        ],
+        "results": [
+            {
+                "phase_number": 1, "title": "RRB NTPC CBT-1 2026 Result — Shortlist for CBT-2",
+                "result_type": "shortlist",
+                "download_url": "https://rrbapply.gov.in/result/ntpc-cbt1",
+                "cutoff_marks": {"UR": 72.50, "OBC": 68.00, "EWS": 70.25, "SC": 62.50, "ST": 58.00},
+                "total_qualified": 115800,
+                "notes": "Candidates shortlisted at 20× vacancy count in each category and post.",
+                "published_at": datetime(2026, 5, 15, tzinfo=timezone.utc),
+            },
+        ],
+    },
+
+    "nta-neet-pg-2026": {
+        "admit_cards": [
+            {
+                "phase_number": 1, "title": "NEET PG 2026 Admit Card",
+                "download_url": "https://nta.ac.in/neet-pg/admit-card",
+                "valid_from": date(2026, 3, 1), "valid_until": date(2026, 3, 9),
+                "notes": "Carry printout along with valid government-issued photo ID to the exam centre.",
+                "published_at": datetime(2026, 3, 1, tzinfo=timezone.utc),
+            },
+        ],
+        "answer_keys": [
+            {
+                "phase_number": 1, "title": "NEET PG 2026 Provisional Answer Key",
+                "answer_key_type": "provisional",
+                "files": [{"label": "Answer Key PDF", "url": "https://nta.ac.in/neet-pg/answer-key.pdf"}],
+                "objection_url": "https://nta.ac.in/neet-pg/objection",
+                "objection_deadline": date(2026, 3, 20),
+                "published_at": datetime(2026, 3, 15, tzinfo=timezone.utc),
+            },
+        ],
+        "results": [
+            {
+                "phase_number": 1, "title": "NEET PG 2026 Result & Score Card",
+                "result_type": "merit_list",
+                "download_url": "https://nta.ac.in/neet-pg/result",
+                "cutoff_marks": {"UR_50th_percentile": 350, "OBC_SC_ST_40th_percentile": 315, "PwBD_45th_percentile": 315},
+                "notes": "Score card valid for MCC counselling rounds. Check eligibility percentile.",
+                "published_at": datetime(2026, 4, 15, tzinfo=timezone.utc),
+            },
+        ],
+    },
+}
 
 
 # ---------------------------------------------------------------------------
 # Insert
 # ---------------------------------------------------------------------------
 
+def _make_job(data: dict, admin_id) -> JobVacancy:
+    """Build a JobVacancy ORM object from a data dict."""
+    return JobVacancy(
+        id=uuid.uuid4(),
+        job_title=data["job_title"],
+        slug=data["slug"],
+        organization=data["organization"],
+        department=data.get("department"),
+        job_type=data.get("job_type", "latest_job"),
+        employment_type=data.get("employment_type", "permanent"),
+        qualification_level=data.get("qualification_level"),
+        total_vacancies=data.get("total_vacancies"),
+        vacancy_breakdown=data.get("vacancy_breakdown", {}),
+        description=data.get("description"),
+        short_description=data.get("short_description"),
+        eligibility=data.get("eligibility", {}),
+        application_details=data.get("application_details", {}),
+        documents=data.get("documents", []),
+        source_url=data.get("source_url"),
+        notification_date=data.get("notification_date"),
+        application_start=data.get("application_start"),
+        application_end=data.get("application_end"),
+        exam_start=data.get("exam_start"),
+        exam_end=data.get("exam_end"),
+        result_date=data.get("result_date"),
+        exam_details=data.get("exam_details", {}),
+        salary_initial=data.get("salary_initial"),
+        salary_max=data.get("salary_max"),
+        salary=data.get("salary", {}),
+        selection_process=data.get("selection_process", []),
+        fee_general=data.get("fee_general"),
+        fee_obc=data.get("fee_obc"),
+        fee_sc_st=data.get("fee_sc_st"),
+        fee_ews=data.get("fee_ews"),
+        fee_female=data.get("fee_female"),
+        status=data.get("status", "active"),
+        is_featured=data.get("is_featured", False),
+        is_urgent=data.get("is_urgent", False),
+        views=0,
+        applications_count=0,
+        source="manual",
+        created_by=admin_id,
+        published_at=datetime.now(timezone.utc),
+    )
+
+
 def seed():
     with Session(sync_engine) as session:
         admin_id = _get_admin_id(session)
         inserted = 0
         skipped = 0
+        docs_inserted = 0
 
-        for data in JOBS:
-            if _slug_exists(session, data["slug"]):
+        # ── Step 1: Remove restructured slugs ──────────────────────────
+        for old_slug in SLUGS_TO_REPLACE:
+            old = session.execute(
+                select(JobVacancy).where(JobVacancy.slug == old_slug)
+            ).scalar_one_or_none()
+            if old:
+                session.delete(old)
+                print(f"  REMOVE (restructured): {old_slug}")
+        session.flush()
+
+        # ── Step 2: Insert all job lists ───────────────────────────────
+        all_jobs = JOBS + ADMIT_CARD_POSTS + ANSWER_KEY_POSTS + RESULT_POSTS
+        job_id_by_slug: dict[str, uuid.UUID] = {}
+
+        for data in all_jobs:
+            existing = session.execute(
+                select(JobVacancy).where(JobVacancy.slug == data["slug"])
+            ).scalar_one_or_none()
+            if existing:
                 print(f"  SKIP  (already exists): {data['slug']}")
+                job_id_by_slug[data["slug"]] = existing.id
                 skipped += 1
                 continue
 
-            job = JobVacancy(
-                id=uuid.uuid4(),
-                job_title=data["job_title"],
-                slug=data["slug"],
-                organization=data["organization"],
-                department=data.get("department"),
-                job_type=data.get("job_type", "latest_job"),
-                employment_type=data.get("employment_type", "permanent"),
-                qualification_level=data.get("qualification_level"),
-                total_vacancies=data.get("total_vacancies"),
-                vacancy_breakdown=data.get("vacancy_breakdown", {}),
-                description=data.get("description"),
-                short_description=data.get("short_description"),
-                eligibility=data.get("eligibility", {}),
-                application_details=data.get("application_details", {}),
-                documents=data.get("documents", []),
-                source_url=data.get("source_url"),
-                notification_date=data.get("notification_date"),
-                application_start=data.get("application_start"),
-                application_end=data.get("application_end"),
-                exam_start=data.get("exam_start"),
-                exam_end=data.get("exam_end"),
-                result_date=data.get("result_date"),
-                exam_details=data.get("exam_details", {}),
-                salary_initial=data.get("salary_initial"),
-                salary_max=data.get("salary_max"),
-                salary=data.get("salary", {}),
-                selection_process=data.get("selection_process", []),
-                fee_general=data.get("fee_general"),
-                fee_obc=data.get("fee_obc"),
-                fee_sc_st=data.get("fee_sc_st"),
-                fee_ews=data.get("fee_ews"),
-                fee_female=data.get("fee_female"),
-                status=data.get("status", "active"),
-                is_featured=data.get("is_featured", False),
-                is_urgent=data.get("is_urgent", False),
-                views=0,
-                applications_count=0,
-                source="manual",
-                created_by=admin_id,
-                published_at=datetime.now(timezone.utc),
-            )
+            job = _make_job(data, admin_id)
             session.add(job)
+            job_id_by_slug[data["slug"]] = job.id
             print(f"  INSERT: {data['slug']}")
             inserted += 1
 
+        session.flush()
+
+        # ── Step 3: Insert per-phase linked documents ──────────────────
+        for slug, docs in PHASE_DOCS.items():
+            job_id = job_id_by_slug.get(slug)
+            if not job_id:
+                print(f"  PHASE DOCS SKIP (job not found): {slug}")
+                continue
+
+            for ac in docs.get("admit_cards", []):
+                exists = session.execute(
+                    select(JobAdmitCard).where(
+                        JobAdmitCard.job_id == job_id,
+                        JobAdmitCard.title == ac["title"],
+                    )
+                ).scalar_one_or_none()
+                if not exists:
+                    session.add(JobAdmitCard(id=uuid.uuid4(), job_id=job_id, **ac))
+                    docs_inserted += 1
+
+            for ak in docs.get("answer_keys", []):
+                exists = session.execute(
+                    select(JobAnswerKey).where(
+                        JobAnswerKey.job_id == job_id,
+                        JobAnswerKey.title == ak["title"],
+                    )
+                ).scalar_one_or_none()
+                if not exists:
+                    session.add(JobAnswerKey(id=uuid.uuid4(), job_id=job_id, **ak))
+                    docs_inserted += 1
+
+            for res in docs.get("results", []):
+                exists = session.execute(
+                    select(JobResult).where(
+                        JobResult.job_id == job_id,
+                        JobResult.title == res["title"],
+                    )
+                ).scalar_one_or_none()
+                if not exists:
+                    session.add(JobResult(id=uuid.uuid4(), job_id=job_id, **res))
+                    docs_inserted += 1
+
         session.commit()
-        print(f"\nDone — {inserted} inserted, {skipped} skipped.")
+        print(f"\nDone — {inserted} jobs inserted, {docs_inserted} phase docs inserted, {skipped} skipped.")
 
 
 if __name__ == "__main__":
