@@ -7,6 +7,19 @@
 <meta property="og:title" content="{{ exam.exam_name }}">
 <meta property="og:description" content="{{ (exam.short_description or '')[:160] | striptags }}">
 <meta property="og:url" content="{{ request.url }}">
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org/",
+    "@type": "Event",
+    "name": {{ exam.exam_name | tojson }},
+    "description": {{ (exam.short_description or exam.description or '') | striptags | tojson }},
+    "organizer": {"@type": "Organization", "name": {{ exam.conducting_body | tojson }}},
+    "url": {{ request.url | tojson }}
+    {% if exam.exam_date %},"startDate": "{{ exam.exam_date }}"{% endif %}
+    {% if exam.application_end %},"registrationDeadline": "{{ exam.application_end }}"{% endif %}
+    {% if exam.source_url %},"sameAs": {{ exam.source_url | tojson }}{% endif %}
+}
+</script>
 {% endblock %}
 
 {% block head %}
@@ -211,14 +224,14 @@
              hx-trigger="load" hx-swap="innerHTML">
             <p class="doc-empty">Loading…</p>
         </div>
-        <div class="doc-panel" x-show="tab==='answer_keys'" x-cloak
+        <div class="doc-panel" x-show="tab==='answer_keys'"
              hx-get="/partials/exams/{{ exam.id }}/answer-keys"
-             hx-trigger="intersect once" hx-swap="innerHTML">
+             hx-trigger="load" hx-swap="innerHTML">
             <p class="doc-empty">Loading…</p>
         </div>
-        <div class="doc-panel" x-show="tab==='results'" x-cloak
+        <div class="doc-panel" x-show="tab==='results'"
              hx-get="/partials/exams/{{ exam.id }}/results"
-             hx-trigger="intersect once" hx-swap="innerHTML">
+             hx-trigger="load" hx-swap="innerHTML">
             <p class="doc-empty">Loading…</p>
         </div>
     </div>

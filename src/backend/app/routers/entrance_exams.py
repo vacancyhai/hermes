@@ -124,7 +124,12 @@ async def get_exam_by_slug(slug: str, db: AsyncSession = Depends(get_db)):
 
 @public_router.get("/{exam_id}/admit-cards", response_model=list[AdmitCardResponse])
 async def list_exam_admit_cards(exam_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
-    """Per-phase admit cards for an active entrance exam."""
+    """Per-phase admit cards. Exam must be active or completed."""
+    result = await db.execute(
+        select(EntranceExam).where(EntranceExam.id == exam_id, EntranceExam.status.in_(["active", "completed"]))
+    )
+    if not result.scalar_one_or_none():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Exam not found")
     rows = await db.execute(
         select(JobAdmitCard)
         .where(JobAdmitCard.exam_id == exam_id)
@@ -135,7 +140,12 @@ async def list_exam_admit_cards(exam_id: uuid.UUID, db: AsyncSession = Depends(g
 
 @public_router.get("/{exam_id}/answer-keys", response_model=list[AnswerKeyResponse])
 async def list_exam_answer_keys(exam_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
-    """Per-phase answer keys for an active entrance exam."""
+    """Per-phase answer keys. Exam must be active or completed."""
+    result = await db.execute(
+        select(EntranceExam).where(EntranceExam.id == exam_id, EntranceExam.status.in_(["active", "completed"]))
+    )
+    if not result.scalar_one_or_none():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Exam not found")
     rows = await db.execute(
         select(JobAnswerKey)
         .where(JobAnswerKey.exam_id == exam_id)
@@ -146,7 +156,12 @@ async def list_exam_answer_keys(exam_id: uuid.UUID, db: AsyncSession = Depends(g
 
 @public_router.get("/{exam_id}/results", response_model=list[ResultResponse])
 async def list_exam_results(exam_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
-    """Per-phase results for an active entrance exam."""
+    """Per-phase results. Exam must be active or completed."""
+    result = await db.execute(
+        select(EntranceExam).where(EntranceExam.id == exam_id, EntranceExam.status.in_(["active", "completed"]))
+    )
+    if not result.scalar_one_or_none():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Exam not found")
     rows = await db.execute(
         select(JobResult)
         .where(JobResult.exam_id == exam_id)
@@ -164,17 +179,40 @@ async def list_exam_results(exam_id: uuid.UUID, db: AsyncSession = Depends(get_d
 async def admin_list_exams(
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
+    stream: str | None = Query(None),
+    exam_type: str | None = Query(None),
+    status: str | None = Query(None),
     admin=Depends(require_operator),
     db: AsyncSession = Depends(get_db),
 ):
-    total = (await db.execute(select(func.count(EntranceExam.id)))).scalar()
-    rows = (await db.execute(
-        select(EntranceExam).order_by(EntranceExam.created_at.desc()).offset(offset).limit(limit)
-    )).scalars().all()
+    q = select(EntranceExam)
+    cq = select(func.count(EntranceExam.id))
+    if stream:
+        q = q.where(EntranceExam.stream == stream)
+        cq = cq.where(EntranceExam.stream == stream)
+    if exam_type:
+        q = q.where(EntranceExam.exam_type == exam_type)
+        cq = cq.where(EntranceExam.exam_type == exam_type)
+    if status:
+        q = q.where(EntranceExam.status == status)
+        cq = cq.where(EntranceExam.status == status)
+    total = (await db.execute(cq)).scalar()
+    rows = (await db.execute(q.order_by(EntranceExam.created_at.desc()).offset(offset).limit(limit))).scalars().all()
     return {
         "data": [EntranceExamListItem.model_validate(r).model_dump() for r in rows],
         "pagination": {"limit": limit, "offset": offset, "total": total, "has_more": (offset + limit) < total},
     }
+
+
+@admin_router.get("/{exam_id}")
+async def admin_get_exam(
+    exam_id: uuid.UUID,
+    admin=Depends(require_operator),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get a single entrance exam by ID (any status)."""
+    exam = await _require_exam(exam_id, db)
+    return EntranceExamResponse.model_validate(exam).model_dump()
 
 
 @admin_router.post("", status_code=status.HTTP_201_CREATED)
@@ -193,7 +231,7 @@ async def create_exam(
         counter += 1
 
     exam = EntranceExam(
-        **body.model_dump(),
+        **body.model_dump(exclude_none=True),
         slug=slug,
         published_at=datetime.now(timezone.utc),
     )

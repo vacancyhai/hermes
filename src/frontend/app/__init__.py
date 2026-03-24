@@ -177,7 +177,7 @@ def create_app():
 
     @app.route("/admissions/partial")
     def admissions_partial():
-        """HTMX partial for admissions load-more."""
+        """HTMX partial for admissions load-more — returns card rows only."""
         params = {}
         for key in ("q", "stream", "exam_type"):
             val = request.args.get(key)
@@ -187,7 +187,7 @@ def create_app():
         params["offset"] = _int_arg("offset", 0)
         resp = current_app.api_client.get("/exams", params=params)
         data = resp.json() if resp.ok else {"data": [], "pagination": {}}
-        return render_template("admissions.html", exams=data["data"], pagination=data.get("pagination", {}), params=params)
+        return render_template("_exam_cards.html", exams=data["data"], pagination=data.get("pagination", {}), params=params)
 
     @app.route("/admissions/<slug>")
     def admission_detail(slug):

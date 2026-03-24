@@ -101,7 +101,7 @@
         .doc-tabs-bar{display:flex;gap:0;border-bottom:2px solid #e2e8f0;margin-bottom:0;overflow-x:auto;scrollbar-width:none}
         .doc-tab-btn{padding:.5rem 1.1rem;font-size:.85rem;font-weight:500;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;color:#64748b;background:none;border-left:none;border-right:none;border-top:none;white-space:nowrap}
         .doc-tab-btn:hover{color:#1e293b}
-        .doc-tab-btn.active,[x-bind\\:class] .doc-tab-btn.active{color:#2563eb;border-bottom-color:#2563eb;font-weight:600}
+        .doc-tab-btn.active{color:#2563eb;border-bottom-color:#2563eb;font-weight:600}
 
         /* Doc panel cards */
         .doc-panel{padding-top:.85rem}
@@ -161,7 +161,8 @@
         <nav class="sec-nav" style="max-width:960px;margin:0 auto;padding:0 1rem;display:flex;overflow-x:auto;scrollbar-width:none">
             {% set _path = request.path %}
             {% for href, label, icon in [('/', 'Jobs', '💼'), ('/admit-cards', 'Admit Cards', '📄'), ('/answer-keys', 'Answer Keys', '✏️'), ('/results', 'Results', '🏆'), ('/admissions', 'Admissions', '🎓')] %}
-            <a href="{{ href }}" class="{{ 'active' if _path == href }}">{{ icon }} {{ label }}</a>
+            {% set is_active = (_path == href) if href == '/' else (_path == href or _path.startswith(href + '/')) %}
+            <a href="{{ href }}" class="{{ 'active' if is_active }}">{{ icon }} {{ label }}</a>
             {% endfor %}
         </nav>
     </div>

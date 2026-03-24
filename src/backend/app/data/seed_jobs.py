@@ -53,10 +53,11 @@ def _get_admin_id(session: Session) -> uuid.UUID | None:
     return admin.id if admin else None
 
 
-# Old job_vacancies slugs to remove (restructured into entrance_exams)
+# Old job_vacancies slugs to remove (restructured or duplicated)
 SLUGS_TO_REPLACE = [
     "nta-neet-pg-2026-admit-card",  # Was incorrectly admit_card type
     "nta-neet-pg-2026",             # Was latest_job; now entrance_exam
+    "nta-neet-pg-2026-hall-ticket", # Duplicates the admit card now linked via exam_id in job_admit_cards
 ]
 
 

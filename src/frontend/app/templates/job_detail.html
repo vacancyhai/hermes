@@ -278,14 +278,14 @@
              hx-trigger="load" hx-swap="innerHTML">
             <p class="doc-empty">Loading…</p>
         </div>
-        <div class="doc-panel" x-show="tab==='answer_keys'" x-cloak
+        <div class="doc-panel" x-show="tab==='answer_keys'"
              hx-get="/partials/jobs/{{ job.id }}/answer-keys"
-             hx-trigger="intersect once" hx-swap="innerHTML">
+             hx-trigger="load" hx-swap="innerHTML">
             <p class="doc-empty">Loading…</p>
         </div>
-        <div class="doc-panel" x-show="tab==='results'" x-cloak
+        <div class="doc-panel" x-show="tab==='results'"
              hx-get="/partials/jobs/{{ job.id }}/results"
-             hx-trigger="intersect once" hx-swap="innerHTML">
+             hx-trigger="load" hx-swap="innerHTML">
             <p class="doc-empty">Loading…</p>
         </div>
     </div>

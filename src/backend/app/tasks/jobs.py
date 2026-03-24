@@ -2,6 +2,7 @@
 
 Scheduled:
   close_expired_job_listings  — Daily 02:30 UTC
+  update_exam_statuses        — Daily 02:35 UTC
 
 Event-driven:
   extract_job_from_pdf        — Process uploaded PDF → AI extraction → create draft job
@@ -47,6 +48,31 @@ def close_expired_job_listings(self):
 
     logger.info(f"Marked {len(expired_ids)} job listings as expired")
     return {"expired_count": len(expired_ids)}
+
+
+@celery.task(name="app.tasks.jobs.update_exam_statuses", bind=True, max_retries=3, default_retry_delay=60)
+def update_exam_statuses(self):
+    """Mark entrance exams as 'completed' after exam_date passes. Daily 02:35 UTC."""
+    try:
+        with Session(sync_engine) as session:
+            result = session.execute(
+                text("""
+                    UPDATE entrance_exams
+                    SET status = 'completed', updated_at = NOW()
+                    WHERE status = 'active'
+                      AND exam_date IS NOT NULL
+                      AND exam_date < CURRENT_DATE
+                    RETURNING id
+                """)
+            )
+            completed_ids = [str(row[0]) for row in result.fetchall()]
+            session.commit()
+    except Exception as exc:
+        logger.error(f"update_exam_statuses failed: {exc}")
+        raise self.retry(exc=exc)
+
+    logger.info(f"Marked {len(completed_ids)} entrance exams as completed")
+    return {"completed_count": len(completed_ids)}
 
 
 @celery.task(name="app.tasks.jobs.extract_job_from_pdf", bind=True, max_retries=2)

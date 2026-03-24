@@ -20,23 +20,32 @@ SITEMAP_PATH = os.environ.get("SITEMAP_PATH", "/app/sitemap.xml")
 
 @celery.task(name="app.tasks.seo.generate_sitemap")
 def generate_sitemap():
-    """Regenerate /sitemap.xml with all active job URLs. Daily 04:00 UTC."""
+    """Regenerate /sitemap.xml with all active job + admission exam URLs. Daily 04:00 UTC."""
     with Session(sync_engine) as session:
-        result = session.execute(
+        jobs = session.execute(
             text("SELECT slug, updated_at FROM job_vacancies WHERE status = 'active' ORDER BY updated_at DESC")
-        )
-        jobs = result.fetchall()
+        ).fetchall()
+        exams = session.execute(
+            text("SELECT slug, updated_at FROM entrance_exams WHERE status IN ('active','upcoming') ORDER BY updated_at DESC")
+        ).fetchall()
 
     urlset = Element("urlset")
     urlset.set("xmlns", "http://www.sitemaps.org/schemas/sitemap/0.9")
 
-    # Homepage
-    home = SubElement(urlset, "url")
-    SubElement(home, "loc").text = SITE_URL
-    SubElement(home, "changefreq").text = "daily"
-    SubElement(home, "priority").text = "1.0"
+    # Section pages
+    for path, freq, priority in [
+        ("/", "daily", "1.0"),
+        ("/admit-cards", "daily", "0.9"),
+        ("/answer-keys", "daily", "0.9"),
+        ("/results", "daily", "0.9"),
+        ("/admissions", "daily", "0.9"),
+    ]:
+        url_el = SubElement(urlset, "url")
+        SubElement(url_el, "loc").text = f"{SITE_URL}{path}"
+        SubElement(url_el, "changefreq").text = freq
+        SubElement(url_el, "priority").text = priority
 
-    # Job pages
+    # Job detail pages
     for slug, updated_at in jobs:
         url_el = SubElement(urlset, "url")
         SubElement(url_el, "loc").text = f"{SITE_URL}/jobs/{slug}"
@@ -45,7 +54,16 @@ def generate_sitemap():
         SubElement(url_el, "changefreq").text = "daily"
         SubElement(url_el, "priority").text = "0.8"
 
+    # Admission exam detail pages
+    for slug, updated_at in exams:
+        url_el = SubElement(urlset, "url")
+        SubElement(url_el, "loc").text = f"{SITE_URL}/admissions/{slug}"
+        if updated_at:
+            SubElement(url_el, "lastmod").text = updated_at.strftime("%Y-%m-%d")
+        SubElement(url_el, "changefreq").text = "weekly"
+        SubElement(url_el, "priority").text = "0.8"
+
     tree = ElementTree(urlset)
     tree.write(SITEMAP_PATH, xml_declaration=True, encoding="UTF-8")
 
-    return {"jobs_count": len(jobs), "path": SITEMAP_PATH}
+    return {"jobs_count": len(jobs), "exams_count": len(exams), "path": SITEMAP_PATH}

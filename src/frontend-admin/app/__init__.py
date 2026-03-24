@@ -628,16 +628,11 @@ def create_app():
                 flash("Failed to update exam.", "error")
             return redirect(f"/exams/{exam_id}/edit")
 
-        all_exams = current_app.api_client.get("/admin/exams", token=token, params={"limit": 100})
-        resp_detail = None
-        if all_exams.ok:
-            for e in all_exams.json().get("data", []):
-                if e["id"] == exam_id:
-                    resp_detail = e
-                    break
-        if not resp_detail:
+        resp_detail_req = current_app.api_client.get(f"/admin/exams/{exam_id}", token=token)
+        if not resp_detail_req.ok:
             flash("Exam not found.", "error")
             return redirect("/exams")
+        resp_detail = resp_detail_req.json()
 
         ac_resp = current_app.api_client.get(f"/exams/{exam_id}/admit-cards", token=token)
         ak_resp = current_app.api_client.get(f"/exams/{exam_id}/answer-keys", token=token)

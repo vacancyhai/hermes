@@ -1,0 +1,55 @@
+{% for exam in exams %}
+<div class="exam-card">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem">
+        <div style="flex:1;min-width:0">
+            <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.4rem">
+                <span class="stream-badge stream-{{ exam.stream }}">{{ exam.stream | replace('_', ' ') | title }}</span>
+                <span style="font-size:.7rem;background:#ede9fe;color:#5b21b6;padding:.15rem .5rem;border-radius:9999px;font-weight:600">{{ exam.exam_type | upper }}</span>
+                {% if exam.is_featured %}<span class="badge badge-featured">Featured</span>{% endif %}
+            </div>
+            <h3><a href="/admissions/{{ exam.slug }}">{{ exam.exam_name }}</a></h3>
+            <div class="meta">🏛 {{ exam.conducting_body }}{% if exam.counselling_body %} · Counselling: {{ exam.counselling_body }}{% endif %}</div>
+            {% if exam.short_description %}
+            <div style="font-size:.825rem;color:#64748b;line-height:1.45;margin-bottom:.35rem">
+                {{ exam.short_description[:140] }}{% if exam.short_description|length > 140 %}&hellip;{% endif %}
+            </div>
+            {% endif %}
+        </div>
+        <button
+            data-slug="{{ exam.slug }}"
+            data-title="{{ exam.exam_name | e }}"
+            onclick="(function(b){var u=window.location.origin+'/admissions/'+b.dataset.slug,t=b.dataset.title;if(navigator.share){navigator.share({title:t,url:u})}else{navigator.clipboard.writeText(u);var orig=b.textContent;b.textContent='\u2713 Copied';setTimeout(function(){b.textContent=orig},1800)}})(this)"
+            style="flex-shrink:0;font-size:.75rem;padding:.3rem .65rem;border-radius:.375rem;border:1px solid #ddd6fe;background:#fff;color:#7c3aed;cursor:pointer;white-space:nowrap">
+            Share
+        </button>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;margin-top:.35rem">
+        {% if exam.application_end %}<span class="meta-pill pill-red">⏰ Apply by {{ exam.application_end }}</span>{% endif %}
+        {% if exam.exam_date %}<span class="meta-pill pill-blue">📅 Exam: {{ exam.exam_date }}</span>{% endif %}
+        {% if exam.seats_info %}
+            {% if exam.seats_info.get('total_mbbs_seats') %}<span class="meta-pill pill-purple">{{ '{:,}'.format(exam.seats_info.total_mbbs_seats | int) }} MBBS seats</span>
+            {% elif exam.seats_info.get('iit_seats') %}<span class="meta-pill pill-purple">{{ '{:,}'.format(exam.seats_info.iit_seats | int) }} IIT seats</span>
+            {% elif exam.seats_info.get('total_nlu_seats') %}<span class="meta-pill pill-purple">{{ '{:,}'.format(exam.seats_info.total_nlu_seats | int) }} NLU seats</span>
+            {% endif %}
+        {% endif %}
+        {% if exam.fee_general %}<span style="font-size:.78rem;color:#64748b">Fee: ₹{{ exam.fee_general }}</span>{% endif %}
+    </div>
+</div>
+{% endfor %}
+
+{% if pagination.get('has_more') %}
+<div class="load-more">
+    <button class="btn btn-outline"
+            hx-get="/admissions/partial?offset={{ pagination.get('offset', 0) + pagination.get('limit', 20) }}{% if params.get('stream') %}&stream={{ params.stream }}{% endif %}{% if params.get('q') %}&q={{ params.q }}{% endif %}{% if params.get('exam_type') %}&exam_type={{ params.exam_type }}{% endif %}"
+            hx-target="#exam-list"
+            hx-swap="beforeend"
+            hx-indicator=".htmx-indicator">Load more</button>
+    <div class="htmx-indicator" style="color:#94a3b8;margin-top:.5rem">Loading…</div>
+</div>
+{% endif %}
+
+{% if not exams and pagination.get('offset', 0) == 0 %}
+<div class="empty">
+    <p>No exams found{% if params.get('q') %} for &ldquo;{{ params.q }}&rdquo;{% endif %}. Try a different stream or search.</p>
+</div>
+{% endif %}
