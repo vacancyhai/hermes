@@ -76,11 +76,24 @@
     .flash-info{background:#dbeafe;color:#1e40af;padding:.5rem .75rem;border-radius:.375rem;font-size:.85rem;margin-bottom:.75rem}
     .flash-error{background:#fee2e2;color:#991b1b;padding:.5rem .75rem;border-radius:.375rem;font-size:.85rem;margin-bottom:.75rem}
     @media(max-width:600px){.detail-grid{grid-template-columns:1fr}}
+    .doc-tabs{display:flex;gap:0;border-bottom:2px solid #e2e8f0;margin-bottom:1rem;overflow-x:auto}
+    .doc-tab{padding:.5rem 1.1rem;font-size:.875rem;font-weight:500;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;color:#64748b;background:none;border-left:none;border-right:none;border-top:none;white-space:nowrap}
+    .doc-tab.active{color:#1e3a5f;border-bottom-color:#1e3a5f;font-weight:600}
+    .doc-panel{display:none}
+    .doc-panel.active{display:block}
 </style>
 {% endblock %}
 
 {% block content %}
-<a href="/" class="back-link">&larr; Back to jobs</a>
+{% if job.job_type == 'admit_card' %}
+<a href="/admit-cards" class="back-link">&larr; Back to Admit Cards</a>
+{% elif job.job_type == 'answer_key' %}
+<a href="/answer-keys" class="back-link">&larr; Back to Answer Keys</a>
+{% elif job.job_type == 'result' %}
+<a href="/results" class="back-link">&larr; Back to Results</a>
+{% else %}
+<a href="/" class="back-link">&larr; Back to Jobs</a>
+{% endif %}
 
 {% with messages = get_flashed_messages(with_categories=true) %}
     {% for category, message in messages %}
@@ -234,6 +247,38 @@
 <div class="section">
     <h2>Official Notification</h2>
     <p><a href="{{ job.source_url }}" target="_blank" rel="noopener">View official notification &rarr;</a></p>
+</div>
+{% endif %}
+
+{% if job.job_type == 'latest_job' %}
+<div class="section" style="margin-top:2rem">
+    <h2>📋 Exam Documents</h2>
+    <p style="font-size:.85rem;color:#64748b;margin-bottom:.75rem">Admit cards, answer keys, and results linked to this recruitment.</p>
+
+    <div class="doc-tabs" x-data="{tab:'admit_cards'}">
+        <button class="doc-tab" :class="{active: tab==='admit_cards'}" @click="tab='admit_cards'">📄 Admit Cards</button>
+        <button class="doc-tab" :class="{active: tab==='answer_keys'}" @click="tab='answer_keys'">✏️ Answer Keys</button>
+        <button class="doc-tab" :class="{active: tab==='results'}" @click="tab='results'">🏆 Results</button>
+
+        <div x-show="tab==='admit_cards'" style="width:100%;padding-top:.75rem"
+             hx-get="/partials/jobs/{{ job.id }}/admit-cards"
+             hx-trigger="load"
+             hx-swap="innerHTML">
+            <span style="color:#94a3b8;font-size:.85rem">Loading…</span>
+        </div>
+        <div x-show="tab==='answer_keys'" style="width:100%;padding-top:.75rem"
+             hx-get="/partials/jobs/{{ job.id }}/answer-keys"
+             hx-trigger="intersect once"
+             hx-swap="innerHTML">
+            <span style="color:#94a3b8;font-size:.85rem">Loading…</span>
+        </div>
+        <div x-show="tab==='results'" style="width:100%;padding-top:.75rem"
+             hx-get="/partials/jobs/{{ job.id }}/results"
+             hx-trigger="intersect once"
+             hx-swap="innerHTML">
+            <span style="color:#94a3b8;font-size:.85rem">Loading…</span>
+        </div>
+    </div>
 </div>
 {% endif %}
 {% endblock %}

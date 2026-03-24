@@ -2,9 +2,11 @@
 {% for job in jobs %}
 <div class="job-card">
     <div class="badges">
-        <span class="badge badge-type">{{ job.job_type | replace('_', ' ') | title }}</span>
         {% if job.is_featured %}<span class="badge badge-featured">Featured</span>{% endif %}
         {% if job.is_urgent %}<span class="badge badge-urgent">Urgent</span>{% endif %}
+        {% if job.job_type == 'answer_key' and job.exam_details and job.exam_details.get('answer_key_type') %}
+        <span class="badge" style="background:#fef9c3;color:#713f12">{{ job.exam_details.get('answer_key_type') | title }}</span>
+        {% endif %}
     </div>
     <h3><a href="/jobs/{{ job.slug }}">{{ job.job_title }}</a></h3>
     <div class="meta">{{ job.organization }}{% if job.department %} &mdash; {{ job.department }}{% endif %}</div>
@@ -12,12 +14,26 @@
     <div class="meta">{{ job.short_description[:120] }}{% if job.short_description|length > 120 %}&hellip;{% endif %}</div>
     {% endif %}
     <div class="dates">
-        {% if job.total_vacancies %}Vacancies: {{ job.total_vacancies }} &nbsp;|&nbsp; {% endif %}
-        {% if job.qualification_level %}{{ job.qualification_level | title }} &nbsp;|&nbsp; {% endif %}
-        {% if job.application_end %}Apply by {{ job.application_end }}{% endif %}
+        {% if job.job_type == 'admit_card' %}
+            {% if job.exam_start %}📅 Exam: {{ job.exam_start }}{% endif %}
+            {% if job.exam_start and job.published_at %} &nbsp;|&nbsp; {% endif %}
+            {% if job.published_at %}Released: {{ job.published_at[:10] }}{% endif %}
+        {% elif job.job_type == 'answer_key' %}
+            {% if job.exam_start %}📅 Exam: {{ job.exam_start }}{% endif %}
+            {% if job.exam_start and job.published_at %} &nbsp;|&nbsp; {% endif %}
+            {% if job.published_at %}Released: {{ job.published_at[:10] }}{% endif %}
+        {% elif job.job_type == 'result' %}
+            {% if job.result_date %}🏆 Result: {{ job.result_date }}{% endif %}
+            {% if job.result_date and job.published_at %} &nbsp;|&nbsp; {% endif %}
+            {% if not job.result_date and job.published_at %}Released: {{ job.published_at[:10] }}{% endif %}
+        {% else %}
+            {% if job.total_vacancies %}Vacancies: {{ job.total_vacancies }} &nbsp;|&nbsp; {% endif %}
+            {% if job.qualification_level %}{{ job.qualification_level | title }} &nbsp;|&nbsp; {% endif %}
+            {% if job.application_end %}Apply by {{ job.application_end }}{% endif %}
+        {% endif %}
     </div>
     <div style="margin-top:.4rem;display:flex;gap:.35rem;">
-        <a style="font-size:.75rem;color:#25d366;border:1px solid #25d366;padding:.15rem .5rem;border-radius:.25rem;" href="https://wa.me/?text={{ (job.job_title + ' — Apply now! /jobs/' + job.slug) | urlencode }}" target="_blank" rel="noopener">WhatsApp</a>
+        <a style="font-size:.75rem;color:#25d366;border:1px solid #25d366;padding:.15rem .5rem;border-radius:.25rem;" href="https://wa.me/?text={{ (job.job_title + ' — Hermes /jobs/' + job.slug) | urlencode }}" target="_blank" rel="noopener">WhatsApp</a>
         <a style="font-size:.75rem;color:#0088cc;border:1px solid #0088cc;padding:.15rem .5rem;border-radius:.25rem;" href="https://t.me/share/url?url={{ ('/jobs/' + job.slug) | urlencode }}&text={{ job.job_title | urlencode }}" target="_blank" rel="noopener">Telegram</a>
     </div>
 </div>
@@ -26,7 +42,7 @@
 {% if pagination.get('has_more') %}
 <div class="load-more">
     <button class="btn btn-outline"
-            hx-get="/jobs?offset={{ pagination.get('offset', 0) + pagination.get('limit', 20) }}{% if params.get('q') %}&q={{ params.q }}{% endif %}{% if params.get('job_type') %}&job_type={{ params.job_type }}{% endif %}{% if params.get('qualification_level') %}&qualification_level={{ params.qualification_level }}{% endif %}"
+            hx-get="/jobs?offset={{ pagination.get('offset', 0) + pagination.get('limit', 20) }}{% if params.get('q') %}&q={{ params.q }}{% endif %}{% if params.get('job_type') %}&job_type={{ params.job_type }}{% endif %}{% if params.get('qualification_level') %}&qualification_level={{ params.qualification_level }}{% endif %}{% if params.get('organization') %}&organization={{ params.organization }}{% endif %}"
             hx-target="#job-list"
             hx-swap="beforeend"
             hx-indicator=".htmx-indicator">
@@ -38,6 +54,6 @@
 
 {% else %}
 <div class="empty">
-    <p>No jobs found{% if params.get('q') %} for &ldquo;{{ params.q }}&rdquo;{% endif %}. Try adjusting your filters.</p>
+    <p>No results found{% if params.get('q') %} for &ldquo;{{ params.q }}&rdquo;{% endif %}. Try adjusting your search.</p>
 </div>
 {% endif %}

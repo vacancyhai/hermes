@@ -1,0 +1,43 @@
+{% if docs %}
+{% for doc in docs %}
+<div style="border:1px solid #bbf7d0;border-radius:.4rem;padding:.75rem 1rem;margin-bottom:.6rem;background:#f0fdf4">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.5rem;flex-wrap:wrap">
+        <div style="flex:1;min-width:0">
+            <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.3rem">
+                {% if doc.phase_number %}
+                <span style="font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:#166534;background:#dcfce7;padding:.1rem .45rem;border-radius:9999px">Phase {{ doc.phase_number }}</span>
+                {% endif %}
+                <span style="font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:#14532d;background:#bbf7d0;padding:.1rem .45rem;border-radius:9999px">
+                    {{ doc.result_type | replace('_', ' ') | title }}
+                </span>
+            </div>
+            <div style="font-weight:500;color:#1e293b">{{ doc.title }}</div>
+            {% if doc.total_qualified %}
+            <div style="font-size:.8rem;color:#64748b;margin-top:.2rem">Qualified: {{ doc.total_qualified | int | string | replace(',','') }} candidates</div>
+            {% endif %}
+            {% if doc.cutoff_marks %}
+            <div style="font-size:.8rem;color:#64748b;margin-top:.3rem">
+                <strong>Cut-off:</strong>
+                {% for cat, marks in doc.cutoff_marks.items() %}
+                {{ cat | upper }}: {{ marks }}{% if not loop.last %} &nbsp;|&nbsp; {% endif %}
+                {% endfor %}
+            </div>
+            {% endif %}
+            {% if doc.notes %}
+            <div style="font-size:.8rem;color:#94a3b8;margin-top:.2rem">{{ doc.notes }}</div>
+            {% endif %}
+        </div>
+        {% if doc.download_url %}
+        <a href="{{ doc.download_url }}" target="_blank" rel="noopener"
+           style="display:inline-flex;align-items:center;gap:.3rem;padding:.4rem .85rem;background:#16a34a;color:#fff;border-radius:.375rem;font-size:.85rem;font-weight:500;white-space:nowrap;text-decoration:none">
+            📥 View Result
+        </a>
+        {% else %}
+        <span style="font-size:.8rem;color:#94a3b8;padding:.4rem 0">Cut-off only</span>
+        {% endif %}
+    </div>
+</div>
+{% endfor %}
+{% else %}
+<p style="color:#94a3b8;font-size:.875rem;padding:.5rem 0">No results declared yet. Check back after the exam.</p>
+{% endif %}

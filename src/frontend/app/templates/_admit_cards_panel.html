@@ -1,0 +1,28 @@
+{% if docs %}
+{% for doc in docs %}
+<div style="border:1px solid #bfdbfe;border-radius:.4rem;padding:.75rem 1rem;margin-bottom:.6rem;background:#eff6ff">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.5rem;flex-wrap:wrap">
+        <div>
+            {% if doc.phase_number %}
+            <span style="font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:#1e40af;background:#dbeafe;padding:.1rem .45rem;border-radius:9999px">Phase {{ doc.phase_number }}</span>
+            {% endif %}
+            <div style="font-weight:500;color:#1e293b;margin-top:.25rem">{{ doc.title }}</div>
+            <div style="font-size:.8rem;color:#64748b;margin-top:.2rem">
+                {% if doc.valid_from %}Open: {{ doc.valid_from }}{% endif %}
+                {% if doc.valid_from and doc.valid_until %} &ndash; {% endif %}
+                {% if doc.valid_until %}{{ doc.valid_until }}{% endif %}
+                {% if doc.notes %}
+                <br><span style="color:#94a3b8">{{ doc.notes }}</span>
+                {% endif %}
+            </div>
+        </div>
+        <a href="{{ doc.download_url }}" target="_blank" rel="noopener"
+           style="display:inline-flex;align-items:center;gap:.3rem;padding:.4rem .85rem;background:#2563eb;color:#fff;border-radius:.375rem;font-size:.85rem;font-weight:500;white-space:nowrap;text-decoration:none">
+            📥 Download
+        </a>
+    </div>
+</div>
+{% endfor %}
+{% else %}
+<p style="color:#94a3b8;font-size:.875rem;padding:.5rem 0">No admit cards released yet. Check back later.</p>
+{% endif %}

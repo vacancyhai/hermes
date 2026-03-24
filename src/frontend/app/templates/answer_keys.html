@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Latest Government Jobs — Hermes{% endblock %}
+{% block title %}Answer Keys — Hermes{% endblock %}
 
 {% block head %}
 <style>
@@ -21,30 +21,26 @@
     .job-card .dates{font-size:.8rem;color:#94a3b8}
     .load-more{text-align:center;padding:1rem 0}
     .empty{text-align:center;padding:3rem 0;color:#94a3b8}
-    .tab-link{padding:.5rem 1rem;font-size:.9rem;font-weight:500;border-bottom:2px solid transparent;margin-bottom:-2px;color:#64748b;display:inline-block;text-decoration:none}
-    .tab-link:hover{color:#2563eb;text-decoration:none}
-    .tab-link.active{border-bottom-color:#2563eb;color:#2563eb}
+    .section-banner{background:#fefce8;border:1px solid #fde68a;border-radius:.5rem;padding:.75rem 1rem;margin-bottom:1.25rem;font-size:.875rem;color:#713f12}
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="hero">
-    <h1>💼 Latest Government Jobs</h1>
-    <p>Find and track the latest government recruitment notifications.</p>
+    <h1>✏️ Answer Keys</h1>
+    <p>Official answer keys for government exam papers. Check provisional and final keys.</p>
 </div>
 
-<form action="/" method="get">
+<div class="section-banner">
+    📌 Provisional answer keys are released first. Raise objections within the deadline. Final keys are released after review.
+</div>
+
+<form action="/answer-keys" method="get">
     <div class="search-bar">
-        <input type="text" name="q" placeholder="Search jobs… e.g. SSC CGL, UPSC, Railway" value="{{ params.get('q', '') }}">
+        <input type="text" name="q" placeholder="Search answer keys… e.g. SSC CGL Tier 1 2025, IBPS PO" value="{{ params.get('q', '') }}">
         <button class="btn btn-primary" type="submit">Search</button>
     </div>
     <div class="filters">
-        <select name="qualification_level" onchange="this.form.submit()">
-            <option value="">All Qualifications</option>
-            {% for val, label in [('10th','10th Pass'),('12th','12th Pass'),('graduate','Graduate'),('postgraduate','Post Graduate'),('diploma','Diploma'),('phd','PhD')] %}
-            <option value="{{ val }}" {{ 'selected' if params.get('qualification_level')==val }}>{{ label }}</option>
-            {% endfor %}
-        </select>
         <select name="organization" onchange="this.form.submit()">
             <option value="">All Organisations</option>
             {% for org in ['SSC','UPSC','Railway','IBPS','NTA','DRDO','Army','Navy','Air Force'] %}
@@ -53,13 +49,6 @@
         </select>
     </div>
 </form>
-
-<div style="display:flex;gap:.5rem;margin-bottom:1.25rem;border-bottom:2px solid #e2e8f0">
-    <a href="/" class="tab-link {{ 'active' if not params.get('recommended') }}">All Jobs</a>
-    {% if session.get('token') %}
-    <a href="/?recommended=1" class="tab-link {{ 'active' if params.get('recommended') }}">✨ For You</a>
-    {% endif %}
-</div>
 
 <div id="job-list">
     {% include "_job_cards.html" %}

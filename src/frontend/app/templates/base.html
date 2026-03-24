@@ -33,6 +33,9 @@
         .htmx-indicator{display:none}
         .htmx-request .htmx-indicator{display:block}
         [x-cloak]{display:none!important}
+        .sec-nav a{padding:.5rem 1.1rem;font-size:.85rem;white-space:nowrap;color:#93afc5;border-bottom:2px solid transparent;font-weight:400;text-decoration:none;display:inline-block}
+        .sec-nav a:hover{color:#cbd5e1;text-decoration:none}
+        .sec-nav a.active{color:#fff;border-bottom-color:#60a5fa;font-weight:600}
     </style>
     {% block head %}{% endblock %}
 </head>
@@ -40,7 +43,6 @@
     <header>
         <a href="/">Hermes</a>
         <nav>
-            <a href="/">Jobs</a>
             <a href="/dashboard">Dashboard</a>
             {% if session.get('token') %}
                 <a href="/profile">Profile</a>
@@ -55,10 +57,17 @@
                 <a href="/logout">Logout</a>
             {% else %}
                 <a href="/login">Login</a>
-                <a href="/register">Register</a>
             {% endif %}
         </nav>
     </header>
+    <div style="background:#162d4a;border-top:1px solid #2d4f7f">
+        <nav class="sec-nav" style="max-width:960px;margin:0 auto;padding:0 1rem;display:flex;overflow-x:auto;scrollbar-width:none">
+            {% set _path = request.path %}
+            {% for href, label, icon in [('/', 'Jobs', '💼'), ('/admit-cards', 'Admit Cards', '📄'), ('/answer-keys', 'Answer Keys', '✏️'), ('/results', 'Results', '🏆')] %}
+            <a href="{{ href }}" class="{{ 'active' if _path == href }}">{{ icon }} {{ label }}</a>
+            {% endfor %}
+        </nav>
+    </div>
 
     <main>
         {% block content %}{% endblock %}

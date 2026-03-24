@@ -77,29 +77,59 @@ def create_app():
 
     @app.route("/")
     def index():
-        """Landing page — full page with initial job listing."""
+        """Landing page — latest_job listings only."""
         params = _job_params()
         token = session.get("token")
         if params.get("recommended") and token:
             resp = current_app.api_client.get("/jobs/recommended", token=token, params={"limit": params.get("limit", 20), "offset": params.get("offset", 0)})
         else:
             params.pop("recommended", None)
+            params["job_type"] = "latest_job"
             resp = current_app.api_client.get("/jobs", params=params)
         data = resp.json() if resp.ok else {"data": [], "pagination": {}}
         return render_template("index.html", jobs=data["data"], pagination=data.get("pagination", {}), params=params)
 
     @app.route("/jobs")
     def job_list_partial():
-        """HTMX partial — returns only the job card rows + load-more button."""
+        """HTMX partial — returns job card rows + load-more button."""
         params = _job_params()
         token = session.get("token")
         if params.get("recommended") and token:
             resp = current_app.api_client.get("/jobs/recommended", token=token, params={"limit": params.get("limit", 20), "offset": params.get("offset", 0)})
         else:
             params.pop("recommended", None)
+            if "job_type" not in params:
+                params["job_type"] = "latest_job"
             resp = current_app.api_client.get("/jobs", params=params)
         data = resp.json() if resp.ok else {"data": [], "pagination": {}}
         return render_template("_job_cards.html", jobs=data["data"], pagination=data.get("pagination", {}), params=params)
+
+    @app.route("/admit-cards")
+    def admit_cards():
+        """Admit cards section page."""
+        params = _job_params()
+        params["job_type"] = "admit_card"
+        resp = current_app.api_client.get("/jobs", params=params)
+        data = resp.json() if resp.ok else {"data": [], "pagination": {}}
+        return render_template("admit_cards.html", jobs=data["data"], pagination=data.get("pagination", {}), params=params)
+
+    @app.route("/answer-keys")
+    def answer_keys():
+        """Answer keys section page."""
+        params = _job_params()
+        params["job_type"] = "answer_key"
+        resp = current_app.api_client.get("/jobs", params=params)
+        data = resp.json() if resp.ok else {"data": [], "pagination": {}}
+        return render_template("answer_keys.html", jobs=data["data"], pagination=data.get("pagination", {}), params=params)
+
+    @app.route("/results")
+    def results():
+        """Results section page."""
+        params = _job_params()
+        params["job_type"] = "result"
+        resp = current_app.api_client.get("/jobs", params=params)
+        data = resp.json() if resp.ok else {"data": [], "pagination": {}}
+        return render_template("results.html", jobs=data["data"], pagination=data.get("pagination", {}), params=params)
 
     @app.route("/jobs/<slug>")
     def job_detail(slug):
@@ -109,6 +139,27 @@ def create_app():
             return render_template("404.html"), 404
         job = resp.json()
         return render_template("job_detail.html", job=job)
+
+    @app.route("/partials/jobs/<job_id>/admit-cards")
+    def partials_admit_cards(job_id):
+        """HTMX partial — per-phase admit cards panel for job_detail."""
+        resp = current_app.api_client.get(f"/jobs/{job_id}/admit-cards")
+        docs = resp.json() if resp.ok else []
+        return render_template("_admit_cards_panel.html", docs=docs)
+
+    @app.route("/partials/jobs/<job_id>/answer-keys")
+    def partials_answer_keys(job_id):
+        """HTMX partial — per-phase answer keys panel for job_detail."""
+        resp = current_app.api_client.get(f"/jobs/{job_id}/answer-keys")
+        docs = resp.json() if resp.ok else []
+        return render_template("_answer_keys_panel.html", docs=docs)
+
+    @app.route("/partials/jobs/<job_id>/results")
+    def partials_results(job_id):
+        """HTMX partial — per-phase results panel for job_detail."""
+        resp = current_app.api_client.get(f"/jobs/{job_id}/results")
+        docs = resp.json() if resp.ok else []
+        return render_template("_results_panel.html", docs=docs)
 
     # --- Application Dashboard ---
 
