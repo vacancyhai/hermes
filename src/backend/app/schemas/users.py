@@ -63,3 +63,5 @@ class NotificationPreferencesRequest(BaseModel):
     push: bool | None = None
     in_app: bool | None = None
     whatsapp: bool | None = None
+    telegram: bool | None = None
+    telegram_chat_id: str | None = None  # Telegram chat_id from the bot (required for delivery)

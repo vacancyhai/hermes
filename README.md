@@ -60,7 +60,7 @@ PostgreSQL and Redis are isolated inside Docker networks — never exposed to th
 ## Features
 
 - **Job Matching** — Scores jobs against user profile: reservation category eligibility (+4), state preference (+3), preferred categories (+2), education level (+2), age eligibility vs. `age_min`/`age_max` in job eligibility (+2), and recency bonus (+1); scoring engine in `services/matching.py`. The candidate pool is capped at the 500 most-recent active jobs (a known trade-off documented in the code).
-- **Multi-Channel Notifications** — In-app, FCM push (tokens stored in `user_profiles.fcm_tokens`, registered via `POST /users/me/fcm-token`), email (OCI Email Delivery), and WhatsApp (placeholder, activated when API token is set); instant mode for OTP/auth, staggered mode for job alerts with configurable delays
+- **Multi-Channel Notifications** — In-app, FCM push (tokens stored in `user_profiles.fcm_tokens`), email (OCI Email Delivery), WhatsApp (placeholder), and **Telegram** (Bot API `sendMessage`; activated when `TELEGRAM_BOT_TOKEN` is set, user stores their chat_id via preferences API); instant mode for OTP/auth, staggered mode for job alerts with configurable delays per channel
 - **Application Tracker** — Users save jobs, set priority, add notes, and get
   deadline reminders
 - **Smart Reminders** — Celery Beat tasks fire automatic alerts at 7, 3, and

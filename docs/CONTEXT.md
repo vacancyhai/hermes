@@ -92,6 +92,7 @@ PostgreSQL 16 with 10 tables:
 All migrations have been consolidated into a single file:
 
 - `0001_initial_schema.py` — Complete schema for all 9 tables in a single migration (merged from the former 0001–0011 incremental files)
+- `0002_add_telegram_channel.py` — Adds `telegram` to `ck_delivery_channel` constraint on `notification_delivery_log`
 
 **Fresh install:** `alembic upgrade head` creates all 9 tables in one step.
 
@@ -105,7 +106,7 @@ docker compose exec backend alembic stamp 0001
 - `ck_applications_status`: applied, admit_card_released, exam_completed, result_pending, selected, rejected, waiting_list
 - `ck_notifications_priority`: low, medium, high
 - `ck_devices_device_type`: web, pwa, android, ios
-- `ck_delivery_channel`: in_app, push, email, whatsapp
+- `ck_delivery_channel`: in_app, push, email, whatsapp, telegram
 - `ck_delivery_status`: pending, sent, delivered, failed, skipped
 - `ck_profiles_gender`: Male, Female, Other (capitalized)
 - `ck_profiles_category`: General, OBC, SC, ST, EWS, EBC
@@ -140,13 +141,13 @@ src/backend/
       auth.py, jobs.py, users.py, applications.py, notifications.py
     services/
       matching.py        # Job scoring: category eligibility +4, state +3, preferred_categories +2, education +2, age +2, recency +1; CANDIDATE_LIMIT=500 caps DB fetch (500 most-recent active jobs scored in-memory)
-      notifications.py   # NotificationService — instant/staggered delivery (in-app + FCM + email + WhatsApp); FCM tokens read from user_profiles.fcm_tokens; invalid tokens auto-cleaned
+      notifications.py   # NotificationService — instant/staggered delivery (in-app + FCM + email + WhatsApp + Telegram); FCM tokens read from user_profiles.fcm_tokens; Telegram via Bot API (sendMessage)
       pdf_extractor.py   # PDF text extraction (pdfplumber)
       ai_extractor.py    # AI structured extraction (Anthropic Claude API)
     tasks/
       notifications.py   # smart_notify (instant/staggered), deliver_delayed_email, deliver_delayed_whatsapp,
-                         # send_deadline_reminders, send_new_job_notifications, send_email_notification,
-                         # notify_priority_subscribers
+                         # deliver_delayed_telegram, send_deadline_reminders, send_new_job_notifications,
+                         # send_email_notification, notify_priority_subscribers
       cleanup.py         # purge_expired_notifications, purge_expired_admin_logs, purge_soft_deleted_jobs
       jobs.py            # close_expired_job_listings (sets status='expired', not 'cancelled'), extract_job_from_pdf (deletes PDF unless PDF_KEEP_AFTER_EXTRACTION=true)
       seo.py             # generate_sitemap
@@ -228,6 +229,7 @@ docs/
 - Internal JWT `user_type` claim: `"user"` | `"admin"` for scope isolation
 - Redis keys: `hermes:blocklist:{jti}` (prefix from `REDIS_KEY_PREFIX` setting). CSRF uses Flask session (not Redis).
 - Access token: 15 min. Refresh: 7 days. JTI blocklisted on logout + refresh rotation. Logout accepts optional `refresh_token` in body to blocklist it too.
+- Telegram: `TELEGRAM_BOT_TOKEN` env var; user stores their chat_id via `PUT /users/me/notification-preferences {"telegram_chat_id": "..."}`.
 - Frontends store `refresh_token` in session; auto-refresh on 401 via `_try_refresh()` helper.
 - Dependency tuple: `get_current_user()` → `(User, payload_dict)`, `get_current_admin()` → `(AdminUser, payload_dict)`
 - Firebase credentials: `FIREBASE_CREDENTIALS_PATH` env var (shared by Auth verification + FCM push)

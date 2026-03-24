@@ -220,7 +220,14 @@ All notification endpoints require a user JWT.
 | DELETE | `/users/me/fcm-token` | User | Unregister FCM token |
 | PUT | `/users/me/notification-preferences` | User | Update notification channel preferences |
 
-**Notification preferences fields:** `email` (bool), `push` (bool), `in_app` (bool), `whatsapp` (bool). All default to enabled if unset. Send `false` to disable a channel.
+**Notification preferences fields:** `email` (bool), `push` (bool), `in_app` (bool), `whatsapp` (bool), `telegram` (bool). All default to enabled if unset. Send `false` to disable a channel.
+
+**Setting a Telegram chat_id** (required before Telegram messages can be delivered):
+```json
+PUT /api/v1/users/me/notification-preferences
+{ "telegram_chat_id": "123456789" }
+```
+Users must first message the bot on Telegram to get their chat_id. The chat_id is stored nested in `notification_preferences.telegram.chat_id`.
 
 **FCM token registration body:**
 ```json
@@ -236,12 +243,12 @@ All notifications are routed through `NotificationService` via the `smart_notify
 
 ### Two Delivery Modes
 
-| Mode | In-app + Push | Email | WhatsApp | Use Case |
-|------|--------------|-------|----------|----------|
-| **instant** | T+0 | T+0 | T+0 | OTP, welcome, urgent alerts |
-| **staggered** | T+0 | T+15min* | T+1hr* | Job alerts, deadline reminders, admit cards |
+| Mode | In-app + Push | Email | WhatsApp | Telegram | Use Case |
+|------|--------------|-------|----------|----------|---------|
+| **instant** | T+0 | T+0 | T+0 | T+0 | OTP, welcome, urgent alerts |
+| **staggered** | T+0 | T+15min* | T+1hr* | T+15min* | Job alerts, deadline reminders, admit cards |
 
-*Configurable via `NOTIFY_EMAIL_DELAY` and `NOTIFY_WHATSAPP_DELAY` env vars (in seconds).
+*Configurable via `NOTIFY_EMAIL_DELAY`, `NOTIFY_WHATSAPP_DELAY`, `NOTIFY_TELEGRAM_DELAY` env vars (in seconds).
 
 All channels always deliver — staggered just adds a time gap so the user isn't bombarded simultaneously.
 
@@ -253,6 +260,7 @@ All channels always deliver — staggered just adds a time gap so the user isn't
 | FCM Push | All tokens in `user_profiles.fcm_tokens` | Tokens registered via `POST /users/me/fcm-token`; invalid tokens auto-removed on send failure |
 | Email | If user has `notification_preferences.email` not set to `false` | Subject to OCI 3 000/day soft limit |
 | WhatsApp | If user has `notification_preferences.whatsapp` not set to `false` | Placeholder until `WHATSAPP_API_TOKEN` is configured |
+| Telegram | If user has chat_id set in `notification_preferences.telegram.chat_id` and `notification_preferences.telegram.enabled` not `false` | Requires `TELEGRAM_BOT_TOKEN`; uses Bot API `sendMessage` with Markdown |}
 
 Every delivery attempt is logged in `notification_delivery_log` with status (pending/sent/delivered/failed/skipped).
 

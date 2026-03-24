@@ -297,7 +297,7 @@ def upgrade() -> None:
         sa.Column("attempted_at", sa.DateTime(timezone=True)),
         sa.Column("delivered_at", sa.DateTime(timezone=True)),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
-        sa.CheckConstraint("channel IN ('in_app','push','email','whatsapp')", name="ck_delivery_channel"),
+        sa.CheckConstraint("channel IN ('in_app','push','email','whatsapp','telegram')", name="ck_delivery_channel"),
         sa.CheckConstraint(
             "status IN ('pending','sent','delivered','failed','skipped')",
             name="ck_delivery_status",

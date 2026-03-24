@@ -10,11 +10,11 @@ All schema changes are in a single consolidated migration file:
 src/backend/migrations/versions/0001_initial_schema.py
 ```
 
-**Fresh install:** `alembic upgrade head` creates all 9 tables in one step.
+**Fresh install:** `alembic upgrade head` creates all 9 tables and applies `0002_add_telegram_channel` in one step.
 
-**Existing database** (had the former 0001–0011 incremental migrations applied):
+**Existing database** (had the former 0001–0011 applied, already stamped to 0001):
 ```bash
-docker compose exec backend alembic stamp 0001
+docker exec -w /app -e PYTHONPATH=/app hermes_backend alembic upgrade head
 ```
 
 ---
@@ -189,8 +189,8 @@ Channel-level delivery tracking.
 |--------|------|-------------|
 | `id` | UUID (PK) | Unique identifier |
 | `notification_id` | UUID (FK) | Parent notification |
-| `channel` | String(20) | `email`, `push`, `in_app` |
-| `status` | String(20) | `pending`, `sent`, `failed`, `delivered` |
+| `channel` | String(20) | `ck_delivery_channel`: in_app, push, email, whatsapp, telegram |
+| `status` | String(20) | `ck_delivery_status`: pending, sent, delivered, failed, skipped |
 | `device_id` | UUID (FK) | Targeted device (for push) |
 | `error_message` | Text | Failure reason (from OCI/FCM) |
 | `delivered_at` | DateTime | Verified delivery time |

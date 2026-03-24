@@ -241,8 +241,20 @@ async def update_notification_preferences(
 
     prefs = dict(profile.notification_preferences or {})
     update_data = body.model_dump(exclude_unset=True)
+
+    # telegram_chat_id is stored nested inside prefs["telegram"] dict
+    chat_id = update_data.pop("telegram_chat_id", None)
+    if chat_id is not None:
+        tg = prefs.get("telegram") if isinstance(prefs.get("telegram"), dict) else {}
+        tg["chat_id"] = chat_id
+        prefs["telegram"] = tg
+
     for key, value in update_data.items():
-        prefs[key] = value
+        if key == "telegram" and isinstance(prefs.get("telegram"), dict):
+            # Preserve existing chat_id when only toggling enabled/disabled
+            prefs["telegram"]["enabled"] = value
+        else:
+            prefs[key] = value
 
     profile.notification_preferences = prefs
     logger.info("notification_preferences_updated", extra={"user_id": str(user.id), "channels": list(update_data.keys())})

@@ -61,9 +61,13 @@ class Settings(BaseSettings):
     SITE_URL: str = "http://localhost:8080"
     SITEMAP_PATH: str = "/app/sitemap.xml"
 
+    # Telegram Bot API
+    TELEGRAM_BOT_TOKEN: str = ""        # Set to activate Telegram notifications
+
     # Notification delivery delays (staggered mode, in seconds)
     NOTIFY_EMAIL_DELAY: int = 900       # 15 minutes
     NOTIFY_WHATSAPP_DELAY: int = 3600   # 1 hour
+    NOTIFY_TELEGRAM_DELAY: int = 900    # 15 minutes
 
     # CORS
     CORS_ORIGINS: list[str] = ["http://localhost:8080", "http://localhost:8081"]
