@@ -6,7 +6,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
 
-JOB_TYPES = Literal["latest_job", "result", "admit_card", "answer_key", "admission", "yojana"]
+JOB_TYPES = Literal["latest_job", "result", "admit_card", "answer_key"]
 EMPLOYMENT_TYPES = Literal["permanent", "temporary", "contract", "apprentice"]
 QUALIFICATION_LEVELS = Literal["10th", "12th", "diploma", "graduate", "postgraduate", "phd"]
 JOB_STATUSES = Literal["draft", "active", "expired", "cancelled", "upcoming"]
@@ -179,3 +179,126 @@ class JobListItem(BaseModel):
 class PaginatedResponse(BaseModel):
     data: list
     pagination: dict
+
+
+# ── Admit Card schemas ────────────────────────────────────────────────────────
+
+class AdmitCardCreateRequest(BaseModel):
+    phase_number: int | None = Field(None, ge=1, le=10)
+    title: str = Field(min_length=1, max_length=255)
+    download_url: str = Field(min_length=1)
+    valid_from: date | None = None
+    valid_until: date | None = None
+    notes: str | None = None
+    published_at: datetime | None = None
+
+
+class AdmitCardUpdateRequest(BaseModel):
+    phase_number: int | None = None
+    title: str | None = Field(None, min_length=1, max_length=255)
+    download_url: str | None = None
+    valid_from: date | None = None
+    valid_until: date | None = None
+    notes: str | None = None
+    published_at: datetime | None = None
+
+
+class AdmitCardResponse(BaseModel):
+    id: uuid.UUID
+    job_id: uuid.UUID
+    phase_number: int | None
+    title: str
+    download_url: str
+    valid_from: date | None
+    valid_until: date | None
+    notes: str | None
+    published_at: datetime | None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+# ── Answer Key schemas ────────────────────────────────────────────────────────
+
+ANSWER_KEY_TYPES = Literal["provisional", "final"]
+
+
+class AnswerKeyCreateRequest(BaseModel):
+    phase_number: int | None = Field(None, ge=1, le=10)
+    title: str = Field(min_length=1, max_length=255)
+    answer_key_type: ANSWER_KEY_TYPES = "provisional"
+    files: list[dict] = Field(default_factory=list)
+    objection_url: str | None = None
+    objection_deadline: date | None = None
+    published_at: datetime | None = None
+
+
+class AnswerKeyUpdateRequest(BaseModel):
+    phase_number: int | None = None
+    title: str | None = Field(None, min_length=1, max_length=255)
+    answer_key_type: ANSWER_KEY_TYPES | None = None
+    files: list[dict] | None = None
+    objection_url: str | None = None
+    objection_deadline: date | None = None
+    published_at: datetime | None = None
+
+
+class AnswerKeyResponse(BaseModel):
+    id: uuid.UUID
+    job_id: uuid.UUID
+    phase_number: int | None
+    title: str
+    answer_key_type: str
+    files: list
+    objection_url: str | None
+    objection_deadline: date | None
+    published_at: datetime | None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+# ── Result schemas ────────────────────────────────────────────────────────────
+
+RESULT_TYPES = Literal["shortlist", "cutoff", "merit_list", "final"]
+
+
+class ResultCreateRequest(BaseModel):
+    phase_number: int | None = Field(None, ge=1, le=10)
+    title: str = Field(min_length=1, max_length=255)
+    result_type: RESULT_TYPES
+    download_url: str | None = None
+    cutoff_marks: dict | None = None
+    total_qualified: int | None = Field(None, ge=0)
+    notes: str | None = None
+    published_at: datetime | None = None
+
+
+class ResultUpdateRequest(BaseModel):
+    phase_number: int | None = None
+    title: str | None = Field(None, min_length=1, max_length=255)
+    result_type: RESULT_TYPES | None = None
+    download_url: str | None = None
+    cutoff_marks: dict | None = None
+    total_qualified: int | None = Field(None, ge=0)
+    notes: str | None = None
+    published_at: datetime | None = None
+
+
+class ResultResponse(BaseModel):
+    id: uuid.UUID
+    job_id: uuid.UUID
+    phase_number: int | None
+    title: str
+    result_type: str
+    download_url: str | None
+    cutoff_marks: dict | None
+    total_qualified: int | None
+    notes: str | None
+    published_at: datetime | None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}

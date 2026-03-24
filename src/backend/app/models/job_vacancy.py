@@ -59,3 +59,6 @@ class JobVacancy(Base):
 
     # Relationships
     applications = relationship("UserJobApplication", back_populates="job")
+    admit_cards = relationship("JobAdmitCard", back_populates="job", cascade="all, delete-orphan", order_by="JobAdmitCard.phase_number")
+    answer_keys = relationship("JobAnswerKey", back_populates="job", cascade="all, delete-orphan", order_by="JobAnswerKey.phase_number")
+    results = relationship("JobResult", back_populates="job", cascade="all, delete-orphan", order_by="JobResult.phase_number")

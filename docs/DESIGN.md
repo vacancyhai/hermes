@@ -299,7 +299,7 @@ CREATE TABLE job_vacancies (
   organization          VARCHAR(255) NOT NULL,
   department            VARCHAR(255),
   job_type              VARCHAR(50) NOT NULL DEFAULT 'latest_job'
-                          CHECK (job_type IN ('latest_job','result','admit_card','answer_key','admission','yojana')),
+                          CHECK (job_type IN ('latest_job', 'result', 'admit_card', 'answer_key')),
   employment_type       VARCHAR(50) DEFAULT 'permanent'
                           CHECK (employment_type IN ('permanent','temporary','contract','apprentice')),
   qualification_level   VARCHAR(50),
@@ -504,23 +504,85 @@ CREATE INDEX idx_delivery_notification ON notification_delivery_log (notificatio
 CREATE INDEX idx_delivery_user_channel ON notification_delivery_log (user_id, channel);
 ```
 
-### Future Expansion Tables
+#### 9. `job_admit_cards`
 
-These tables support features beyond the core job-notification system. They
-should be added only when those features are actively being built.
+Per-phase admit card download links for tracked jobs.
+
+```sql
+CREATE TABLE job_admit_cards (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  job_id        UUID NOT NULL REFERENCES job_vacancies(id) ON DELETE CASCADE,
+  phase_number  SMALLINT,           -- matches selection_process[?].phase; NULL = not phase-specific
+  title         VARCHAR(255) NOT NULL,
+  download_url  TEXT NOT NULL,
+  valid_from    DATE,
+  valid_until   DATE,
+  notes         TEXT,
+  published_at  TIMESTAMP WITH TIME ZONE,
+  created_at    TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  updated_at    TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_admit_cards_job ON job_admit_cards (job_id, phase_number);
+```
+
+#### 10. `job_answer_keys`
+
+Per-phase answer keys. Supports provisional/final and multiple paper sets per exam.
+
+```sql
+CREATE TABLE job_answer_keys (
+  id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  job_id              UUID NOT NULL REFERENCES job_vacancies(id) ON DELETE CASCADE,
+  phase_number        SMALLINT,
+  title               VARCHAR(255) NOT NULL,
+  answer_key_type     VARCHAR(20) NOT NULL DEFAULT 'provisional'
+                        CHECK (answer_key_type IN ('provisional', 'final')),
+  files               JSONB NOT NULL DEFAULT '[]',
+  -- [{"label": "Set A", "url": "..."}, {"label": "Set B", "url": "..."}]
+  objection_url       TEXT,
+  objection_deadline  DATE,
+  published_at        TIMESTAMP WITH TIME ZONE,
+  created_at          TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  updated_at          TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_answer_keys_job  ON job_answer_keys (job_id, phase_number);
+CREATE INDEX idx_answer_keys_type ON job_answer_keys (job_id, answer_key_type);
+```
+
+#### 11. `job_results`
+
+Per-phase results with cutoff marks and download links.
+
+```sql
+CREATE TABLE job_results (
+  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  job_id           UUID NOT NULL REFERENCES job_vacancies(id) ON DELETE CASCADE,
+  phase_number     SMALLINT,
+  title            VARCHAR(255) NOT NULL,
+  result_type      VARCHAR(20) NOT NULL
+                     CHECK (result_type IN ('shortlist','cutoff','merit_list','final')),
+  download_url     TEXT,
+  cutoff_marks     JSONB,   -- {"general": 140.5, "obc": 135.0, "sc": 120.0, ...}
+  total_qualified  INTEGER,
+  notes            TEXT,
+  published_at     TIMESTAMP WITH TIME ZONE,
+  created_at       TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  updated_at       TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_results_job ON job_results (job_id, phase_number);
+```
+
+### Future Expansion Tables
 
 | Table              | Purpose                                          |
 | ------------------ | ------------------------------------------------ |
-| `results`          | Exam result records linked to `job_vacancies`    |
-| `admit_cards`      | Admit card releases linked to `job_vacancies`    |
-| `answer_keys`      | Answer key releases linked to `job_vacancies`    |
-| `admissions`       | University/college admission listings            |
-| `yojanas`          | Government scheme listings                       |
 | `board_results`    | Board exam results (CBSE, state boards)          |
 | `categories`       | Organization/department taxonomy with hierarchy  |
 | `page_views`       | Per-entity view analytics                        |
 | `search_logs`      | Search query analytics and click tracking        |
-| `user_org_follows` | Many-to-many: users following organizations      |
 | `role_permissions` | Dynamic RBAC permission overrides (if needed)    |
 | `access_audit_logs`| Audit trail for permission changes               |
 
@@ -563,6 +625,7 @@ User auth is fully handled by the Firebase JS SDK on the client. The backend onl
 | POST   | `/api/v1/jobs`                     | Create job               | Admin          |
 | PUT    | `/api/v1/jobs/:id`                 | Update job               | Admin/Operator |
 | DELETE | `/api/v1/jobs/:id`                 | Soft delete job          | Admin          |
+| PUT    | `/api/v1/jobs/:id/approve`         | Approve draft → active    | Operator       |
 
 ### Applications
 
@@ -593,6 +656,15 @@ User auth is fully handled by the Firebase JS SDK on the client. The backend onl
 | POST   | `/api/v1/admin/jobs`                | Create job              | Admin  |
 | PUT    | `/api/v1/admin/jobs/:id`            | Update job              | Admin  |
 | DELETE | `/api/v1/admin/jobs/:id`            | Delete job              | Admin  |
+| POST   | `/api/v1/admin/jobs/:id/admit-cards`              | Add admit card     | Operator |
+| PUT    | `/api/v1/admin/jobs/:id/admit-cards/:doc_id`      | Update admit card  | Operator |
+| DELETE | `/api/v1/admin/jobs/:id/admit-cards/:doc_id`      | Delete admit card  | Operator |
+| POST   | `/api/v1/admin/jobs/:id/answer-keys`              | Add answer key     | Operator |
+| PUT    | `/api/v1/admin/jobs/:id/answer-keys/:doc_id`      | Update answer key  | Operator |
+| DELETE | `/api/v1/admin/jobs/:id/answer-keys/:doc_id`      | Delete answer key  | Operator |
+| POST   | `/api/v1/admin/jobs/:id/results`                  | Add result         | Operator |
+| PUT    | `/api/v1/admin/jobs/:id/results/:doc_id`          | Update result      | Operator |
+| DELETE | `/api/v1/admin/jobs/:id/results/:doc_id`          | Delete result      | Operator |
 | GET    | `/api/v1/admin/users`               | List all users          | Admin  |
 | GET    | `/api/v1/admin/users/:id`           | User details            | Admin  |
 | PUT    | `/api/v1/admin/users/:id/status`    | Suspend/activate user   | Admin  |

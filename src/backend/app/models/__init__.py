@@ -10,3 +10,6 @@ from app.models.admin_user import AdminUser  # noqa: F401
 from app.models.admin_log import AdminLog  # noqa: F401
 from app.models.user_device import UserDevice  # noqa: F401
 from app.models.notification_delivery_log import NotificationDeliveryLog  # noqa: F401
+from app.models.job_admit_card import JobAdmitCard  # noqa: F401
+from app.models.job_answer_key import JobAnswerKey  # noqa: F401
+from app.models.job_result import JobResult  # noqa: F401

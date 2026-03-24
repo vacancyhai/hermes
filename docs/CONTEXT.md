@@ -83,18 +83,22 @@ PostgreSQL 16 with 10 tables:
 | `job_vacancies` | 30+ columns, JSONB fields, tsvector GENERATED column for FTS |
 | `user_job_applications` | Application tracking with status, notes, reminders JSONB |
 | `notifications` | In-app notifications with expiry (90 days) |
-| `notification_delivery_log` | Per-channel delivery tracking (in_app/push/email/whatsapp) with status |
+| `notification_delivery_log` | Per-channel delivery tracking (in_app/push/email/whatsapp/telegram) with status |
 | `admin_logs` | Audit trail with expiry (30 days) |
+| `job_admit_cards` | Per-phase admit card links for tracked jobs |
+| `job_answer_keys` | Per-phase answer keys (provisional/final, multi-paper JSONB `files`) |
+| `job_results` | Per-phase results (shortlist/cutoff/merit_list/final, JSONB `cutoff_marks`) |
 | `alembic_version` | Migration state |
 
 ### Migrations
 
 All migrations have been consolidated into a single file:
 
-- `0001_initial_schema.py` — Complete schema for all 9 tables in a single migration (merged from the former 0001–0011 incremental files)
+- `0001_initial_schema.py` — Complete schema for all 12 tables in a single migration
 - `0002_add_telegram_channel.py` — Adds `telegram` to `ck_delivery_channel` constraint on `notification_delivery_log`
+- `0003_job_documents_tables.py` — Removes `admission`/`yojana` from `ck_jobs_job_type`; creates `job_admit_cards`, `job_answer_keys`, `job_results`
 
-**Fresh install:** `alembic upgrade head` creates all 9 tables in one step.
+**Fresh install:** `alembic upgrade head` creates all 12 tables in one step.
 
 **Existing database** (had 0001–0011 applied): stamp to mark as current before running any future migrations:
 ```bash
@@ -108,6 +112,9 @@ docker compose exec backend alembic stamp 0001
 - `ck_devices_device_type`: web, pwa, android, ios
 - `ck_delivery_channel`: in_app, push, email, whatsapp, telegram
 - `ck_delivery_status`: pending, sent, delivered, failed, skipped
+- `ck_jobs_job_type`: latest_job, result, admit_card, answer_key
+- `ck_answer_key_type`: provisional, final
+- `ck_result_type`: shortlist, cutoff, merit_list, final
 - `ck_profiles_gender`: Male, Female, Other (capitalized)
 - `ck_profiles_category`: General, OBC, SC, ST, EWS, EBC
 
@@ -136,14 +143,22 @@ src/backend/
       admin.py           # /api/v1/admin/* — job CRUD, approve, user mgmt, dashboard, analytics, logs
       applications.py    # /api/v1/applications/* — full CRUD (stats, list, track, get, update, delete)
       notifications.py   # /api/v1/notifications/* — list, count, read, read-all, delete
+      job_documents.py   # /api/v1/jobs/{id}/admit-cards|answer-keys|results (public GET)
+                         # /api/v1/admin/jobs/{id}/admit-cards|answer-keys|results (admin CRUD)
       health.py          # /api/v1/health
     schemas/
       auth.py, jobs.py, users.py, applications.py, notifications.py
     services/
       matching.py        # Job scoring: category eligibility +4, state +3, preferred_categories +2, education +2, age +2, recency +1; CANDIDATE_LIMIT=500 caps DB fetch (500 most-recent active jobs scored in-memory)
-      notifications.py   # NotificationService — instant/staggered delivery (in-app + FCM + email + WhatsApp + Telegram); FCM tokens read from user_profiles.fcm_tokens; Telegram via Bot API (sendMessage)
+      notifications.py   # NotificationService — instant/staggered delivery (in-app + FCM + email + WhatsApp + Telegram)
       pdf_extractor.py   # PDF text extraction (pdfplumber)
       ai_extractor.py    # AI structured extraction (Anthropic Claude API)
+    models/
+      job_vacancy.py, user.py, user_profile.py, application.py, notification.py,
+      admin_user.py, admin_log.py, user_device.py, notification_delivery_log.py
+      job_admit_card.py  # JobAdmitCard — job_admit_cards table
+      job_answer_key.py  # JobAnswerKey — job_answer_keys table
+      job_result.py      # JobResult — job_results table
     tasks/
       notifications.py   # smart_notify (instant/staggered), deliver_delayed_email, deliver_delayed_whatsapp,
                          # deliver_delayed_telegram, send_deadline_reminders, send_new_job_notifications,

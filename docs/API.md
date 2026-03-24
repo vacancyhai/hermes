@@ -506,6 +506,47 @@ file: <pdf_file>
 
 ---
 
+## Job Documents (Admit Cards, Answer Keys, Results)
+
+### Public (read-only, active jobs only)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/jobs/{job_id}/admit-cards` | List all admit cards for a job, ordered by phase |
+| GET | `/jobs/{job_id}/answer-keys` | List all answer keys for a job |
+| GET | `/jobs/{job_id}/results` | List all results for a job |
+
+### Admin CRUD (operator+)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/admin/jobs/{job_id}/admit-cards` | Add admit card to a job |
+| PUT | `/admin/jobs/{job_id}/admit-cards/{doc_id}` | Update admit card |
+| DELETE | `/admin/jobs/{job_id}/admit-cards/{doc_id}` | Delete admit card |
+| POST | `/admin/jobs/{job_id}/answer-keys` | Add answer key |
+| PUT | `/admin/jobs/{job_id}/answer-keys/{doc_id}` | Update answer key |
+| DELETE | `/admin/jobs/{job_id}/answer-keys/{doc_id}` | Delete answer key |
+| POST | `/admin/jobs/{job_id}/results` | Add result |
+| PUT | `/admin/jobs/{job_id}/results/{doc_id}` | Update result |
+| DELETE | `/admin/jobs/{job_id}/results/{doc_id}` | Delete result |
+
+**`phase_number`** (optional integer 1–10) maps to the corresponding entry in the parent job's `selection_process` JSONB array — e.g. phase 1 = "Tier-1 CBT". `NULL` means the document applies to the whole job (e.g. a final merit list).
+
+**Answer key `files` field** is a JSONB array of paper sets:
+```json
+[{"label": "Set A", "url": "https://..."}, {"label": "Set B", "url": "https://..."}]
+```
+
+**Result `cutoff_marks` field:**
+```json
+{"general": 140.5, "obc": 135.0, "sc": 120.0, "st": 115.0, "ews": 138.0}
+```
+
+**`result_type`** values: `shortlist` | `cutoff` | `merit_list` | `final`
+**`answer_key_type`** values: `provisional` | `final`
+
+---
+
 ## PWA Support
 
 The user frontend supports Progressive Web App features:
