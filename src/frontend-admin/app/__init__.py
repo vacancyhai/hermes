@@ -1,20 +1,33 @@
 """Hermes Admin Frontend — Flask + Jinja2 + HTMX.
 
 Routes:
-  /health              — Health check
-  /                    — Dashboard (stats, quick links)
-  /login               — Admin login
-  /logout              — Clear session
-  /jobs                — Job management (list, search, status filter)
-  /jobs/list           — HTMX partial for job table rows
-  /jobs/upload         — Upload PDF for AI extraction
-  /jobs/<id>/review    — Review/edit draft job, approve or update
-  /jobs/<id>/approve   — Approve draft → active
-  /users               — User management (list, search, status filter)
-  /users/list          — HTMX partial for user table rows
-  /users/<id>/suspend  — Toggle user suspend/activate
-  /logs                — Admin audit log viewer
-  /logs/list           — HTMX partial for log rows
+  /health                         — Health check
+  /                               — Dashboard (stats, quick links)
+  /login                          — Admin login
+  /logout                         — Clear session
+  /jobs                           — Job management (list, search, status filter)
+  /jobs/list                      — HTMX partial for job table rows
+  /jobs/upload                    — Upload PDF for AI extraction
+  /jobs/<id>/review               — Review/edit draft job, approve or update
+  /jobs/<id>/approve              — Approve draft → active
+  /jobs/<id>/docs/admit-cards                — POST: add admit card to job
+  /jobs/<id>/docs/answer-keys     — POST: add answer key to job
+  /jobs/<id>/docs/results         — POST: add result to job
+  /jobs/<id>/docs/<type>/<doc_id>/delete — POST: delete doc from job
+  /exams                          — Entrance exam management (list, search)
+  /exams/list                     — HTMX partial for exam table rows
+  /exams/new                      — Create entrance exam (GET/POST)
+  /exams/<id>/edit                — Edit entrance exam (GET/POST)
+  /exams/<id>/delete              — POST: delete entrance exam
+  /exams/<id>/docs/admit-cards    — POST: add admit card to exam
+  /exams/<id>/docs/answer-keys    — POST: add answer key to exam
+  /exams/<id>/docs/results        — POST: add result to exam
+  /exams/<id>/docs/<type>/<doc_id>/delete — POST: delete doc from exam
+  /users                          — User management (list, search, status filter)
+  /users/list                     — HTMX partial for user table rows
+  /users/<id>/suspend             — Toggle user suspend/activate
+  /logs                           — Admin audit log viewer
+  /logs/list                      — HTMX partial for log rows
 """
 
 import base64
@@ -388,6 +401,332 @@ def create_app():
         new_status = request.form.get("status", "suspended")
         current_app.api_client.put(f"/admin/users/{user_id}/status", token=token, json={"status": new_status})
         return redirect("/users")
+
+    # --- Per-Job Phase Document HTMX Partials (used in job_review.html) ---
+
+    @app.route("/partials/admin/jobs/<job_id>/admit-cards")
+    def admin_job_admit_cards(job_id):
+        """HTMX partial — existing admit cards for a job (job_review.html)."""
+        token = session.get("token")
+        if not token:
+            return "", 401
+        resp = current_app.api_client.get(f"/jobs/{job_id}/admit-cards", token=token)
+        docs = resp.json() if resp.ok else []
+        return _render_doc_list(docs, job_id, "admit-cards")
+
+    @app.route("/partials/admin/jobs/<job_id>/answer-keys")
+    def admin_job_answer_keys(job_id):
+        """HTMX partial — existing answer keys for a job (job_review.html)."""
+        token = session.get("token")
+        if not token:
+            return "", 401
+        resp = current_app.api_client.get(f"/jobs/{job_id}/answer-keys", token=token)
+        docs = resp.json() if resp.ok else []
+        return _render_doc_list(docs, job_id, "answer-keys")
+
+    @app.route("/partials/admin/jobs/<job_id>/results")
+    def admin_job_results(job_id):
+        """HTMX partial — existing results for a job (job_review.html)."""
+        token = session.get("token")
+        if not token:
+            return "", 401
+        resp = current_app.api_client.get(f"/jobs/{job_id}/results", token=token)
+        docs = resp.json() if resp.ok else []
+        return _render_doc_list(docs, job_id, "results")
+
+    def _render_doc_list(docs: list, parent_id: str, doc_type: str) -> str:
+        """Render a compact table of existing docs with delete buttons."""
+        if not docs:
+            return '<p style="color:#9ca3af;font-size:.85rem">No entries yet.</p>'
+        rows = ""
+        for d in docs:
+            phase = d.get("phase_number") or "—"
+            title = d.get("title", "")
+            doc_id = d.get("id", "")
+            rows += (
+                f'<tr>'
+                f'<td style="font-size:.8rem;padding:.3rem .5rem">{phase}</td>'
+                f'<td style="font-size:.8rem;padding:.3rem .5rem">{title}</td>'
+                f'<td style="padding:.3rem .5rem">'
+                f'<form method="POST" action="/jobs/{parent_id}/docs/{doc_type}/{doc_id}/delete"'
+                f' onsubmit="return confirm(\'Delete this document?\')" style="display:inline">'
+                f'<button type="submit" style="font-size:.75rem;padding:.2rem .5rem;border:1px solid #fca5a5;background:#fff;color:#dc2626;border-radius:.3rem;cursor:pointer">Del</button>'
+                f'</form></td>'
+                f'</tr>'
+            )
+        return (
+            f'<table style="width:100%;border-collapse:collapse;font-size:.825rem">'
+            f'<thead><tr>'
+            f'<th style="text-align:left;font-size:.75rem;color:#6b7280;padding:.3rem .5rem">Phase</th>'
+            f'<th style="text-align:left;font-size:.75rem;color:#6b7280;padding:.3rem .5rem">Title</th>'
+            f'<th></th></tr></thead><tbody>{rows}</tbody></table>'
+        )
+
+    # --- Per-Job Phase Document Management ---
+
+    @app.route("/jobs/<job_id>/docs/admit-cards", methods=["POST"])
+    def job_add_admit_card(job_id):
+        """Add an admit card to a job."""
+        token = session.get("token")
+        if not token:
+            return redirect("/login")
+        form = request.form.to_dict()
+        payload = {
+            "title": form.get("title", ""),
+            "download_url": form.get("download_url", ""),
+            "phase_number": int(form["phase_number"]) if form.get("phase_number") else None,
+            "valid_from": form.get("valid_from") or None,
+            "valid_until": form.get("valid_until") or None,
+            "notes": form.get("notes") or None,
+        }
+        current_app.api_client.post(f"/admin/jobs/{job_id}/admit-cards", token=token, json=payload)
+        flash("Admit card added.", "success")
+        return redirect(f"/jobs/{job_id}/review#docs")
+
+    @app.route("/jobs/<job_id>/docs/answer-keys", methods=["POST"])
+    def job_add_answer_key(job_id):
+        """Add an answer key to a job."""
+        token = session.get("token")
+        if not token:
+            return redirect("/login")
+        form = request.form.to_dict()
+        files_raw = form.get("files_json", "[]")
+        try:
+            files = json.loads(files_raw)
+        except Exception:
+            files = []
+        payload = {
+            "title": form.get("title", ""),
+            "answer_key_type": form.get("answer_key_type", "provisional"),
+            "phase_number": int(form["phase_number"]) if form.get("phase_number") else None,
+            "files": files,
+            "objection_url": form.get("objection_url") or None,
+            "objection_deadline": form.get("objection_deadline") or None,
+        }
+        current_app.api_client.post(f"/admin/jobs/{job_id}/answer-keys", token=token, json=payload)
+        flash("Answer key added.", "success")
+        return redirect(f"/jobs/{job_id}/review#docs")
+
+    @app.route("/jobs/<job_id>/docs/results", methods=["POST"])
+    def job_add_result(job_id):
+        """Add a result to a job."""
+        token = session.get("token")
+        if not token:
+            return redirect("/login")
+        form = request.form.to_dict()
+        payload = {
+            "title": form.get("title", ""),
+            "result_type": form.get("result_type", "merit_list"),
+            "phase_number": int(form["phase_number"]) if form.get("phase_number") else None,
+            "download_url": form.get("download_url") or None,
+            "total_qualified": int(form["total_qualified"]) if form.get("total_qualified") else None,
+            "notes": form.get("notes") or None,
+        }
+        current_app.api_client.post(f"/admin/jobs/{job_id}/results", token=token, json=payload)
+        flash("Result added.", "success")
+        return redirect(f"/jobs/{job_id}/review#docs")
+
+    @app.route("/jobs/<job_id>/docs/<doc_type>/<doc_id>/delete", methods=["POST"])
+    def job_delete_doc(job_id, doc_type, doc_id):
+        """Delete a phase document from a job."""
+        token = session.get("token")
+        if not token:
+            return redirect("/login")
+        current_app.api_client.delete(f"/admin/jobs/{job_id}/{doc_type}/{doc_id}", token=token)
+        flash("Document deleted.", "success")
+        return redirect(f"/jobs/{job_id}/review#docs")
+
+    # --- Entrance Exam Management ---
+
+    @app.route("/exams")
+    def exams():
+        token = session.get("token")
+        if not token:
+            return redirect("/login")
+        params = {"limit": 20, "offset": 0}
+        stream = request.args.get("stream")
+        if stream:
+            params["stream"] = stream
+        resp = current_app.api_client.get("/admin/exams", token=token, params=params)
+        if resp.status_code == 401:
+            token = _try_refresh()
+            if not token:
+                return redirect("/login")
+            resp = current_app.api_client.get("/admin/exams", token=token, params=params)
+        data = resp.json() if resp.ok else {"data": [], "pagination": {}}
+        return render_template("exams.html", exams=data["data"], pagination=data.get("pagination", {}), current_stream=stream)
+
+    @app.route("/exams/list")
+    def exams_list_partial():
+        """HTMX partial — exam table rows for load-more."""
+        token = session.get("token")
+        if not token:
+            return "", 401
+        params = {"limit": 20, "offset": _int_arg("offset", 0)}
+        stream = request.args.get("stream")
+        if stream:
+            params["stream"] = stream
+        resp = current_app.api_client.get("/admin/exams", token=token, params=params)
+        data = resp.json() if resp.ok else {"data": [], "pagination": {}}
+        return render_template("_exam_rows.html", exams=data["data"], pagination=data.get("pagination", {}), current_stream=stream)
+
+    @app.route("/exams/new", methods=["GET", "POST"])
+    def new_exam():
+        """Create a new entrance exam."""
+        token = session.get("token")
+        if not token:
+            return redirect("/login")
+        if request.method == "POST":
+            form = request.form.to_dict()
+            payload = {}
+            for f in ["exam_name", "conducting_body", "counselling_body", "exam_type",
+                      "stream", "description", "short_description", "source_url", "status"]:
+                payload[f] = form.get(f) or None
+            for f in ["fee_general", "fee_obc", "fee_sc_st", "fee_ews", "fee_female"]:
+                val = form.get(f, "").strip()
+                payload[f] = int(val) if val else None
+            for f in ["application_start", "application_end", "exam_date",
+                      "result_date", "counselling_start"]:
+                val = form.get(f, "").strip()
+                payload[f] = val if val else None
+            payload["is_featured"] = form.get("is_featured") == "on"
+            payload.setdefault("status", "active")
+            resp = current_app.api_client.post("/admin/exams", token=token, json=payload)
+            if resp.ok:
+                exam_id = resp.json().get("id")
+                flash("Entrance exam created.", "success")
+                return redirect(f"/exams/{exam_id}/edit")
+            detail = resp.json().get("detail", "Failed to create exam") if resp.headers.get("content-type", "").startswith("application/json") else "Failed to create exam"
+            flash(detail, "error")
+        return render_template("exam_edit.html", exam=None, mode="new")
+
+    @app.route("/exams/<exam_id>/edit", methods=["GET", "POST"])
+    def edit_exam(exam_id):
+        """Edit an existing entrance exam."""
+        token = session.get("token")
+        if not token:
+            return redirect("/login")
+        if request.method == "POST":
+            form = request.form.to_dict()
+            update = {}
+            for f in ["exam_name", "conducting_body", "counselling_body", "exam_type",
+                      "stream", "description", "short_description", "source_url", "status"]:
+                if f in form:
+                    update[f] = form[f] or None
+            for f in ["fee_general", "fee_obc", "fee_sc_st", "fee_ews", "fee_female"]:
+                val = form.get(f, "").strip()
+                update[f] = int(val) if val else None
+            for f in ["application_start", "application_end", "exam_date",
+                      "result_date", "counselling_start"]:
+                val = form.get(f, "").strip()
+                update[f] = val if val else None
+            update["is_featured"] = form.get("is_featured") == "on"
+            resp = current_app.api_client.put(f"/admin/exams/{exam_id}", token=token, json=update)
+            if resp.ok:
+                flash("Exam updated.", "success")
+            else:
+                flash("Failed to update exam.", "error")
+            return redirect(f"/exams/{exam_id}/edit")
+
+        all_exams = current_app.api_client.get("/admin/exams", token=token, params={"limit": 100})
+        resp_detail = None
+        if all_exams.ok:
+            for e in all_exams.json().get("data", []):
+                if e["id"] == exam_id:
+                    resp_detail = e
+                    break
+        if not resp_detail:
+            flash("Exam not found.", "error")
+            return redirect("/exams")
+
+        ac_resp = current_app.api_client.get(f"/exams/{exam_id}/admit-cards", token=token)
+        ak_resp = current_app.api_client.get(f"/exams/{exam_id}/answer-keys", token=token)
+        re_resp = current_app.api_client.get(f"/exams/{exam_id}/results", token=token)
+        admit_cards = ac_resp.json() if ac_resp.ok else []
+        answer_keys = ak_resp.json() if ak_resp.ok else []
+        results = re_resp.json() if re_resp.ok else []
+
+        return render_template("exam_edit.html", exam=resp_detail, mode="edit",
+                               admit_cards=admit_cards, answer_keys=answer_keys, results=results)
+
+    @app.route("/exams/<exam_id>/delete", methods=["POST"])
+    def delete_exam(exam_id):
+        """Delete an entrance exam (admin only)."""
+        token = session.get("token")
+        if not token:
+            return redirect("/login")
+        current_app.api_client.delete(f"/admin/exams/{exam_id}", token=token)
+        flash("Exam deleted.", "success")
+        return redirect("/exams")
+
+    # Per-exam phase document management
+
+    @app.route("/exams/<exam_id>/docs/admit-cards", methods=["POST"])
+    def exam_add_admit_card(exam_id):
+        token = session.get("token")
+        if not token:
+            return redirect("/login")
+        form = request.form.to_dict()
+        payload = {
+            "title": form.get("title", ""),
+            "download_url": form.get("download_url", ""),
+            "phase_number": int(form["phase_number"]) if form.get("phase_number") else None,
+            "valid_from": form.get("valid_from") or None,
+            "valid_until": form.get("valid_until") or None,
+            "notes": form.get("notes") or None,
+        }
+        current_app.api_client.post(f"/admin/exams/{exam_id}/admit-cards", token=token, json=payload)
+        flash("Admit card added.", "success")
+        return redirect(f"/exams/{exam_id}/edit#docs")
+
+    @app.route("/exams/<exam_id>/docs/answer-keys", methods=["POST"])
+    def exam_add_answer_key(exam_id):
+        token = session.get("token")
+        if not token:
+            return redirect("/login")
+        form = request.form.to_dict()
+        try:
+            files = json.loads(form.get("files_json", "[]"))
+        except Exception:
+            files = []
+        payload = {
+            "title": form.get("title", ""),
+            "answer_key_type": form.get("answer_key_type", "provisional"),
+            "phase_number": int(form["phase_number"]) if form.get("phase_number") else None,
+            "files": files,
+            "objection_url": form.get("objection_url") or None,
+            "objection_deadline": form.get("objection_deadline") or None,
+        }
+        current_app.api_client.post(f"/admin/exams/{exam_id}/answer-keys", token=token, json=payload)
+        flash("Answer key added.", "success")
+        return redirect(f"/exams/{exam_id}/edit#docs")
+
+    @app.route("/exams/<exam_id>/docs/results", methods=["POST"])
+    def exam_add_result(exam_id):
+        token = session.get("token")
+        if not token:
+            return redirect("/login")
+        form = request.form.to_dict()
+        payload = {
+            "title": form.get("title", ""),
+            "result_type": form.get("result_type", "merit_list"),
+            "phase_number": int(form["phase_number"]) if form.get("phase_number") else None,
+            "download_url": form.get("download_url") or None,
+            "total_qualified": int(form["total_qualified"]) if form.get("total_qualified") else None,
+            "notes": form.get("notes") or None,
+        }
+        current_app.api_client.post(f"/admin/exams/{exam_id}/results", token=token, json=payload)
+        flash("Result added.", "success")
+        return redirect(f"/exams/{exam_id}/edit#docs")
+
+    @app.route("/exams/<exam_id>/docs/<doc_type>/<doc_id>/delete", methods=["POST"])
+    def exam_delete_doc(exam_id, doc_type, doc_id):
+        token = session.get("token")
+        if not token:
+            return redirect("/login")
+        current_app.api_client.delete(f"/admin/exams/{exam_id}/{doc_type}/{doc_id}", token=token)
+        flash("Document deleted.", "success")
+        return redirect(f"/exams/{exam_id}/edit#docs")
 
     # --- Audit Logs ---
 

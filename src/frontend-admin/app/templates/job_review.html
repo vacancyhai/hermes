@@ -178,4 +178,113 @@
         {% endif %}
     </div>
 </form>
+
+<!-- ── Phase Documents ───────────────────────────────────────────────── -->
+<div id="docs" style="border-top:2px solid #e5e7eb;padding-top:1.5rem;margin-bottom:2rem">
+    <h2 style="font-size:1.1rem;font-weight:700;margin-bottom:1rem;color:#1e3a5f">
+        📋 Phase Documents
+    </h2>
+    <p style="font-size:.85rem;color:#6b7280;margin-bottom:1rem">
+        Attach admit cards, answer keys, and results to this job. These will appear in the
+        doc tabs on the public job detail page.
+    </p>
+
+    <div class="doc-mgmt-section">
+        <h3 class="doc-mgmt-title">📄 Admit Cards</h3>
+        <div hx-get="/partials/admin/jobs/{{ job.id }}/admit-cards"
+             hx-trigger="load" hx-swap="innerHTML" id="ac-list">
+            <span style="color:#9ca3af;font-size:.85rem">Loading…</span>
+        </div>
+        <details style="margin-top:.65rem">
+            <summary class="btn btn-sm btn-outline" style="cursor:pointer;display:inline-block">+ Add Admit Card</summary>
+            <form method="POST" action="/jobs/{{ job.id }}/docs/admit-cards"
+                  style="margin-top:.75rem;background:#f9fafb;border:1px solid #e5e7eb;border-radius:.5rem;padding:.85rem">
+                <div class="doc-form-grid">
+                    <div class="doc-form-field"><label>Title *</label><input type="text" name="title" required placeholder="SSC CGL Tier-1 2025 Admit Card"></div>
+                    <div class="doc-form-field"><label>Download URL *</label><input type="url" name="download_url" required placeholder="https://ssc.nic.in/admit-card/..."></div>
+                    <div class="doc-form-field"><label>Phase #</label><input type="number" name="phase_number" min="1" max="10" placeholder="1"></div>
+                    <div class="doc-form-field"><label>Valid From</label><input type="date" name="valid_from"></div>
+                    <div class="doc-form-field"><label>Valid Until</label><input type="date" name="valid_until"></div>
+                    <div class="doc-form-field doc-form-full"><label>Notes</label><input type="text" name="notes" placeholder="Carry printout + Govt photo ID to exam centre"></div>
+                </div>
+                <button type="submit" class="btn btn-primary btn-sm" style="margin-top:.5rem">Add Admit Card</button>
+            </form>
+        </details>
+    </div>
+
+    <div class="doc-mgmt-section">
+        <h3 class="doc-mgmt-title">✏️ Answer Keys</h3>
+        <div hx-get="/partials/admin/jobs/{{ job.id }}/answer-keys"
+             hx-trigger="load" hx-swap="innerHTML" id="ak-list">
+            <span style="color:#9ca3af;font-size:.85rem">Loading…</span>
+        </div>
+        <details style="margin-top:.65rem">
+            <summary class="btn btn-sm btn-outline" style="cursor:pointer;display:inline-block">+ Add Answer Key</summary>
+            <form method="POST" action="/jobs/{{ job.id }}/docs/answer-keys"
+                  style="margin-top:.75rem;background:#f9fafb;border:1px solid #e5e7eb;border-radius:.5rem;padding:.85rem">
+                <div class="doc-form-grid">
+                    <div class="doc-form-field"><label>Title *</label><input type="text" name="title" required placeholder="SSC CGL Tier-1 2025 Provisional Answer Key"></div>
+                    <div class="doc-form-field">
+                        <label>Type</label>
+                        <select name="answer_key_type">
+                            <option value="provisional">Provisional</option>
+                            <option value="final">Final</option>
+                        </select>
+                    </div>
+                    <div class="doc-form-field"><label>Phase #</label><input type="number" name="phase_number" min="1" max="10" placeholder="1"></div>
+                    <div class="doc-form-field"><label>Objection URL</label><input type="url" name="objection_url" placeholder="https://ssc.nic.in/objection"></div>
+                    <div class="doc-form-field"><label>Objection Deadline</label><input type="date" name="objection_deadline"></div>
+                    <div class="doc-form-field doc-form-full">
+                        <label>Files JSON <small style="font-weight:400">[{"label":"Set A","url":"https://..."}]</small></label>
+                        <textarea name="files_json" rows="2" style="font-size:.78rem;font-family:monospace"
+                                  placeholder='[{"label": "Set A", "url": "https://ssc.nic.in/ak/seta.pdf"}, {"label": "Set B", "url": "https://..."}]'></textarea>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary btn-sm" style="margin-top:.5rem">Add Answer Key</button>
+            </form>
+        </details>
+    </div>
+
+    <div class="doc-mgmt-section">
+        <h3 class="doc-mgmt-title">🏆 Results</h3>
+        <div hx-get="/partials/admin/jobs/{{ job.id }}/results"
+             hx-trigger="load" hx-swap="innerHTML" id="res-list">
+            <span style="color:#9ca3af;font-size:.85rem">Loading…</span>
+        </div>
+        <details style="margin-top:.65rem">
+            <summary class="btn btn-sm btn-outline" style="cursor:pointer;display:inline-block">+ Add Result</summary>
+            <form method="POST" action="/jobs/{{ job.id }}/docs/results"
+                  style="margin-top:.75rem;background:#f9fafb;border:1px solid #e5e7eb;border-radius:.5rem;padding:.85rem">
+                <div class="doc-form-grid">
+                    <div class="doc-form-field"><label>Title *</label><input type="text" name="title" required placeholder="SSC CGL 2024 Final Result"></div>
+                    <div class="doc-form-field">
+                        <label>Result Type</label>
+                        <select name="result_type">
+                            <option value="shortlist">Shortlist</option>
+                            <option value="cutoff">Cut-off</option>
+                            <option value="merit_list" selected>Merit List</option>
+                            <option value="final">Final</option>
+                        </select>
+                    </div>
+                    <div class="doc-form-field"><label>Phase #</label><input type="number" name="phase_number" min="1" max="10" placeholder="1"></div>
+                    <div class="doc-form-field"><label>Download URL</label><input type="url" name="download_url" placeholder="https://ssc.nic.in/result/..."></div>
+                    <div class="doc-form-field"><label>Total Qualified</label><input type="number" name="total_qualified" min="0" placeholder="41800"></div>
+                    <div class="doc-form-field doc-form-full"><label>Notes</label><input type="text" name="notes"></div>
+                </div>
+                <button type="submit" class="btn btn-primary btn-sm" style="margin-top:.5rem">Add Result</button>
+            </form>
+        </details>
+    </div>
+</div>
+
+<style>
+.doc-mgmt-section{margin-bottom:1.25rem;background:#f9fafb;border:1px solid #e5e7eb;border-radius:.5rem;padding:.85rem}
+.doc-mgmt-title{font-size:.95rem;font-weight:700;margin-bottom:.5rem}
+.doc-form-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.65rem}
+.doc-form-field{display:flex;flex-direction:column;gap:.2rem}
+.doc-form-field label{font-size:.78rem;font-weight:600;color:#374151;text-transform:uppercase;letter-spacing:.03em}
+.doc-form-field input,.doc-form-field select,.doc-form-field textarea{padding:.35rem .5rem;border:1px solid #d1d5db;border-radius:.375rem;font-size:.825rem;font-family:inherit}
+.doc-form-full{grid-column:1/-1}
+@media(max-width:640px){.doc-form-grid{grid-template-columns:1fr}}
+</style>
 {% endblock %}
