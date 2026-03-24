@@ -1550,8 +1550,268 @@ Suspicious Activity Detected
 
 ---
 
+## 13. Entrance Exam / Admissions Data Model
+
+Entrance exams (NEET, JEE, CLAT, CAT, GATE, CUET etc.) are stored in a
+separate `entrance_exams` table, distinct from `job_vacancies`. The three
+document tables (`job_admit_cards`, `job_answer_keys`, `job_results`) are
+**polymorphic** — each row links to either a job or an entrance exam.
+
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│              ENTRANCE EXAM / ADMISSIONS DATA MODEL                       │
+└──────────────────────────────────────────────────────────────────────────┘
+
+  WHY SEPARATE?
+  ─────────────
+  job_vacancies fields          entrance_exams fields
+  ─────────────────────         ─────────────────────────────
+  total_vacancies        ≠      seats_info (seats by college)
+  salary_initial/max     ≠      (no salary — it's education)
+  employment_type        ≠      exam_type (ug/pg/doctoral)
+  qualification_level    ≠      stream (medical/engineering/law)
+  organization/dept      ≠      conducting_body + counselling_body
+  application tracking   ≠      seat allotment via counselling
+
+  TABLE STRUCTURE:
+  ─────────────────
+
+  ┌──────────────────────────┐         ┌──────────────────────────────┐
+  │     job_vacancies        │         │       entrance_exams         │
+  │  (Government Jobs)       │         │  (NEET/JEE/CLAT/CAT/GATE)   │
+  │                          │         │                              │
+  │  id UUID PK              │         │  id UUID PK                  │
+  │  job_title               │         │  exam_name                   │
+  │  organization            │         │  conducting_body             │
+  │  total_vacancies         │         │  counselling_body            │
+  │  salary_initial/max      │         │  exam_type (ug/pg/doctoral)  │
+  │  employment_type         │         │  stream (medical/engg/law)   │
+  │  qualification_level     │         │  eligibility JSONB           │
+  │  vacancy_breakdown JSONB │         │  exam_details JSONB          │
+  │  job_type (latest_job/   │         │  selection_process JSONB     │
+  │    admit_card/answer_key/│         │  seats_info JSONB            │
+  │    result)               │         │  fee_* (5 columns)           │
+  │  fee_* (5 columns)       │         │  status (upcoming/active/    │
+  │  search_vector GENERATED │         │    completed/cancelled)      │
+  └──────────┬───────────────┘         │  search_vector GENERATED     │
+             │                         └─────────────┬────────────────┘
+             │                                       │
+             │          POLYMORPHIC DOCUMENT TABLES  │
+             │          ────────────────────────────  │
+             │                                       │
+             │  job_id FK (nullable) ─────────────┐  │
+             │                                   ▼  │
+             │                          ┌──────────────────┐
+             └──────────────────────── ▶│  job_admit_cards │
+                                         │                  │
+  exam_id FK (nullable) ──────────────▶ │  id UUID PK      │
+                                         │  job_id  UUID?   │ ◀── CHECK:
+                                         │  exam_id UUID?   │     (job_id IS NOT NULL
+                                         │  phase_number    │      AND exam_id IS NULL)
+                                         │  title           │     OR
+                                         │  download_url    │     (job_id IS NULL
+                                         │  valid_from/until│      AND exam_id IS NOT NULL)
+                                         │  notes           │
+                                         └──────────────────┘
+
+  Same polymorphic pattern applies to:
+    • job_answer_keys  (job_id XOR exam_id + phase docs)
+    • job_results      (job_id XOR exam_id + cutoff_marks JSONB)
+
+  SEEDED DATA (current):
+  ──────────────────────
+  job_vacancies:  10 jobs + 9 admit card posts + 9 answer key posts + 9 result posts
+  entrance_exams: 9 exams
+    • NEET PG 2026 (medical, pg)     → 3 phase docs (admit card + answer key + result)
+    • NEET UG 2026 (medical, ug)     → 4 phase docs
+    • JEE Main 2026 (engineering)    → 7 phase docs (2 sessions, each with docs)
+    • JEE Advanced 2026 (engg, ug)   → 3 phase docs
+    • CLAT 2026 (law, ug)            → 3 phase docs
+    • CAT 2025 (management, pg)      → 3 phase docs
+    • CUET UG 2026 (general, ug)     → 4 phase docs
+    • NEET SS 2025 (medical, doctoral)→3 phase docs
+    • GATE 2026 (engineering, pg)    → 3 phase docs
+  Total: 32 phase documents seeded via exam_id FK
+```
+
+---
+
+## 14. 5-Section Frontend Navigation
+
+The user frontend is divided into 5 content sections, each with its own
+listing page, gradient hero colour, and detail page design.
+
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│                  5-SECTION FRONTEND NAVIGATION                           │
+└──────────────────────────────────────────────────────────────────────────┘
+
+  SECTION NAV STRIP (shown on all pages):
+  ─────────────────────────────────────────
+  ┌───────────┬─────────────┬──────────────┬───────────┬──────────────┐
+  │ 💼 Jobs   │ 📄 Admit    │ ✏️ Answer    │ 🏆 Results│ 🎓 Admissions│
+  │     /     │  Cards      │   Keys       │ /results  │ /admissions  │
+  │           │/admit-cards │/answer-keys  │           │              │
+  └───────────┴─────────────┴──────────────┴───────────┴──────────────┘
+  Active section highlighted with white border-bottom + white text
+
+  HERO COLOUR CODING (each section has a matching gradient):
+  ──────────────────────────────────────────────────────────
+  Section       URL              Hero Gradient         DB Source
+  ──────────    ───────────────  ──────────────────    ──────────────────
+  Jobs          /                Navy → Blue            job_vacancies (latest_job)
+  Admit Cards   /admit-cards     Blue → Sky Blue        job_vacancies (admit_card)
+  Answer Keys   /answer-keys     Brown → Amber          job_vacancies (answer_key)
+  Results       /results         Dark Green → Green     job_vacancies (result)
+  Admissions    /admissions      Dark Purple → Purple   entrance_exams
+
+  JOB CARD LEFT ACCENT (list pages):
+  ────────────────────────────────────
+  job_type=latest_job  → purple left border  (.card-latest)
+  job_type=admit_card  → blue left border    (.card-admit)
+  job_type=answer_key  → amber left border   (.card-answer)
+  job_type=result      → green left border   (.card-result)
+  entrance_exam        → purple left border  (admission card)
+
+  DETAIL PAGE FLOW:
+  ─────────────────
+  User clicks job card                  User clicks admission card
+        │                                       │
+        ▼                                       ▼
+  GET /jobs/<slug>                       GET /admissions/<slug>
+        │                                       │
+        ▼                                       ▼
+  Flask renders job_detail.html          Flask renders admission_detail.html
+  (type-aware hero: hero-job /           (hero-admission: purple gradient)
+   hero-admit / hero-answer /
+   hero-result)
+        │                                       │
+        ▼                                       ▼
+  Doc tabs section shown                 Doc tabs section shown
+  if job_type == 'latest_job'            (always shown for exams)
+        │                                       │
+        ▼                                       ▼
+  HTMX loads /partials/jobs/             HTMX loads /partials/exams/
+  {job_id}/admit-cards                   {exam_id}/admit-cards
+  (on tab click)                         (on tab click)
+```
+
+---
+
+## 15. HTMX Phase Document Tab Flow
+
+Phase documents (admit cards, answer keys, results) are loaded on-demand
+via HTMX into tabbed panels on job and admission detail pages.
+
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│               HTMX PHASE DOCUMENT TAB FLOW                               │
+└──────────────────────────────────────────────────────────────────────────┘
+
+  TEMPLATE STRUCTURE (Alpine.js x-data controls active tab):
+  ──────────────────────────────────────────────────────────
+
+  <div x-data="{tab:'admit_cards'}">                 ← Alpine state
+    <div class="doc-tabs-bar">
+      <button @click="tab='admit_cards'"             ← Tab 1
+              :class="{'active':tab==='admit_cards'}">
+        📄 Admit Cards
+      </button>
+      <button @click="tab='answer_keys'">✏️ Answer Keys</button>
+      <button @click="tab='results'">🏆 Results</button>
+    </div>
+
+    <!-- Panels are OUTSIDE the tab bar, INSIDE the x-data wrapper -->
+
+    <div x-show="tab==='admit_cards'"                ← Panel 1
+         hx-get="/partials/jobs/{id}/admit-cards"    ← HTMX endpoint
+         hx-trigger="load"                           ← Load immediately
+         hx-swap="innerHTML">
+      Loading…
+    </div>
+    <div x-show="tab==='answer_keys'" x-cloak        ← Panel 2 (hidden initially)
+         hx-get="/partials/jobs/{id}/answer-keys"
+         hx-trigger="intersect once"                 ← Lazy load on intersection
+         hx-swap="innerHTML">
+      Loading…
+    </div>
+    <div x-show="tab==='results'" x-cloak
+         hx-get="/partials/jobs/{id}/results"
+         hx-trigger="intersect once"
+         hx-swap="innerHTML">
+      Loading…
+    </div>
+  </div>
+
+  REQUEST FLOW:
+  ─────────────
+  Browser loads job_detail page
+        │
+        ▼
+  Alpine.js initialises: tab = 'admit_cards'
+        │
+        ▼
+  HTMX fires GET /partials/jobs/{id}/admit-cards   ← hx-trigger="load"
+        │
+        ▼
+  Flask route: partials_admit_cards(job_id)
+        │
+        ▼
+  Calls Backend API: GET /api/v1/jobs/{id}/admit-cards
+        │
+        ▼
+  FastAPI queries job_admit_cards WHERE job_id={id}
+        │                 OR
+                    WHERE exam_id={id}  ← for admission_detail.html
+        │
+        ▼
+  Returns list of admit card rows (JSON)
+        │
+        ▼
+  Flask renders _admit_cards_panel.html partial
+        │
+        ▼
+  HTMX swaps innerHTML of the admit_cards panel div
+
+  USER CLICKS "Answer Keys" TAB:
+  ────────────────────────────────
+  @click sets tab = 'answer_keys'
+        │
+        ▼
+  Alpine.js hides admit_cards panel (x-show=false)
+  Alpine.js shows answer_keys panel (x-show=true)
+        │
+        ▼
+  HTMX fires GET /partials/jobs/{id}/answer-keys   ← hx-trigger="intersect once"
+  (fires only once — result cached in DOM)
+        │
+        ▼
+  Renders _answer_keys_panel.html
+    ├── Phase N pill (amber)
+    ├── Provisional / ✓ Final badge
+    ├── Per-file download buttons (amber)
+    └── Raise Objection button (if objection_url set)
+
+  PANEL CARD TYPES:
+  ──────────────────
+  _admit_cards_panel.html   → .doc-card-admit   (blue bg)
+  _answer_keys_panel.html   → .doc-card-answer  (amber bg)
+  _results_panel.html       → .doc-card-result  (green bg)
+
+  Each panel uses shared CSS classes from base.html:
+    .doc-card, .doc-card-body, .doc-card-actions
+    .doc-phase-pill (.phase-blue / .phase-amber / .phase-green)
+    .doc-title, .doc-meta, .doc-note, .doc-deadline
+    .doc-btn (.doc-btn-blue / .doc-btn-amber / .doc-btn-green / .doc-btn-outline)
+    .doc-cutoff + .doc-cutoff-row  ← for results cutoff marks table
+    .doc-empty                     ← empty state text
+```
+
+---
+
 *These diagrams cover the major flows in Hermes: system architecture,
 user registration, job creation, matching & notifications, application
 tracking, priority job updates, admin dashboard, database schema,
-Celery task scheduling, user journey map, RBAC enforcement, and JWT
-token lifecycle.*
+Celery task scheduling, user journey map, RBAC enforcement, JWT token
+lifecycle, entrance exam data model, 5-section frontend navigation,
+and HTMX phase document tab loading.*

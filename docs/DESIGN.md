@@ -506,12 +506,15 @@ CREATE INDEX idx_delivery_user_channel ON notification_delivery_log (user_id, ch
 
 #### 9. `job_admit_cards`
 
-Per-phase admit card download links for tracked jobs.
+Per-phase admit card download links. **Polymorphic** — linked to either a
+`job_vacancies` row (`job_id`) or an `entrance_exams` row (`exam_id`).
+Exactly one must be set per row (enforced by DB CHECK constraint).
 
 ```sql
 CREATE TABLE job_admit_cards (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  job_id        UUID NOT NULL REFERENCES job_vacancies(id) ON DELETE CASCADE,
+  job_id        UUID REFERENCES job_vacancies(id) ON DELETE CASCADE,   -- nullable
+  exam_id       UUID REFERENCES entrance_exams(id) ON DELETE CASCADE,  -- nullable
   phase_number  SMALLINT,           -- matches selection_process[?].phase; NULL = not phase-specific
   title         VARCHAR(255) NOT NULL,
   download_url  TEXT NOT NULL,
@@ -520,20 +523,27 @@ CREATE TABLE job_admit_cards (
   notes         TEXT,
   published_at  TIMESTAMP WITH TIME ZONE,
   created_at    TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-  updated_at    TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+  updated_at    TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  CONSTRAINT ck_admit_card_source CHECK (
+    (job_id IS NOT NULL AND exam_id IS NULL) OR
+    (job_id IS NULL AND exam_id IS NOT NULL)
+  )
 );
 
-CREATE INDEX idx_admit_cards_job ON job_admit_cards (job_id, phase_number);
+CREATE INDEX idx_admit_cards_job  ON job_admit_cards (job_id, phase_number);
+CREATE INDEX idx_admit_cards_exam ON job_admit_cards (exam_id, phase_number);
 ```
 
 #### 10. `job_answer_keys`
 
 Per-phase answer keys. Supports provisional/final and multiple paper sets per exam.
+**Polymorphic** — linked to a job or entrance exam.
 
 ```sql
 CREATE TABLE job_answer_keys (
   id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  job_id              UUID NOT NULL REFERENCES job_vacancies(id) ON DELETE CASCADE,
+  job_id              UUID REFERENCES job_vacancies(id) ON DELETE CASCADE,   -- nullable
+  exam_id             UUID REFERENCES entrance_exams(id) ON DELETE CASCADE,  -- nullable
   phase_number        SMALLINT,
   title               VARCHAR(255) NOT NULL,
   answer_key_type     VARCHAR(20) NOT NULL DEFAULT 'provisional'
@@ -544,21 +554,27 @@ CREATE TABLE job_answer_keys (
   objection_deadline  DATE,
   published_at        TIMESTAMP WITH TIME ZONE,
   created_at          TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-  updated_at          TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+  updated_at          TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  CONSTRAINT ck_answer_key_source CHECK (
+    (job_id IS NOT NULL AND exam_id IS NULL) OR
+    (job_id IS NULL AND exam_id IS NOT NULL)
+  )
 );
 
 CREATE INDEX idx_answer_keys_job  ON job_answer_keys (job_id, phase_number);
+CREATE INDEX idx_answer_keys_exam ON job_answer_keys (exam_id, phase_number);
 CREATE INDEX idx_answer_keys_type ON job_answer_keys (job_id, answer_key_type);
 ```
 
 #### 11. `job_results`
 
-Per-phase results with cutoff marks and download links.
+Per-phase results with cutoff marks and download links. **Polymorphic.**
 
 ```sql
 CREATE TABLE job_results (
   id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  job_id           UUID NOT NULL REFERENCES job_vacancies(id) ON DELETE CASCADE,
+  job_id           UUID REFERENCES job_vacancies(id) ON DELETE CASCADE,   -- nullable
+  exam_id          UUID REFERENCES entrance_exams(id) ON DELETE CASCADE,  -- nullable
   phase_number     SMALLINT,
   title            VARCHAR(255) NOT NULL,
   result_type      VARCHAR(20) NOT NULL
@@ -569,10 +585,77 @@ CREATE TABLE job_results (
   notes            TEXT,
   published_at     TIMESTAMP WITH TIME ZONE,
   created_at       TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-  updated_at       TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+  updated_at       TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  CONSTRAINT ck_result_source CHECK (
+    (job_id IS NOT NULL AND exam_id IS NULL) OR
+    (job_id IS NULL AND exam_id IS NOT NULL)
+  )
 );
 
-CREATE INDEX idx_results_job ON job_results (job_id, phase_number);
+CREATE INDEX idx_results_job  ON job_results (job_id, phase_number);
+CREATE INDEX idx_results_exam ON job_results (exam_id, phase_number);
+```
+
+#### 12. `entrance_exams`
+
+Admission / entrance examinations (NEET, JEE, CLAT, CAT, GATE, CUET etc.).
+**Separate from `job_vacancies`** — these are educational admissions, not employment.
+
+Key design differences from `job_vacancies`:
+
+| Dimension | `job_vacancies` | `entrance_exams` |
+|-----------|-----------------|------------------|
+| Outcome | Employment | Education (college seat) |
+| Vacancies | `total_vacancies` + `vacancy_breakdown` | `seats_info` JSONB |
+| Salary | `salary_initial`, `salary_max` | — (not applicable) |
+| Counselling body | — | `counselling_body` |
+| Attempts limit | — | `eligibility.attempts_limit` |
+
+```sql
+CREATE TABLE entrance_exams (
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  slug              VARCHAR(500) UNIQUE NOT NULL,
+  exam_name         VARCHAR(500) NOT NULL,
+  conducting_body   VARCHAR(255) NOT NULL,        -- e.g. "National Testing Agency"
+  counselling_body  VARCHAR(255),                 -- e.g. "MCC", "JoSAA", "CLAT Consortium"
+  exam_type         VARCHAR(20) NOT NULL          -- 'ug' | 'pg' | 'doctoral' | 'lateral'
+                      CHECK (exam_type IN ('ug','pg','doctoral','lateral')),
+  stream            VARCHAR(30) NOT NULL          -- 'medical' | 'engineering' | 'law' | ...
+                      CHECK (stream IN ('medical','engineering','law','management','arts_science','general')),
+  eligibility       JSONB NOT NULL DEFAULT '{}',  -- {min_qualification, attempts_limit, age_limit}
+  exam_details      JSONB NOT NULL DEFAULT '{}',  -- {exam_pattern: [{phase, subjects, total_marks, ...}]}
+  selection_process JSONB NOT NULL DEFAULT '[]',  -- [{phase, name, qualifying}]
+  seats_info        JSONB,                        -- {total_seats, by_category, note}
+  application_start DATE,
+  application_end   DATE,
+  exam_date         DATE,
+  result_date       DATE,
+  counselling_start DATE,
+  fee_general       INTEGER,
+  fee_obc           INTEGER,
+  fee_sc_st         INTEGER,
+  fee_ews           INTEGER,
+  fee_female        INTEGER,
+  description       TEXT,
+  short_description TEXT,
+  source_url        TEXT,
+  status            VARCHAR(20) NOT NULL DEFAULT 'active'
+                      CHECK (status IN ('upcoming','active','completed','cancelled')),
+  is_featured       BOOLEAN NOT NULL DEFAULT FALSE,
+  views             INTEGER NOT NULL DEFAULT 0,
+  published_at      TIMESTAMP WITH TIME ZONE,
+  created_at        TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  updated_at        TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  search_vector     TSVECTOR GENERATED ALWAYS AS (
+    setweight(to_tsvector('english', coalesce(exam_name, '')), 'A') ||
+    setweight(to_tsvector('english', coalesce(conducting_body, '')), 'B') ||
+    setweight(to_tsvector('english', coalesce(description, '')), 'C')
+  ) STORED
+);
+
+CREATE UNIQUE INDEX idx_exams_slug   ON entrance_exams (slug);
+CREATE INDEX idx_exams_stream_status ON entrance_exams (stream, status, created_at);
+CREATE INDEX idx_exams_search        ON entrance_exams USING gin (search_vector);
 ```
 
 ### Future Expansion Tables
@@ -670,6 +753,29 @@ User auth is fully handled by the Firebase JS SDK on the client. The backend onl
 | PUT    | `/api/v1/admin/users/:id/status`    | Suspend/activate user   | Admin  |
 | PUT    | `/api/v1/admin/users/:id/role`      | Change user role        | Admin  |
 | GET    | `/api/v1/admin/logs`                | Admin activity logs     | Admin  |
+
+### Entrance Exams (Admissions)
+
+| Method | Endpoint | Description | Access |
+| ------ | -------- | ----------- | ------ |
+| GET    | `/api/v1/exams` | List active exams (stream/type/FTS filters) | Public |
+| GET    | `/api/v1/exams/{slug}` | Exam detail by slug (increments views) | Public |
+| GET    | `/api/v1/exams/{id}/admit-cards` | Per-phase admit cards | Public |
+| GET    | `/api/v1/exams/{id}/answer-keys` | Per-phase answer keys | Public |
+| GET    | `/api/v1/exams/{id}/results` | Per-phase results | Public |
+| GET    | `/api/v1/admin/exams` | List all exams (any status) | Operator |
+| POST   | `/api/v1/admin/exams` | Create entrance exam | Operator |
+| PUT    | `/api/v1/admin/exams/{id}` | Update entrance exam | Operator |
+| DELETE | `/api/v1/admin/exams/{id}` | Delete exam (cascades to docs) | Admin |
+| POST   | `/api/v1/admin/exams/{id}/admit-cards` | Add admit card | Operator |
+| PUT    | `/api/v1/admin/exams/{id}/admit-cards/{doc_id}` | Update admit card | Operator |
+| DELETE | `/api/v1/admin/exams/{id}/admit-cards/{doc_id}` | Delete admit card | Operator |
+| POST   | `/api/v1/admin/exams/{id}/answer-keys` | Add answer key | Operator |
+| PUT    | `/api/v1/admin/exams/{id}/answer-keys/{doc_id}` | Update answer key | Operator |
+| DELETE | `/api/v1/admin/exams/{id}/answer-keys/{doc_id}` | Delete answer key | Operator |
+| POST   | `/api/v1/admin/exams/{id}/results` | Add result | Operator |
+| PUT    | `/api/v1/admin/exams/{id}/results/{doc_id}` | Update result | Operator |
+| DELETE | `/api/v1/admin/exams/{id}/results/{doc_id}` | Delete result | Operator |
 
 ### Health
 
@@ -1023,23 +1129,40 @@ followers of that organization via `smart_notify(staggered)`.
 | DELETE | `/api/v1/organizations/{name}/follow`  | Unfollow               | User   |
 | GET    | `/api/v1/users/me/following`           | List followed orgs     | User   |
 
-### Social Share Buttons
+### Share Button (Web Share API)
 
-Every job detail page includes WhatsApp and Telegram share links. These are
-zero-cost, zero-infrastructure features that drive organic growth — Indian
-government job seekers heavily share links in WhatsApp groups.
+Every job card, admit card, answer key, result card, and entrance exam card/detail
+page includes a single **Share** button using the Web Share API.
 
 ```html
-<!-- WhatsApp share -->
-<a href="whatsapp://send?text={{ job.job_title }}%20-%20{{ canonical_url }}"
-   target="_blank" rel="noopener">Share on WhatsApp</a>
-
-<!-- Telegram share -->
-<a href="https://t.me/share/url?url={{ canonical_url }}&text={{ job.job_title }}"
-   target="_blank" rel="noopener">Share on Telegram</a>
+<!-- Single Share button — works on all pages and card types -->
+<button
+  data-title="{{ item.job_title | e }}"
+  data-url="{{ request.url }}"
+  onclick="(function(b){
+    var u=b.dataset.url, t=b.dataset.title;
+    if(navigator.share){
+      navigator.share({title:t, url:u});
+    } else {
+      navigator.clipboard.writeText(u);
+      var orig=b.textContent;
+      b.textContent='\u2713 Copied';
+      setTimeout(function(){b.textContent=orig}, 1800);
+    }
+  })(this)">
+  Share
+</button>
 ```
 
-These are pure HTML links rendered by Jinja2. No API or JavaScript required.
+**Behaviour:**
+- **Mobile** (Android/iOS): triggers native OS share sheet (`navigator.share`)
+- **Desktop fallback**: copies URL to clipboard, button text changes to `✓ Copied` for 1.8 s
+- URL and title passed via `data-*` attributes to avoid Jinja2-inside-JS escaping issues
+
+**WhatsApp and Telegram share links have been removed.** The Web Share API is
+more universal — it lets users choose their preferred app (WhatsApp, Telegram,
+Copy, SMS, Email, etc.) from the OS-level dialog without the frontend
+hard-coding specific platforms.
 
 ### Application Fee by Category
 
