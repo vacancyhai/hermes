@@ -4,17 +4,24 @@ This document outlines the PostgreSQL database schema for the Hermes project, us
 
 ## Migration
 
-All schema changes are in a single consolidated migration file:
+Schema is managed through 4 migration files:
 
-```
-src/backend/migrations/versions/0001_initial_schema.py
-```
+| Migration | Description |
+|-----------|-------------|
+| `0001_initial_schema.py` | All core tables (users, profiles, jobs, applications, notifications, devices, admin, logs) |
+| `0002_add_telegram_channel.py` | Adds `telegram` to `ck_delivery_channel` CHECK constraint |
+| `0003_job_documents_tables.py` | Creates `job_admit_cards`, `job_answer_keys`, `job_results` linked to jobs |
+| `0004_entrance_exams.py` | Creates `entrance_exams`; adds `exam_id` FK + CHECK constraint to doc tables |
 
-**Fresh install:** `alembic upgrade head` creates all 9 tables and applies `0002_add_telegram_channel` in one step.
-
-**Existing database** (had the former 0001–0011 applied, already stamped to 0001):
+**Fresh install:**
 ```bash
 docker exec -w /app -e PYTHONPATH=/app hermes_backend alembic upgrade head
+# Creates all 14 tables in sequence (0001 → 0004)
+```
+
+**Existing database** (already at 0003):
+```bash
+docker exec -w /app -e PYTHONPATH=/app hermes_backend alembic upgrade 0004
 ```
 
 ---
@@ -27,20 +34,31 @@ erDiagram
     USERS ||--o{ USER_JOB_APPLICATIONS : tracks
     USERS ||--o{ NOTIFICATIONS : receives
     USERS ||--o{ USER_DEVICES : registers
-    
+
     ADMIN_USERS ||--o{ JOB_VACANCIES : creates
     ADMIN_USERS ||--o{ ADMIN_LOGS : performs
-    
+
     JOB_VACANCIES ||--o{ USER_JOB_APPLICATIONS : "is tracked by"
-    
+    JOB_VACANCIES ||--o{ JOB_ADMIT_CARDS : "has (job_id)"
+    JOB_VACANCIES ||--o{ JOB_ANSWER_KEYS : "has (job_id)"
+    JOB_VACANCIES ||--o{ JOB_RESULTS : "has (job_id)"
+
+    ENTRANCE_EXAMS ||--o{ JOB_ADMIT_CARDS : "has (exam_id)"
+    ENTRANCE_EXAMS ||--o{ JOB_ANSWER_KEYS : "has (exam_id)"
+    ENTRANCE_EXAMS ||--o{ JOB_RESULTS : "has (exam_id)"
+
     NOTIFICATIONS ||--o{ NOTIFICATION_DELIVERY_LOG : attempts
     USER_DEVICES ||--o{ NOTIFICATION_DELIVERY_LOG : targets
     USERS ||--o{ NOTIFICATION_DELIVERY_LOG : "is notified"
 ```
 
+> **Polymorphic constraint:** `job_admit_cards`, `job_answer_keys`, and `job_results` each have a DB-level
+> CHECK constraint `(job_id IS NOT NULL AND exam_id IS NULL) OR (job_id IS NULL AND exam_id IS NOT NULL)`
+> ensuring exactly one parent reference per row.
+
 ---
 
-## Tables
+## Tables (14 total)
 
 ### 1. `users`
 Core user account table. Integrated with Firebase Auth.
@@ -194,3 +212,113 @@ Channel-level delivery tracking.
 | `device_id` | UUID (FK) | Targeted device (for push) |
 | `error_message` | Text | Failure reason (from OCI/FCM) |
 | `delivered_at` | DateTime | Verified delivery time |
+
+---
+
+### 10. `job_admit_cards`
+Per-phase admit card links. Linked to either a **job** or an **entrance exam** (polymorphic).
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | UUID (PK) | Unique identifier |
+| `job_id` | UUID (FK, nullable) | Reference to `job_vacancies.id` |
+| `exam_id` | UUID (FK, nullable) | Reference to `entrance_exams.id` |
+| `phase_number` | SmallInteger | Exam phase (1, 2, …) |
+| `title` | String(255) | E.g. "SSC CGL Tier-1 2025 Admit Card" |
+| `download_url` | Text | Link to download the admit card |
+| `valid_from` | Date | Validity start (exam start date) |
+| `valid_until` | Date | Validity end (exam end date) |
+| `notes` | Text | Important instructions for candidates |
+| `published_at` | DateTime | When this admit card was released |
+
+> CHECK: `(job_id IS NOT NULL AND exam_id IS NULL) OR (job_id IS NULL AND exam_id IS NOT NULL)`
+
+---
+
+### 11. `job_answer_keys`
+Per-phase answer keys (provisional or final). Polymorphic.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | UUID (PK) | Unique identifier |
+| `job_id` | UUID (FK, nullable) | Reference to `job_vacancies.id` |
+| `exam_id` | UUID (FK, nullable) | Reference to `entrance_exams.id` |
+| `phase_number` | SmallInteger | Exam phase |
+| `title` | String(255) | E.g. "JEE Main Session 1 Provisional Answer Key" |
+| `answer_key_type` | String(20) | `ck_answer_key_type`: `provisional`, `final` |
+| `files` | JSONB | Array of `{label, url}` — one entry per paper/set |
+| `objection_url` | Text | URL to raise objections (provisional keys only) |
+| `objection_deadline` | Date | Deadline for filing objections |
+| `published_at` | DateTime | Release timestamp |
+
+---
+
+### 12. `job_results`
+Per-phase results (shortlist, cutoff, merit list, final). Polymorphic.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | UUID (PK) | Unique identifier |
+| `job_id` | UUID (FK, nullable) | Reference to `job_vacancies.id` |
+| `exam_id` | UUID (FK, nullable) | Reference to `entrance_exams.id` |
+| `phase_number` | SmallInteger | Exam phase |
+| `title` | String(255) | E.g. "NEET PG 2026 Result & Score Card" |
+| `result_type` | String(20) | `ck_result_type`: `shortlist`, `cutoff`, `merit_list`, `final` |
+| `download_url` | Text | Link to view/download the result |
+| `cutoff_marks` | JSONB | Category-wise cutoff marks `{UR: 138, OBC: 108, ...}` |
+| `total_qualified` | Integer | Number of candidates who qualified |
+| `notes` | Text | Additional notes |
+| `published_at` | DateTime | Release timestamp |
+
+---
+
+### 13. `entrance_exams`
+Admission / entrance exams (NEET, JEE, CLAT, CAT, GATE, CUET etc.) — **separate from `job_vacancies`**.
+These are educational admissions, not government job recruitments.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | UUID (PK) | Unique identifier |
+| `slug` | String(500) | URL slug (unique) |
+| `exam_name` | String(500) | E.g. "NTA NEET PG 2026 — Medical PG Entrance" |
+| `conducting_body` | String(255) | E.g. "National Testing Agency" |
+| `counselling_body` | String(255) | E.g. "MCC", "JoSAA", "CLAT Consortium" |
+| `exam_type` | String(20) | `ck_exam_type`: `ug`, `pg`, `doctoral`, `lateral` |
+| `stream` | String(30) | `ck_exam_stream`: `medical`, `engineering`, `law`, `management`, `arts_science`, `general` |
+| `eligibility` | JSONB | `{min_qualification, attempts_limit, age_limit, registration, ...}` |
+| `exam_details` | JSONB | `{exam_pattern: [{phase, subjects, total_marks, duration_minutes, negative_marking, exam_mode}]}` |
+| `selection_process` | JSONB | `[{phase, name, qualifying}]` |
+| `seats_info` | JSONB | `{total_seats, by_category, note}` — institution/seat counts |
+| `application_start` | Date | Registration opens |
+| `application_end` | Date | Registration deadline |
+| `exam_date` | Date | Date of main exam |
+| `result_date` | Date | Expected result date |
+| `counselling_start` | Date | Counselling round start |
+| `fee_general` | Integer | Application fee — General/UR (INR) |
+| `fee_obc` | Integer | Application fee — OBC-NCL (INR) |
+| `fee_sc_st` | Integer | Application fee — SC/ST (INR) |
+| `fee_ews` | Integer | Application fee — EWS (INR) |
+| `fee_female` | Integer | Application fee — Female/PwBD (INR) |
+| `description` | Text | Full HTML description |
+| `short_description` | Text | One-liner for listing cards |
+| `source_url` | Text | Official website URL |
+| `status` | String(20) | `ck_exam_status`: `upcoming`, `active`, `completed`, `cancelled` |
+| `is_featured` | Boolean | Highlight in listings |
+| `views` | Integer | View count (incremented on detail page load) |
+| `published_at` | DateTime | When first published |
+| `search_vector` | tsvector | GENERATED ALWAYS — GIN-indexed FTS on exam_name + conducting_body + description |
+
+**Key design difference from `job_vacancies`:**
+
+| Dimension | `job_vacancies` | `entrance_exams` |
+|-----------|-----------------|------------------|
+| Outcome | Employment (govt job) | Education (college/IIT/NLU seat) |
+| Vacancies | `total_vacancies` + `vacancy_breakdown` | `seats_info` (seats by institution) |
+| Salary | `salary_initial`, `salary_max` | — (not applicable) |
+| Counselling | — | `counselling_body` |
+| Attempts | — | `eligibility.attempts_limit` |
+
+---
+
+### 14. `alembic_version`
+Alembic migration state tracker. Single row with the current revision ID.

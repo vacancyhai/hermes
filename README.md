@@ -5,16 +5,20 @@ matched to their education, age, category, and preferences. Includes user
 authentication, profile-based job matching, application tracking, multi-channel
 notifications, and an admin panel.
 
-> **Status:** Phases 1–7 + Testing complete. Auth system (Firebase Auth — Email/Password, Google OAuth, Phone OTP), job CRUD, full-text search,
-> user profiles, job matching & recommendations (by education, age, reservation category, and state), org follow with Celery
-> notifications, application tracking with deadline reminders, user dashboard,
-> smart multi-channel notifications (in-app + FCM push + email + WhatsApp placeholder), notification
-> preferences (email/push/in_app/whatsapp), full admin frontend (dashboard, job/user management, audit logs),
-> SEO (sitemap, meta tags, JSON-LD structured data), application fee display by
-> category, WhatsApp share buttons, PDF upload with AI extraction
-> (Anthropic Claude), draft review & approve workflow, admin account creation API, CSRF protection,
-> PWA (manifest, service worker, offline fallback), comprehensive test suite,
-> and security audit (JWT, RBAC, file upload, OWASP) — all implemented.
+> **Status:** Phases 1–7 + Testing + 10 + 11 + UI/Content phase complete.
+> Auth (Firebase — Email/Password, Google OAuth, Phone OTP), job CRUD, full-text search, user profiles,
+> job matching & recommendations, org follow + Celery notifications, application tracking with deadline reminders,
+> user dashboard, smart multi-channel notifications (in-app + FCM push + email + WhatsApp placeholder + Telegram),
+> full admin frontend (dashboard, job/user management, audit logs), SEO (sitemap, meta, JSON-LD),
+> PDF upload with AI extraction (Anthropic Claude), draft review & approve workflow, CSRF protection,
+> PWA (manifest, service worker, offline fallback), comprehensive test suite, security audit.
+>
+> **Latest additions:** Separate `entrance_exams` table for admission/entrance exams (NEET, JEE, CLAT, CAT, GATE, CUET etc.)
+> decoupled from `job_vacancies`; polymorphic document tables (`job_admit_cards`, `job_answer_keys`, `job_results`) now
+> support both jobs and entrance exams via `job_id`/`exam_id` FK; 5-section frontend navigation
+> (Jobs / Admit Cards / Answer Keys / Results / Admissions); type-aware gradient detail pages with shared
+> CSS design system; single Web Share API button replacing WhatsApp/Telegram share links; 9 entrance exam seed
+> entries with full metadata and 32 linked phase documents.
 
 ## Tech Stack
 
@@ -86,7 +90,19 @@ PostgreSQL and Redis are isolated inside Docker networks — never exposed to th
   scope isolation — admin tokens are rejected by user endpoints and vice versa
 - **Organisation Follow** — Follow SSC, UPSC, Railway, etc. to get notified
   on every new vacancy from that organisation
-- **Social Share** — WhatsApp share button on every job page for easy sharing
+- **Entrance Exam Admissions** — Separate `entrance_exams` table for NEET, JEE, CLAT, CAT, CUET, GATE etc.;
+  distinct from government job vacancies with exam-specific fields: `stream`, `exam_type`, `counselling_body`,
+  `seats_info`, eligibility, exam pattern — 9 exams seeded with full metadata
+- **Polymorphic Document Tables** — `job_admit_cards`, `job_answer_keys`, `job_results` link to
+  either a job (`job_id`) or entrance exam (`exam_id`) via DB CHECK constraint; 32 phase docs seeded
+- **5-Section Navigation** — Jobs, Admit Cards, Answer Keys, Results, Admissions — each with its own
+  section page, search, and type-matching gradient hero color
+- **Unified Detail Pages** — Type-aware gradient heroes (navy/blue/amber/green/purple per section);
+  structured sections for eligibility, selection process, exam pattern, vacancy breakdown, fee table;
+  Web Share API button (with clipboard fallback) replacing WhatsApp/Telegram links
+- **HTMX Doc Tabs** — Per-phase admit cards, answer keys, and results loaded on-demand in tabbed
+  panels on both job detail and admission detail pages
+- **Social Share** — Single Share button (Web Share API + clipboard fallback) on every card and detail page
 - **Fee by Category** — Shows personalised application fee (₹0 for SC/ST/EWS,
   reduced for OBC) based on the logged-in user's category
 
@@ -114,10 +130,10 @@ cp config/development/.env.frontend-admin.development src/frontend-admin/.env
 # 2. Start backend (PostgreSQL, Redis, PgBouncer, FastAPI, Celery)
 cd src/backend && docker compose up -d --build
 
-# 3. Run database migrations (single consolidated schema — all 9 tables)
-docker compose exec backend alembic upgrade head
-# If you had the old 0001–0011 incremental migrations already applied, stamp first:
-# docker compose exec backend alembic stamp 0001
+# 3. Run database migrations (creates all 14 tables)
+docker exec -w /app -e PYTHONPATH=/app hermes_backend alembic upgrade head
+# Migrations: 0001 (initial schema), 0002 (telegram channel), 0003 (job document tables),
+#             0004 (entrance_exams + polymorphic doc FK)
 
 # 4. Create the first admin account (required — no self-registration for admins)
 docker compose exec backend python -c "
@@ -181,8 +197,10 @@ hermes/
 │   │   │   │   ├── jobs.py               # /api/v1/jobs/*
 │   │   │   │   ├── applications.py       # /api/v1/applications/*
 │   │   │   │   ├── notifications.py      # /api/v1/notifications/*
-│   │   │   │   └── admin.py              # /api/v1/admin/*
-│   │   │   ├── models/                   # SQLAlchemy models (9 core tables)
+│   │   │   │   ├── admin.py              # /api/v1/admin/*
+│   │   │   │   ├── job_documents.py      # /api/v1/jobs/{id}/admit-cards|answer-keys|results (public+admin)
+│   │   │   │   └── entrance_exams.py     # /api/v1/exams/* (public) + /api/v1/admin/exams/* (admin CRUD)
+│   │   │   ├── models/                   # SQLAlchemy models (14 tables)
 │   │   │   │   ├── base.py               # DeclarativeBase
 │   │   │   │   ├── user.py               # Regular users (no role column)
 │   │   │   │   ├── admin_user.py          # Admin/operator accounts
@@ -192,13 +210,18 @@ hermes/
 │   │   │   │   ├── notification.py
 │   │   │   │   ├── user_device.py         # Device registry (FCM, fingerprint, type)
 │   │   │   │   ├── notification_delivery_log.py  # Per-channel delivery tracking
-│   │   │   │   └── admin_log.py
+│   │   │   │   ├── admin_log.py
+│   │   │   │   ├── job_admit_card.py      # Per-phase admit cards (job_id OR exam_id)
+│   │   │   │   ├── job_answer_key.py      # Per-phase answer keys (provisional/final)
+│   │   │   │   ├── job_result.py          # Per-phase results (shortlist/cutoff/merit_list/final)
+│   │   │   │   └── entrance_exam.py       # Entrance/admission exams (NEET, JEE, CLAT, CAT, GATE…)
 │   │   │   ├── schemas/                  # Pydantic request/response models
 │   │   │   │   ├── auth.py
-│   │   │   │   ├── jobs.py
+│   │   │   │   ├── jobs.py               # Includes AdmitCard/AnswerKey/Result schemas
 │   │   │   │   ├── users.py
 │   │   │   │   ├── applications.py
-│   │   │   │   └── notifications.py
+│   │   │   │   ├── notifications.py
+│   │   │   │   └── entrance_exams.py     # EntranceExam create/update/response/list schemas
 │   │   │   ├── services/                 # Business logic
 │   │   │   │   ├── matching.py           # Job recommendation scoring engine
 │   │   │   │   ├── notifications.py      # NotificationService — smart multi-channel routing
@@ -213,7 +236,10 @@ hermes/
 │   │   │   ├── env.py                    # Async migration runner
 │   │   │   ├── script.py.mako
 │   │   │   └── versions/
-│   │   │       └── 0001_initial_schema.py  # Complete schema — all 9 tables (consolidated from former 0001–0011)
+│   │   │       ├── 0001_initial_schema.py  # Complete base schema (all core tables)
+│   │   │       ├── 0002_add_telegram_channel.py  # Adds telegram to delivery_channel constraint
+│   │   │       ├── 0003_job_documents_tables.py  # job_admit_cards, job_answer_keys, job_results
+│   │   │       └── 0004_entrance_exams.py  # entrance_exams table + exam_id FK on doc tables
 │   │   ├── tests/                               # pytest test suite (313 tests)
 │   │   │   ├── conftest.py                      # Async fixtures (DB, client, tokens)
 │   │   │   ├── unit/                            # Pure logic tests (no DB/Redis)
@@ -244,10 +270,18 @@ hermes/
 │   │       │   ├── icon-192.png          # PWA icon 192x192
 │   │       │   └── icon-512.png          # PWA icon 512x512
 │   │       └── templates/
-│   │           ├── base.html             # Base layout (HTMX + Alpine.js + PWA)
-│   │           ├── index.html            # Job listing + search + filters
-│   │           ├── _job_cards.html       # HTMX partial (load more)
-│   │           ├── job_detail.html       # Job detail page
+│   │           ├── base.html             # Base layout (HTMX + Alpine.js + PWA + shared CSS system)
+│   │           ├── index.html            # Jobs section (hero, search, filters, cards)
+│   │           ├── admit_cards.html      # Admit Cards section page
+│   │           ├── answer_keys.html      # Answer Keys section page
+│   │           ├── results.html          # Results section page
+│   │           ├── admissions.html       # Admissions & Entrance Exams section page
+│   │           ├── _job_cards.html       # HTMX partial — all card types + Share button
+│   │           ├── job_detail.html       # Job/admit card/answer key/result detail (type-aware hero)
+│   │           ├── admission_detail.html # Entrance exam detail (purple hero, exam pattern, doc tabs)
+│   │           ├── _admit_cards_panel.html    # HTMX partial — per-phase admit card docs
+│   │           ├── _answer_keys_panel.html    # HTMX partial — per-phase answer key docs
+│   │           ├── _results_panel.html        # HTMX partial — per-phase result docs
 │   │           ├── dashboard.html        # Application tracking dashboard
 │   │           ├── _application_rows.html # HTMX partial (load more apps)
 │   │           ├── notifications.html    # Notification center
@@ -321,10 +355,13 @@ hermes/
 | 2     | Job vacancy CRUD, full-text search, user profile, admin dashboard, frontend job listing | Done |
 | 3     | Job matching algorithm, recommendations, org follow + alerts | Done |
 | 4     | Application tracking, deadline reminders, user dashboard | Done |
-| 5     | Notification engine (in-app, FCM push, email, WhatsApp placeholder) | Done |
-| 6     | Admin frontend (dashboard, job/user mgmt, logs), SEO (sitemap, meta, JSON-LD), fee display, share buttons | Done |
+| 5     | Notification engine (in-app, FCM push, email, WhatsApp placeholder, Telegram) | Done |
+| 6     | Admin frontend (dashboard, job/user mgmt, logs), SEO (sitemap, meta, JSON-LD), fee display | Done |
 | 7     | PDF ingestion (AI extraction + operator review), PWA | Done |
 | 7.5   | Testing (481 tests — 93/91/97% coverage), security audit (JWT, RBAC, OWASP) | Done |
+| 10    | Complete user frontend: profile, org follow, recommended tab, application tracking inline edit | Done |
+| 11    | Complete admin frontend: analytics, new job form, job delete, user detail, role management | Done |
+| 12    | Job document tables (admit cards / answer keys / results), 5-section nav, entrance_exams DB design, 9 exams seeded, type-aware UI redesign | Done |
 | 8     | Production deployment to OCI ARM VM | Deferred — future |
 | 9     | React Native mobile app (Android + iOS) | Deferred — future |
 

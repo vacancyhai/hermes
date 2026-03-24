@@ -16,7 +16,7 @@ A **Government Job Vacancy Portal** (India-focused). Users register, browse jobs
 
 - **Path**: `/home/sumant/workspace/hermes`
 - **Remote**: `git@github.com:SumanKr7/hermes.git`, branch `main`
-- **Latest commit**: `5dc93f0` — docs: add FRONTEND_BACKEND_AUDIT.md — backend vs frontend endpoint gap report
+- **Latest commit**: `a6cce24` — feat(ui): redesign all detail pages and document panels
 - **GitHub Issues**: #114–#154 (41 issues, 11 phases)
   - Phases 1–7 + Testing (#139–#140) + Phase 10–11 (#144–#154): **CLOSED**
   - Phase 8 (#141, OCI deployment): **OPEN — deferred to future**
@@ -72,37 +72,37 @@ Browser → Nginx (80/443)
 
 ## Database
 
-PostgreSQL 16 with 10 tables:
+PostgreSQL 16 with 14 tables:
 
 | Table | Purpose |
-|-------|---------|
-| `users` | Regular users (no role column); `firebase_uid` for Firebase Auth (`google_id` column dropped in 0011) |
+|-------|---------||
+| `users` | Regular users (no role column); `firebase_uid` for Firebase Auth |
 | `admin_users` | Admin/operator with role, department, permissions JSONB |
 | `user_profiles` | Extended user data + JSONB arrays (preferences, FCM tokens, followed orgs) |
-| `user_devices` | Device registry: device_type (web/pwa/android/ios), device_fingerprint. **Not used for push delivery** — push reads `user_profiles.fcm_tokens`. Reserved for future device management. |
-| `job_vacancies` | 30+ columns, JSONB fields, tsvector GENERATED column for FTS |
+| `user_devices` | Device registry: device_type (web/pwa/android/ios), device_fingerprint. **Not used for push delivery** — push reads `user_profiles.fcm_tokens`. |
+| `job_vacancies` | 30+ columns, JSONB fields, tsvector GENERATED column for FTS. `job_type` ∈ {latest_job, admit_card, answer_key, result} |
+| `entrance_exams` | Admission/entrance exams (NEET, JEE, CLAT, CAT, GATE, CUET etc.) — **separate from `job_vacancies`**; has `stream`, `exam_type`, `counselling_body`, `seats_info`, GENERATED FTS vector |
 | `user_job_applications` | Application tracking with status, notes, reminders JSONB |
 | `notifications` | In-app notifications with expiry (90 days) |
 | `notification_delivery_log` | Per-channel delivery tracking (in_app/push/email/whatsapp/telegram) with status |
 | `admin_logs` | Audit trail with expiry (30 days) |
-| `job_admit_cards` | Per-phase admit card links for tracked jobs |
-| `job_answer_keys` | Per-phase answer keys (provisional/final, multi-paper JSONB `files`) |
-| `job_results` | Per-phase results (shortlist/cutoff/merit_list/final, JSONB `cutoff_marks`) |
+| `job_admit_cards` | Per-phase admit card links. **Polymorphic**: `job_id` XOR `exam_id` (DB CHECK constraint) |
+| `job_answer_keys` | Per-phase answer keys (provisional/final, multi-paper JSONB `files`). Polymorphic. |
+| `job_results` | Per-phase results (shortlist/cutoff/merit_list/final, JSONB `cutoff_marks`). Polymorphic. |
 | `alembic_version` | Migration state |
 
 ### Migrations
 
-All migrations have been consolidated into a single file:
-
-- `0001_initial_schema.py` — Complete schema for all 12 tables in a single migration
+- `0001_initial_schema.py` — Complete base schema for all core tables
 - `0002_add_telegram_channel.py` — Adds `telegram` to `ck_delivery_channel` constraint on `notification_delivery_log`
-- `0003_job_documents_tables.py` — Removes `admission`/`yojana` from `ck_jobs_job_type`; creates `job_admit_cards`, `job_answer_keys`, `job_results`
+- `0003_job_documents_tables.py` — Removes `admission`/`yojana` from `ck_jobs_job_type`; creates `job_admit_cards`, `job_answer_keys`, `job_results` (with `job_id` FK)
+- `0004_entrance_exams.py` — Creates `entrance_exams` table; adds nullable `exam_id` FK to the 3 doc tables + CHECK constraint `(job_id IS NOT NULL AND exam_id IS NULL) OR (job_id IS NULL AND exam_id IS NOT NULL)`
 
-**Fresh install:** `alembic upgrade head` creates all 12 tables in one step.
+**Fresh install:** `alembic upgrade head` creates all 14 tables through 0001→0004 in one step.
 
-**Existing database** (had 0001–0011 applied): stamp to mark as current before running any future migrations:
+**Existing database** (at 0003): upgrade to 0004:
 ```bash
-docker compose exec backend alembic stamp 0001
+docker exec -w /app -e PYTHONPATH=/app hermes_backend alembic upgrade 0004
 ```
 
 ### Key DB Constraints
@@ -112,7 +112,11 @@ docker compose exec backend alembic stamp 0001
 - `ck_devices_device_type`: web, pwa, android, ios
 - `ck_delivery_channel`: in_app, push, email, whatsapp, telegram
 - `ck_delivery_status`: pending, sent, delivered, failed, skipped
-- `ck_jobs_job_type`: latest_job, result, admit_card, answer_key
+- `ck_jobs_job_type`: latest_job, result, admit_card, answer_key (admission/yojana removed in 0003)
+- `ck_exam_type`: ug, pg, doctoral, lateral
+- `ck_exam_stream`: medical, engineering, law, management, arts_science, general
+- `ck_exam_status`: upcoming, active, completed, cancelled
+- `ck_{table}_source` (on all 3 doc tables): `(job_id IS NOT NULL AND exam_id IS NULL) OR (job_id IS NULL AND exam_id IS NOT NULL)`
 - `ck_answer_key_type`: provisional, final
 - `ck_result_type`: shortlist, cutoff, merit_list, final
 - `ck_profiles_gender`: Male, Female, Other (capitalized)
@@ -145,9 +149,12 @@ src/backend/
       notifications.py   # /api/v1/notifications/* — list, count, read, read-all, delete
       job_documents.py   # /api/v1/jobs/{id}/admit-cards|answer-keys|results (public GET)
                          # /api/v1/admin/jobs/{id}/admit-cards|answer-keys|results (admin CRUD)
+      entrance_exams.py  # /api/v1/exams + /{slug} + /{id}/admit-cards|answer-keys|results (public GET)
+                         # /api/v1/admin/exams (admin CRUD for exams + per-exam docs)
       health.py          # /api/v1/health
     schemas/
       auth.py, jobs.py, users.py, applications.py, notifications.py
+      entrance_exams.py  # EntranceExamCreateRequest / UpdateRequest / Response / ListItem
     services/
       matching.py        # Job scoring: category eligibility +4, state +3, preferred_categories +2, education +2, age +2, recency +1; CANDIDATE_LIMIT=500 caps DB fetch (500 most-recent active jobs scored in-memory)
       notifications.py   # NotificationService — instant/staggered delivery (in-app + FCM + email + WhatsApp + Telegram)
@@ -156,9 +163,10 @@ src/backend/
     models/
       job_vacancy.py, user.py, user_profile.py, application.py, notification.py,
       admin_user.py, admin_log.py, user_device.py, notification_delivery_log.py
-      job_admit_card.py  # JobAdmitCard — job_admit_cards table
-      job_answer_key.py  # JobAnswerKey — job_answer_keys table
-      job_result.py      # JobResult — job_results table
+      job_admit_card.py  # JobAdmitCard — job_admit_cards table (job_id nullable, exam_id nullable, CHECK constraint)
+      job_answer_key.py  # JobAnswerKey — job_answer_keys table (polymorphic)
+      job_result.py      # JobResult — job_results table (polymorphic)
+      entrance_exam.py   # EntranceExam — entrance_exams table (stream, exam_type, counselling_body, seats_info)
     tasks/
       notifications.py   # smart_notify (instant/staggered), deliver_delayed_email, deliver_delayed_whatsapp,
                          # deliver_delayed_telegram, send_deadline_reminders, send_new_job_notifications,
@@ -186,18 +194,32 @@ src/backend/
 
 src/frontend/
   app/
-    __init__.py          # Routes: /, /jobs, /jobs/<slug>, /dashboard, /dashboard/track,
-                         # /dashboard/applications/<id>/update, /dashboard/applications/<id>/delete,
-                         # /dashboard/applications (HTMX partial), /notifications/*, /profile,
-                         # /profile/follow, /profile/unfollow,
-                         # /login (Firebase JS SDK), /logout,
-                         # /auth/firebase-callback (relay Firebase ID token → backend /auth/verify-token), /offline
+    __init__.py          # Routes: /, /admit-cards, /answer-keys, /results,
+                         # /admissions, /admissions/<slug>, /admissions/partial,
+                         # /jobs/<slug>, /partials/jobs/<id>/admit-cards|answer-keys|results,
+                         # /partials/exams/<id>/admit-cards|answer-keys|results,
+                         # /dashboard, /dashboard/track, /dashboard/applications/*,
+                         # /notifications/*, /profile, /profile/follow, /profile/unfollow,
+                         # /login, /logout, /auth/firebase-callback, /offline
                          # _try_refresh() on 401
     api_client.py        # requests wrapper: get, post, put, delete, patch (10s timeout)
     static/              # PWA: manifest.json, sw.js, icons
-    templates/           # base.html, index.html, _job_cards.html, job_detail.html,
-                         # dashboard.html, _application_rows.html, notifications.html,
-                         # profile.html, login.html (Firebase JS SDK auth), offline.html, 404.html
+    templates/
+      base.html                    # Layout (HTMX + Alpine.js + shared CSS design system)
+      index.html                   # Jobs section (gradient hero, search, filters)
+      admit_cards.html             # Admit Cards section (blue gradient hero)
+      answer_keys.html             # Answer Keys section (amber gradient hero)
+      results.html                 # Results section (green gradient hero)
+      admissions.html              # Admissions & Entrance Exams section (purple gradient hero)
+      _job_cards.html              # HTMX partial — all card types (Share button, left accent)
+      job_detail.html              # Job/admit card/answer key/result detail (type-aware hero, doc tabs)
+      admission_detail.html        # Entrance exam detail (purple hero, exam pattern, doc tabs)
+      _admit_cards_panel.html      # HTMX partial — per-phase admit cards
+      _answer_keys_panel.html      # HTMX partial — per-phase answer keys
+      _results_panel.html          # HTMX partial — per-phase results (cutoff table)
+      dashboard.html, _application_rows.html,
+      notifications.html, _notif_items.html,
+      profile.html, login.html, offline.html, 404.html
   tests/                 # 80 tests — 91% coverage
     conftest.py
     unit/test_api_client.py (17)
@@ -317,9 +339,10 @@ docker exec hermes_celery_worker celery -A app.celery_app inspect registered
 | 6 | #133–#135 | ✅ | Admin frontend, SEO (sitemap, meta, JSON-LD), fee display by category, share buttons |
 | 7 | #136–#138 | ✅ | PDF upload + AI extraction (Anthropic Claude), draft review workflow, PWA |
 | Testing | #139–#140 | ✅ | ~480 tests (~312 backend + 80 frontend + 88 admin), ~93/91/97% coverage, security audit, 24 bugs fixed post-audit |
-| Firebase | — | ✅ | Firebase Auth migration: verify-token endpoint, phone OTP support, legacy user migration (migration 0009–0010) |
+| Firebase | — | ✅ | Firebase Auth migration: verify-token endpoint, phone OTP support, legacy user migration |
 | 10 | #144–#148 | ✅ | Complete user frontend: profile, org follow/unfollow, recommended jobs tab, application tracking inline edit; Firebase JS SDK login (email, Google, phone OTP) |
 | 11 | #149–#154 | ✅ | Complete admin frontend: analytics dashboard, new job form, job delete, user detail, role management |
+| 12 | — | ✅ | **Content & UI phase:** `entrance_exams` table (migration 0004), polymorphic doc tables, 5-section frontend nav (Jobs/Admit Cards/Answer Keys/Results/Admissions), type-aware gradient detail pages, shared CSS design system, Web Share API button, 9 entrance exams seeded with full phase docs |
 | 8 | #141 | ⏳ Deferred | Production deployment to OCI ARM VM — planned for future |
 | 9 | #142–#143 | ⏳ Deferred (pre-work done) | React Native mobile app + push notifications — planned for future. Backend and config groundwork already complete (see below) |
 

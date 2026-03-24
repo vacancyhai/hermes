@@ -462,12 +462,14 @@ Authorization: Bearer <admin_token>
 
 ---
 
-## Share Buttons
+## Share Button
 
-Job detail and job card pages include:
-- **WhatsApp**: `https://wa.me/?text={encoded_url+title}`
-- **Telegram**: `https://t.me/share/url?url={url}&text={title}`
-- **Copy Link**: Clipboard API button
+Every job card and detail page includes a single **Share** button using the Web Share API:
+- **Mobile (native share sheet):** `navigator.share({ title, url })` triggers the OS-level share dialog
+- **Desktop fallback:** `navigator.clipboard.writeText(url)` — button text changes to `✓ Copied` for 1.8 seconds
+- URL and title are passed via `data-url` and `data-title` HTML attributes to avoid Jinja2/JS context issues
+
+WhatsApp and Telegram share links have been removed.
 
 ---
 
@@ -559,6 +561,97 @@ The user frontend supports Progressive Web App features:
 
 ---
 
+## Entrance Exams (Admissions)
+
+Entrance / admission exams (NEET, JEE, CLAT, CAT, GATE, CUET etc.) are stored separately from `job_vacancies`.
+They have exam-specific fields: `stream`, `exam_type`, `counselling_body`, `seats_info`, exam pattern.
+
+### Public (read-only, active exams only)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/exams` | List active entrance exams (stream/exam_type/search filters) |
+| GET | `/exams/{slug}` | Exam detail by slug (increments views) |
+| GET | `/exams/{exam_id}/admit-cards` | Per-phase admit cards linked to this exam |
+| GET | `/exams/{exam_id}/answer-keys` | Per-phase answer keys linked to this exam |
+| GET | `/exams/{exam_id}/results` | Per-phase results linked to this exam |
+
+**Query Parameters for `GET /exams`:**
+
+| Param | Type | Description |
+|-------|------|-------------|
+| `q` | string | Full-text search on exam name, conducting body, description |
+| `stream` | string | `medical`, `engineering`, `law`, `management`, `arts_science`, `general` |
+| `exam_type` | string | `ug`, `pg`, `doctoral`, `lateral` |
+| `is_featured` | boolean | Filter featured exams |
+| `limit` | int | 1-100, default: 20 |
+| `offset` | int | Default: 0 |
+
+**Note:** `status='upcoming'` exams are excluded from public listing (only `status='active'` returned).
+
+### Admin CRUD (operator+)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/admin/exams` | List all exams (any status) |
+| POST | `/admin/exams` | Create entrance exam |
+| PUT | `/admin/exams/{id}` | Update entrance exam |
+| DELETE | `/admin/exams/{id}` | Delete entrance exam (cascades to linked docs) |
+| POST | `/admin/exams/{id}/admit-cards` | Add admit card to exam |
+| PUT | `/admin/exams/{id}/admit-cards/{doc_id}` | Update admit card |
+| DELETE | `/admin/exams/{id}/admit-cards/{doc_id}` | Delete admit card |
+| POST | `/admin/exams/{id}/answer-keys` | Add answer key |
+| PUT | `/admin/exams/{id}/answer-keys/{doc_id}` | Update answer key |
+| DELETE | `/admin/exams/{id}/answer-keys/{doc_id}` | Delete answer key |
+| POST | `/admin/exams/{id}/results` | Add result |
+| PUT | `/admin/exams/{id}/results/{doc_id}` | Update result |
+| DELETE | `/admin/exams/{id}/results/{doc_id}` | Delete result |
+
+### Example — List Medical Entrance Exams
+```
+GET /api/v1/exams?stream=medical&limit=10
+→ 200 {
+  "data": [
+    {
+      "slug": "nta-neet-pg-2026",
+      "exam_name": "NTA NEET PG 2026 — Medical PG Entrance Examination",
+      "conducting_body": "National Testing Agency",
+      "counselling_body": "Medical Counselling Committee (MCC)",
+      "exam_type": "pg",
+      "stream": "medical",
+      "application_end": "2025-11-30",
+      "exam_date": "2026-03-09",
+      "fee_general": 4250,
+      "is_featured": true
+    },
+    ...
+  ],
+  "pagination": { "total": 3, "has_more": false }
+}
+```
+
+### Example — Create Entrance Exam (Admin)
+```
+POST /api/v1/admin/exams
+Authorization: Bearer <admin_token>
+{
+  "exam_name": "JEE Advanced 2026",
+  "conducting_body": "IIT Bombay",
+  "counselling_body": "JoSAA",
+  "exam_type": "ug",
+  "stream": "engineering",
+  "eligibility": { "min_qualification": "12th", "attempts_limit": "2 consecutive years" },
+  "seats_info": { "iit_seats": 17385 },
+  "exam_date": "2026-05-25",
+  "fee_general": 3200,
+  "fee_sc_st": 1600,
+  "status": "active"
+}
+→ 201 { "id": "uuid", "slug": "jee-advanced-2026", ... }
+```
+
+---
+
 ## Database Tables
 
 | Table | Description |
@@ -566,9 +659,13 @@ The user frontend supports Progressive Web App features:
 | `users` | Regular user accounts (no role column) |
 | `admin_users` | Admin/operator accounts (role, department, permissions) |
 | `user_profiles` | Extended user profile (education, category, location) |
-| `job_vacancies` | Job postings with FTS vector |
+| `job_vacancies` | Job postings with FTS vector (latest_job / admit_card / answer_key / result) |
+| `entrance_exams` | Admission/entrance exams (NEET, JEE, CLAT, CAT, GATE etc.) — separate from jobs |
 | `user_job_applications` | Application tracking |
 | `notifications` | User notifications |
-| `notification_delivery_log` | Per-channel delivery tracking (push/email/whatsapp) |
+| `notification_delivery_log` | Per-channel delivery tracking (push/email/whatsapp/telegram) |
 | `user_devices` | Device registry (FCM token, fingerprint de-duplication) |
 | `admin_logs` | Admin audit trail |
+| `job_admit_cards` | Per-phase admit cards (linked to job OR exam via polymorphic FK) |
+| `job_answer_keys` | Per-phase answer keys — provisional/final, multi-paper files JSONB |
+| `job_results` | Per-phase results — shortlist/cutoff/merit_list/final, cutoff_marks JSONB |
