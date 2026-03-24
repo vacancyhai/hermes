@@ -337,10 +337,13 @@ Admin/Operator → Admin Frontend (port 8081)
      ▼
 ┌──────────────────────┐
 │ Send notifications   │
-│ to matched users via:│
-│ - Email              │
-│ - Push notification  │
-│ - In-app alert       │
+│ to matched users via │
+│ smart_notify (5ch):  │
+│ - In-app             │
+│ - Push (FCM)         │
+│ - Email (T+15min)    │
+│ - Telegram (T+15min) │
+│ - WhatsApp (T+1hr)   │
 └────┬─────────────────┘
      │
      ▼
@@ -485,18 +488,29 @@ Admin/Operator → Admin Frontend (port 8081)
           │ Check User Prefs:     │           │
           │ - Email enabled?      │           │
           │ - Push enabled?       │           │
+          │ - Telegram enabled?   │           │
+          │ - WhatsApp enabled?   │           │
           └───────────┬───────────┘           │
                       │                       │
                       ▼                       │
             ┌──────────────────┐              │
-            │ Send via enabled │              │
-            │ channels:        │              │
+            │ smart_notify     │              │
+            │ (staggered):     │              │
             │                  │              │
             │ ┌──────────────┐ │              │
-            │ │ Send Email   │ │              │
+            │ │ In-app (T+0) │ │              │
             │ └──────────────┘ │              │
             │ ┌──────────────┐ │              │
-            │ │ Send Push    │ │              │
+            │ │ Push (T+0)   │ │              │
+            │ └──────────────┘ │              │
+            │ ┌──────────────┐ │              │
+            │ │ Email +15min │ │              │
+            │ └──────────────┘ │              │
+            │ ┌──────────────┐ │              │
+            │ │ Telegram+15m │ │              │
+            │ └──────────────┘ │              │
+            │ ┌──────────────┐ │              │
+            │ │ WhatsApp +1h │ │              │
             │ └──────────────┘ │              │
             └─────────┬────────┘              │
                       │                       │
@@ -695,9 +709,10 @@ Admin/Operator → Admin Frontend (port 8081)
      │
      ▼
 ┌────────────────────────────────────┐
-│ User receives                      │
-│ notifications via                  │
-│ email/push                         │
+│ User receives notifications via    │
+│ smart_notify (up to 5 channels):   │
+│ in-app, push, email, Telegram,     │
+│ WhatsApp (based on preferences)    │
 └────┬───────────────────────────────┘
      │
      ▼
@@ -722,9 +737,9 @@ Admin/Operator → Admin Frontend (port 8081)
                 ▼
 ┌─────────────────────────────────┐
 │ Trigger Celery Task:            │
-│ check_priority_jobs             │
-│ Queue: HIGH (priority)          │
-│ Retry: 5x exponential backoff   │
+│ notify_priority_subscribers     │
+│ → smart_notify per user         │
+│   (staggered, priority=high)    │
 └───────────────┬─────────────────┘
                 │
                 ▼
@@ -766,21 +781,24 @@ Admin/Operator → Admin Frontend (port 8081)
      │               │                │
      │               ▼                │
      │  ┌──────────────────────────┐  │
-     │  │ Send notification via    │  │
-     │  │ all enabled channels     │  │
-     │  │ Retry: 5x on failure     │  │
+     │  │ smart_notify (instant):  │  │
+     │  │ in-app + push + email +  │  │
+     │  │ Telegram + WhatsApp T+0  │  │
+     │  │ (based on user prefs)    │  │
      │  └────────────┬─────────────┘  │
      │               │                │
      │               ▼                │
      │  ┌──────────────────────────┐  │
-     │  │ Email / Push Failed?     │  │
+     │  │ Delivery logged per      │  │
+     │  │ channel in               │  │
+     │  │ notification_delivery_log│  │
      │  └──────┬────────────┬──────┘  │
      │         │            │         │
-     │   YES   ▼            ▼  NO     │
+     │  Fail   ▼            ▼ OK      │
      │   ┌───────────┐  ┌──────────┐  │
-     │   │ Retry 5x  │  │ Continue │  │
-     │   │ with      │  └────┬─────┘  │
-     │   │ Exp BO    │       │        │
+     │   │ Logged as │  │ Continue │  │
+     │   │ 'failed'  │  └────┬─────┘  │
+     │   │ in log    │       │        │
      │   └─────┬─────┘       │        │
      │         │             │        │
      │         ▼             ▼        │

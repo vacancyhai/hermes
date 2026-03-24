@@ -692,16 +692,29 @@ delete jobs.
 ### Initial Admin Setup
 
 No self-registration for admin accounts. Admin auth uses local bcrypt + JWT
-(not Firebase). The first admin is created via a direct database insert:
+(not Firebase). The first admin must be seeded directly in the database:
 
-```sql
-INSERT INTO admin_users (email, password_hash, full_name, role, department, status)
-VALUES ('admin@example.com', '<bcrypt-hash>', 'System Admin', 'admin', 'Engineering', 'active');
+```bash
+docker compose exec backend python -c "
+from passlib.context import CryptContext
+from sqlalchemy import create_engine, text
+import os, uuid
+ctx = CryptContext(schemes=['bcrypt'])
+engine = create_engine(os.environ['DATABASE_URL'].replace('+asyncpg', ''))
+with engine.connect() as conn:
+    conn.execute(text(\"INSERT INTO admin_users (id, email, password_hash, full_name, role, status, is_email_verified) VALUES (:id, :email, :pw, :name, 'admin', 'active', TRUE)\"),
+        {'id': str(uuid.uuid4()), 'email': 'admin@example.com', 'pw': ctx.hash('ChangeMe123!'), 'name': 'Admin'})
+    conn.commit()
+"
 ```
 
-Subsequent operators are created by inserting into `admin_users` with
-`role = 'operator'`. Existing admin/operator roles can be changed via
-`PUT /api/v1/admin/users/:id/role` (admin only).
+After the first admin exists, subsequent admin/operator accounts are created via the API:
+```
+POST /api/v1/admin/admin-users  (admin role only)
+{ "email": "operator@example.com", "password": "MinEight1", "full_name": "Operator", "role": "operator" }
+```
+
+Roles can be changed via `PUT /api/v1/admin/users/:id/role` (admin only).
 
 ---
 
@@ -714,19 +727,20 @@ Subsequent operators are created by inserting into `admin_users` with
 | `send-deadline-reminders`       | Daily 08:00 UTC | T-7, T-3, T-1 reminders → delegates to `smart_notify` |
 | `purge-expired-notifications`   | Daily 01:00 UTC | Delete notifications past `expires_at` |
 | `purge-expired-admin-logs`      | Daily 01:30 UTC | Delete admin logs past `expires_at`    |
-| `purge-soft-deleted-jobs`       | Daily 02:00 UTC | Hard-delete jobs soft-deleted > 90 days|
-| `close-expired-job-listings`    | Daily 02:30 UTC | Auto-close jobs past `application_end` |
+| `purge-soft-deleted-jobs`       | Daily 02:00 UTC | Hard-delete `cancelled` (manually deleted) jobs > 90 days |
+| `close-expired-job-listings`    | Daily 02:30 UTC | Set `status='expired'` on jobs past `application_end` |
 | `generate-sitemap`              | Daily 04:00 UTC | Regenerate `/sitemap.xml` with active jobs |
 
 ### Event-Triggered Tasks
 
 | Trigger                  | Task                           | Description                            |
 | ------------------------ | ------------------------------ | -------------------------------------- |
-| Any notification needed  | `smart_notify`                 | Unified entry — instant or staggered delivery to all 4 channels |
+| Any notification needed  | `smart_notify`                 | Unified entry — instant or staggered delivery to all 5 channels |
 | New job created (active) | `send_new_job_notifications`   | Match org followers → `smart_notify(staggered)` per user |
 | Admin updates a job      | `notify_priority_subscribers`  | Notify priority trackers → `smart_notify(staggered)` per user |
 | Staggered email delivery | `deliver_delayed_email`        | Fires after `NOTIFY_EMAIL_DELAY` — sends the email |
 | Staggered WhatsApp       | `deliver_delayed_whatsapp`     | Fires after `NOTIFY_WHATSAPP_DELAY` — sends the WhatsApp |
+| Staggered Telegram       | `deliver_delayed_telegram`     | Fires after `NOTIFY_TELEGRAM_DELAY` — sends the Telegram message |
 
 ---
 
@@ -879,34 +893,36 @@ This costs zero infrastructure — only Jinja2 template changes.
 
 ### Notification Channels
 
-| Channel    | Technology          | Instant Mode (T+0) | Staggered Mode                     | Status      |
-| ---------- | ------------------- | ------------------- | ---------------------------------- | ----------- |
-| In-app     | PostgreSQL row      | T+0                 | T+0                                | Implemented |
-| Push (FCM) | Firebase FCM        | T+0                 | T+0 (fingerprint de-dup)           | Implemented |
-| Email      | OCI Email Delivery  | T+0                 | T+`NOTIFY_EMAIL_DELAY` (default 15min) | Implemented |
-| WhatsApp   | WhatsApp Cloud API  | T+0                 | T+`NOTIFY_WHATSAPP_DELAY` (default 1hr) | Implemented (API placeholder) |
+| Channel    | Technology          | Instant Mode (T+0) | Staggered Mode                          | Status      |
+| ---------- | ------------------- | ------------------- | --------------------------------------- | ----------- |
+| In-app     | PostgreSQL row      | T+0                 | T+0                                     | Implemented |
+| Push (FCM) | Firebase FCM        | T+0                 | T+0 (tokens from `user_profiles.fcm_tokens`) | Implemented |
+| Email      | OCI Email Delivery  | T+0                 | T+`NOTIFY_EMAIL_DELAY` (default 15min)  | Implemented |
+| WhatsApp   | WhatsApp Cloud API  | T+0                 | T+`NOTIFY_WHATSAPP_DELAY` (default 1hr) | Placeholder (API token not yet set) |
+| Telegram   | Telegram Bot API    | T+0                 | T+`NOTIFY_TELEGRAM_DELAY` (default 15min) | Implemented |
 
 **Two delivery modes** via `smart_notify(delivery_mode="instant"|"staggered")`:
-- **instant** — all 4 channels at T+0 (welcome message, urgent alerts)
-- **staggered** — in-app + push at T+0, email delayed, WhatsApp delayed (job alerts, deadline reminders)
+- **instant** — all 5 channels at T+0 (welcome message, urgent alerts)
+- **staggered** — in-app + push at T+0, email + Telegram T+15min, WhatsApp T+1hr
 
-Delays are configurable via env vars (`NOTIFY_EMAIL_DELAY`, `NOTIFY_WHATSAPP_DELAY`).
-All channels always deliver — staggered just adds a time gap to avoid bombarding simultaneously.
+Delays are configurable via env vars (`NOTIFY_EMAIL_DELAY`, `NOTIFY_WHATSAPP_DELAY`, `NOTIFY_TELEGRAM_DELAY`).
+All channels always attempt delivery — staggered just adds a time gap to avoid bombarding simultaneously.
 User preferences (`notification_preferences` JSONB) control per-channel opt-out.
 
-#### Telegram & WhatsApp (Future)
+**Telegram setup** (user-driven):
+1. User messages the Hermes bot on Telegram (bot token set via `TELEGRAM_BOT_TOKEN`)
+2. User retrieves their `chat_id` (e.g. via `@userinfobot`) and saves it:
+   ```
+   PUT /api/v1/users/me/notification-preferences
+   { "telegram_chat_id": "123456789" }
+   ```
+3. Bot sends messages via `https://api.telegram.org/bot{token}/sendMessage` with Markdown formatting.
+   Free — no per-message cost.
 
-Users will be able to link their Telegram or WhatsApp to receive job alerts
-directly on their phone without installing the Hermes app.
+**WhatsApp** uses the WhatsApp Cloud API and remains a placeholder until
+`WHATSAPP_API_TOKEN` + `WHATSAPP_PHONE_NUMBER_ID` are configured.
 
-- **Telegram**: User links account via `/start` command on the Hermes bot.
-  Bot sends job alerts, deadline reminders, and result notifications.
-  Free — no per-message cost.
-- **WhatsApp**: User opts in by sending a keyword to the Hermes WhatsApp
-  Business number. Uses WhatsApp Cloud API (1,000 free conversations/month).
-  Template messages for job alerts; session messages for interactive queries.
-
-Both channels store the user's chat ID / phone in `notification_preferences`:
+Both channels store their config in `notification_preferences`:
 
 ```json
 {
@@ -920,20 +936,20 @@ Both channels store the user's chat ID / phone in `notification_preferences`:
 The `sent_via` array on each notification row tracks which channels were used
 (e.g., `['email', 'telegram']`).
 
-### Organization Follow (Future)
+### Organization Follow
 
 Users can follow specific organizations (SSC, UPSC, Railway, etc.) to get
 notified whenever that org posts *any* job — regardless of profile match.
 
-Stored in a `user_org_follows` many-to-many table (future expansion table).
-The `send_new_job_notifications` Celery task checks both profile matches and
-org follows when a job is created.
+Followed organizations are stored in `user_profiles.followed_organizations` (JSONB array).
+When a job is approved (draft → active), `send_new_job_notifications` notifies all
+followers of that organization via `smart_notify(staggered)`.
 
 | Method | Endpoint                              | Description            | Access |
 | ------ | ------------------------------------- | ---------------------- | ------ |
-| POST   | `/api/v1/users/follow-org`            | Follow an organization | User   |
-| DELETE | `/api/v1/users/follow-org/:org_name`  | Unfollow               | User   |
-| GET    | `/api/v1/users/followed-orgs`         | List followed orgs     | User   |
+| POST   | `/api/v1/organizations/{name}/follow`  | Follow an organization (idempotent, max 50) | User |
+| DELETE | `/api/v1/organizations/{name}/follow`  | Unfollow               | User   |
+| GET    | `/api/v1/users/me/following`           | List followed orgs     | User   |
 
 ### Social Share Buttons
 
@@ -1048,7 +1064,7 @@ RAM so builds are fast enough in production.
 | `DEBUG`  | `True`                                                 |
 | Database | Local PostgreSQL container (Docker volume)              |
 | Redis    | Local Redis container, no password (AOF enabled)        |
-| Mail     | Mailpit or `MAIL_SUPPRESS_SEND=True`                  |
+| Mail     | Mailpit (`MAIL_ENABLED=false` in dev env)             |
 | Nginx    | Not required; access services directly on exposed ports|
 | TLS      | None                                                   |
 | Volumes  | Hot-reload mounts for code                             |
@@ -1139,13 +1155,13 @@ All items below are implemented.
 - **User authentication:** Firebase Auth (Email/Password, Google OAuth, Phone OTP) — client-side Firebase JS SDK, backend verifies Firebase ID tokens via `firebase-admin` SDK
 - **Admin authentication:** Local bcrypt (salted) password hashing — admin accounts do not use Firebase
 - **Internal JWT with Redis blocklist:** After Firebase verification, backend issues its own JWT — access tokens expire in 15 min, refresh in 7 days
-- **Rate limiting:** Nginx (100 req/min per IP) + SlowAPI (1000 req/min per user, 10/min on verify-token)
+- **Rate limiting:** Nginx (100 req/min per IP, 5/min on `/api/v1/auth/`) + SlowAPI behind proxy using `X-Real-IP` header (1000 req/min per real client, 10/min on verify-token)
 - **CORS:** Only whitelisted origins in `CORS_ORIGINS`
 - **HTTPS/TLS:** Nginx handles SSL termination via Let's Encrypt (Certbot) — free, auto-renewing certificates directly on the VM
 - **Network isolation:** OCI VCN security list — only ports 80/443/22 open; DB and Redis never exposed outside Docker networks
 - **Security headers:** X-Frame-Options, X-Content-Type-Options, X-XSS-Protection, Content-Security-Policy, Strict-Transport-Security, Referrer-Policy (via Nginx behind LB)
 - **Input validation:** Pydantic models on all endpoints (FastAPI native)
-- **CSRF protection:** Redis-backed single-use tokens (1h TTL, admin login forms only)
+- **CSRF protection:** Session-based tokens (admin login form uses `secrets.token_hex`, validated before processing). User frontend POST forms include a session-bound CSRF token generated by `_get_csrf_token()` and validated in `before_request`; the Firebase callback is exempt (authenticated by Firebase ID token).
 - **Secrets:** `.env` files in `.gitignore`; never committed to version control
 - **Redis persistence:** AOF (append-only file) enabled — prevents JWT blocklist loss on Redis restart. Without AOF, a Redis restart would make previously logged-out tokens valid again.
 - **Audit logging — admin actions (DB):** All state-changing admin operations write a row to `admin_logs` (30-day expiry, queryable from admin frontend `/admin/logs`):
@@ -1227,9 +1243,13 @@ FIREBASE_WEB_API_KEY=<from-firebase-console>
 FIREBASE_AUTH_DOMAIN=<project-id>.firebaseapp.com
 FIREBASE_PROJECT_ID=<project-id>
 
+# Telegram Bot API
+TELEGRAM_BOT_TOKEN=             # Leave blank to disable Telegram notifications
+
 # Notification delivery delays (staggered mode, in seconds)
 NOTIFY_EMAIL_DELAY=900         # 15 minutes (default)
 NOTIFY_WHATSAPP_DELAY=3600     # 1 hour (default)
+NOTIFY_TELEGRAM_DELAY=900      # 15 minutes (default)
 
 # JWT (internal tokens issued after Firebase verification)
 JWT_SECRET_KEY=<separate-random-key>
@@ -1238,7 +1258,7 @@ JWT_REFRESH_TOKEN_EXPIRES=604800   # 7 days
 
 # AI Extraction (PDF job ingestion)
 ANTHROPIC_API_KEY=<anthropic-api-key>   # Leave blank to disable AI extraction
-AI_MODEL=claude-sonnet-4-20250514
+AI_MODEL=claude-3-5-sonnet-20241022
 
 # SEO / Sitemap
 SITE_URL=https://yourdomain.com
