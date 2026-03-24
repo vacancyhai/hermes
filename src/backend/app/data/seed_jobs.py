@@ -1225,27 +1225,406 @@ EXAM_PHASE_DOCS = {
                 "notes": "Download from jeemain.nta.ac.in using Application No. & DOB.",
                 "published_at": datetime(2026, 1, 14, tzinfo=timezone.utc),
             },
+            {
+                "phase_number": 2, "title": "JEE Main 2026 Session 2 Admit Card",
+                "download_url": "https://jeemain.nta.ac.in/admit-card-s2",
+                "valid_from": date(2026, 4, 1), "valid_until": date(2026, 4, 9),
+                "notes": "Session 2 admit card — download using Application No. & DOB.",
+                "published_at": datetime(2026, 4, 1, tzinfo=timezone.utc),
+            },
         ],
         "answer_keys": [
             {
                 "phase_number": 1, "title": "JEE Main Session 1 2026 Provisional Answer Key",
                 "answer_key_type": "provisional",
                 "files": [
-                    {"label": "Paper 1 (B.Tech)", "url": "https://jeemain.nta.ac.in/ak-paper1.pdf"},
+                    {"label": "Paper 1 (B.Tech)", "url": "https://jeemain.nta.ac.in/ak-s1-paper1.pdf"},
+                    {"label": "Paper 2A (B.Arch)", "url": "https://jeemain.nta.ac.in/ak-s1-paper2a.pdf"},
                 ],
                 "objection_url": "https://jeemain.nta.ac.in/objection",
                 "objection_deadline": date(2026, 2, 1),
                 "published_at": datetime(2026, 1, 28, tzinfo=timezone.utc),
+            },
+            {
+                "phase_number": 1, "title": "JEE Main Session 1 2026 Final Answer Key",
+                "answer_key_type": "final",
+                "files": [
+                    {"label": "Paper 1 Final Key", "url": "https://jeemain.nta.ac.in/fak-s1-paper1.pdf"},
+                ],
+                "published_at": datetime(2026, 2, 12, tzinfo=timezone.utc),
+            },
+            {
+                "phase_number": 2, "title": "JEE Main Session 2 2026 Provisional Answer Key",
+                "answer_key_type": "provisional",
+                "files": [
+                    {"label": "Paper 1 (B.Tech)", "url": "https://jeemain.nta.ac.in/ak-s2-paper1.pdf"},
+                ],
+                "objection_url": "https://jeemain.nta.ac.in/objection-s2",
+                "objection_deadline": date(2026, 4, 16),
+                "published_at": datetime(2026, 4, 12, tzinfo=timezone.utc),
             },
         ],
         "results": [
             {
                 "phase_number": 1, "title": "JEE Main Session 1 2026 Result (NTA Score)",
                 "result_type": "merit_list",
-                "download_url": "https://jeemain.nta.ac.in/result",
-                "cutoff_marks": {"JEE_Advanced_Qualifying": 93.5, "NIT_General_approx": 88},
-                "notes": "NTA Score (percentile) used for NIT/IIIT/CFTI allotment via JoSAA.",
+                "download_url": "https://jeemain.nta.ac.in/result-s1",
+                "cutoff_marks": {"JEE_Advanced_Qualifying_percentile": 93.5, "NIT_General_approx_percentile": 88},
+                "notes": "NTA Score (percentile) used for NIT/IIIT/CFTI allotment via JoSAA. Top 2.5L qualify for JEE Advanced.",
                 "published_at": datetime(2026, 2, 15, tzinfo=timezone.utc),
+            },
+            {
+                "phase_number": 2, "title": "JEE Main Session 2 2026 Result & Final Merit List",
+                "result_type": "merit_list",
+                "download_url": "https://jeemain.nta.ac.in/result-s2",
+                "cutoff_marks": {"JEE_Advanced_Qualifying_percentile": 94.0, "NIT_General_approx_percentile": 89},
+                "notes": "Best of Session 1 & Session 2 NTA Score considered for final rank list.",
+                "published_at": datetime(2026, 4, 25, tzinfo=timezone.utc),
+            },
+        ],
+    },
+
+    "nta-neet-ug-2026": {
+        "admit_cards": [
+            {
+                "phase_number": 1, "title": "NEET UG 2026 Admit Card",
+                "download_url": "https://neet.nta.nic.in/admit-card",
+                "valid_from": date(2026, 4, 20), "valid_until": date(2026, 5, 4),
+                "notes": "Carry colour printout + valid Govt. photo ID. Report to centre 90 min before exam.",
+                "published_at": datetime(2026, 4, 20, tzinfo=timezone.utc),
+            },
+        ],
+        "answer_keys": [
+            {
+                "phase_number": 1, "title": "NEET UG 2026 Provisional Answer Key",
+                "answer_key_type": "provisional",
+                "files": [
+                    {"label": "Physics", "url": "https://neet.nta.nic.in/ak/physics.pdf"},
+                    {"label": "Chemistry", "url": "https://neet.nta.nic.in/ak/chemistry.pdf"},
+                    {"label": "Biology", "url": "https://neet.nta.nic.in/ak/biology.pdf"},
+                ],
+                "objection_url": "https://neet.nta.nic.in/objection",
+                "objection_deadline": date(2026, 5, 22),
+                "published_at": datetime(2026, 5, 17, tzinfo=timezone.utc),
+            },
+            {
+                "phase_number": 1, "title": "NEET UG 2026 Final Answer Key",
+                "answer_key_type": "final",
+                "files": [
+                    {"label": "Final Answer Key (All Sets)", "url": "https://neet.nta.nic.in/fak/neet-ug-2026.pdf"},
+                ],
+                "published_at": datetime(2026, 6, 10, tzinfo=timezone.utc),
+            },
+        ],
+        "results": [
+            {
+                "phase_number": 1, "title": "NEET UG 2026 Result & Score Card",
+                "result_type": "merit_list",
+                "download_url": "https://neet.nta.nic.in/result",
+                "cutoff_marks": {
+                    "UR_50th_percentile_marks": 720, "UR_cut_off": 138,
+                    "OBC_SC_ST_40th_percentile": 108, "PwBD_45th_percentile": 122,
+                },
+                "notes": "Score card required for MCC / State counselling registration. Valid until NEET UG 2027.",
+                "published_at": datetime(2026, 6, 14, tzinfo=timezone.utc),
+            },
+        ],
+    },
+
+    "jee-advanced-2026": {
+        "admit_cards": [
+            {
+                "phase_number": 1, "title": "JEE Advanced 2026 Admit Card",
+                "download_url": "https://jeeadv.ac.in/admit-card",
+                "valid_from": date(2026, 5, 17), "valid_until": date(2026, 5, 25),
+                "notes": "Download from jeeadv.ac.in. Carry printout + any one original Govt. photo ID.",
+                "published_at": datetime(2026, 5, 17, tzinfo=timezone.utc),
+            },
+        ],
+        "answer_keys": [
+            {
+                "phase_number": 1, "title": "JEE Advanced 2026 Provisional Answer Key",
+                "answer_key_type": "provisional",
+                "files": [
+                    {"label": "Paper 1 — Physics", "url": "https://jeeadv.ac.in/ak/p1-physics.pdf"},
+                    {"label": "Paper 1 — Chemistry", "url": "https://jeeadv.ac.in/ak/p1-chemistry.pdf"},
+                    {"label": "Paper 1 — Mathematics", "url": "https://jeeadv.ac.in/ak/p1-maths.pdf"},
+                    {"label": "Paper 2 — Physics", "url": "https://jeeadv.ac.in/ak/p2-physics.pdf"},
+                    {"label": "Paper 2 — Chemistry", "url": "https://jeeadv.ac.in/ak/p2-chemistry.pdf"},
+                    {"label": "Paper 2 — Mathematics", "url": "https://jeeadv.ac.in/ak/p2-maths.pdf"},
+                ],
+                "objection_url": "https://jeeadv.ac.in/objection",
+                "objection_deadline": date(2026, 6, 2),
+                "published_at": datetime(2026, 5, 29, tzinfo=timezone.utc),
+            },
+            {
+                "phase_number": 1, "title": "JEE Advanced 2026 Final Answer Key",
+                "answer_key_type": "final",
+                "files": [
+                    {"label": "Final Keys — Paper 1 & Paper 2", "url": "https://jeeadv.ac.in/fak/jee-adv-2026.pdf"},
+                ],
+                "published_at": datetime(2026, 6, 7, tzinfo=timezone.utc),
+            },
+        ],
+        "results": [
+            {
+                "phase_number": 1, "title": "JEE Advanced 2026 Result — All India Rank (AIR)",
+                "result_type": "merit_list",
+                "download_url": "https://jeeadv.ac.in/result",
+                "cutoff_marks": {
+                    "CRL_min_marks_each_subject": 10, "CRL_aggregate_min": 90,
+                    "OBC_NCL_aggregate": 81, "SC_aggregate": 45, "ST_aggregate": 45,
+                },
+                "notes": "AIR used for JoSAA IIT seat allotment. Architecture Aptitude Test (AAT) for B.Arch at IITs.",
+                "total_qualified": 17400,
+                "published_at": datetime(2026, 6, 9, tzinfo=timezone.utc),
+            },
+        ],
+    },
+
+    "clat-2026": {
+        "admit_cards": [
+            {
+                "phase_number": 1, "title": "CLAT 2026 Admit Card",
+                "download_url": "https://consortiumofnlus.ac.in/admit-card",
+                "valid_from": date(2026, 11, 22), "valid_until": date(2026, 12, 1),
+                "notes": "Download from consortiumofnlus.ac.in. Carry printout + Govt. photo ID + passport photo.",
+                "published_at": datetime(2026, 11, 22, tzinfo=timezone.utc),
+            },
+        ],
+        "answer_keys": [
+            {
+                "phase_number": 1, "title": "CLAT 2026 Provisional Answer Key",
+                "answer_key_type": "provisional",
+                "files": [
+                    {"label": "CLAT UG 2026 Answer Key", "url": "https://consortiumofnlus.ac.in/ak/clat-ug-2026.pdf"},
+                    {"label": "CLAT PG 2026 Answer Key", "url": "https://consortiumofnlus.ac.in/ak/clat-pg-2026.pdf"},
+                ],
+                "objection_url": "https://consortiumofnlus.ac.in/objection",
+                "objection_deadline": date(2026, 12, 5),
+                "published_at": datetime(2026, 12, 2, tzinfo=timezone.utc),
+            },
+            {
+                "phase_number": 1, "title": "CLAT 2026 Final Answer Key",
+                "answer_key_type": "final",
+                "files": [
+                    {"label": "Final Answer Key", "url": "https://consortiumofnlus.ac.in/fak/clat-2026.pdf"},
+                ],
+                "published_at": datetime(2026, 12, 8, tzinfo=timezone.utc),
+            },
+        ],
+        "results": [
+            {
+                "phase_number": 1, "title": "CLAT 2026 Result & Merit List",
+                "result_type": "merit_list",
+                "download_url": "https://consortiumofnlus.ac.in/result",
+                "cutoff_marks": {
+                    "NLSIU_Bangalore_General_approx": 98.5,
+                    "NLU_Delhi_General_approx": 97.8,
+                    "NALSAR_Hyderabad_approx": 96.5,
+                },
+                "notes": "Merit list used for centralised NLU counselling. Candidates should register separately for preferred NLUs.",
+                "published_at": datetime(2026, 12, 10, tzinfo=timezone.utc),
+            },
+        ],
+    },
+
+    "cat-2025": {
+        "admit_cards": [
+            {
+                "phase_number": 1, "title": "CAT 2025 Admit Card",
+                "download_url": "https://iimcat.ac.in/admit-card",
+                "valid_from": date(2025, 11, 5), "valid_until": date(2025, 11, 23),
+                "notes": "Download from iimcat.ac.in. Carry printout + any original Govt. photo ID. Slot pre-assigned.",
+                "published_at": datetime(2025, 11, 5, tzinfo=timezone.utc),
+            },
+        ],
+        "answer_keys": [
+            {
+                "phase_number": 1, "title": "CAT 2025 Answer Key & Question Paper",
+                "answer_key_type": "provisional",
+                "files": [
+                    {"label": "Slot 1 Question Paper + Key", "url": "https://iimcat.ac.in/ak/cat2025-slot1.pdf"},
+                    {"label": "Slot 2 Question Paper + Key", "url": "https://iimcat.ac.in/ak/cat2025-slot2.pdf"},
+                    {"label": "Slot 3 Question Paper + Key", "url": "https://iimcat.ac.in/ak/cat2025-slot3.pdf"},
+                ],
+                "objection_url": "https://iimcat.ac.in/objection",
+                "objection_deadline": date(2025, 12, 5),
+                "published_at": datetime(2025, 11, 27, tzinfo=timezone.utc),
+            },
+        ],
+        "results": [
+            {
+                "phase_number": 1, "title": "CAT 2025 Score Card & Result",
+                "result_type": "merit_list",
+                "download_url": "https://iimcat.ac.in/result",
+                "cutoff_marks": {
+                    "IIM_Ahmedabad_General_percentile": 99.0,
+                    "IIM_Bangalore_General_percentile": 98.5,
+                    "IIM_Calcutta_General_percentile": 98.5,
+                    "Top6_IIMs_General_approx": 98.0,
+                    "New_IIMs_General_approx": 90.0,
+                },
+                "notes": "CAT score valid for IIM WAT-PI shortlisting. Score card required for all participating B-school applications.",
+                "published_at": datetime(2026, 1, 5, tzinfo=timezone.utc),
+            },
+        ],
+    },
+
+    "cuet-ug-2026": {
+        "admit_cards": [
+            {
+                "phase_number": 1, "title": "CUET UG 2026 Admit Card — City Intimation Slip",
+                "download_url": "https://cuet.nta.nic.in/city-intimation",
+                "valid_from": date(2026, 4, 28), "valid_until": date(2026, 5, 8),
+                "notes": "City Intimation Slip released first (approx 10 days before exam). Actual admit card released 4 days before exam.",
+                "published_at": datetime(2026, 4, 28, tzinfo=timezone.utc),
+            },
+            {
+                "phase_number": 1, "title": "CUET UG 2026 Admit Card",
+                "download_url": "https://cuet.nta.nic.in/admit-card",
+                "valid_from": date(2026, 5, 4), "valid_until": date(2026, 5, 8),
+                "notes": "Download from cuet.nta.nic.in using Application No. & DOB. Carry with valid photo ID.",
+                "published_at": datetime(2026, 5, 4, tzinfo=timezone.utc),
+            },
+        ],
+        "answer_keys": [
+            {
+                "phase_number": 1, "title": "CUET UG 2026 Provisional Answer Key",
+                "answer_key_type": "provisional",
+                "files": [
+                    {"label": "Domain Subject Keys", "url": "https://cuet.nta.nic.in/ak/domain-subjects.pdf"},
+                    {"label": "General Test Key", "url": "https://cuet.nta.nic.in/ak/general-test.pdf"},
+                    {"label": "Language Section Keys", "url": "https://cuet.nta.nic.in/ak/languages.pdf"},
+                ],
+                "objection_url": "https://cuet.nta.nic.in/objection",
+                "objection_deadline": date(2026, 5, 20),
+                "published_at": datetime(2026, 5, 14, tzinfo=timezone.utc),
+            },
+            {
+                "phase_number": 1, "title": "CUET UG 2026 Final Answer Key",
+                "answer_key_type": "final",
+                "files": [
+                    {"label": "Final Answer Key (All Subjects)", "url": "https://cuet.nta.nic.in/fak/cuet-ug-2026.pdf"},
+                ],
+                "published_at": datetime(2026, 6, 25, tzinfo=timezone.utc),
+            },
+        ],
+        "results": [
+            {
+                "phase_number": 1, "title": "CUET UG 2026 Score Card",
+                "result_type": "merit_list",
+                "download_url": "https://cuet.nta.nic.in/result",
+                "cutoff_marks": {
+                    "DU_BCom_Hons_General_approx": 732,
+                    "DU_BA_English_Hons_approx": 710,
+                    "JNU_BA_Programme_approx": 685,
+                },
+                "notes": "CUET score valid for admission at all 280+ participating universities. Each university publishes its own cutoff merit list separately.",
+                "published_at": datetime(2026, 6, 30, tzinfo=timezone.utc),
+            },
+        ],
+    },
+
+    "neet-ss-2025": {
+        "admit_cards": [
+            {
+                "phase_number": 1, "title": "NEET SS 2025 Admit Card",
+                "download_url": "https://natboard.edu.in/neet-ss/admit-card",
+                "valid_from": date(2025, 8, 22), "valid_until": date(2025, 9, 1),
+                "notes": "Download from natboard.edu.in. Carry printout + NMC registration certificate + Govt. photo ID.",
+                "published_at": datetime(2025, 8, 22, tzinfo=timezone.utc),
+            },
+        ],
+        "answer_keys": [
+            {
+                "phase_number": 1, "title": "NEET SS 2025 Provisional Answer Key",
+                "answer_key_type": "provisional",
+                "files": [
+                    {"label": "NEET SS 2025 Answer Key (All Specialities)", "url": "https://natboard.edu.in/neet-ss/ak-2025.pdf"},
+                ],
+                "objection_url": "https://natboard.edu.in/neet-ss/objection",
+                "objection_deadline": date(2025, 9, 12),
+                "published_at": datetime(2025, 9, 7, tzinfo=timezone.utc),
+            },
+            {
+                "phase_number": 1, "title": "NEET SS 2025 Final Answer Key",
+                "answer_key_type": "final",
+                "files": [
+                    {"label": "Final Answer Key", "url": "https://natboard.edu.in/neet-ss/fak-2025.pdf"},
+                ],
+                "published_at": datetime(2025, 9, 25, tzinfo=timezone.utc),
+            },
+        ],
+        "results": [
+            {
+                "phase_number": 1, "title": "NEET SS 2025 Result — Score Card & Merit List",
+                "result_type": "merit_list",
+                "download_url": "https://natboard.edu.in/neet-ss/result",
+                "cutoff_marks": {
+                    "General_qualifying_percentile": 50,
+                    "SC_ST_OBC_PwBD_percentile": 40,
+                },
+                "notes": "Score card used for MCC DM/M.Ch counselling. AIQ: 50% seats; State Quota: 50% seats.",
+                "published_at": datetime(2025, 10, 1, tzinfo=timezone.utc),
+            },
+        ],
+    },
+
+    "gate-2026": {
+        "admit_cards": [
+            {
+                "phase_number": 1, "title": "GATE 2026 Admit Card",
+                "download_url": "https://gate2026.iitr.ac.in/admit-card",
+                "valid_from": date(2026, 1, 8), "valid_until": date(2026, 2, 15),
+                "notes": "Download from GOAPS portal at gate2026.iitr.ac.in. Carry printout + original Govt. photo ID + passport photo.",
+                "published_at": datetime(2026, 1, 8, tzinfo=timezone.utc),
+            },
+        ],
+        "answer_keys": [
+            {
+                "phase_number": 1, "title": "GATE 2026 Provisional Answer Key",
+                "answer_key_type": "provisional",
+                "files": [
+                    {"label": "CS — Computer Science & IT", "url": "https://gate2026.iitr.ac.in/ak/cs.pdf"},
+                    {"label": "EC — Electronics & Communication", "url": "https://gate2026.iitr.ac.in/ak/ec.pdf"},
+                    {"label": "ME — Mechanical Engineering", "url": "https://gate2026.iitr.ac.in/ak/me.pdf"},
+                    {"label": "CE — Civil Engineering", "url": "https://gate2026.iitr.ac.in/ak/ce.pdf"},
+                    {"label": "EE — Electrical Engineering", "url": "https://gate2026.iitr.ac.in/ak/ee.pdf"},
+                    {"label": "CH — Chemical Engineering", "url": "https://gate2026.iitr.ac.in/ak/ch.pdf"},
+                    {"label": "IN — Instrumentation Engineering", "url": "https://gate2026.iitr.ac.in/ak/in.pdf"},
+                    {"label": "BT — Biotechnology", "url": "https://gate2026.iitr.ac.in/ak/bt.pdf"},
+                    {"label": "Other Papers", "url": "https://gate2026.iitr.ac.in/ak/others.pdf"},
+                ],
+                "objection_url": "https://gate2026.iitr.ac.in/objection",
+                "objection_deadline": date(2026, 2, 22),
+                "published_at": datetime(2026, 2, 18, tzinfo=timezone.utc),
+            },
+            {
+                "phase_number": 1, "title": "GATE 2026 Final Answer Key",
+                "answer_key_type": "final",
+                "files": [
+                    {"label": "Final Answer Keys (All 29 Papers)", "url": "https://gate2026.iitr.ac.in/fak/all-papers.pdf"},
+                ],
+                "published_at": datetime(2026, 3, 15, tzinfo=timezone.utc),
+            },
+        ],
+        "results": [
+            {
+                "phase_number": 1, "title": "GATE 2026 Score Card",
+                "result_type": "merit_list",
+                "download_url": "https://gate2026.iitr.ac.in/result",
+                "cutoff_marks": {
+                    "CS_General_qualifying_marks": 28.5,
+                    "EC_General_qualifying_marks": 26.0,
+                    "ME_General_qualifying_marks": 34.0,
+                    "CE_General_qualifying_marks": 29.4,
+                    "EE_General_qualifying_marks": 30.2,
+                    "OBC_NCL_cutoff_fraction": 0.9,
+                    "SC_ST_PwD_cutoff_fraction": 0.667,
+                },
+                "notes": "GATE 2026 score valid for 3 years. Used for M.Tech/Ph.D admissions (CCMT, individual IITs) and PSU direct recruitment (DRDO, ONGC, IOCL, NTPC, BHEL etc.).",
+                "published_at": datetime(2026, 3, 19, tzinfo=timezone.utc),
             },
         ],
     },
