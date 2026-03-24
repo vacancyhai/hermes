@@ -2,8 +2,14 @@
 
 import uuid
 from datetime import date, datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
+
+JOB_TYPES = Literal["latest_job", "result", "admit_card", "answer_key", "admission", "yojana"]
+EMPLOYMENT_TYPES = Literal["permanent", "temporary", "contract", "apprentice"]
+QUALIFICATION_LEVELS = Literal["10th", "12th", "diploma", "graduate", "postgraduate", "phd"]
+JOB_STATUSES = Literal["draft", "active", "expired", "cancelled", "upcoming"]
 
 
 # --- Request schemas ---
@@ -12,9 +18,9 @@ class JobCreateRequest(BaseModel):
     job_title: str = Field(min_length=1, max_length=500)
     organization: str = Field(min_length=1, max_length=255)
     department: str | None = None
-    job_type: str = Field(default="latest_job")
-    employment_type: str | None = "permanent"
-    qualification_level: str | None = None
+    job_type: JOB_TYPES = "latest_job"
+    employment_type: EMPLOYMENT_TYPES | None = "permanent"
+    qualification_level: QUALIFICATION_LEVELS | None = None
     total_vacancies: int | None = None
     vacancy_breakdown: dict = Field(default_factory=dict)
     description: str | None = None
@@ -39,7 +45,7 @@ class JobCreateRequest(BaseModel):
     fee_sc_st: int | None = None
     fee_ews: int | None = None
     fee_female: int | None = None
-    status: str = "draft"
+    status: JOB_STATUSES = "draft"
     is_featured: bool = False
     is_urgent: bool = False
 
@@ -55,9 +61,9 @@ class JobUpdateRequest(BaseModel):
     job_title: str | None = None
     organization: str | None = None
     department: str | None = None
-    job_type: str | None = None
-    employment_type: str | None = None
-    qualification_level: str | None = None
+    job_type: JOB_TYPES | None = None
+    employment_type: EMPLOYMENT_TYPES | None = None
+    qualification_level: QUALIFICATION_LEVELS | None = None
     total_vacancies: int | None = None
     vacancy_breakdown: dict | None = None
     description: str | None = None
@@ -82,7 +88,7 @@ class JobUpdateRequest(BaseModel):
     fee_sc_st: int | None = None
     fee_ews: int | None = None
     fee_female: int | None = None
-    status: str | None = None
+    status: JOB_STATUSES | None = None
     is_featured: bool | None = None
     is_urgent: bool | None = None
 

@@ -1,6 +1,7 @@
 """Hermes User Frontend — Flask + Jinja2 + HTMX."""
 
 import os
+import secrets
 
 from flask import Flask, current_app, render_template, request, session, redirect, flash
 
@@ -29,6 +30,46 @@ def create_app():
         session["token"] = data.get("access_token")
         session["refresh_token"] = data.get("refresh_token", refresh_token)
         return session["token"]
+
+    def _get_csrf_token():
+        """Generate or retrieve a per-session CSRF token."""
+        if "csrf_token" not in session:
+            session["csrf_token"] = secrets.token_hex(32)
+        return session["csrf_token"]
+
+    def _try_with_refresh(api_fn):
+        """Call api_fn(token) -> resp. On 401, refresh the token and retry once.
+
+        Returns (resp, authenticated). If authenticated=False the caller should
+        redirect to /login.
+        """
+        token = session.get("token")
+        if not token:
+            return None, False
+        resp = api_fn(token)
+        if resp.status_code == 401:
+            token = _try_refresh()
+            if not token:
+                return None, False
+            resp = api_fn(token)
+        return resp, True
+
+    @app.context_processor
+    def inject_csrf():
+        return {"csrf_token": _get_csrf_token()}
+
+    _CSRF_EXEMPT = {"/auth/firebase-callback"}
+
+    @app.before_request
+    def validate_csrf():
+        if request.method not in ("POST", "PUT", "PATCH", "DELETE"):
+            return
+        if request.path in _CSRF_EXEMPT:
+            return
+        form_token = request.form.get("csrf_token") or request.headers.get("X-CSRF-Token", "")
+        if not form_token or form_token != session.get("csrf_token"):
+            flash("Invalid or expired form submission. Please try again.", "error")
+            return redirect(request.referrer or "/")
 
     @app.route("/health")
     def health():
@@ -107,15 +148,13 @@ def create_app():
     @app.route("/dashboard/track", methods=["POST"])
     def track_application():
         """Track a job application."""
-        token = session.get("token")
-        if not token:
-            return redirect("/login")
         job_id = request.form.get("job_id", "")
         notes = request.form.get("notes", "").strip()
         is_priority = request.form.get("is_priority") == "on"
-        resp = current_app.api_client.post("/applications", token=token, json={
-            "job_id": job_id, "notes": notes or None, "is_priority": is_priority
-        })
+        payload = {"job_id": job_id, "notes": notes or None, "is_priority": is_priority}
+        resp, authed = _try_with_refresh(lambda t: current_app.api_client.post("/applications", token=t, json=payload))
+        if not authed:
+            return redirect("/login")
         if resp.ok:
             flash("Job added to your tracker!", "success")
         elif resp.status_code == 409:
@@ -127,9 +166,6 @@ def create_app():
     @app.route("/dashboard/applications/<app_id>/update", methods=["POST"])
     def update_application(app_id):
         """Update application status, notes, priority, app number."""
-        token = session.get("token")
-        if not token:
-            return "", 401
         update = {}
         status_val = request.form.get("status", "").strip()
         if status_val:
@@ -139,16 +175,17 @@ def create_app():
         app_num = request.form.get("application_number", "").strip()
         update["application_number"] = app_num or None
         update["is_priority"] = request.form.get("is_priority") == "on"
-        current_app.api_client.put(f"/applications/{app_id}", token=token, json=update)
+        _, authed = _try_with_refresh(lambda t: current_app.api_client.put(f"/applications/{app_id}", token=t, json=update))
+        if not authed:
+            return redirect("/login")
         return redirect("/dashboard")
 
     @app.route("/dashboard/applications/<app_id>/delete", methods=["POST"])
     def delete_application(app_id):
         """Remove an application from the tracker."""
-        token = session.get("token")
-        if not token:
-            return "", 401
-        current_app.api_client.delete(f"/applications/{app_id}", token=token)
+        _, authed = _try_with_refresh(lambda t: current_app.api_client.delete(f"/applications/{app_id}", token=t))
+        if not authed:
+            return redirect("/login")
         return redirect("/dashboard")
 
     @app.route("/dashboard/applications")
@@ -242,31 +279,25 @@ def create_app():
     @app.route("/notifications/<notification_id>/read", methods=["POST"])
     def mark_notification_read(notification_id):
         """Mark a notification as read (proxies to backend PUT)."""
-        token = session.get("token")
-        if not token:
+        _, authed = _try_with_refresh(lambda t: current_app.api_client.put(f"/notifications/{notification_id}/read", token=t))
+        if not authed:
             return redirect("/login")
-
-        current_app.api_client.put(f"/notifications/{notification_id}/read", token=token)
         return redirect("/notifications")
 
     @app.route("/notifications/read-all", methods=["POST"])
     def mark_all_notifications_read():
         """Mark all notifications as read (proxies to backend PUT)."""
-        token = session.get("token")
-        if not token:
+        _, authed = _try_with_refresh(lambda t: current_app.api_client.put("/notifications/read-all", token=t))
+        if not authed:
             return redirect("/login")
-
-        current_app.api_client.put("/notifications/read-all", token=token)
         return redirect("/notifications")
 
     @app.route("/notifications/<notification_id>/delete", methods=["POST"])
     def delete_notification(notification_id):
         """Delete a notification (proxies to backend DELETE)."""
-        token = session.get("token")
-        if not token:
+        _, authed = _try_with_refresh(lambda t: current_app.api_client.delete(f"/notifications/{notification_id}", token=t))
+        if not authed:
             return redirect("/login")
-
-        current_app.api_client.delete(f"/notifications/{notification_id}", token=token)
         return redirect("/notifications")
 
     @app.route("/offline")
@@ -329,23 +360,21 @@ def create_app():
     @app.route("/profile/follow", methods=["POST"])
     def follow_org():
         """Follow an organization."""
-        token = session.get("token")
-        if not token:
-            return redirect("/login")
         org_name = request.form.get("org_name", "").strip()
         if org_name:
-            current_app.api_client.post(f"/organizations/{org_name}/follow", token=token)
+            _, authed = _try_with_refresh(lambda t: current_app.api_client.post(f"/organizations/{org_name}/follow", token=t))
+            if not authed:
+                return redirect("/login")
         return redirect(request.form.get("next", "/profile"))
 
     @app.route("/profile/unfollow", methods=["POST"])
     def unfollow_org():
         """Unfollow an organization."""
-        token = session.get("token")
-        if not token:
-            return redirect("/login")
         org_name = request.form.get("org_name", "").strip()
         if org_name:
-            current_app.api_client.delete(f"/organizations/{org_name}/follow", token=token)
+            _, authed = _try_with_refresh(lambda t: current_app.api_client.delete(f"/organizations/{org_name}/follow", token=t))
+            if not authed:
+                return redirect("/login")
         return redirect(request.form.get("next", "/profile"))
 
     # --- Auth Flows (Firebase) ---

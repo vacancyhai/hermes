@@ -4,7 +4,6 @@ smart_notify                — Unified entry: routes to in-app + FCM + email + 
 send_deadline_reminders     — Daily Beat task: T-7, T-3, T-1 deadline reminders → delegates to smart_notify
 send_new_job_notifications  — Event: notify org followers on job approve → delegates to smart_notify
 send_email_notification     — Sync email via SMTP (retries 3x)
-send_push_notification      — Legacy FCM push (retries 3x, kept for backward compat)
 notify_priority_subscribers — Event: notify priority trackers on job update → delegates to smart_notify
 """
 
@@ -305,86 +304,6 @@ def send_new_job_notifications(job_id: str):
                     "deadline": str(app_end) if app_end else None,
                 },
             )
-
-
-# ─── Legacy FCM Push (kept for backward compat) ──────────────────────────────
-
-
-@celery.task(
-    name="app.tasks.notifications.send_push_notification",
-    bind=True,
-    max_retries=3,
-    default_retry_delay=30,
-)
-def send_push_notification(self, user_id: str, title: str, body: str, data: dict | None = None):
-    """Send push notification via FCM. Graceful no-op if Firebase not configured.
-
-    Legacy task — new code should use smart_notify instead.
-    """
-    if not settings.FIREBASE_CREDENTIALS_PATH:
-        logger.info("push_skipped", reason="FIREBASE_CREDENTIALS_PATH not set", user_id=user_id)
-        return
-
-    try:
-        import firebase_admin
-        from firebase_admin import credentials, messaging
-
-        if not firebase_admin._apps:
-            cred = credentials.Certificate(settings.FIREBASE_CREDENTIALS_PATH)
-            firebase_admin.initialize_app(cred)
-
-        with Session(sync_engine) as session:
-            row = session.execute(
-                text("SELECT fcm_tokens FROM user_profiles WHERE user_id = :uid"),
-                {"uid": user_id},
-            ).fetchone()
-
-            if not row or not row[0]:
-                logger.info("push_skipped", reason="no_fcm_tokens", user_id=user_id)
-                return
-
-            prefs_row = session.execute(
-                text("SELECT notification_preferences FROM user_profiles WHERE user_id = :uid"),
-                {"uid": user_id},
-            ).fetchone()
-            prefs = prefs_row[0] if prefs_row and prefs_row[0] else {}
-            if prefs.get("push") is False:
-                logger.info("push_skipped", reason="push_disabled", user_id=user_id)
-                return
-
-            tokens = [t["token"] for t in row[0] if isinstance(t, dict) and "token" in t]
-            if not tokens:
-                return
-
-            message = messaging.MulticastMessage(
-                notification=messaging.Notification(title=title, body=body),
-                data=data or {},
-                tokens=tokens,
-            )
-            response = messaging.send_each_for_multicast(message)
-
-            invalid_tokens = []
-            for idx, send_response in enumerate(response.responses):
-                if send_response.exception and hasattr(send_response.exception, "code"):
-                    if send_response.exception.code in ("NOT_FOUND", "UNREGISTERED"):
-                        invalid_tokens.append(tokens[idx])
-
-            if invalid_tokens:
-                current_tokens = row[0]
-                cleaned = [t for t in current_tokens if t.get("token") not in invalid_tokens]
-                session.execute(
-                    text("UPDATE user_profiles SET fcm_tokens = :tokens::jsonb WHERE user_id = :uid"),
-                    {"tokens": json.dumps(cleaned), "uid": user_id},
-                )
-                session.commit()
-                logger.info("push_tokens_cleaned", user_id=user_id, removed=len(invalid_tokens))
-
-            logger.info("push_sent", user_id=user_id, success=response.success_count, failure=response.failure_count)
-
-    except Exception as exc:
-        countdown = 2 ** self.request.retries * 30
-        logger.error("push_failed", user_id=user_id, error=str(exc), retry=self.request.retries)
-        raise self.retry(exc=exc, countdown=countdown)
 
 
 # ─── Priority Subscribers (event-triggered) ───────────────────────────────────

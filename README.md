@@ -6,16 +6,14 @@ authentication, profile-based job matching, application tracking, multi-channel
 notifications, and an admin panel.
 
 > **Status:** Phases 1–7 + Testing complete. Auth system (Firebase Auth — Email/Password, Google OAuth, Phone OTP), job CRUD, full-text search,
-> user profiles, job matching & recommendations, org follow with Celery
+> user profiles, job matching & recommendations (by education, age, reservation category, and state), org follow with Celery
 > notifications, application tracking with deadline reminders, user dashboard,
-> smart multi-channel notifications (in-app + FCM push + email + WhatsApp) with
-> device registry and fingerprint-based push de-duplication, notification
-> preferences, full admin frontend (dashboard, job/user management, audit logs),
+> smart multi-channel notifications (in-app + FCM push + email + WhatsApp placeholder), notification
+> preferences (email/push/in_app/whatsapp), full admin frontend (dashboard, job/user management, audit logs),
 > SEO (sitemap, meta tags, JSON-LD structured data), application fee display by
-> category, WhatsApp/Telegram share buttons, PDF upload with AI extraction
-> (Anthropic Claude), draft review & approve workflow, PWA (manifest, service
-> worker, offline fallback), comprehensive test suite
-> (481 tests — 313 backend + 80 frontend + 88 admin),
+> category, WhatsApp share buttons, PDF upload with AI extraction
+> (Anthropic Claude), draft review & approve workflow, admin account creation API, CSRF protection,
+> PWA (manifest, service worker, offline fallback), comprehensive test suite,
 > and security audit (JWT, RBAC, file upload, OWASP) — all implemented.
 
 ## Tech Stack
@@ -61,12 +59,8 @@ PostgreSQL and Redis are isolated inside Docker networks — never exposed to th
 
 ## Features
 
-- **Job Matching** — Automatically matches jobs to users by education level,
-  stream, age, and category; scoring engine in `services/matching.py`
-- **Multi-Channel Notifications** — In-app, FCM push (device-fingerprint
-  de-duplicated across web/PWA/app), email (OCI Email Delivery), and WhatsApp
-  (placeholder, activated when API token is set); instant mode for OTP/auth,
-  staggered mode for job alerts with configurable delays
+- **Job Matching** — Scores jobs against user profile: reservation category eligibility (+4), state preference (+3), preferred categories (+2), education level (+2), age eligibility vs. `age_min`/`age_max` in job eligibility (+2), and recency bonus (+1); scoring engine in `services/matching.py`. The candidate pool is capped at the 500 most-recent active jobs (a known trade-off documented in the code).
+- **Multi-Channel Notifications** — In-app, FCM push (tokens stored in `user_profiles.fcm_tokens`, registered via `POST /users/me/fcm-token`), email (OCI Email Delivery), and WhatsApp (placeholder, activated when API token is set); instant mode for OTP/auth, staggered mode for job alerts with configurable delays
 - **Application Tracker** — Users save jobs, set priority, add notes, and get
   deadline reminders
 - **Smart Reminders** — Celery Beat tasks fire automatic alerts at 7, 3, and
@@ -83,7 +77,9 @@ PostgreSQL and Redis are isolated inside Docker networks — never exposed to th
   notifications via service worker
 - **Admin Panel** — Job CRUD, draft/approve workflow, user management, and
   audit log viewer on a separate frontend (port 8081)
-- **Firebase Auth** — Email/password, Google OAuth (popup), and Phone OTP login via Firebase JS SDK; backend verifies Firebase ID tokens and issues internal JWTs; auto-links existing accounts by email; supports legacy user migration
+- **Firebase Auth** — Email/password, Google OAuth (popup), and Phone OTP login via Firebase JS SDK; backend verifies Firebase ID tokens and issues internal JWTs; auto-links existing accounts by email; supports legacy user migration. On logout, both the access token and (if provided) the refresh token are revoked in Redis so neither can be reused.
+- **Admin Account Management** — New admin/operator accounts are created via `POST /api/v1/admin/admin-users` (admin role only). The first admin must be seeded directly in the DB (see Development Quick Start below).
+- **CSRF Protection** — All user frontend POST forms include a session-bound CSRF token validated on the server. The Firebase callback endpoint is exempt (authenticated by Firebase ID token).
 - **Two-Tier RBAC** — Regular users (`users` table, user frontend port 8080)
   and Operator/Admin (`admin_users` table with role column, admin frontend
   port 8081); JWT `user_type` claim (`"user"` | `"admin"`) enforces strict
@@ -108,32 +104,54 @@ PostgreSQL and Redis are isolated inside Docker networks — never exposed to th
 ## Development Quick Start
 
 ```bash
-# 1. Copy development env files
+# 1. Copy development env files and fill in secrets
 cp config/development/.env.backend.development       src/backend/.env
 cp config/development/.env.frontend.development      src/frontend/.env
 cp config/development/.env.frontend-admin.development src/frontend-admin/.env
+# Edit src/backend/.env — set FIREBASE_WEB_API_KEY, FIREBASE_AUTH_DOMAIN,
+# FIREBASE_PROJECT_ID, and FIREBASE_CREDENTIALS_PATH for your Firebase project.
 
 # 2. Start backend (PostgreSQL, Redis, PgBouncer, FastAPI, Celery)
 cd src/backend && docker compose up -d --build
 
-# 3. Run database migrations
+# 3. Run database migrations (single consolidated schema — all 9 tables)
 docker compose exec backend alembic upgrade head
+# If you had the old 0001–0011 incremental migrations already applied, stamp first:
+# docker compose exec backend alembic stamp 0001
 
-# 4. Start frontends
+# 4. Create the first admin account (required — no self-registration for admins)
+docker compose exec backend python -c "
+from passlib.context import CryptContext
+from sqlalchemy import create_engine, text
+import os, uuid
+ctx = CryptContext(schemes=['bcrypt'])
+engine = create_engine(os.environ['DATABASE_URL'].replace('+asyncpg', ''))
+with engine.connect() as conn:
+    conn.execute(text(\"\"\"
+        INSERT INTO admin_users (id, email, password_hash, full_name, role, status, is_email_verified)
+        VALUES (:id, :email, :pw, :name, 'admin', 'active', TRUE)
+    \"\"\"), {\"id\": str(uuid.uuid4()), \"email\": \"admin@example.com\",
+         \"pw\": ctx.hash(\"ChangeMe123!\"), \"name\": \"Admin\"})
+    conn.commit()
+"
+# After the first admin is created, additional accounts can be created via:
+# POST /api/v1/admin/admin-users  (admin role only)
+
+# 5. Start frontends
 cd ../frontend       && docker compose up -d --build
 cd ../frontend-admin && docker compose up -d --build
 
-# 5. (Optional) Start Nginx reverse proxy
+# 6. (Optional) Start Nginx reverse proxy
 cd ../nginx && docker compose up -d
 
-# 6. Run tests
+# 7. Run tests
 docker exec -w /app -e PYTHONPATH=/app hermes_backend python -m pytest tests/ -v
 
 # Access:
 #   Backend API:    http://localhost:8000/api/v1/health
 #   API Docs:       http://localhost:8000/api/v1/docs
 #   User Frontend:  http://localhost:8080
-#   Admin Frontend: http://localhost:8081
+#   Admin Frontend: http://localhost:8081  (login: admin@example.com / ChangeMe123!)
 ```
 
 Or use the deploy script: `./scripts/deployment/deploy_all.sh development`
@@ -195,16 +213,7 @@ hermes/
 │   │   │   ├── env.py                    # Async migration runner
 │   │   │   ├── script.py.mako
 │   │   │   └── versions/
-│   │   │       ├── 0001_initial_schema.py  # 6 core tables + FTS
-│   │   │       ├── 0002_separate_admin_users.py  # Split users/admin_users
-│   │   │       ├── 0003_profile_preferences.py   # Matching prefs + org follows
-│   │   │       ├── 0004_fcm_tokens.py            # FCM tokens for push notifications
-│   │   │       ├── 0005_add_fee_columns.py       # Application fee by category
-│   │   │       ├── 0006_add_source_pdf_path.py   # PDF upload source tracking
-│   │   │       ├── 0007_user_devices_and_delivery_log.py  # Device registry + delivery tracking
-│   │   │       ├── 0008_add_google_id_to_users.py  # Legacy Google OAuth linking (superseded)
-│   │   │       ├── 0009_firebase_auth.py          # firebase_uid, migration_status, password_hash nullable
-│   │   │       └── 0010_email_nullable.py         # email nullable for phone-only Firebase users
+│   │   │       └── 0001_initial_schema.py  # Complete schema — all 9 tables (consolidated from former 0001–0011)
 │   │   ├── tests/                               # pytest test suite (313 tests)
 │   │   │   ├── conftest.py                      # Async fixtures (DB, client, tokens)
 │   │   │   ├── unit/                            # Pure logic tests (no DB/Redis)

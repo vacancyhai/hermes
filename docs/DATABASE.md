@@ -2,6 +2,23 @@
 
 This document outlines the PostgreSQL database schema for the Hermes project, using SQLAlchemy models.
 
+## Migration
+
+All schema changes are in a single consolidated migration file:
+
+```
+src/backend/migrations/versions/0001_initial_schema.py
+```
+
+**Fresh install:** `alembic upgrade head` creates all 9 tables in one step.
+
+**Existing database** (had the former 0001–0011 incremental migrations applied):
+```bash
+docker compose exec backend alembic stamp 0001
+```
+
+---
+
 ## Entity Relationship Diagram (ERD)
 
 ```mermaid
@@ -36,8 +53,7 @@ Core user account table. Integrated with Firebase Auth.
 | `full_name` | String(255) | Full name of the user |
 | `phone` | String(20) | Contact number |
 | `firebase_uid` | String(128) | Firebase Auth UID (unique, indexed) |
-| `google_id` | String(255) | Social login ID (unique, indexed) |
-| `migration_status`| String(20) | `native` or `migrated` |
+| `migration_status`| String(20) | `native`, `migrated`, or `legacy` |
 | `status` | String(20) | `active`, `suspended`, `deleted` |
 | `is_verified` | Boolean | Identity verification status |
 | `is_email_verified`| Boolean | Email verification status |
@@ -53,7 +69,7 @@ Detailed profile information and preferences.
 | `user_id` | UUID (FK) | Reference to `users.id` (unique) |
 | `date_of_birth` | Date | Birth date |
 | `gender` | String(20) | Gender |
-| `category` | String(20) | Reservation category (UR, OBC, SC, ST, etc.) |
+| `category` | String(20) | Reservation category: `General`, `OBC`, `SC`, `ST`, `EWS`, `EBC`. Used for eligibility scoring in job recommendations. |
 | `is_pwd` | Boolean | Person with Disability status |
 | `is_ex_serviceman` | Boolean | Ex-serviceman status |
 | `state` | String(100) | Current state |
@@ -61,11 +77,11 @@ Detailed profile information and preferences.
 | `pincode` | String(10) | Postal code |
 | `highest_qualification`| String(50) | Degree name |
 | `education` | JSONB | Detailed education history |
-| `notification_preferences` | JSONB | Channel toggles (email, push, in_app) |
+| `notification_preferences` | JSONB | Channel toggles: `email`, `push`, `in_app`, `whatsapp` (each bool, default enabled) |
 | `preferred_states` | JSONB (List)| States of interest for jobs |
 | `preferred_categories` | JSONB (List)| Categories of interest |
 | `followed_organizations` | JSONB (List)| Organizations the user follows |
-| `fcm_tokens` | JSONB (List)| (Legacy) push tokens list |
+| `fcm_tokens` | JSONB (List)| FCM device tokens — format: `[{"token": "...", "device_name": "...", "registered_at": "..."}]`. Read by NotificationService at push-send time. Invalid tokens auto-removed after send failure. |
 
 ### 3. `admin_users`
 Internal staff accounts (Admin/Operator).
@@ -140,16 +156,16 @@ Master records for all system notifications.
 | `priority` | String(10) | `low`, `medium`, `high` |
 
 ### 7. `user_devices`
-Registry for push notification targets.
+Device registry — stores device metadata. **Push notifications read FCM tokens from `user_profiles.fcm_tokens`, not this table.** `user_devices` exists for future use (device-level fingerprint deduplication, device management UI) but is not populated by the current FCM token registration API.
 
 | Column | Type | Description |
 |--------|------|-------------|
 | `id` | UUID (PK) | Unique identifier |
 | `user_id` | UUID (FK) | Owner of the device |
-| `fcm_token` | String(500) | Firebase Cloud Messaging token |
+| `fcm_token` | String(500) | FCM token (not used for push delivery — see `user_profiles.fcm_tokens`) |
 | `device_name` | String(255) | "Chrome on Windows", "iPhone 13" |
 | `device_type` | String(20) | `web`, `pwa`, `ios`, `android` |
-| `device_fingerprint`| String(255) | Browser fingerprint for de-duplication |
+| `device_fingerprint`| String(255) | Browser fingerprint (future use for deduplication) |
 | `is_active` | Boolean | Token validity status |
 
 ### 8. `admin_logs`

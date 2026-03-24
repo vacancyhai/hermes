@@ -27,11 +27,13 @@ These phone numbers are configured in **Firebase Console → Authentication → 
 |-------|-----|-----|
 | +917777777777 | 123456 | Phone OTP login on `/login` page |
 
-For email/password and Google login, use the accounts in `src/backend/app/data/seed.py` or create a new account via the `/login` page.
+For email/password and Google login, create a new account via the `/login` page or use the Firebase Console to create a test user. Admin accounts are created via `POST /api/v1/admin/admin-users` (after the first admin is seeded directly into the DB — see README.md Quick Start).
 
 ---
 
-## Backend — 93% (313 tests)
+## Backend — ~93% (~312 tests)
+
+One test (`test_send_push_notification_no_firebase_config`) was removed alongside the deleted `send_push_notification` legacy task.
 
 | Module | Coverage | Notes |
 |--------|----------|-------|
@@ -39,16 +41,16 @@ For email/password and Google login, use the accounts in `src/backend/app/data/s
 | `routers/applications.py` | 97% | IntegrityError rollback path |
 | `routers/jobs.py` | 100% | |
 | `routers/users.py` | 98% | |
-| `routers/admin.py` | 93% | PDF file-write + Celery dispatch path |
-| `routers/auth.py` | 92% | Firebase `verify_id_token` uncovered paths; token refresh edge cases |
+| `routers/admin.py` | ~93% | PDF file-write + Celery dispatch path; new `create_admin_user` endpoint needs tests |
+| `routers/auth.py` | ~92% | Firebase `verify_id_token` uncovered paths; optional refresh_token logout branch |
 | `firebase.py` | 69% | Real Firebase token verify path requires live credentials |
-| `services/notifications.py` | 89% | Firebase FCM send requires credentials |
-| `services/matching.py` | 99% | |
+| `services/notifications.py` | ~88% | Firebase FCM send requires credentials; new `_send_fcm_with_status` happy path |
+| `services/matching.py` | ~99% | New age/category scoring paths need targeted tests |
 | `services/ai_extractor.py` | 100% | |
 | `services/pdf_extractor.py` | 100% | |
-| `tasks/notifications.py` | 77% | Firebase push requires credentials |
+| `tasks/notifications.py` | ~80% | Firebase push requires credentials |
 | `tasks/cleanup.py` | 100% | |
-| `tasks/jobs.py` | 89% | |
+| `tasks/jobs.py` | ~89% | |
 | `tasks/seo.py` | 100% | |
 | `models/*` / `schemas/*` | 100% | |
 
@@ -64,7 +66,7 @@ For email/password and Google login, use the accounts in `src/backend/app/data/s
 | `unit/test_matching.py` | 14 | Job recommendation scoring |
 | `unit/test_services.py` | 10 | PDF extraction, AI parsing |
 | `unit/test_tasks.py` | 12 | Cleanup, sitemap, job extraction |
-| `unit/test_notification_tasks.py` | 29 | Email, push, deadline reminders, smart_notify, delayed delivery |
+| `unit/test_notification_tasks.py` | 28 | Email, deadline reminders, smart_notify, delayed delivery (legacy push task test removed) |
 | `unit/test_notification_service.py` | 22 | NotificationService: all 4 channels, prefs, dedup, email limits |
 | `integration/test_auth.py` | 19 | Firebase verify-token (new/existing/migrate/suspended/deleted/phone-only), logout, refresh, admin login/logout/refresh, RBAC |
 | `integration/test_admin.py` | ~40 | Admin API, analytics, RBAC |
@@ -87,11 +89,12 @@ Firebase tests mock `app.firebase.verify_id_token` via `unittest.mock.patch` so 
 
 ### Why Some Backend Lines Are Uncovered
 
-- **`auth.py`** — blocklisted token check + `user.status != "active"` branch in `/refresh` require state that only arises after logout; covered at integration level.
+- **`auth.py`** — optional `refresh_token` logout branch and `user.status != "active"` in `/refresh` require specific state; covered at integration level.
 - **`firebase.py`** — real `verify_id_token()` call requires a live Firebase project; the init guard (`firebase_admin._apps`) is covered by unit tests.
-- **`admin.py:231–235, 338–351`** — PDF file-write + Celery dispatch block; validation paths (wrong extension/MIME) are covered.
-- **`tasks/notifications.py:328–387`** — Firebase legacy push code requires `FIREBASE_CREDENTIALS_PATH`, absent in the test environment.
-- **`services/notifications.py:190–191, 221–222`** — FCM `_send_fcm` happy path requires Firebase credentials; no-credentials path is covered.
+- **`admin.py`** — PDF file-write + Celery dispatch block; validation paths (wrong extension/MIME) are covered. The new `create_admin_user` endpoint needs integration tests.
+- **`tasks/notifications.py`** — Firebase FCM send in `smart_notify` requires `FIREBASE_CREDENTIALS_PATH`, absent in the test environment.
+- **`services/notifications.py`** — FCM `_send_fcm_with_status` happy path and invalid-token cleanup require Firebase credentials; no-credentials path is covered.
+- **`services/matching.py`** — age scoring branch (`age_min`/`age_max` present in eligibility) needs targeted unit tests with fixture jobs that include these fields.
 
 ---
 
@@ -111,7 +114,11 @@ Firebase tests mock `app.firebase.verify_id_token` via `unittest.mock.patch` so 
 
 ### Frontend Test Strategy
 
-Flask `test_client()` with `app.api_client` replaced by a `MagicMock`. No real backend or Firebase calls are made. Auth-required routes are tested both with and without a session token. The `/auth/firebase-callback` endpoint is tested by posting JSON directly (as the Firebase JS SDK would); no CSRF is needed since it's a JSON API endpoint. Register/forgot-password/reset-password pages are removed — Firebase JS SDK handles these flows entirely client-side.
+Flask `test_client()` with `app.api_client` replaced by a `MagicMock`. No real backend or Firebase calls are made. Auth-required routes are tested both with and without a session token.
+
+All POST form tests must include `csrf_token` in the form data (or set it in `session` before the request). The `/auth/firebase-callback` endpoint is exempt from CSRF validation (it receives a JSON body authenticated by the Firebase ID token).
+
+The `conftest.py` now includes a session-scoped `truncate_all_tables` autouse fixture that truncates all tables before the test session starts, preventing stale data from prior runs from causing test failures.
 
 ---
 

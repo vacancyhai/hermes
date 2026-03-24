@@ -32,6 +32,7 @@ from app.models.user_profile import UserProfile
 from app.schemas.auth import (
     AdminLoginRequest,
     FirebaseVerifyRequest,
+    LogoutRequest,
     MessageResponse,
     RefreshRequest,
     TokenResponse,
@@ -142,14 +143,34 @@ async def verify_token(request: Request, body: FirebaseVerifyRequest, db: AsyncS
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
-async def logout(current_user=Depends(get_current_user), redis=Depends(get_redis)):
-    """Invalidate current user JWT by adding JTI to Redis blocklist."""
+async def logout(
+    body: LogoutRequest = LogoutRequest(),
+    current_user=Depends(get_current_user),
+    redis=Depends(get_redis),
+):
+    """Invalidate current user JWT by adding JTI to Redis blocklist.
+
+    Accepts an optional refresh_token in the body. If provided, its JTI is
+    also blocklisted so the token cannot be used to obtain new access tokens.
+    """
     user, payload = current_user
     jti = payload.get("jti")
     if jti:
         exp = payload.get("exp", 0)
         ttl = max(int(exp - datetime.now(timezone.utc).timestamp()), 1)
         await redis.setex(f"{settings.REDIS_KEY_PREFIX}:blocklist:{jti}", ttl, "1")
+
+    if body.refresh_token:
+        try:
+            rt_payload = jwt.decode(body.refresh_token, settings.JWT_SECRET_KEY, algorithms=[ALGORITHM])
+            rt_jti = rt_payload.get("jti")
+            if rt_jti and rt_payload.get("type") == "refresh" and rt_payload.get("user_type") == "user":
+                rt_exp = rt_payload.get("exp", 0)
+                rt_ttl = max(int(rt_exp - datetime.now(timezone.utc).timestamp()), 1)
+                await redis.setex(f"{settings.REDIS_KEY_PREFIX}:blocklist:{rt_jti}", rt_ttl, "1")
+        except JWTError:
+            pass  # Malformed refresh token — ignore; access token already blocklisted
+
     logger.info("logout", extra={"user_id": str(user.id)})
 
 
@@ -228,17 +249,34 @@ async def admin_login(request: Request, body: AdminLoginRequest, db: AsyncSessio
 @router.post("/admin/logout", status_code=status.HTTP_204_NO_CONTENT)
 async def admin_logout(
     request: Request,
+    body: LogoutRequest = LogoutRequest(),
     current_admin=Depends(get_current_admin),
     redis=Depends(get_redis),
     db: AsyncSession = Depends(get_db),
 ):
-    """Invalidate current admin JWT by adding JTI to Redis blocklist."""
+    """Invalidate current admin JWT by adding JTI to Redis blocklist.
+
+    Accepts an optional refresh_token in the body. If provided, its JTI is
+    also blocklisted so the token cannot be used to obtain new access tokens.
+    """
     admin, payload = current_admin
     jti = payload.get("jti")
     if jti:
         exp = payload.get("exp", 0)
         ttl = max(int(exp - datetime.now(timezone.utc).timestamp()), 1)
         await redis.setex(f"{settings.REDIS_KEY_PREFIX}:blocklist:{jti}", ttl, "1")
+
+    if body.refresh_token:
+        try:
+            rt_payload = jwt.decode(body.refresh_token, settings.JWT_SECRET_KEY, algorithms=[ALGORITHM])
+            rt_jti = rt_payload.get("jti")
+            if rt_jti and rt_payload.get("type") == "refresh" and rt_payload.get("user_type") == "admin":
+                rt_exp = rt_payload.get("exp", 0)
+                rt_ttl = max(int(rt_exp - datetime.now(timezone.utc).timestamp()), 1)
+                await redis.setex(f"{settings.REDIS_KEY_PREFIX}:blocklist:{rt_jti}", rt_ttl, "1")
+        except JWTError:
+            pass
+
     logger.info("admin_logout", extra={"admin_id": str(admin.id)})
 
     ip = request.client.host if request.client else "unknown"

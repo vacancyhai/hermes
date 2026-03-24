@@ -13,7 +13,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 logger = logging.getLogger(__name__)
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -143,8 +143,11 @@ async def track_job(
         await db.rollback()
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Already tracking this job")
 
-    # Increment applications_count on the job
-    job.applications_count = (job.applications_count or 0) + 1
+    # Atomic applications_count increment
+    await db.execute(
+        update(JobVacancy).where(JobVacancy.id == body.job_id)
+        .values(applications_count=JobVacancy.applications_count + 1)
+    )
     logger.info("application_tracked", extra={"user_id": str(user.id), "job_id": str(body.job_id)})
 
     item = ApplicationResponse.model_validate(app).model_dump()
@@ -208,11 +211,11 @@ async def remove_application(
     if not app:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found")
 
-    # Decrement applications_count on the job
-    job_result = await db.execute(select(JobVacancy).where(JobVacancy.id == app.job_id))
-    job = job_result.scalar_one_or_none()
-    if job and job.applications_count > 0:
-        job.applications_count -= 1
+    # Atomic applications_count decrement (floor at 0)
+    await db.execute(
+        update(JobVacancy).where(JobVacancy.id == app.job_id)
+        .values(applications_count=func.greatest(JobVacancy.applications_count - 1, 0))
+    )
 
     await db.delete(app)
     logger.info("application_removed", extra={"user_id": str(user.id), "application_id": str(application_id)})

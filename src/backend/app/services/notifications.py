@@ -132,63 +132,60 @@ class NotificationService:
         )
         self._log_delivery(notification_id, user_id, "in_app", "delivered", now, delivered_at=now)
 
-    # ─── 2. Push — FCM with fingerprint de-duplication ─────────────────
+    # ─── 2. Push — FCM via user_profiles.fcm_tokens ─────────────────────
 
     def _send_push(self, notification_id, user_id, title, message, now):
-        """Send FCM push to all active devices, one per physical device."""
-        rows = self.session.execute(
-            text("""
-                SELECT id, fcm_token, device_fingerprint, last_active_at
-                FROM user_devices
-                WHERE user_id = :uid AND is_active = true AND fcm_token IS NOT NULL
-                ORDER BY last_active_at DESC
-            """),
-            {"uid": user_id},
-        ).fetchall()
+        """Send FCM push to all registered devices for the user.
 
-        if not rows:
+        Reads tokens from user_profiles.fcm_tokens (where the FCM registration
+        API writes). Invalid/unregistered tokens are cleaned up on failure.
+        """
+        row = self.session.execute(
+            text("SELECT fcm_tokens FROM user_profiles WHERE user_id = :uid"),
+            {"uid": user_id},
+        ).fetchone()
+
+        if not row or not row[0]:
             self._log_delivery(notification_id, user_id, "push", "skipped", now, error="no_devices")
             return
 
-        # De-duplicate by fingerprint: keep most-recent per fingerprint
-        seen_fingerprints: set[str] = set()
-        targets: list[tuple] = []
-
-        for device_id, fcm_token, fingerprint, last_active in rows:
-            if fingerprint:
-                if fingerprint in seen_fingerprints:
-                    self._log_delivery(
-                        notification_id, user_id, "push", "skipped", now,
-                        device_id=str(device_id), error="duplicate_fingerprint",
-                    )
-                    continue
-                seen_fingerprints.add(fingerprint)
-            targets.append((str(device_id), fcm_token))
-
-        if not targets:
+        token_entries = [t for t in (row[0] or []) if isinstance(t, dict) and t.get("token")]
+        if not token_entries:
+            self._log_delivery(notification_id, user_id, "push", "skipped", now, error="no_devices")
             return
 
         sent_any = False
-        for device_id, fcm_token in targets:
-            success = self._send_fcm(fcm_token, title, message, notification_id)
+        invalid_tokens: list[str] = []
+
+        for entry in token_entries:
+            fcm_token = entry["token"]
+            success, is_invalid = self._send_fcm_with_status(fcm_token, title, message, notification_id)
             status = "sent" if success else "failed"
-            self._log_delivery(
-                notification_id, user_id, "push", status, now,
-                delivered_at=now if success else None,
-                device_id=device_id,
-            )
+            self._log_delivery(notification_id, user_id, "push", status, now,
+                               delivered_at=now if success else None)
             if success:
                 sent_any = True
+            if is_invalid:
+                invalid_tokens.append(fcm_token)
+
+        if invalid_tokens:
+            cleaned = [t for t in (row[0] or []) if isinstance(t, dict) and t.get("token") not in invalid_tokens]
+            self.session.execute(
+                text("UPDATE user_profiles SET fcm_tokens = :tokens::jsonb WHERE user_id = :uid"),
+                {"tokens": __import__("json").dumps(cleaned), "uid": user_id},
+            )
+            logger.info("fcm_tokens_cleaned", user_id=user_id, removed=len(invalid_tokens))
 
         if sent_any:
             self._append_sent_via(notification_id, "push")
 
-    def _send_fcm(self, token: str, title: str, body: str, notification_id: str) -> bool:
+    def _send_fcm_with_status(self, token: str, title: str, body: str, notification_id: str) -> tuple[bool, bool]:
+        """Send a single FCM message. Returns (success, is_invalid_token)."""
         from app.firebase import init_firebase
 
         if not init_firebase():
             logger.info("fcm_skipped", reason="Firebase not configured")
-            return False
+            return False, False
 
         try:
             from firebase_admin import messaging
@@ -200,10 +197,12 @@ class NotificationService:
             )
             messaging.send(msg)
             logger.info("fcm_sent", token=token[:20] + "...")
-            return True
+            return True, False
         except Exception as exc:
-            logger.error("fcm_failed", error=str(exc), token=token[:20] + "...")
-            return False
+            err_str = str(exc)
+            is_invalid = any(code in err_str for code in ("NOT_FOUND", "UNREGISTERED", "INVALID_ARGUMENT"))
+            logger.error("fcm_failed", error=err_str, token=token[:20] + "...")
+            return False, is_invalid
 
     # ─── 3. Email ──────────────────────────────────────────────────────
 

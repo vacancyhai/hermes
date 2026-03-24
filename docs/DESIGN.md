@@ -3,7 +3,7 @@
 > **Status:** Phases 1–7.5 complete. Auth (Firebase — Email/Password, Google OAuth, Phone OTP), job CRUD, full-text search,
 > user profiles, job matching, org follow, application tracking, notifications
 > (email, push, in-app), admin panel, SEO, PDF AI extraction, PWA, test suite
-> (481 tests — 93/91/97% coverage), and security audit — all implemented. Phase 8 (OCI deployment) next.
+> (~480 tests — ~93/91/97% coverage), and security audit + 24 bug fixes — all implemented. Phase 8 (OCI deployment) next.
 
 ---
 
@@ -215,7 +215,7 @@ CREATE TABLE users (
   full_name           VARCHAR(255) NOT NULL,
   phone               VARCHAR(20),
   firebase_uid        VARCHAR(128) UNIQUE,           -- Firebase Authentication UID
-  google_id           VARCHAR(255) UNIQUE,           -- legacy Google OAuth linking
+  -- google_id column was dropped in migration 0011 (superseded by firebase_uid)
   migration_status    VARCHAR(20) NOT NULL DEFAULT 'native',  -- legacy | migrated | native
   status              VARCHAR(20) NOT NULL DEFAULT 'active'
                         CHECK (status IN ('active','suspended','deleted')),

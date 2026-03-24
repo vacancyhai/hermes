@@ -38,6 +38,7 @@
         <span class="notif-count">{{ unread_count }} unread</span>
         {% if unread_count > 0 %}
         <form method="post" action="/notifications/read-all" style="display:inline;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <button type="submit" class="btn btn-outline" style="font-size:.85rem; padding:.35rem .75rem;">Mark all read</button>
         </form>
         {% endif %}
@@ -63,10 +64,12 @@
                     <div class="notif-actions-item">
                         {% if not n.is_read %}
                         <form method="post" action="/notifications/{{ n.id }}/read">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                             <button type="submit">Mark read</button>
                         </form>
                         {% endif %}
                         <form method="post" action="/notifications/{{ n.id }}/delete">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                             <button type="submit" class="delete">Delete</button>
                         </form>
                     </div>

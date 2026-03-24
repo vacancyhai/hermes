@@ -21,6 +21,7 @@
         <div style="display:flex;gap:.35rem;margin-top:.25rem">
             <button type="button" x-on:click="editing = !editing" class="btn btn-outline" style="padding:.25rem .6rem;font-size:.75rem">Edit</button>
             <form method="POST" action="/dashboard/applications/{{ app.id }}/delete" onsubmit="return confirm('Remove this application?')">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                 <button type="submit" class="btn btn-outline" style="padding:.25rem .6rem;font-size:.75rem;color:#dc2626;border-color:#fca5a5">Remove</button>
             </form>
         </div>
@@ -30,6 +31,7 @@
 <!-- Inline edit form (Alpine toggled) -->
 <div x-show="editing" x-cloak style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:.375rem;padding:1rem;margin-bottom:.75rem;margin-top:-.5rem">
     <form method="POST" action="/dashboard/applications/{{ app.id }}/update">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:.75rem">
             <div>
                 <label style="font-size:.8rem;font-weight:500;color:#475569;display:block;margin-bottom:.2rem">Status</label>

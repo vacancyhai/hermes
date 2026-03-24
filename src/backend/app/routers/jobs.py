@@ -8,7 +8,7 @@ GET    /api/v1/jobs/:slug        — Detail by slug
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import func, select, text
+from sqlalchemy import func, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import get_current_user, get_db
@@ -124,7 +124,9 @@ async def get_job(slug: str, db: AsyncSession = Depends(get_db)):
     if not job:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
 
-    # Increment views
-    job.views += 1
+    # Atomic view counter increment (avoids lost-update under concurrent reads)
+    await db.execute(
+        update(JobVacancy).where(JobVacancy.id == job.id).values(views=JobVacancy.views + 1)
+    )
 
     return JobResponse.model_validate(job).model_dump()

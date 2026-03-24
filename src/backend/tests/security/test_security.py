@@ -114,7 +114,8 @@ def test_admin_bcrypt_hashing():
 
 async def test_password_hash_not_exposed_in_api(client: AsyncClient, user_token: str):
     """password_hash must never appear in API responses."""
-    resp = await client.get("/api/v1/users/me", headers=auth_header(user_token))
+    resp = await client.get("/api/v1/users/profile", headers=auth_header(user_token))
+    assert resp.status_code == 200
     assert "password_hash" not in resp.text
 
 

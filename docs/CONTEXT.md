@@ -76,10 +76,10 @@ PostgreSQL 16 with 10 tables:
 
 | Table | Purpose |
 |-------|---------|
-| `users` | Regular users (no role column); `firebase_uid` for Firebase Auth, `google_id` (legacy) |
+| `users` | Regular users (no role column); `firebase_uid` for Firebase Auth (`google_id` column dropped in 0011) |
 | `admin_users` | Admin/operator with role, department, permissions JSONB |
 | `user_profiles` | Extended user data + JSONB arrays (preferences, FCM tokens, followed orgs) |
-| `user_devices` | Device registry: FCM token, device_type (web/pwa/android/ios), device_fingerprint for push de-dup |
+| `user_devices` | Device registry: device_type (web/pwa/android/ios), device_fingerprint. **Not used for push delivery** — push reads `user_profiles.fcm_tokens`. Reserved for future device management. |
 | `job_vacancies` | 30+ columns, JSONB fields, tsvector GENERATED column for FTS |
 | `user_job_applications` | Application tracking with status, notes, reminders JSONB |
 | `notifications` | In-app notifications with expiry (90 days) |
@@ -89,16 +89,16 @@ PostgreSQL 16 with 10 tables:
 
 ### Migrations
 
-- `0001_initial_schema.py` — 6 core tables + FTS (tsvector GIN index)
-- `0002_separate_admin_users.py` — Split users/admin_users, update FKs
-- `0003_profile_preferences.py` — `preferred_states`, `preferred_categories`, `followed_organizations` on user_profiles
-- `0004_fcm_tokens.py` — `fcm_tokens` JSONB on user_profiles
-- `0005_add_fee_columns.py` — `fee_general`, `fee_obc`, `fee_sc_st`, `fee_ews`, `fee_female` on job_vacancies
-- `0006_add_source_pdf_path.py` — `source_pdf_path` (Text, nullable) on job_vacancies
-- `0007_user_devices_and_delivery_log.py` — `user_devices` + `notification_delivery_log` tables (migrates JSONB fcm_tokens)
-- `0008_add_google_id_to_users.py` — `google_id VARCHAR(255)` + unique index on `users` (legacy Google OAuth)
-- `0009_firebase_auth.py` — `firebase_uid VARCHAR(128)` + unique index, `migration_status VARCHAR(20)`, `password_hash` made nullable (Firebase Auth migration)
-- `0010_email_nullable.py` — `email` column made nullable on `users` (supports phone-only Firebase Auth accounts)
+All migrations have been consolidated into a single file:
+
+- `0001_initial_schema.py` — Complete schema for all 9 tables in a single migration (merged from the former 0001–0011 incremental files)
+
+**Fresh install:** `alembic upgrade head` creates all 9 tables in one step.
+
+**Existing database** (had 0001–0011 applied): stamp to mark as current before running any future migrations:
+```bash
+docker compose exec backend alembic stamp 0001
+```
 
 ### Key DB Constraints
 
@@ -108,7 +108,7 @@ PostgreSQL 16 with 10 tables:
 - `ck_delivery_channel`: in_app, push, email, whatsapp
 - `ck_delivery_status`: pending, sent, delivered, failed, skipped
 - `ck_profiles_gender`: Male, Female, Other (capitalized)
-- `ck_profiles_category`: General, OBC, SC, ST, EWS
+- `ck_profiles_category`: General, OBC, SC, ST, EWS, EBC
 
 ---
 
@@ -139,16 +139,16 @@ src/backend/
     schemas/
       auth.py, jobs.py, users.py, applications.py, notifications.py
     services/
-      matching.py        # Job scoring: state +3, category +3, education +2, recency +1; CANDIDATE_LIMIT=500 caps DB fetch
-      notifications.py   # NotificationService — instant/staggered delivery (in-app + FCM + email + WhatsApp), fingerprint de-dup
+      matching.py        # Job scoring: category eligibility +4, state +3, preferred_categories +2, education +2, age +2, recency +1; CANDIDATE_LIMIT=500 caps DB fetch (500 most-recent active jobs scored in-memory)
+      notifications.py   # NotificationService — instant/staggered delivery (in-app + FCM + email + WhatsApp); FCM tokens read from user_profiles.fcm_tokens; invalid tokens auto-cleaned
       pdf_extractor.py   # PDF text extraction (pdfplumber)
       ai_extractor.py    # AI structured extraction (Anthropic Claude API)
     tasks/
       notifications.py   # smart_notify (instant/staggered), deliver_delayed_email, deliver_delayed_whatsapp,
                          # send_deadline_reminders, send_new_job_notifications, send_email_notification,
-                         # send_push_notification, notify_priority_subscribers
+                         # notify_priority_subscribers
       cleanup.py         # purge_expired_notifications, purge_expired_admin_logs, purge_soft_deleted_jobs
-      jobs.py            # close_expired_job_listings (bind, max_retries=3), extract_job_from_pdf (deletes PDF after use)
+      jobs.py            # close_expired_job_listings (sets status='expired', not 'cancelled'), extract_job_from_pdf (deletes PDF unless PDF_KEEP_AFTER_EXTRACTION=true)
       seo.py             # generate_sitemap
     templates/email/     # Jinja2: base, welcome, verification, password_reset, deadline_reminder, new_job_alert
   tests/                 # 313 tests — 93% coverage
@@ -157,7 +157,7 @@ src/backend/
       test_route_admin.py (34), test_route_applications.py (17),
       test_route_notifications.py (15), test_route_users.py (18),
       test_route_jobs.py (7), test_matching.py (14),
-      test_services.py (10), test_tasks.py (12), test_notification_tasks.py (29),
+      test_services.py (10), test_tasks.py (12), test_notification_tasks.py (28),
       test_notification_service.py (22)
     integration/         # API tests against real DB + Redis
       test_auth.py (20), test_jobs.py (~25), test_applications.py (~25),
@@ -226,8 +226,8 @@ docs/
 - **User auth flow:** Firebase JS SDK (email/password, Google, phone OTP) → Firebase ID token → `POST /auth/verify-token` → backend verifies via `firebase-admin` SDK → upserts user by `firebase_uid`/email → returns internal JWT pair
 - **Admin auth flow:** `POST /auth/admin/login` with email/password → bcrypt verify → JWT pair (unchanged)
 - Internal JWT `user_type` claim: `"user"` | `"admin"` for scope isolation
-- Redis keys: `hermes:blocklist:{jti}`, `hermes:csrf:{token}` (prefix from `REDIS_KEY_PREFIX` setting)
-- Access token: 15 min. Refresh: 7 days. JTI blocklisted on logout + refresh rotation.
+- Redis keys: `hermes:blocklist:{jti}` (prefix from `REDIS_KEY_PREFIX` setting). CSRF uses Flask session (not Redis).
+- Access token: 15 min. Refresh: 7 days. JTI blocklisted on logout + refresh rotation. Logout accepts optional `refresh_token` in body to blocklist it too.
 - Frontends store `refresh_token` in session; auto-refresh on 401 via `_try_refresh()` helper.
 - Dependency tuple: `get_current_user()` → `(User, payload_dict)`, `get_current_admin()` → `(AdminUser, payload_dict)`
 - Firebase credentials: `FIREBASE_CREDENTIALS_PATH` env var (shared by Auth verification + FCM push)
@@ -299,7 +299,7 @@ docker exec hermes_celery_worker celery -A app.celery_app inspect registered
 | 5 | #130–#132 | ✅ | In-app notifications, email (Mailpit dev), FCM push, notification preferences, frontend bell |
 | 6 | #133–#135 | ✅ | Admin frontend, SEO (sitemap, meta, JSON-LD), fee display by category, share buttons |
 | 7 | #136–#138 | ✅ | PDF upload + AI extraction (Anthropic Claude), draft review workflow, PWA |
-| Testing | #139–#140 | ✅ | 481 tests (313 backend + 80 frontend + 88 admin), 93/91/97% coverage, security audit |
+| Testing | #139–#140 | ✅ | ~480 tests (~312 backend + 80 frontend + 88 admin), ~93/91/97% coverage, security audit, 24 bugs fixed post-audit |
 | Firebase | — | ✅ | Firebase Auth migration: verify-token endpoint, phone OTP support, legacy user migration (migration 0009–0010) |
 | 10 | #144–#148 | ✅ | Complete user frontend: profile, org follow/unfollow, recommended jobs tab, application tracking inline edit; Firebase JS SDK login (email, Google, phone OTP) |
 | 11 | #149–#154 | ✅ | Complete admin frontend: analytics dashboard, new job form, job delete, user detail, role management |

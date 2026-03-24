@@ -13,10 +13,16 @@ All list endpoints return: `{ "data": [...], "pagination": { "limit", "offset", 
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
 | POST | `/auth/verify-token` | Public | Verify Firebase ID token → upsert user → internal JWT pair |
-| POST | `/auth/logout` | User JWT | Invalidate token (Redis blocklist) |
+| POST | `/auth/logout` | User JWT | Revoke access token (and optionally refresh token) via Redis blocklist |
 | POST | `/auth/refresh` | Public | Rotate internal token pair |
 
 User registration, email/password login, Google sign-in, phone OTP, password reset, and email verification are all handled client-side by the Firebase JS SDK. The backend only receives the resulting Firebase ID token via `/auth/verify-token`.
+
+**Logout body (optional):**
+```json
+{ "refresh_token": "<refresh-JWT>" }
+```
+If `refresh_token` is provided, its JTI is also added to the Redis blocklist so it cannot be used to generate new access tokens after logout. Without it, the refresh token remains valid until it expires.
 
 ### Admin Auth
 
@@ -50,8 +56,13 @@ User registration, email/password login, Google sign-in, phone OTP, password res
 
 **Profile preference fields** (used for job matching):
 - `preferred_states` — JSON array of state names, e.g. `["Delhi", "Uttar Pradesh"]`
-- `preferred_categories` — JSON array of reservation categories, e.g. `["general", "obc"]`
-- `highest_qualification` — `10th`, `12th`, `diploma`, `graduate`, `postgraduate`, `phd`
+- `preferred_categories` — JSON array of reservation categories the user wants to see, e.g. `["General", "OBC"]`
+- `category` — User's actual reservation category: `General`, `OBC`, `SC`, `ST`, `EWS`, or `EBC`. Used for eligibility scoring in recommendations.
+- `highest_qualification` — Enum: `10th`, `12th`, `diploma`, `graduate`, `postgraduate`, `phd`
+- `gender` — Enum: `Male`, `Female`, `Other`
+- `date_of_birth` — Used to compute age for age-range eligibility matching in recommendations
+
+**Note:** The profile response does not include `fcm_tokens` (sensitive device tokens). Register/unregister tokens via the FCM token endpoints.
 
 ---
 
@@ -115,6 +126,25 @@ All admin endpoints require an admin JWT token (`user_type: "admin"`).
 | GET | `/admin/users/:id` | Operator+ | User detail with profile |
 | PUT | `/admin/users/:id/role` | Admin only | Change user role (admin/operator) |
 | PUT | `/admin/users/:id/status` | Admin only | Suspend or activate user |
+
+### Admin Account Management
+
+| Method | Endpoint | Role | Description |
+|--------|----------|------|-------------|
+| POST | `/admin/admin-users` | Admin only | Create a new admin or operator account |
+
+**Request body:**
+```json
+{
+  "email": "operator@example.com",
+  "password": "MinEight1",
+  "full_name": "New Operator",
+  "role": "operator",
+  "phone": null,
+  "department": null
+}
+```
+The first admin account must be seeded directly in the database. All subsequent accounts can be created through this endpoint.
 
 ### Dashboard & Logs
 
@@ -186,9 +216,17 @@ All notification endpoints require a user JWT.
 
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
-| POST | `/users/me/fcm-token` | User | Register FCM device token (max 10) |
+| POST | `/users/me/fcm-token` | User | Register FCM device token (max 10 per user) |
 | DELETE | `/users/me/fcm-token` | User | Unregister FCM token |
 | PUT | `/users/me/notification-preferences` | User | Update notification channel preferences |
+
+**Notification preferences fields:** `email` (bool), `push` (bool), `in_app` (bool), `whatsapp` (bool). All default to enabled if unset. Send `false` to disable a channel.
+
+**FCM token registration body:**
+```json
+{ "token": "<FCM-device-token>", "device_name": "Pixel 7" }
+```
+Tokens are stored in `user_profiles.fcm_tokens` and read by the notification service at send time. Invalid/unregistered tokens are automatically removed.
 
 ---
 
@@ -209,23 +247,12 @@ All channels always deliver — staggered just adds a time gap so the user isn't
 
 ### Channel Delivery
 
-| Channel | Delivery | De-duplication |
-|---------|----------|----------------|
+| Channel | Delivery | Notes |
+|---------|----------|-------|
 | In-app | Always (persistent record in `notifications` table) | — |
-| FCM Push | All physical devices | `device_fingerprint` — 1 push per physical device, not per login |
-| Email | Always (unless user disabled or OCI 3k/day limit) | — |
-| WhatsApp | Always (unless user disabled or not configured) | — |
-
-### Push De-duplication Example
-
-| Device | Login | Fingerprint | Gets Push? |
-|--------|-------|-------------|------------|
-| Phone | Android app | `phone_abc` | Yes |
-| Laptop | Chrome web | `laptop_xyz` | Yes |
-| Laptop | Chrome PWA | `laptop_xyz` | No (same physical device) |
-| Tablet | Safari PWA | `tablet_def` | Yes |
-
-3 physical devices → 3 pushes. Not 4.
+| FCM Push | All tokens in `user_profiles.fcm_tokens` | Tokens registered via `POST /users/me/fcm-token`; invalid tokens auto-removed on send failure |
+| Email | If user has `notification_preferences.email` not set to `false` | Subject to OCI 3 000/day soft limit |
+| WhatsApp | If user has `notification_preferences.whatsapp` not set to `false` | Placeholder until `WHATSAPP_API_TOKEN` is configured |
 
 Every delivery attempt is logged in `notification_delivery_log` with status (pending/sent/delivered/failed/skipped).
 

@@ -19,7 +19,6 @@ class User(Base):
     full_name: Mapped[str] = mapped_column(String(255), nullable=False)
     phone: Mapped[str | None] = mapped_column(String(20))
     firebase_uid: Mapped[str | None] = mapped_column(String(128), unique=True, index=True)
-    google_id: Mapped[str | None] = mapped_column(String(255), unique=True, index=True)
     migration_status: Mapped[str] = mapped_column(String(20), nullable=False, default="native")
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="active", index=True)
     is_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)

@@ -22,27 +22,31 @@ logger = logging.getLogger(__name__)
 
 @celery.task(name="app.tasks.jobs.close_expired_job_listings", bind=True, max_retries=3, default_retry_delay=60)
 def close_expired_job_listings(self):
-    """Auto-close jobs past application_end. Daily 02:30 UTC."""
+    """Mark jobs past application_end as 'expired'. Daily 02:30 UTC.
+
+    Uses 'expired' (not 'cancelled') so deadline-lapsed jobs are distinct
+    from manually soft-deleted jobs and are not purged by purge_soft_deleted_jobs.
+    """
     try:
         with Session(sync_engine) as session:
             result = session.execute(
                 text("""
                     UPDATE job_vacancies
-                    SET status = 'cancelled', updated_at = NOW()
+                    SET status = 'expired', updated_at = NOW()
                     WHERE status = 'active'
                       AND application_end IS NOT NULL
                       AND application_end < CURRENT_DATE
                     RETURNING id
                 """)
             )
-            closed_ids = [str(row[0]) for row in result.fetchall()]
+            expired_ids = [str(row[0]) for row in result.fetchall()]
             session.commit()
     except Exception as exc:
         logger.error(f"close_expired_job_listings failed: {exc}")
         raise self.retry(exc=exc)
 
-    logger.info(f"Closed {len(closed_ids)} expired job listings")
-    return {"closed_count": len(closed_ids)}
+    logger.info(f"Marked {len(expired_ids)} job listings as expired")
+    return {"expired_count": len(expired_ids)}
 
 
 @celery.task(name="app.tasks.jobs.extract_job_from_pdf", bind=True, max_retries=2)
@@ -141,10 +145,12 @@ def extract_job_from_pdf(self, pdf_path: str, admin_id: str):
 
     logger.info(f"Created draft job {job_id} from PDF: {pdf_path}")
 
-    # Clean up the uploaded PDF file to prevent disk exhaustion
-    try:
-        os.unlink(pdf_path)
-    except OSError as e:
-        logger.warning(f"Could not delete PDF file {pdf_path}: {e}")
+    # Delete the uploaded PDF unless PDF_KEEP_AFTER_EXTRACTION is True
+    from app.config import settings
+    if not settings.PDF_KEEP_AFTER_EXTRACTION:
+        try:
+            os.unlink(pdf_path)
+        except OSError as e:
+            logger.warning(f"Could not delete PDF file {pdf_path}: {e}")
 
     return {"status": "ok", "job_id": job_id, "extracted_fields": list(extracted.keys())}

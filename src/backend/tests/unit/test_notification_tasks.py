@@ -402,17 +402,6 @@ def test_queue_email_for_user_explicit_email_enabled():
     mock_email.delay.assert_called_once()
 
 
-# ─── send_push_notification task ──────────────────────────────────────────────
-
-def test_send_push_notification_no_firebase_config():
-    """Exits early when FIREBASE_CREDENTIALS_PATH is not set."""
-    with patch("app.tasks.notifications.settings") as s:
-        s.FIREBASE_CREDENTIALS_PATH = None
-        from app.tasks.notifications import send_push_notification
-        # Should return without error
-        send_push_notification.run("user-id", "Title", "Body", {})
-
-
 # ─── smart_notify task ────────────────────────────────────────────────────────
 
 def test_smart_notify_calls_service_send():

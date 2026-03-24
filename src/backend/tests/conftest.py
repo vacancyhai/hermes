@@ -11,6 +11,7 @@ import pytest_asyncio
 import redis.asyncio as aioredis
 from httpx import ASGITransport, AsyncClient
 from passlib.context import CryptContext
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.config import settings
@@ -20,6 +21,37 @@ from app.rate_limit import limiter
 
 # Disable rate limiting for the entire test suite so auth fixtures don't hit 429
 limiter.enabled = False
+
+_TRUNCATE_TABLES = [
+    "notification_delivery_log",
+    "notifications",
+    "user_job_applications",
+    "user_devices",
+    "admin_logs",
+    "job_vacancies",
+    "user_profiles",
+    "users",
+    "admin_users",
+]
+
+
+@pytest_asyncio.fixture(scope="session", autouse=True)
+async def truncate_all_tables():
+    """Truncate all tables before the test session to ensure a clean slate.
+
+    Without this, data committed by previous test runs accumulates in the DB
+    (the per-test db fixture rolls back only, but the client fixture commits).
+    """
+    engine = create_async_engine(
+        settings.DATABASE_URL,
+        connect_args={"prepared_statement_cache_size": 0},
+    )
+    async with engine.connect() as conn:
+        tables = ", ".join(_TRUNCATE_TABLES)
+        await conn.execute(text(f"TRUNCATE TABLE {tables} RESTART IDENTITY CASCADE"))
+        await conn.commit()
+    await engine.dispose()
+    yield
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 

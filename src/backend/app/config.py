@@ -46,10 +46,8 @@ class Settings(BaseSettings):
     PDF_UPLOAD_DIR: str = "/app/uploads/pdfs"
     PDF_MAX_SIZE_MB: int = 10
     ANTHROPIC_API_KEY: str = ""
-    AI_MODEL: str = "claude-sonnet-4-20250514"
-
-    # Google OAuth (legacy, kept for reference)
-    GOOGLE_CLIENT_ID: str = ""
+    AI_MODEL: str = "claude-3-5-sonnet-20241022"
+    PDF_KEEP_AFTER_EXTRACTION: bool = False  # Set True to retain PDFs after AI extraction
 
     # Firebase Auth (frontend JS SDK config)
     FIREBASE_WEB_API_KEY: str = ""

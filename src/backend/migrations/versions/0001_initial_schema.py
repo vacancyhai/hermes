@@ -1,18 +1,37 @@
-"""Initial schema — 6 core tables.
+"""Consolidated initial schema — all 9 application tables.
 
 Revision ID: 0001
 Revises: None
-Create Date: 2026-03-21
+Create Date: 2026-03-24
 
-Tables: users, user_profiles, job_vacancies, user_job_applications,
-        notifications, admin_logs
-Matches: DESIGN.md Database Schema section exactly.
+Merged from migrations 0001\u20130011. Represents the complete, final schema for a
+fresh install. Existing databases that ran the incremental migrations must
+stamp to this revision before running further migrations:
+
+    docker compose exec backend alembic stamp 0001
+
+Tables created (in FK-dependency order):
+  1. users
+  2. admin_users
+  3. user_profiles
+  4. job_vacancies
+  5. user_job_applications
+  6. notifications
+  7. admin_logs
+  8. user_devices
+  9. notification_delivery_log
+
+Notable design decisions:
+  - google_id column never created (was added in 0008, dropped in 0011)
+  - ck_notifications_entity_type constraint not created (dropped in 0011)
+  - job expiry status is 'expired'; 'cancelled' is for manual soft-deletes only
+  - FCM push tokens stored in user_profiles.fcm_tokens (not user_devices)
 """
 from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
-from sqlalchemy.dialects.postgresql import JSONB, UUID, ARRAY, INET
+from sqlalchemy.dialects.postgresql import ARRAY, INET, JSONB, UUID
 
 revision: str = "0001"
 down_revision: Union[str, None] = None
@@ -21,28 +40,51 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # 1. users
+    # ─── 1. users ────────────────────────────────────────────────────────────
     op.create_table(
         "users",
         sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
-        sa.Column("email", sa.String(255), unique=True, nullable=False),
-        sa.Column("password_hash", sa.String(255), nullable=False),
+        sa.Column("email", sa.String(255), unique=True, nullable=True),         # nullable: phone-only users
+        sa.Column("password_hash", sa.String(255), nullable=True),              # nullable: Firebase handles auth
         sa.Column("full_name", sa.String(255), nullable=False),
         sa.Column("phone", sa.String(20)),
-        sa.Column("role", sa.String(20), nullable=False, server_default="user"),
+        sa.Column("firebase_uid", sa.String(128), unique=True),
+        sa.Column("migration_status", sa.String(20), nullable=False, server_default="native"),
         sa.Column("status", sa.String(20), nullable=False, server_default="active"),
         sa.Column("is_verified", sa.Boolean, nullable=False, server_default=sa.text("FALSE")),
         sa.Column("is_email_verified", sa.Boolean, nullable=False, server_default=sa.text("FALSE")),
         sa.Column("last_login", sa.DateTime(timezone=True)),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
-        sa.CheckConstraint("role IN ('user','admin','operator')", name="ck_users_role"),
         sa.CheckConstraint("status IN ('active','suspended','deleted')", name="ck_users_status"),
     )
     op.create_index("idx_users_email", "users", ["email"])
     op.create_index("idx_users_status", "users", ["status"])
+    op.create_index("ix_users_firebase_uid", "users", ["firebase_uid"], unique=True)
 
-    # 2. user_profiles
+    # ─── 2. admin_users ──────────────────────────────────────────────────────
+    op.create_table(
+        "admin_users",
+        sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
+        sa.Column("email", sa.String(255), unique=True, nullable=False),
+        sa.Column("password_hash", sa.String(255), nullable=False),
+        sa.Column("full_name", sa.String(255), nullable=False),
+        sa.Column("phone", sa.String(20)),
+        sa.Column("role", sa.String(20), nullable=False, server_default="operator"),
+        sa.Column("department", sa.String(255)),
+        sa.Column("permissions", JSONB, nullable=False, server_default="{}"),
+        sa.Column("status", sa.String(20), nullable=False, server_default="active"),
+        sa.Column("is_email_verified", sa.Boolean, nullable=False, server_default=sa.text("FALSE")),
+        sa.Column("last_login", sa.DateTime(timezone=True)),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
+        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
+        sa.CheckConstraint("role IN ('admin','operator')", name="ck_admin_users_role"),
+        sa.CheckConstraint("status IN ('active','suspended','deleted')", name="ck_admin_users_status"),
+    )
+    op.create_index("idx_admin_users_email", "admin_users", ["email"])
+    op.create_index("idx_admin_users_status", "admin_users", ["status"])
+
+    # ─── 3. user_profiles ────────────────────────────────────────────────────
     op.create_table(
         "user_profiles",
         sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
@@ -58,6 +100,10 @@ def upgrade() -> None:
         sa.Column("highest_qualification", sa.String(50)),
         sa.Column("education", JSONB, nullable=False, server_default="{}"),
         sa.Column("notification_preferences", JSONB, nullable=False, server_default="{}"),
+        sa.Column("preferred_states", JSONB, nullable=False, server_default="[]"),
+        sa.Column("preferred_categories", JSONB, nullable=False, server_default="[]"),
+        sa.Column("followed_organizations", JSONB, nullable=False, server_default="[]"),
+        sa.Column("fcm_tokens", JSONB, nullable=False, server_default="[]"),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
         sa.CheckConstraint("gender IN ('Male','Female','Other')", name="ck_profiles_gender"),
         sa.CheckConstraint("category IN ('General','OBC','SC','ST','EWS','EBC')", name="ck_profiles_category"),
@@ -66,7 +112,7 @@ def upgrade() -> None:
     op.create_index("idx_user_profiles_education", "user_profiles", ["education"], postgresql_using="gin")
     op.create_index("idx_user_profiles_notif_prefs", "user_profiles", ["notification_preferences"], postgresql_using="gin")
 
-    # 3. job_vacancies
+    # ─── 4. job_vacancies ────────────────────────────────────────────────────
     op.create_table(
         "job_vacancies",
         sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
@@ -96,19 +142,34 @@ def upgrade() -> None:
         sa.Column("salary_max", sa.Integer),
         sa.Column("salary", JSONB, nullable=False, server_default="{}"),
         sa.Column("selection_process", JSONB, nullable=False, server_default="[]"),
-        sa.Column("status", sa.String(20), nullable=False, server_default="active"),
+        sa.Column("fee_general", sa.Integer),
+        sa.Column("fee_obc", sa.Integer),
+        sa.Column("fee_sc_st", sa.Integer),
+        sa.Column("fee_ews", sa.Integer),
+        sa.Column("fee_female", sa.Integer),
+        sa.Column("status", sa.String(20), nullable=False, server_default="draft"),
         sa.Column("is_featured", sa.Boolean, nullable=False, server_default=sa.text("FALSE")),
         sa.Column("is_urgent", sa.Boolean, nullable=False, server_default=sa.text("FALSE")),
         sa.Column("views", sa.Integer, nullable=False, server_default="0"),
         sa.Column("applications_count", sa.Integer, nullable=False, server_default="0"),
-        sa.Column("created_by", UUID(as_uuid=True), sa.ForeignKey("users.id")),
+        sa.Column("created_by", UUID(as_uuid=True), sa.ForeignKey("admin_users.id")),
         sa.Column("source", sa.String(20), nullable=False, server_default="manual"),
+        sa.Column("source_pdf_path", sa.Text),
         sa.Column("published_at", sa.DateTime(timezone=True)),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
-        sa.CheckConstraint("job_type IN ('latest_job','result','admit_card','answer_key','admission','yojana')", name="ck_jobs_job_type"),
-        sa.CheckConstraint("employment_type IN ('permanent','temporary','contract','apprentice')", name="ck_jobs_employment_type"),
-        sa.CheckConstraint("status IN ('draft','active','expired','cancelled','upcoming')", name="ck_jobs_status"),
+        sa.CheckConstraint(
+            "job_type IN ('latest_job','result','admit_card','answer_key','admission','yojana')",
+            name="ck_jobs_job_type",
+        ),
+        sa.CheckConstraint(
+            "employment_type IN ('permanent','temporary','contract','apprentice')",
+            name="ck_jobs_employment_type",
+        ),
+        sa.CheckConstraint(
+            "status IN ('draft','active','expired','cancelled','upcoming')",
+            name="ck_jobs_status",
+        ),
         sa.CheckConstraint("source IN ('manual','pdf_upload')", name="ck_jobs_source"),
     )
     op.create_index("idx_jobs_organization", "job_vacancies", ["organization"])
@@ -117,8 +178,6 @@ def upgrade() -> None:
     op.create_index("idx_jobs_application_end", "job_vacancies", ["application_end"])
     op.create_index("idx_jobs_org_status", "job_vacancies", ["organization", "status", sa.text("created_at DESC")])
     op.create_index("idx_jobs_eligibility_gin", "job_vacancies", ["eligibility"], postgresql_using="gin")
-
-    # Full-text search vector (generated column)
     op.execute("""
         ALTER TABLE job_vacancies ADD COLUMN search_vector tsvector
         GENERATED ALWAYS AS (
@@ -129,7 +188,7 @@ def upgrade() -> None:
     """)
     op.execute("CREATE INDEX idx_jobs_search ON job_vacancies USING GIN (search_vector)")
 
-    # 4. user_job_applications
+    # ─── 5. user_job_applications ─────────────────────────────────────────────
     op.create_table(
         "user_job_applications",
         sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
@@ -145,14 +204,18 @@ def upgrade() -> None:
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
         sa.UniqueConstraint("user_id", "job_id"),
         sa.CheckConstraint(
-            "status IN ('applied','admit_card_released','exam_completed','result_pending','selected','rejected','waiting_list')",
+            "status IN ('applied','admit_card_released','exam_completed','result_pending',"
+            "'selected','rejected','waiting_list')",
             name="ck_applications_status",
         ),
     )
     op.create_index("idx_applications_user_job", "user_job_applications", ["user_id", "job_id"])
     op.create_index("idx_applications_user_applied", "user_job_applications", ["user_id", sa.text("applied_on DESC")])
 
-    # 5. notifications
+    # ─── 6. notifications ────────────────────────────────────────────────────
+    # NOTE: ck_notifications_entity_type constraint intentionally omitted —
+    # it was present in the original schema but removed to allow new
+    # notification categories without requiring a migration.
     op.create_table(
         "notifications",
         sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
@@ -168,22 +231,19 @@ def upgrade() -> None:
         sa.Column("priority", sa.String(10), nullable=False, server_default="medium"),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
         sa.Column("read_at", sa.DateTime(timezone=True)),
-        sa.Column("expires_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("NOW() + INTERVAL '90 days'")),
-        sa.CheckConstraint(
-            "entity_type IN ('job','result','admit_card','answer_key','admission','yojana')",
-            name="ck_notifications_entity_type",
-        ),
+        sa.Column("expires_at", sa.DateTime(timezone=True), nullable=False,
+                  server_default=sa.text("NOW() + INTERVAL '90 days'")),
         sa.CheckConstraint("priority IN ('low','medium','high')", name="ck_notifications_priority"),
     )
     op.create_index("idx_notifications_user_read", "notifications", ["user_id", "is_read"])
     op.create_index("idx_notifications_user_created", "notifications", ["user_id", sa.text("created_at DESC")])
     op.create_index("idx_notifications_expires", "notifications", ["expires_at"])
 
-    # 6. admin_logs
+    # ─── 7. admin_logs ───────────────────────────────────────────────────────
     op.create_table(
         "admin_logs",
         sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
-        sa.Column("admin_id", UUID(as_uuid=True), sa.ForeignKey("users.id"), nullable=False),
+        sa.Column("admin_id", UUID(as_uuid=True), sa.ForeignKey("admin_users.id"), nullable=False),
         sa.Column("action", sa.String(100), nullable=False),
         sa.Column("resource_type", sa.String(100)),
         sa.Column("resource_id", UUID(as_uuid=True)),
@@ -192,16 +252,68 @@ def upgrade() -> None:
         sa.Column("ip_address", INET),
         sa.Column("user_agent", sa.Text),
         sa.Column("timestamp", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
-        sa.Column("expires_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("NOW() + INTERVAL '30 days'")),
+        sa.Column("expires_at", sa.DateTime(timezone=True), nullable=False,
+                  server_default=sa.text("NOW() + INTERVAL '30 days'")),
     )
     op.create_index("idx_admin_logs_admin_ts", "admin_logs", ["admin_id", sa.text("timestamp DESC")])
     op.create_index("idx_admin_logs_expires", "admin_logs", ["expires_at"])
 
+    # ─── 8. user_devices ─────────────────────────────────────────────────────
+    # NOTE: FCM push notifications read tokens from user_profiles.fcm_tokens,
+    # not from this table. user_devices is reserved for future device
+    # management (fingerprint dedup, device listing UI).
+    op.create_table(
+        "user_devices",
+        sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
+        sa.Column("user_id", UUID(as_uuid=True), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
+        sa.Column("fcm_token", sa.String(500)),
+        sa.Column("device_name", sa.String(255), nullable=False, server_default="Unknown"),
+        sa.Column("device_type", sa.String(20), nullable=False, server_default="web"),
+        sa.Column("device_fingerprint", sa.String(255)),
+        sa.Column("is_active", sa.Boolean, nullable=False, server_default=sa.text("TRUE")),
+        sa.Column("last_active_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
+        sa.CheckConstraint("device_type IN ('web','pwa','android','ios')", name="ck_devices_device_type"),
+    )
+    op.create_index("idx_devices_user_id", "user_devices", ["user_id"])
+    op.create_index(
+        "idx_devices_fcm_token", "user_devices", ["fcm_token"],
+        unique=True, postgresql_where=sa.text("fcm_token IS NOT NULL"),
+    )
+    op.create_index("idx_devices_fingerprint", "user_devices", ["user_id", "device_fingerprint"])
+
+    # ─── 9. notification_delivery_log ────────────────────────────────────────
+    op.create_table(
+        "notification_delivery_log",
+        sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
+        sa.Column("notification_id", UUID(as_uuid=True),
+                  sa.ForeignKey("notifications.id", ondelete="CASCADE"), nullable=False),
+        sa.Column("user_id", UUID(as_uuid=True), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
+        sa.Column("channel", sa.String(20), nullable=False),
+        sa.Column("status", sa.String(20), nullable=False, server_default="pending"),
+        sa.Column("device_id", UUID(as_uuid=True),
+                  sa.ForeignKey("user_devices.id", ondelete="SET NULL"), nullable=True),
+        sa.Column("error_message", sa.Text),
+        sa.Column("attempted_at", sa.DateTime(timezone=True)),
+        sa.Column("delivered_at", sa.DateTime(timezone=True)),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
+        sa.CheckConstraint("channel IN ('in_app','push','email','whatsapp')", name="ck_delivery_channel"),
+        sa.CheckConstraint(
+            "status IN ('pending','sent','delivered','failed','skipped')",
+            name="ck_delivery_status",
+        ),
+    )
+    op.create_index("idx_delivery_notification", "notification_delivery_log", ["notification_id"])
+    op.create_index("idx_delivery_user_channel", "notification_delivery_log", ["user_id", "channel"])
+
 
 def downgrade() -> None:
+    op.drop_table("notification_delivery_log")
+    op.drop_table("user_devices")
     op.drop_table("admin_logs")
     op.drop_table("notifications")
     op.drop_table("user_job_applications")
     op.drop_table("job_vacancies")
     op.drop_table("user_profiles")
+    op.drop_table("admin_users")
     op.drop_table("users")

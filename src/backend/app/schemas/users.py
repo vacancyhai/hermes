@@ -2,6 +2,7 @@
 
 import uuid
 from datetime import date, datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -23,7 +24,6 @@ class ProfileResponse(BaseModel):
     preferred_states: list
     preferred_categories: list
     followed_organizations: list
-    fcm_tokens: list
     updated_at: datetime
 
     model_config = {"from_attributes": True}
@@ -31,14 +31,14 @@ class ProfileResponse(BaseModel):
 
 class ProfileUpdateRequest(BaseModel):
     date_of_birth: date | None = None
-    gender: str | None = None
-    category: str | None = None
+    gender: Literal["Male", "Female", "Other"] | None = None
+    category: Literal["General", "OBC", "SC", "ST", "EWS", "EBC"] | None = None
     is_pwd: bool | None = None
     is_ex_serviceman: bool | None = None
     state: str | None = None
     city: str | None = None
     pincode: str | None = None
-    highest_qualification: str | None = None
+    highest_qualification: Literal["10th", "12th", "diploma", "graduate", "postgraduate", "phd"] | None = None
     education: dict | None = None
     notification_preferences: dict | None = None
     preferred_states: list | None = None
@@ -62,3 +62,4 @@ class NotificationPreferencesRequest(BaseModel):
     email: bool | None = None
     push: bool | None = None
     in_app: bool | None = None
+    whatsapp: bool | None = None

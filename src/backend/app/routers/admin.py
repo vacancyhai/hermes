@@ -13,6 +13,9 @@ User Management:
   GET    /api/v1/admin/users/:id         — User detail
   PUT    /api/v1/admin/users/:id/status  — Suspend/activate
 
+Admin Account Management (admin role only):
+  POST   /api/v1/admin/admin-users       — Create new admin/operator account
+
 Dashboard:
   GET    /api/v1/admin/stats             — Dashboard counts (jobs, users, applications, new users this week)
   GET    /api/v1/admin/logs              — Admin activity logs
@@ -25,7 +28,8 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, UploadFile, status
-from pydantic import BaseModel
+from passlib.context import CryptContext
+from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -56,6 +60,18 @@ class UserStatusRequest(BaseModel):
 
 class UserRoleRequest(BaseModel):
     role: str
+
+
+class AdminCreateRequest(BaseModel):
+    email: str = Field(min_length=5, max_length=255)
+    password: str = Field(min_length=8, description="Minimum 8 characters")
+    full_name: str = Field(min_length=1, max_length=255)
+    role: str = "operator"
+    phone: str | None = None
+    department: str | None = None
+
+
+_admin_pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 def _slugify(text: str) -> str:
@@ -577,6 +593,55 @@ async def update_user_role(
                       changes={"role": {"old": old_role, "new": new_role}}, request=request)
 
     return {"message": f"Role changed from {old_role} to {new_role}"}
+
+
+# ─── Admin Account Management ───────────────────────────────────────────────
+
+
+@router.post("/admin-users", status_code=status.HTTP_201_CREATED)
+async def create_admin_user(
+    body: AdminCreateRequest,
+    request: Request,
+    admin=Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Create a new admin or operator account. Admin role only.
+
+    This is the only way to provision new admin/operator accounts — there is
+    no self-registration or out-of-band seeding needed after the first account
+    is created directly in the DB.
+    """
+    if body.role not in ("admin", "operator"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Role must be 'admin' or 'operator'",
+        )
+
+    existing = await db.execute(select(AdminUser).where(AdminUser.email == body.email))
+    if existing.scalar_one_or_none():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="An admin user with that email already exists",
+        )
+
+    new_admin = AdminUser(
+        email=body.email,
+        password_hash=_admin_pwd_context.hash(body.password),
+        full_name=body.full_name,
+        role=body.role,
+        phone=body.phone,
+        department=body.department,
+    )
+    db.add(new_admin)
+    await db.flush()
+
+    await _log_action(
+        db, admin, "create_admin_user", "admin_user", new_admin.id,
+        details=f"Created {body.role} account: {body.email}", request=request,
+    )
+
+    from app.schemas.auth import AdminUserResponse
+    return AdminUserResponse.model_validate(new_admin).model_dump()
 
 
 # ─── Logs ────────────────────────────────────────────────────────────────────
