@@ -161,7 +161,7 @@
         <nav class="sec-nav" style="max-width:960px;margin:0 auto;padding:0 1rem;display:flex;overflow-x:auto;scrollbar-width:none">
             {% set _path = request.path %}
             {% for href, label, icon in [('/', 'Jobs', '💼'), ('/admit-cards', 'Admit Cards', '📄'), ('/answer-keys', 'Answer Keys', '✏️'), ('/results', 'Results', '🏆'), ('/admissions', 'Admissions', '🎓')] %}
-            {% set is_active = (_path == href) if href == '/' else (_path == href or _path.startswith(href + '/')) %}
+            {% set is_active = (_path == '/' or _path.startswith('/jobs/')) if href == '/' else (_path == href or _path.startswith(href + '/')) %}
             <a href="{{ href }}" class="{{ 'active' if is_active }}">{{ icon }} {{ label }}</a>
             {% endfor %}
         </nav>

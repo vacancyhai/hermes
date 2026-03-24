@@ -126,7 +126,7 @@ async def get_exam_by_slug(slug: str, db: AsyncSession = Depends(get_db)):
 async def list_exam_admit_cards(exam_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     """Per-phase admit cards. Exam must be active or completed."""
     result = await db.execute(
-        select(EntranceExam).where(EntranceExam.id == exam_id, EntranceExam.status.in_(["active", "completed"]))
+        select(EntranceExam).where(EntranceExam.id == exam_id, EntranceExam.status != "cancelled")
     )
     if not result.scalar_one_or_none():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Exam not found")
@@ -140,9 +140,9 @@ async def list_exam_admit_cards(exam_id: uuid.UUID, db: AsyncSession = Depends(g
 
 @public_router.get("/{exam_id}/answer-keys", response_model=list[AnswerKeyResponse])
 async def list_exam_answer_keys(exam_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
-    """Per-phase answer keys. Exam must be active or completed."""
+    """Per-phase answer keys. Exam must not be cancelled."""
     result = await db.execute(
-        select(EntranceExam).where(EntranceExam.id == exam_id, EntranceExam.status.in_(["active", "completed"]))
+        select(EntranceExam).where(EntranceExam.id == exam_id, EntranceExam.status != "cancelled")
     )
     if not result.scalar_one_or_none():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Exam not found")
@@ -156,9 +156,9 @@ async def list_exam_answer_keys(exam_id: uuid.UUID, db: AsyncSession = Depends(g
 
 @public_router.get("/{exam_id}/results", response_model=list[ResultResponse])
 async def list_exam_results(exam_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
-    """Per-phase results. Exam must be active or completed."""
+    """Per-phase results. Exam must not be cancelled."""
     result = await db.execute(
-        select(EntranceExam).where(EntranceExam.id == exam_id, EntranceExam.status.in_(["active", "completed"]))
+        select(EntranceExam).where(EntranceExam.id == exam_id, EntranceExam.status != "cancelled")
     )
     if not result.scalar_one_or_none():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Exam not found")
