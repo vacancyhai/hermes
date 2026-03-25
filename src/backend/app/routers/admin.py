@@ -104,56 +104,82 @@ async def dashboard_stats(
     admin=Depends(require_operator),
     db: AsyncSession = Depends(get_db),
 ):
-    """Dashboard stats: counts by job type, users, applications, new users this week."""
+    """Dashboard stats: separate counts for jobs, admit cards, answer keys, results, entrance exams."""
     from app.models.entrance_exam import EntranceExam
     
-    # Job counts by type
-    jobs_total = (await db.execute(select(func.count(JobVacancy.id)))).scalar()
-    jobs_active = (await db.execute(select(func.count(JobVacancy.id)).where(JobVacancy.status == "active"))).scalar()
-    jobs_draft = (await db.execute(select(func.count(JobVacancy.id)).where(JobVacancy.status == "draft"))).scalar()
-    
-    # Separate counts for each job type
-    latest_job_count = (await db.execute(
+    # Jobs (only latest_job type)
+    jobs_count = (await db.execute(
         select(func.count(JobVacancy.id)).where(JobVacancy.job_type == "latest_job")
     )).scalar()
-    admit_card_count = (await db.execute(
+    jobs_active = (await db.execute(
+        select(func.count(JobVacancy.id)).where(
+            JobVacancy.job_type == "latest_job",
+            JobVacancy.status == "active"
+        )
+    )).scalar()
+    jobs_draft = (await db.execute(
+        select(func.count(JobVacancy.id)).where(
+            JobVacancy.job_type == "latest_job",
+            JobVacancy.status == "draft"
+        )
+    )).scalar()
+    
+    # Admit Cards
+    admit_cards_count = (await db.execute(
         select(func.count(JobVacancy.id)).where(JobVacancy.job_type == "admit_card")
     )).scalar()
-    answer_key_count = (await db.execute(
+    admit_cards_active = (await db.execute(
+        select(func.count(JobVacancy.id)).where(
+            JobVacancy.job_type == "admit_card",
+            JobVacancy.status == "active"
+        )
+    )).scalar()
+    
+    # Answer Keys
+    answer_keys_count = (await db.execute(
         select(func.count(JobVacancy.id)).where(JobVacancy.job_type == "answer_key")
     )).scalar()
-    result_count = (await db.execute(
-        select(func.count(JobVacancy.id)).where(JobVacancy.job_type == "result")
+    answer_keys_active = (await db.execute(
+        select(func.count(JobVacancy.id)).where(
+            JobVacancy.job_type == "answer_key",
+            JobVacancy.status == "active"
+        )
     )).scalar()
     
-    # Entrance exams count
-    entrance_exams_count = (await db.execute(select(func.count(EntranceExam.id)))).scalar()
+    # Results
+    results_count = (await db.execute(
+        select(func.count(JobVacancy.id)).where(JobVacancy.job_type == "result")
+    )).scalar()
+    results_active = (await db.execute(
+        select(func.count(JobVacancy.id)).where(
+            JobVacancy.job_type == "result",
+            JobVacancy.status == "active"
+        )
+    )).scalar()
     
+    # Entrance Exams
+    entrance_exams_count = (await db.execute(select(func.count(EntranceExam.id)))).scalar()
+    entrance_exams_active = (await db.execute(
+        select(func.count(EntranceExam.id)).where(EntranceExam.status == "active")
+    )).scalar()
+    
+    # Users
     users_total = (await db.execute(select(func.count(User.id)))).scalar()
     users_active = (await db.execute(select(func.count(User.id)).where(User.status == "active"))).scalar()
-
-    # New users this week
     week_ago = datetime.now(timezone.utc) - timedelta(days=7)
     users_new_this_week = (await db.execute(
         select(func.count(User.id)).where(User.created_at >= week_ago)
     )).scalar()
 
-    # Application counts
+    # Applications
     apps_total = (await db.execute(select(func.count(UserJobApplication.id)))).scalar()
 
     return {
-        "jobs": {
-            "total": jobs_total, 
-            "active": jobs_active, 
-            "draft": jobs_draft,
-            "by_type": {
-                "latest_job": latest_job_count,
-                "admit_card": admit_card_count,
-                "answer_key": answer_key_count,
-                "result": result_count,
-            }
-        },
-        "entrance_exams": {"total": entrance_exams_count},
+        "jobs": {"total": jobs_count, "active": jobs_active, "draft": jobs_draft},
+        "admit_cards": {"total": admit_cards_count, "active": admit_cards_active},
+        "answer_keys": {"total": answer_keys_count, "active": answer_keys_active},
+        "results": {"total": results_count, "active": results_active},
+        "entrance_exams": {"total": entrance_exams_count, "active": entrance_exams_active},
         "users": {"total": users_total, "active": users_active, "new_this_week": users_new_this_week},
         "applications": {"total": apps_total},
     }

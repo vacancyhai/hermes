@@ -5,19 +5,40 @@
 {% block content %}
 <h1 style="font-size:1.35rem;margin-bottom:1.25rem;">Dashboard</h1>
 
-<div class="stats-grid" hx-get="/" hx-trigger="every 60s" hx-select=".stats-grid" hx-swap="outerHTML">
+<h2 style="font-size:1.1rem;margin:0 0 1rem;color:#1e293b;font-weight:600;">Content Overview</h2>
+
+<!-- Content Overview -->
+<div class="stats-grid" hx-get="/" hx-trigger="every 60s" hx-select=".stats-grid" hx-swap="outerHTML" style="margin-bottom:1.5rem;">
     <div class="stat-card">
         <div class="value">{{ stats.get('jobs', {}).get('total', 0) }}</div>
-        <div class="label">Total Jobs</div>
+        <div class="label">Jobs</div>
+        <div style="font-size:0.75rem;color:#64748b;margin-top:0.25rem;">{{ stats.get('jobs', {}).get('active', 0) }} active</div>
     </div>
     <div class="stat-card">
-        <div class="value">{{ stats.get('jobs', {}).get('active', 0) }}</div>
-        <div class="label">Active Jobs</div>
+        <div class="value">{{ stats.get('admit_cards', {}).get('total', 0) }}</div>
+        <div class="label">Admit Cards</div>
+        <div style="font-size:0.75rem;color:#64748b;margin-top:0.25rem;">{{ stats.get('admit_cards', {}).get('active', 0) }} active</div>
     </div>
     <div class="stat-card">
-        <div class="value">{{ stats.get('jobs', {}).get('draft', 0) }}</div>
-        <div class="label">Draft Jobs</div>
+        <div class="value">{{ stats.get('answer_keys', {}).get('total', 0) }}</div>
+        <div class="label">Answer Keys</div>
+        <div style="font-size:0.75rem;color:#64748b;margin-top:0.25rem;">{{ stats.get('answer_keys', {}).get('active', 0) }} active</div>
     </div>
+    <div class="stat-card">
+        <div class="value">{{ stats.get('results', {}).get('total', 0) }}</div>
+        <div class="label">Results</div>
+        <div style="font-size:0.75rem;color:#64748b;margin-top:0.25rem;">{{ stats.get('results', {}).get('active', 0) }} active</div>
+    </div>
+    <div class="stat-card">
+        <div class="value">{{ stats.get('entrance_exams', {}).get('total', 0) }}</div>
+        <div class="label">Entrance Exams</div>
+        <div style="font-size:0.75rem;color:#64748b;margin-top:0.25rem;">{{ stats.get('entrance_exams', {}).get('active', 0) }} active</div>
+    </div>
+</div>
+
+<!-- Users & Applications -->
+<h2 style="font-size:1.1rem;margin:0 0 1rem;color:#1e293b;font-weight:600;">Users & Applications</h2>
+<div class="stats-grid" style="margin-bottom:1.5rem;">
     <div class="stat-card">
         <div class="value">{{ stats.get('users', {}).get('total', 0) }}</div>
         <div class="label">Total Users</div>
@@ -33,30 +54,6 @@
     <div class="stat-card">
         <div class="value">{{ stats.get('applications', {}).get('total', 0) }}</div>
         <div class="label">Applications</div>
-    </div>
-</div>
-
-<h2 style="font-size:1.1rem;margin:1.5rem 0 1rem;color:#1e293b;font-weight:600;">Job Types</h2>
-<div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr));">
-    <div class="stat-card" style="background:linear-gradient(135deg,#2563eb 0%,#1d4ed8 100%);color:white;">
-        <div class="value">{{ stats.get('jobs', {}).get('by_type', {}).get('latest_job', 0) }}</div>
-        <div class="label">Latest Jobs</div>
-    </div>
-    <div class="stat-card" style="background:linear-gradient(135deg,#059669 0%,#047857 100%);color:white;">
-        <div class="value">{{ stats.get('jobs', {}).get('by_type', {}).get('admit_card', 0) }}</div>
-        <div class="label">Admit Cards</div>
-    </div>
-    <div class="stat-card" style="background:linear-gradient(135deg,#7c3aed 0%,#6d28d9 100%);color:white;">
-        <div class="value">{{ stats.get('jobs', {}).get('by_type', {}).get('answer_key', 0) }}</div>
-        <div class="label">Answer Keys</div>
-    </div>
-    <div class="stat-card" style="background:linear-gradient(135deg,#dc2626 0%,#b91c1c 100%);color:white;">
-        <div class="value">{{ stats.get('jobs', {}).get('by_type', {}).get('result', 0) }}</div>
-        <div class="label">Results</div>
-    </div>
-    <div class="stat-card" style="background:linear-gradient(135deg,#ea580c 0%,#c2410c 100%);color:white;">
-        <div class="value">{{ stats.get('entrance_exams', {}).get('total', 0) }}</div>
-        <div class="label">Entrance Exams</div>
     </div>
 </div>
 
