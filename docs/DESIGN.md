@@ -1,26 +1,28 @@
 # Hermes — System Design Document
 
-> **Status:** Phases 1–7.5 complete. Auth (Firebase — Email/Password, Google OAuth, Phone OTP), job CRUD, full-text search,
+> **Status:** Phases 1–7.5 + 10 + 11 + 12 complete. Auth (Firebase — Email/Password with OTP verification, Google OAuth, Phone OTP), job CRUD, full-text search,
 > user profiles, job matching, org follow, application tracking, notifications
 > (email, push, in-app), admin panel, SEO, PDF AI extraction, PWA, test suite
-> (~480 tests — ~93/91/97% coverage), and security audit + 24 bug fixes — all implemented. Phase 8 (OCI deployment) next.
+> (~500 tests — ~93/91/97% coverage), security audit + 24 bug fixes, 5-section navigation,
+> entrance exams, polymorphic document tables, email notifications for account actions — all implemented. Phase 8 (OCI deployment) next.
 
 ---
 
 ## Table of Contents
 
 1. [System Architecture](#system-architecture)
-2. [Database Schema](#database-schema)
-3. [API Endpoints](#api-endpoints)
+2. [Database Schema → DATABASE.md](DATABASE.md)
+3. [API Endpoints → API.md](API.md)
 4. [Error Response Format](#error-response-format)
 5. [Authentication & RBAC](#authentication--rbac)
 6. [Background Tasks](#background-tasks)
 7. [Job Ingestion Strategy](#job-ingestion-strategy)
 8. [SEO Strategy](#seo-strategy)
-9. [Docker Environments](#docker-environments)
-10. [Security Design](#security-design)
-11. [Environment Variables](#environment-variables)
-12. [Deployment](#deployment)
+9. [5-Section Frontend Architecture](#5-section-frontend-architecture)
+10. [Docker Environments](#docker-environments)
+11. [Security Design](#security-design)
+12. [Environment Variables](#environment-variables)
+13. [Deployment](#deployment)
 
 ---
 
@@ -129,7 +131,7 @@ responses from the server drive UI updates:
 | Notification badge count | `hx-get="/notifications/count" hx-trigger="every 30s"` | None |
 | Deadline countdown on job cards | Jinja2 `{{ (job.application_end - today).days }} days left` + `hx-get` refresh | None |
 | Application fee for user's category | Jinja2 reads `eligibility.fee` + user's `category` → shows "Your fee: ₹0" | None |
-| Share job via WhatsApp/Telegram | `<a href="whatsapp://send?text=...">` / `<a href="https://t.me/share/url?url=...">` | None |
+| Share job / exam / card | `navigator.share({title, url})` (Web Share API); clipboard fallback on desktop | Inline `onclick` |
 
 The backend returns **HTML partials** (Jinja2 fragments) for HTMX requests
 (detected via `HX-Request` header) and **full pages** for normal requests.
@@ -170,9 +172,17 @@ React Native App (Android + iOS)
 | Component | Status | Detail |
 |-----------|--------|--------|
 | `POST /auth/verify-token` | ✅ Done | Firebase ID token → internal JWT (email, Google, phone OTP) |
+| `POST /auth/send-email-otp` | ✅ Done | Send OTP to email for registration |
+| `POST /auth/verify-email-otp` | ✅ Done | Verify email OTP → returns verification token |
+| `POST /auth/complete-registration` | ✅ Done | Complete registration with password after OTP verification |
+| `POST /users/me/set-password` | ✅ Done | Set password for Google OAuth users |
+| `POST /users/me/change-password` | ✅ Done | Change password (requires current password) |
+| `POST /users/me/verify-phone-otp` | ✅ Done | Verify phone number with OTP |
+| `POST /users/me/link-email-password` | ✅ Done | Link email+password to phone-only account |
 | `POST /users/me/fcm-token` | ✅ Done | Register device FCM token |
 | `DELETE /users/me/fcm-token` | ✅ Done | Unregister on logout |
 | `firebase_uid` on `users` | ✅ Done | Migration 0009 — unique index |
+| `is_phone_verified` on `users` | ✅ Done | Migration 0005 — phone verification status |
 | Phone-only users | ✅ Done | Migration 0010 — `email` nullable |
 | Android config | ✅ Done | `src/mobile-app/google-services.json` (project: hermes-7) |
 | iOS config | ✅ Done | `src/mobile-app/GoogleService-Info.plist` |
@@ -183,612 +193,51 @@ React Native is chosen over Flutter for:
 - Larger developer ecosystem in India
 - `@react-native-firebase` SDK for seamless Firebase Auth + FCM integration
 
-### Future: PWA (Progressive Web App)
+### PWA (Progressive Web App) — Implemented (Phase 7)
 
-Before the React Native app, the Flask frontend can be enhanced as a PWA for a
-native-like mobile experience with minimal effort:
+The Flask user frontend is a full PWA. The following are already in `src/frontend/app/static/`:
 
 - **`manifest.json`** — Add-to-home-screen on Android, app icon, splash screen
-- **Service worker** — Cache previously viewed job pages for offline access
-- **Web Push API** — Push notifications in the browser (no FCM needed for web)
-- **Works on iOS Safari** — Limited but functional (no push, but offline + home screen)
+- **`sw.js`** — Service worker: caches job pages for offline access, serves `offline.html` fallback
+- **`icon-192.png` / `icon-512.png`** — PWA icons
 
-This requires 2–3 files added to the frontend static assets. It does not replace
-React Native for a full mobile app, but bridges the gap while phases 1–7 are
-being built.
+The PWA does not replace React Native for a full mobile app (Phase 9, deferred) but provides
+a native-like experience on Android and limited support on iOS Safari.
 
 ---
 
 ## Database Schema
 
-### Core Tables (v1)
+See **[DATABASE.md](DATABASE.md)** for the complete schema — ERD, all 14 tables, column definitions, indexes, and CHECK constraints.
 
-Six tables for the initial release.
+**14 tables (4 Alembic migrations, `0001` → `0004`):**
+`users`, `admin_users`, `user_profiles`, `user_devices`, `job_vacancies`,
+`user_job_applications`, `notifications`, `notification_delivery_log`, `admin_logs`,
+`job_admit_cards`, `job_answer_keys`, `job_results`, `entrance_exams`, `alembic_version`.
 
-#### 1. `users` (regular job seekers)
-
-```sql
-CREATE TABLE users (
-  id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  email               VARCHAR(255) UNIQUE,          -- nullable (phone-only users)
-  password_hash       VARCHAR(255),                  -- nullable (Firebase handles auth)
-  full_name           VARCHAR(255) NOT NULL,
-  phone               VARCHAR(20),
-  firebase_uid        VARCHAR(128) UNIQUE,           -- Firebase Authentication UID
-  -- google_id column was dropped in migration 0011 (superseded by firebase_uid)
-  migration_status    VARCHAR(20) NOT NULL DEFAULT 'native',  -- legacy | migrated | native
-  status              VARCHAR(20) NOT NULL DEFAULT 'active'
-                        CHECK (status IN ('active','suspended','deleted')),
-  is_verified         BOOLEAN NOT NULL DEFAULT FALSE,
-  is_email_verified   BOOLEAN NOT NULL DEFAULT FALSE,
-  last_login          TIMESTAMP WITH TIME ZONE,
-  created_at          TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-  updated_at          TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX idx_users_email        ON users (email);
-CREATE INDEX idx_users_status       ON users (status);
-CREATE INDEX ix_users_firebase_uid  ON users (firebase_uid);
-```
-
-> **Note:** The original design had a `role` column on `users`. Migration 0002
-> split admin/operator accounts into a separate `admin_users` table to enforce
-> distinct login flows and prevent privilege escalation.
-
-#### 1b. `admin_users` (admins and operators)
-
-```sql
-CREATE TABLE admin_users (
-  id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  email               VARCHAR(255) UNIQUE NOT NULL,
-  password_hash       VARCHAR(255) NOT NULL,
-  full_name           VARCHAR(255) NOT NULL,
-  phone               VARCHAR(20),
-  role                VARCHAR(20) NOT NULL DEFAULT 'operator'
-                        CHECK (role IN ('admin','operator')),
-  department          VARCHAR(255),
-  permissions         JSONB NOT NULL DEFAULT '{}',
-  status              VARCHAR(20) NOT NULL DEFAULT 'active'
-                        CHECK (status IN ('active','suspended','deleted')),
-  is_email_verified   BOOLEAN NOT NULL DEFAULT FALSE,
-  last_login          TIMESTAMP WITH TIME ZONE,
-  created_at          TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-  updated_at          TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX idx_admin_users_email ON admin_users (email);
-CREATE INDEX idx_admin_users_role  ON admin_users (role);
-```
-
-#### 2. `user_profiles`
-
-```sql
-CREATE TABLE user_profiles (
-  id                        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id                   UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  date_of_birth             DATE,
-  gender                    VARCHAR(20) CHECK (gender IN ('Male','Female','Other')),
-  category                  VARCHAR(20) CHECK (category IN ('General','OBC','SC','ST','EWS','EBC')),
-  is_pwd                    BOOLEAN NOT NULL DEFAULT FALSE,
-  is_ex_serviceman          BOOLEAN NOT NULL DEFAULT FALSE,
-  state                     VARCHAR(100),
-  city                      VARCHAR(100),
-  pincode                   VARCHAR(10),
-  highest_qualification     VARCHAR(50),
-  education                 JSONB NOT NULL DEFAULT '{}',
-  notification_preferences  JSONB NOT NULL DEFAULT '{}',
-  preferred_states          JSONB NOT NULL DEFAULT '[]',
-  preferred_categories      JSONB NOT NULL DEFAULT '[]',
-  followed_organizations    JSONB NOT NULL DEFAULT '[]',
-  fcm_tokens                JSONB NOT NULL DEFAULT '[]',
-  updated_at                TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
-);
-
-CREATE UNIQUE INDEX idx_user_profiles_user_id  ON user_profiles (user_id);
-CREATE INDEX idx_user_profiles_education       ON user_profiles USING GIN (education);
-CREATE INDEX idx_user_profiles_notif_prefs     ON user_profiles USING GIN (notification_preferences);
-```
-
-#### 3. `job_vacancies`
-
-```sql
-CREATE TABLE job_vacancies (
-  id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  job_title             VARCHAR(500) NOT NULL,
-  slug                  VARCHAR(500) UNIQUE NOT NULL,
-  organization          VARCHAR(255) NOT NULL,
-  department            VARCHAR(255),
-  job_type              VARCHAR(50) NOT NULL DEFAULT 'latest_job'
-                          CHECK (job_type IN ('latest_job', 'result', 'admit_card', 'answer_key')),
-  employment_type       VARCHAR(50) DEFAULT 'permanent'
-                          CHECK (employment_type IN ('permanent','temporary','contract','apprentice')),
-  qualification_level   VARCHAR(50),
-  total_vacancies       INTEGER,
-  vacancy_breakdown     JSONB NOT NULL DEFAULT '{}',
-  description           TEXT,
-  short_description     TEXT,
-  eligibility           JSONB NOT NULL DEFAULT '{}',
-  application_details   JSONB NOT NULL DEFAULT '{}',
-  documents             JSONB NOT NULL DEFAULT '[]',
-  source_url            TEXT,
-  notification_date     DATE,
-  application_start     DATE,
-  application_end       DATE,
-  exam_start            DATE,
-  exam_end              DATE,
-  result_date           DATE,
-  exam_details          JSONB NOT NULL DEFAULT '{}',
-  salary_initial        INTEGER,
-  salary_max            INTEGER,
-  salary                JSONB NOT NULL DEFAULT '{}',
-  selection_process     JSONB NOT NULL DEFAULT '[]',
-  fee_general           INTEGER,
-  fee_obc               INTEGER,
-  fee_sc_st             INTEGER,
-  fee_ews               INTEGER,
-  fee_female            INTEGER,
-  status                VARCHAR(20) NOT NULL DEFAULT 'active'
-                          CHECK (status IN ('draft','active','expired','cancelled','upcoming')),
-  is_featured           BOOLEAN NOT NULL DEFAULT FALSE,
-  is_urgent             BOOLEAN NOT NULL DEFAULT FALSE,
-  views                 INTEGER NOT NULL DEFAULT 0,
-  applications_count    INTEGER NOT NULL DEFAULT 0,
-  created_by            UUID REFERENCES admin_users(id),
-  source                VARCHAR(20) NOT NULL DEFAULT 'manual'
-                          CHECK (source IN ('manual','pdf_upload')),
-  source_pdf_path       TEXT,
-  published_at          TIMESTAMP WITH TIME ZONE,
-  created_at            TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-  updated_at            TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX idx_jobs_organization    ON job_vacancies (organization);
-CREATE INDEX idx_jobs_status_created  ON job_vacancies (status, created_at DESC);
-CREATE INDEX idx_jobs_qual_level      ON job_vacancies (qualification_level);
-CREATE INDEX idx_jobs_application_end ON job_vacancies (application_end);
-CREATE INDEX idx_jobs_org_status      ON job_vacancies (organization, status, created_at DESC);
-CREATE INDEX idx_jobs_eligibility_gin ON job_vacancies USING GIN (eligibility);
-```
-
-**Full-text search** — a generated `tsvector` column enables ranked search via
-PostgreSQL's built-in full-text search (no Elasticsearch needed):
-
-```sql
-ALTER TABLE job_vacancies ADD COLUMN search_vector tsvector
-  GENERATED ALWAYS AS (
-    setweight(to_tsvector('english', coalesce(job_title, '')), 'A') ||
-    setweight(to_tsvector('english', coalesce(organization, '')), 'B') ||
-    setweight(to_tsvector('english', coalesce(description, '')), 'C')
-  ) STORED;
-
-CREATE INDEX idx_jobs_search ON job_vacancies USING GIN (search_vector);
-```
-
-The `?q=` filter on `GET /api/v1/jobs` uses `plainto_tsquery` against
-`search_vector` and ranks results with `ts_rank`. This gives weighted,
-typo-tolerant search with zero additional infrastructure.
-
-**Documents** — the `documents` JSONB column stores links to official PDFs
-(notification, syllabus, admit card, answer key). These are URLs to external
-government sites, not files stored by Hermes:
-
-```json
-[
-  {"type": "notification", "title": "Official PDF", "url": "https://ssc.nic.in/..."},
-  {"type": "syllabus", "title": "Exam Syllabus", "url": "https://ssc.nic.in/..."}
-]
-```
-
-Valid `type` values: `notification`, `syllabus`, `admit_card`, `answer_key`, `result`.
-
-#### 4. `user_job_applications`
-
-```sql
-CREATE TABLE user_job_applications (
-  id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id                 UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  job_id                  UUID NOT NULL REFERENCES job_vacancies(id) ON DELETE CASCADE,
-  application_number      VARCHAR(100),
-  is_priority             BOOLEAN NOT NULL DEFAULT FALSE,
-  applied_on              TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-  status                  VARCHAR(50) NOT NULL DEFAULT 'applied'
-                            CHECK (status IN (
-                              'applied','admit_card_released','exam_completed',
-                              'result_pending','selected','rejected','waiting_list'
-                            )),
-  notes                   TEXT,
-  reminders               JSONB NOT NULL DEFAULT '[]',
-  result_info             JSONB NOT NULL DEFAULT '{}',
-  updated_at              TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-  UNIQUE (user_id, job_id)
-);
-
-CREATE INDEX idx_applications_user_job     ON user_job_applications (user_id, job_id);
-CREATE INDEX idx_applications_user_applied ON user_job_applications (user_id, applied_on DESC);
-```
-
-#### 5. `notifications`
-
-```sql
-CREATE TABLE notifications (
-  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  entity_type VARCHAR(50)
-                CHECK (entity_type IN ('job','result','admit_card','answer_key','admission','yojana')),
-  entity_id   UUID,
-  type        VARCHAR(60) NOT NULL,
-  title       VARCHAR(500) NOT NULL,
-  message     TEXT NOT NULL,
-  action_url  TEXT,
-  is_read     BOOLEAN NOT NULL DEFAULT FALSE,
-  sent_via    TEXT[],
-  priority    VARCHAR(10) NOT NULL DEFAULT 'medium'
-                CHECK (priority IN ('low','medium','high')),
-  created_at  TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-  read_at     TIMESTAMP WITH TIME ZONE,
-  expires_at  TIMESTAMP WITH TIME ZONE NOT NULL
-                DEFAULT (NOW() + INTERVAL '90 days')
-);
-
-CREATE INDEX idx_notifications_user_read    ON notifications (user_id, is_read);
-CREATE INDEX idx_notifications_user_created ON notifications (user_id, created_at DESC);
-CREATE INDEX idx_notifications_expires      ON notifications (expires_at);
-```
-
-#### 6. `admin_logs`
-
-```sql
-CREATE TABLE admin_logs (
-  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  admin_id      UUID NOT NULL REFERENCES admin_users(id),
-  action        VARCHAR(100) NOT NULL,
-  resource_type VARCHAR(100),
-  resource_id   UUID,
-  details       TEXT,
-  changes       JSONB NOT NULL DEFAULT '{}',
-  ip_address    INET,
-  user_agent    TEXT,
-  timestamp     TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-  expires_at    TIMESTAMP WITH TIME ZONE NOT NULL
-                  DEFAULT (NOW() + INTERVAL '30 days')
-);
-
-CREATE INDEX idx_admin_logs_admin_ts ON admin_logs (admin_id, timestamp DESC);
-CREATE INDEX idx_admin_logs_expires  ON admin_logs (expires_at);
-```
-
-#### 7. `user_devices` (device registry with fingerprint de-duplication)
-
-```sql
-CREATE TABLE user_devices (
-  id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id             UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  fcm_token           VARCHAR(500),
-  device_name         VARCHAR(255) NOT NULL DEFAULT 'Unknown',
-  device_type         VARCHAR(20) NOT NULL DEFAULT 'web'
-                        CHECK (device_type IN ('web', 'pwa', 'android', 'ios')),
-  device_fingerprint  VARCHAR(255),
-  is_active           BOOLEAN NOT NULL DEFAULT TRUE,
-  last_active_at      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-  created_at          TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX idx_devices_user_id ON user_devices (user_id);
-CREATE UNIQUE INDEX idx_devices_fcm_token ON user_devices (fcm_token) WHERE fcm_token IS NOT NULL;
-CREATE INDEX idx_devices_fingerprint ON user_devices (user_id, device_fingerprint);
-```
-
-`device_fingerprint` enables push de-duplication: if a user is logged into
-Chrome web + Chrome PWA on the same laptop, both share the same fingerprint.
-Push is sent once per physical device, not per login.
-
-#### 8. `notification_delivery_log` (per-channel delivery tracking)
-
-```sql
-CREATE TABLE notification_delivery_log (
-  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  notification_id   UUID NOT NULL REFERENCES notifications(id) ON DELETE CASCADE,
-  user_id           UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  channel           VARCHAR(20) NOT NULL
-                      CHECK (channel IN ('in_app', 'push', 'email', 'whatsapp')),
-  status            VARCHAR(20) NOT NULL DEFAULT 'pending'
-                      CHECK (status IN ('pending', 'sent', 'delivered', 'failed', 'skipped')),
-  device_id         UUID REFERENCES user_devices(id) ON DELETE SET NULL,
-  error_message     TEXT,
-  attempted_at      TIMESTAMP WITH TIME ZONE,
-  delivered_at      TIMESTAMP WITH TIME ZONE,
-  created_at        TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX idx_delivery_notification ON notification_delivery_log (notification_id);
-CREATE INDEX idx_delivery_user_channel ON notification_delivery_log (user_id, channel);
-```
-
-#### 9. `job_admit_cards`
-
-Per-phase admit card download links. **Polymorphic** — linked to either a
-`job_vacancies` row (`job_id`) or an `entrance_exams` row (`exam_id`).
-Exactly one must be set per row (enforced by DB CHECK constraint).
-
-```sql
-CREATE TABLE job_admit_cards (
-  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  job_id        UUID REFERENCES job_vacancies(id) ON DELETE CASCADE,   -- nullable
-  exam_id       UUID REFERENCES entrance_exams(id) ON DELETE CASCADE,  -- nullable
-  phase_number  SMALLINT,           -- matches selection_process[?].phase; NULL = not phase-specific
-  title         VARCHAR(255) NOT NULL,
-  download_url  TEXT NOT NULL,
-  valid_from    DATE,
-  valid_until   DATE,
-  notes         TEXT,
-  published_at  TIMESTAMP WITH TIME ZONE,
-  created_at    TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-  updated_at    TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-  CONSTRAINT ck_admit_card_source CHECK (
-    (job_id IS NOT NULL AND exam_id IS NULL) OR
-    (job_id IS NULL AND exam_id IS NOT NULL)
-  )
-);
-
-CREATE INDEX idx_admit_cards_job  ON job_admit_cards (job_id, phase_number);
-CREATE INDEX idx_admit_cards_exam ON job_admit_cards (exam_id, phase_number);
-```
-
-#### 10. `job_answer_keys`
-
-Per-phase answer keys. Supports provisional/final and multiple paper sets per exam.
-**Polymorphic** — linked to a job or entrance exam.
-
-```sql
-CREATE TABLE job_answer_keys (
-  id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  job_id              UUID REFERENCES job_vacancies(id) ON DELETE CASCADE,   -- nullable
-  exam_id             UUID REFERENCES entrance_exams(id) ON DELETE CASCADE,  -- nullable
-  phase_number        SMALLINT,
-  title               VARCHAR(255) NOT NULL,
-  answer_key_type     VARCHAR(20) NOT NULL DEFAULT 'provisional'
-                        CHECK (answer_key_type IN ('provisional', 'final')),
-  files               JSONB NOT NULL DEFAULT '[]',
-  -- [{"label": "Set A", "url": "..."}, {"label": "Set B", "url": "..."}]
-  objection_url       TEXT,
-  objection_deadline  DATE,
-  published_at        TIMESTAMP WITH TIME ZONE,
-  created_at          TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-  updated_at          TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-  CONSTRAINT ck_answer_key_source CHECK (
-    (job_id IS NOT NULL AND exam_id IS NULL) OR
-    (job_id IS NULL AND exam_id IS NOT NULL)
-  )
-);
-
-CREATE INDEX idx_answer_keys_job  ON job_answer_keys (job_id, phase_number);
-CREATE INDEX idx_answer_keys_exam ON job_answer_keys (exam_id, phase_number);
-CREATE INDEX idx_answer_keys_type ON job_answer_keys (job_id, answer_key_type);
-```
-
-#### 11. `job_results`
-
-Per-phase results with cutoff marks and download links. **Polymorphic.**
-
-```sql
-CREATE TABLE job_results (
-  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  job_id           UUID REFERENCES job_vacancies(id) ON DELETE CASCADE,   -- nullable
-  exam_id          UUID REFERENCES entrance_exams(id) ON DELETE CASCADE,  -- nullable
-  phase_number     SMALLINT,
-  title            VARCHAR(255) NOT NULL,
-  result_type      VARCHAR(20) NOT NULL
-                     CHECK (result_type IN ('shortlist','cutoff','merit_list','final')),
-  download_url     TEXT,
-  cutoff_marks     JSONB,   -- {"general": 140.5, "obc": 135.0, "sc": 120.0, ...}
-  total_qualified  INTEGER,
-  notes            TEXT,
-  published_at     TIMESTAMP WITH TIME ZONE,
-  created_at       TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-  updated_at       TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-  CONSTRAINT ck_result_source CHECK (
-    (job_id IS NOT NULL AND exam_id IS NULL) OR
-    (job_id IS NULL AND exam_id IS NOT NULL)
-  )
-);
-
-CREATE INDEX idx_results_job  ON job_results (job_id, phase_number);
-CREATE INDEX idx_results_exam ON job_results (exam_id, phase_number);
-```
-
-#### 12. `entrance_exams`
-
-Admission / entrance examinations (NEET, JEE, CLAT, CAT, GATE, CUET etc.).
-**Separate from `job_vacancies`** — these are educational admissions, not employment.
-
-Key design differences from `job_vacancies`:
-
-| Dimension | `job_vacancies` | `entrance_exams` |
-|-----------|-----------------|------------------|
-| Outcome | Employment | Education (college seat) |
-| Vacancies | `total_vacancies` + `vacancy_breakdown` | `seats_info` JSONB |
-| Salary | `salary_initial`, `salary_max` | — (not applicable) |
-| Counselling body | — | `counselling_body` |
-| Attempts limit | — | `eligibility.attempts_limit` |
-
-```sql
-CREATE TABLE entrance_exams (
-  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  slug              VARCHAR(500) UNIQUE NOT NULL,
-  exam_name         VARCHAR(500) NOT NULL,
-  conducting_body   VARCHAR(255) NOT NULL,        -- e.g. "National Testing Agency"
-  counselling_body  VARCHAR(255),                 -- e.g. "MCC", "JoSAA", "CLAT Consortium"
-  exam_type         VARCHAR(20) NOT NULL          -- 'ug' | 'pg' | 'doctoral' | 'lateral'
-                      CHECK (exam_type IN ('ug','pg','doctoral','lateral')),
-  stream            VARCHAR(30) NOT NULL          -- 'medical' | 'engineering' | 'law' | ...
-                      CHECK (stream IN ('medical','engineering','law','management','arts_science','general')),
-  eligibility       JSONB NOT NULL DEFAULT '{}',  -- {min_qualification, attempts_limit, age_limit}
-  exam_details      JSONB NOT NULL DEFAULT '{}',  -- {exam_pattern: [{phase, subjects, total_marks, ...}]}
-  selection_process JSONB NOT NULL DEFAULT '[]',  -- [{phase, name, qualifying}]
-  seats_info        JSONB,                        -- {total_seats, by_category, note}
-  application_start DATE,
-  application_end   DATE,
-  exam_date         DATE,
-  result_date       DATE,
-  counselling_start DATE,
-  fee_general       INTEGER,
-  fee_obc           INTEGER,
-  fee_sc_st         INTEGER,
-  fee_ews           INTEGER,
-  fee_female        INTEGER,
-  description       TEXT,
-  short_description TEXT,
-  source_url        TEXT,
-  status            VARCHAR(20) NOT NULL DEFAULT 'active'
-                      CHECK (status IN ('upcoming','active','completed','cancelled')),
-  is_featured       BOOLEAN NOT NULL DEFAULT FALSE,
-  views             INTEGER NOT NULL DEFAULT 0,
-  published_at      TIMESTAMP WITH TIME ZONE,
-  created_at        TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-  updated_at        TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-  search_vector     TSVECTOR GENERATED ALWAYS AS (
-    setweight(to_tsvector('english', coalesce(exam_name, '')), 'A') ||
-    setweight(to_tsvector('english', coalesce(conducting_body, '')), 'B') ||
-    setweight(to_tsvector('english', coalesce(description, '')), 'C')
-  ) STORED
-);
-
-CREATE UNIQUE INDEX idx_exams_slug   ON entrance_exams (slug);
-CREATE INDEX idx_exams_stream_status ON entrance_exams (stream, status, created_at);
-CREATE INDEX idx_exams_search        ON entrance_exams USING gin (search_vector);
-```
-
-### Future Expansion Tables
-
-| Table              | Purpose                                          |
-| ------------------ | ------------------------------------------------ |
-| `board_results`    | Board exam results (CBSE, state boards)          |
-| `categories`       | Organization/department taxonomy with hierarchy  |
-| `page_views`       | Per-entity view analytics                        |
-| `search_logs`      | Search query analytics and click tracking        |
-| `role_permissions` | Dynamic RBAC permission overrides (if needed)    |
-| `access_audit_logs`| Audit trail for permission changes               |
+**Polymorphic document tables:** `job_admit_cards`, `job_answer_keys`, `job_results` each
+link to either a `job_vacancies` row (`job_id`) or an `entrance_exams` row (`exam_id`)
+via a DB-level `CHECK` constraint — exactly one FK per row, never both, never neither.
 
 ---
 
 ## API Endpoints
 
-All endpoints are versioned under `/api/v1/`.
+See **[API.md](API.md)** for the complete endpoint reference with request/response examples.
 
-### Authentication
+All endpoints versioned under `/api/v1/`. List responses: `{ "data": [...], "pagination": { "limit", "offset", "total", "has_more" } }`.
 
-User auth is fully handled by the Firebase JS SDK on the client. The backend only receives a verified Firebase ID token.
-
-| Method | Endpoint                           | Description                                          | Access    |
-| ------ | ---------------------------------- | ---------------------------------------------------- | --------- |
-| POST   | `/api/v1/auth/verify-token`        | Verify Firebase ID token → upsert user → JWT pair   | Public    |
-| POST   | `/api/v1/auth/logout`              | Invalidate user token (Redis blocklist)              | User JWT  |
-| POST   | `/api/v1/auth/refresh`             | Rotate user JWT pair                                 | Public    |
-| POST   | `/api/v1/auth/admin/login`         | Admin/operator login (bcrypt)                        | Public    |
-| POST   | `/api/v1/auth/admin/logout`        | Invalidate admin token (Redis blocklist + audit log) | Admin JWT |
-| POST   | `/api/v1/auth/admin/refresh`       | Rotate admin JWT pair                                | Public    |
-
-**verify-token upsert order:** `firebase_uid` → `email` (links existing account, sets `migration_status = "migrated"`) → create new user
-
-### User Profile
-
-| Method | Endpoint                    | Description                   | Access |
-| ------ | --------------------------- | ----------------------------- | ------ |
-| GET    | `/api/v1/users/profile`     | Get own profile               | User   |
-| PUT    | `/api/v1/users/profile`     | Update own profile            | User   |
-| PUT    | `/api/v1/users/profile/phone` | Update phone number         | User   |
-
-### Job Vacancies
-
-| Method | Endpoint                           | Description              | Access         |
-| ------ | ---------------------------------- | ------------------------ | -------------- |
-| GET    | `/api/v1/jobs`                     | List jobs (filterable, paginated) | Public  |
-| GET    | `/api/v1/jobs/:slug`               | Job detail               | Public         |
-| GET    | `/api/v1/jobs/recommended`         | Personalized job matches | User           |
-| POST   | `/api/v1/jobs`                     | Create job               | Admin          |
-| PUT    | `/api/v1/jobs/:id`                 | Update job               | Admin/Operator |
-| DELETE | `/api/v1/jobs/:id`                 | Soft delete job          | Admin          |
-| PUT    | `/api/v1/jobs/:id/approve`         | Approve draft → active    | Operator       |
-
-### Applications
-
-| Method | Endpoint                         | Description            | Access |
-| ------ | -------------------------------- | ---------------------- | ------ |
-| GET    | `/api/v1/applications`           | List own applications  | User   |
-| POST   | `/api/v1/applications`           | Track a job            | User   |
-| PUT    | `/api/v1/applications/:id`       | Update application     | User   |
-| DELETE | `/api/v1/applications/:id`       | Remove from tracker    | User   |
-
-### Notifications
-
-| Method | Endpoint                            | Description          | Access |
-| ------ | ----------------------------------- | -------------------- | ------ |
-| GET    | `/api/v1/notifications`             | List notifications   | User   |
-| GET    | `/api/v1/notifications/count`       | Unread count         | User   |
-| PUT    | `/api/v1/notifications/:id/read`    | Mark as read         | User   |
-| PUT    | `/api/v1/notifications/read-all`    | Mark all as read     | User   |
-| DELETE | `/api/v1/notifications/:id`         | Delete notification  | User   |
-
-### Admin
-
-| Method | Endpoint                            | Description             | Access |
-| ------ | ----------------------------------- | ----------------------- | ------ |
-| GET    | `/api/v1/admin/stats`               | Dashboard stats         | Admin  |
-| GET    | `/api/v1/admin/analytics`           | Platform analytics      | Admin  |
-| GET    | `/api/v1/admin/jobs`                | List all jobs           | Admin  |
-| POST   | `/api/v1/admin/jobs`                | Create job              | Admin  |
-| PUT    | `/api/v1/admin/jobs/:id`            | Update job              | Admin  |
-| DELETE | `/api/v1/admin/jobs/:id`            | Delete job              | Admin  |
-| POST   | `/api/v1/admin/jobs/:id/admit-cards`              | Add admit card     | Operator |
-| PUT    | `/api/v1/admin/jobs/:id/admit-cards/:doc_id`      | Update admit card  | Operator |
-| DELETE | `/api/v1/admin/jobs/:id/admit-cards/:doc_id`      | Delete admit card  | Operator |
-| POST   | `/api/v1/admin/jobs/:id/answer-keys`              | Add answer key     | Operator |
-| PUT    | `/api/v1/admin/jobs/:id/answer-keys/:doc_id`      | Update answer key  | Operator |
-| DELETE | `/api/v1/admin/jobs/:id/answer-keys/:doc_id`      | Delete answer key  | Operator |
-| POST   | `/api/v1/admin/jobs/:id/results`                  | Add result         | Operator |
-| PUT    | `/api/v1/admin/jobs/:id/results/:doc_id`          | Update result      | Operator |
-| DELETE | `/api/v1/admin/jobs/:id/results/:doc_id`          | Delete result      | Operator |
-| GET    | `/api/v1/admin/users`               | List all users          | Admin  |
-| GET    | `/api/v1/admin/users/:id`           | User details            | Admin  |
-| PUT    | `/api/v1/admin/users/:id/status`    | Suspend/activate user   | Admin  |
-| PUT    | `/api/v1/admin/users/:id/role`      | Change user role        | Admin  |
-| GET    | `/api/v1/admin/logs`                | Admin activity logs     | Admin  |
-
-### Entrance Exams (Admissions)
-
-| Method | Endpoint | Description | Access |
-| ------ | -------- | ----------- | ------ |
-| GET    | `/api/v1/exams` | List active exams (stream/type/FTS filters) | Public |
-| GET    | `/api/v1/exams/{slug}` | Exam detail by slug (increments views) | Public |
-| GET    | `/api/v1/exams/{id}/admit-cards` | Per-phase admit cards | Public |
-| GET    | `/api/v1/exams/{id}/answer-keys` | Per-phase answer keys | Public |
-| GET    | `/api/v1/exams/{id}/results` | Per-phase results | Public |
-| GET    | `/api/v1/admin/exams` | List all exams (any status) | Operator |
-| POST   | `/api/v1/admin/exams` | Create entrance exam | Operator |
-| PUT    | `/api/v1/admin/exams/{id}` | Update entrance exam | Operator |
-| DELETE | `/api/v1/admin/exams/{id}` | Delete exam (cascades to docs) | Admin |
-| POST   | `/api/v1/admin/exams/{id}/admit-cards` | Add admit card | Operator |
-| PUT    | `/api/v1/admin/exams/{id}/admit-cards/{doc_id}` | Update admit card | Operator |
-| DELETE | `/api/v1/admin/exams/{id}/admit-cards/{doc_id}` | Delete admit card | Operator |
-| POST   | `/api/v1/admin/exams/{id}/answer-keys` | Add answer key | Operator |
-| PUT    | `/api/v1/admin/exams/{id}/answer-keys/{doc_id}` | Update answer key | Operator |
-| DELETE | `/api/v1/admin/exams/{id}/answer-keys/{doc_id}` | Delete answer key | Operator |
-| POST   | `/api/v1/admin/exams/{id}/results` | Add result | Operator |
-| PUT    | `/api/v1/admin/exams/{id}/results/{doc_id}` | Update result | Operator |
-| DELETE | `/api/v1/admin/exams/{id}/results/{doc_id}` | Delete result | Operator |
-
-### Health
-
-| Method | Endpoint             | Description    | Access |
-| ------ | -------------------- | -------------- | ------ |
-| GET    | `/api/v1/health`     | Service health | Public |
-
-**Pagination:** All list endpoints support `?limit=N&offset=M`. Response
-includes `{ "data": [...], "pagination": { "limit", "offset", "total", "has_more" } }`.
-
-**Filters on `GET /api/v1/jobs`:** `job_type`, `qualification_level`,
-`organization`, `department`, `status`, `is_featured`, `is_urgent`,
-`q` (full-text search via `ts_rank` + `plainto_tsquery`).
+| Router | Prefix | Description |
+|--------|--------|-------------|
+| `auth.py` | `/api/v1/auth` | Firebase verify-token, logout, refresh; admin login/logout/refresh |
+| `users.py` | `/api/v1/users`, `/api/v1/organizations` | Profile CRUD, FCM tokens, org follow |
+| `jobs.py` | `/api/v1/jobs` | Public listing (FTS + filters), recommended, detail by slug |
+| `applications.py` | `/api/v1/applications` | Application tracking CRUD |
+| `notifications.py` | `/api/v1/notifications` | List, count, mark read, delete |
+| `admin.py` | `/api/v1/admin` | Job CRUD + approve, user mgmt, analytics, audit logs, admin-user creation |
+| `job_documents.py` | `/api/v1/jobs/{id}`, `/api/v1/admin/jobs/{id}` | Per-job admit cards, answer keys, results |
+| `entrance_exams.py` | `/api/v1/exams`, `/api/v1/admin/exams` | Public exam listing + detail; admin exam CRUD + per-exam docs |
+| `health.py` | `/api/v1/health` | Service health check |
 
 ---
 
@@ -815,7 +264,7 @@ All errors follow a consistent structure:
 | ---- | ----------------------------- | ------------------------------------ |
 | 400  | `VALIDATION_EMAIL_EXISTS`     | Email already registered             |
 | 400  | `VALIDATION_EMAIL_INVALID`    | Bad email format                     |
-| 400  | `VALIDATION_PASSWORD_WEAK`    | Doesn't meet strength requirements   |
+| 400  | `VALIDATION_PASSWORD_WEAK`    | Doesn't meet strength requirements (min 8 chars, 1 uppercase, 1 special)   |
 | 400  | `VALIDATION_MISSING_FIELD`    | Required field missing               |
 | 401  | `AUTH_INVALID_CREDENTIALS`    | Wrong email/password                 |
 | 401  | `AUTH_TOKEN_EXPIRED`          | Access token expired                 |
@@ -855,17 +304,15 @@ client) that propagates through all services and into logs for tracing.
 | Endpoint                         | User | Operator       | Admin |
 | -------------------------------- | ---- | -------------- | ----- |
 | `GET /api/v1/jobs`               | ✅   | ✅             | ✅    |
-| `POST /api/v1/jobs`              | ❌   | ❌             | ✅    |
-| `PUT /api/v1/jobs/:id`           | ❌   | ✅ (limited)   | ✅    |
-| `DELETE /api/v1/jobs/:id`        | ❌   | ❌             | ✅    |
+| `POST /api/v1/admin/jobs`        | ❌   | ✅             | ✅    |
+| `PUT /api/v1/admin/jobs/:id`     | ❌   | ✅ (limited)   | ✅    |
+| `DELETE /api/v1/admin/jobs/:id`  | ❌   | ❌             | ✅    |
 | `GET /api/v1/users/profile`      | ✅   | ✅             | ✅    |
-| `GET /api/v1/admin/users`        | ❌   | ❌             | ✅    |
+| `GET /api/v1/admin/users`        | ❌   | ✅             | ✅    |
 | `PUT /api/v1/admin/users/:id/role` | ❌ | ❌             | ✅    |
 | `GET /api/v1/admin/analytics`    | ❌   | ❌             | ✅    |
 
-**Operator restrictions:** Can only modify `status`, `description`, and
-`important_dates` on job records. Cannot modify `salary`, `vacancy_count`, or
-delete jobs.
+**Operator restrictions on `PUT /api/v1/admin/jobs/:id`:** Can only modify these fields: `status`, `description`, `short_description`, `notification_date`, `application_start`, `application_end`, `exam_start`, `exam_end`, `result_date`. Cannot modify salary, vacancies, eligibility, or job_type — those require admin role. Operators also cannot delete jobs or access analytics.
 
 ### Initial Admin Setup
 
@@ -889,8 +336,13 @@ with engine.connect() as conn:
 After the first admin exists, subsequent admin/operator accounts are created via the API:
 ```
 POST /api/v1/admin/admin-users  (admin role only)
-{ "email": "operator@example.com", "password": "MinEight1", "full_name": "Operator", "role": "operator" }
+{ "email": "operator@example.com", "password": "Operator@123", "full_name": "Operator", "role": "operator" }
 ```
+
+**Password Requirements (enforced for all users and admins):**
+- Minimum 8 characters
+- At least 1 uppercase letter
+- At least 1 special character (!@#$%^&*(),.?":{}|<>)
 
 Roles can be changed via `PUT /api/v1/admin/users/:id/role` (admin only).
 
@@ -907,7 +359,8 @@ Roles can be changed via `PUT /api/v1/admin/users/:id/role` (admin only).
 | `purge-expired-admin-logs`      | Daily 01:30 UTC | Delete admin logs past `expires_at`    |
 | `purge-soft-deleted-jobs`       | Daily 02:00 UTC | Hard-delete `cancelled` (manually deleted) jobs > 90 days |
 | `close-expired-job-listings`    | Daily 02:30 UTC | Set `status='expired'` on jobs past `application_end` |
-| `generate-sitemap`              | Daily 04:00 UTC | Regenerate `/sitemap.xml` with active jobs |
+| `update-exam-statuses`          | Daily 02:35 UTC | Set `status='completed'` on entrance exams whose `exam_date` has passed |
+| `generate-sitemap`              | Daily 04:00 UTC | Regenerate `/sitemap.xml` — active jobs, active/upcoming exams, all 5 section pages |
 
 ### Event-Triggered Tasks
 
@@ -1188,6 +641,74 @@ JSONB already supports storing fee breakdowns:
 }
 ```
 
+---
+
+## 5-Section Frontend Architecture
+
+The user frontend is organized into 5 main sections, each with its own page, search, and visual identity:
+
+| Section | URL Path | Content Type | Hero Color | Data Source |
+|---------|----------|--------------|------------|-------------|
+| Jobs | `/` | Government job vacancies | Navy → Blue | `job_vacancies` |
+| Admit Cards | `/admit-cards` | Exam admit cards | Sky Blue | `job_admit_cards` |
+| Answer Keys | `/answer-keys` | Answer keys | Brown → Amber | `job_answer_keys` |
+| Results | `/results` | Exam results | Dark Green → Green | `job_results` |
+| Admissions | `/admissions` | Entrance exams | Dark Purple → Purple | `entrance_exams` |
+
+### Type-Aware Design System
+
+Each section uses a gradient hero and consistent card design:
+
+```html
+<!-- Section page hero with gradient -->
+<div class="section-hero bg-gradient-to-r from-{section-600} to-{section-400}">
+  <h1>{Section Title}</h1>
+  <!-- Search bar and filters -->
+</div>
+
+<!-- Cards with left accent border -->
+<div class="card border-l-4 border-{section-500}">
+  <!-- Content varies by section type -->
+</div>
+```
+
+### Polymorphic Document Tables
+
+The three document tables (`job_admit_cards`, `job_answer_keys`, `job_results`) are **polymorphic** — each row links to either:
+
+- A job vacancy via `job_id` (traditional recruitment docs)
+- An entrance exam via `exam_id` (educational admission docs)
+
+Database constraint ensures exactly one reference:
+```sql
+CONSTRAINT ck_doc_source CHECK (
+  (job_id IS NOT NULL AND exam_id IS NULL) OR
+  (job_id IS NULL AND exam_id IS NOT NULL)
+)
+```
+
+### Unified Detail Pages
+
+Both jobs and entrance exams share the same detail page template structure with type-aware heroes:
+
+- **Jobs**: Navy/Blue gradient, employment-focused sections (salary, eligibility, selection process)
+- **Entrance Exams**: Purple gradient, education-focused sections (exam pattern, counselling, seats)
+
+### HTMX Document Tabs
+
+Detail pages include dynamic tabbed panels for per-phase documents:
+
+```html
+<!-- Admit Cards Tab -->
+<div id="admit-cards-panel" hx-get="/jobs/{id}/admit-cards" hx-trigger="load">
+  <!-- Loaded via HTMX -->
+</div>
+```
+
+These work for both jobs and exams using the same backend endpoints.
+
+---
+
 ### Data Retention
 
 Row expiry is handled via an `expires_at` column and nightly Celery purge tasks.
@@ -1347,8 +868,9 @@ All containers run via Docker Compose on this single VM.
 
 All items below are implemented.
 
-- **User authentication:** Firebase Auth (Email/Password, Google OAuth, Phone OTP) — client-side Firebase JS SDK, backend verifies Firebase ID tokens via `firebase-admin` SDK
+- **User authentication:** Firebase Auth (Email/Password with OTP verification, Google OAuth, Phone OTP) — Email registration requires OTP verification before account creation, backend verifies Firebase ID tokens via `firebase-admin` SDK
 - **Admin authentication:** Local bcrypt (salted) password hashing — admin accounts do not use Firebase
+- **Password requirements:** All passwords (user & admin) must have minimum 8 characters, 1 uppercase letter, 1 special character
 - **Internal JWT with Redis blocklist:** After Firebase verification, backend issues its own JWT — access tokens expire in 15 min, refresh in 7 days
 - **Rate limiting:** Nginx (100 req/min per IP, 5/min on `/api/v1/auth/`) + SlowAPI behind proxy using `X-Real-IP` header (1000 req/min per real client, 10/min on verify-token)
 - **CORS:** Only whitelisted origins in `CORS_ORIGINS`
@@ -1415,13 +937,14 @@ BACKEND_PORT=8000
 DATABASE_URL=postgresql+asyncpg://hermes_user:<password>@pgbouncer:5432/hermes_db
 DB_POOL_SIZE=20
 
-# Redis
-REDIS_URL=redis://localhost:6379/0
+# Redis (use Docker service name 'redis', not 'localhost')
+REDIS_URL=redis://redis:6379/0
 REDIS_PASSWORD=<password>
+REDIS_KEY_PREFIX=hermes
 
-# Celery
-CELERY_BROKER_URL=redis://localhost:6379/0
-CELERY_RESULT_BACKEND=redis://localhost:6379/0
+# Celery (must use literal values — no shell interpolation in .env)
+CELERY_BROKER_URL=redis://redis:6379/0
+CELERY_RESULT_BACKEND=redis://redis:6379/0
 
 # Email (dev: Mailpit SMTP port 1025 / prod: OCI Email Delivery)
 MAIL_SERVER=smtp.email.ap-mumbai-1.oci.oraclecloud.com
@@ -1569,14 +1092,20 @@ networks on the VM — never exposed to any OCI subnet or the internet.
 No OCI services needed for local development. Run everything in Docker:
 
 ```bash
-cp config/development/.env.backend.development       src/backend/.env
-cp config/development/.env.frontend.development      src/frontend/.env
+cp config/development/.env.backend.development        src/backend/.env
+cp config/development/.env.frontend.development       src/frontend/.env
 cp config/development/.env.frontend-admin.development src/frontend-admin/.env
 
-cd src/backend        && docker compose up -d
-cd ../frontend        && docker compose up -d
-cd ../frontend-admin  && docker compose up -d
+# Validate config before starting
+./scripts/deployment/check_config.sh development
+
+cd src/backend        && docker compose up -d --build
+cd ../frontend        && docker compose up -d --build
+cd ../frontend-admin  && docker compose up -d --build
+cd ../nginx           && docker compose up -d   # must be last
 ```
+
+Or use the deploy script: `./scripts/deployment/deploy_all.sh development`
 
 ### Production Deployment
 
@@ -1589,18 +1118,20 @@ git clone <repo-url> hermes && cd hermes
 cp config/production/.env.backend.production       src/backend/.env
 cp config/production/.env.frontend.production      src/frontend/.env
 cp config/production/.env.frontend-admin.production src/frontend-admin/.env
+# Fill in all <placeholder> values in the copied .env files, then validate:
+./scripts/deployment/check_config.sh production
 
-# Deploy all services
+# Deploy all services (backend → frontends → nginx)
 ./scripts/deployment/deploy_all.sh production
 ```
 
-Or start each service individually:
+Or start each service individually (in order):
 
 ```bash
 cd src/backend        && docker compose up -d --build
 cd ../frontend        && docker compose up -d --build
 cd ../frontend-admin  && docker compose up -d --build
-cd ../nginx           && docker compose up -d --build
+cd ../nginx           && docker compose up -d   # must be last
 ```
 
 ### Backup and Restore

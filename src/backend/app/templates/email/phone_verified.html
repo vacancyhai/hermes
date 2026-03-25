@@ -1,0 +1,15 @@
+{% extends "email/base.html" %}
+{% block content %}
+<h2>Phone Number Verified Successfully</h2>
+<p>Hello {{ name }},</p>
+<p>Your phone number has been verified successfully on {{ timestamp }}.</p>
+<p><strong>Verified Phone:</strong> {{ phone }}</p>
+<p>You can now:</p>
+<ul>
+  <li><strong>Sign in with Phone OTP</strong> — Use your phone number for quick login</li>
+  <li><strong>Receive SMS notifications</strong> — Get important updates about your applications</li>
+  <li><strong>Account recovery</strong> — Use your phone for password reset</li>
+</ul>
+<p><a href="{{ base_url }}/profile" class="btn">View Your Profile</a></p>
+<p class="muted" style="margin-top:24px">You're all set! Your account now has enhanced security with verified phone authentication.</p>
+{% endblock %}

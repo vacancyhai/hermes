@@ -13,10 +13,22 @@ All list endpoints return: `{ "data": [...], "pagination": { "limit", "offset", 
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
 | POST | `/auth/verify-token` | Public | Verify Firebase ID token → upsert user → internal JWT pair |
+| POST | `/auth/send-email-otp` | Public | Send OTP to email for registration |
+| POST | `/auth/verify-email-otp` | Public | Verify email OTP → returns verification token |
+| POST | `/auth/complete-registration` | Public | Complete registration with password after OTP verification |
+| POST | `/auth/check-phone-availability` | Public | Check if phone number is already registered |
 | POST | `/auth/logout` | User JWT | Revoke access token (and optionally refresh token) via Redis blocklist |
 | POST | `/auth/refresh` | Public | Rotate internal token pair |
 
-User registration, email/password login, Google sign-in, phone OTP, password reset, and email verification are all handled client-side by the Firebase JS SDK. The backend only receives the resulting Firebase ID token via `/auth/verify-token`.
+**Registration Methods:**
+- Email/Password: Send OTP → verify OTP → complete registration with password
+- Google OAuth: Handled client-side by Firebase JS SDK
+- Phone OTP: Handled client-side by Firebase JS SDK
+
+**Password Requirements:**
+- Minimum 8 characters
+- At least 1 uppercase letter
+- At least 1 special character (!@#$%^&*(),.?":{}|<>)
 
 **Logout body (optional):**
 ```json
@@ -51,7 +63,11 @@ If `refresh_token` is provided, its JTI is also added to the Redis blocklist so 
 |--------|----------|------|-------------|
 | GET | `/users/profile` | User | Get own profile + user data |
 | PUT | `/users/profile` | User | Update profile fields |
-| PUT | `/users/profile/phone` | User | Update phone number |
+| PUT | `/users/profile/phone` | User | Update phone number (marks as unverified) |
+| POST | `/users/me/verify-phone-otp` | User | Verify phone number with OTP |
+| POST | `/users/me/set-password` | User | Set password for Google OAuth users |
+| POST | `/users/me/change-password` | User | Change password (requires current password) |
+| POST | `/users/me/link-email-password` | User | Link email+password to phone-only account |
 | GET | `/users/me/following` | User | List followed organizations |
 
 **Profile preference fields** (used for job matching):
@@ -572,9 +588,9 @@ They have exam-specific fields: `stream`, `exam_type`, `counselling_body`, `seat
 |--------|----------|-------------|
 | GET | `/exams` | List active entrance exams (stream/exam_type/search filters) |
 | GET | `/exams/{slug}` | Exam detail by slug (increments views) |
-| GET | `/exams/{exam_id}/admit-cards` | Per-phase admit cards linked to this exam |
-| GET | `/exams/{exam_id}/answer-keys` | Per-phase answer keys linked to this exam |
-| GET | `/exams/{exam_id}/results` | Per-phase results linked to this exam |
+| GET | `/exams/{exam_id}/admit-cards` | Per-phase admit cards (exam status must not be `cancelled`) |
+| GET | `/exams/{exam_id}/answer-keys` | Per-phase answer keys (exam status must not be `cancelled`) |
+| GET | `/exams/{exam_id}/results` | Per-phase results (exam status must not be `cancelled`) |
 
 **Query Parameters for `GET /exams`:**
 
@@ -592,8 +608,9 @@ They have exam-specific fields: `stream`, `exam_type`, `counselling_body`, `seat
 ### Admin CRUD (operator+)
 
 | Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/admin/exams` | List all exams (any status) |
+|--------|----------|-----------|
+| GET | `/admin/exams` | List all exams (any status, filterable by stream/exam_type/status) |
+| GET | `/admin/exams/{id}` | Get single exam detail by ID (any status) |
 | POST | `/admin/exams` | Create entrance exam |
 | PUT | `/admin/exams/{id}` | Update entrance exam |
 | DELETE | `/admin/exams/{id}` | Delete entrance exam (cascades to linked docs) |

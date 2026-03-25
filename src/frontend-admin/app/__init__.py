@@ -379,18 +379,6 @@ def create_app():
         user = resp.json()
         return render_template("user_detail.html", user=user)
 
-    @app.route("/users/<user_id>/role", methods=["POST"])
-    def change_user_role(user_id):
-        """Change an admin user's role (admin role only)."""
-        token = session.get("token")
-        if not token:
-            return redirect("/login")
-        new_role = request.form.get("role", "")
-        if new_role:
-            current_app.api_client.put(f"/admin/users/{user_id}/role", token=token, json={"role": new_role})
-        flash("Role updated.", "success")
-        return redirect(f"/users/{user_id}")
-
     @app.route("/users/<user_id>/suspend", methods=["POST"])
     def toggle_user_status(user_id):
         """Suspend or activate a user."""
@@ -400,6 +388,20 @@ def create_app():
 
         new_status = request.form.get("status", "suspended")
         current_app.api_client.put(f"/admin/users/{user_id}/status", token=token, json={"status": new_status})
+        return redirect("/users")
+
+    @app.route("/users/<user_id>/delete", methods=["POST"])
+    def delete_user_permanently(user_id):
+        """Permanently delete a user from both PostgreSQL and Firebase."""
+        token = session.get("token")
+        if not token:
+            return redirect("/login")
+        
+        resp = current_app.api_client.delete(f"/admin/users/{user_id}", token=token)
+        if resp.ok:
+            flash("User permanently deleted.", "success")
+        else:
+            flash("Failed to delete user.", "error")
         return redirect("/users")
 
     # --- Per-Job Phase Document HTMX Partials (used in job_review.html) ---

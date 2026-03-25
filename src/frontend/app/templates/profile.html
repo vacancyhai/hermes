@@ -23,6 +23,16 @@
     .toggle-row label{font-size:.9rem;color:#334155}
     .hint{font-size:.78rem;color:#94a3b8;margin-top:.2rem}
     .no-profile-banner{background:#fef3c7;border:1px solid #fde68a;color:#92400e;padding:.75rem 1rem;border-radius:.375rem;margin-bottom:1.5rem;font-size:.875rem}
+    .verify-badge{display:inline-flex;align-items:center;gap:.3rem;padding:.2rem .5rem;border-radius:9999px;font-size:.75rem;font-weight:600;margin-left:.5rem}
+    .verify-badge.verified{background:#d1fae5;color:#065f46}
+    .verify-badge.unverified{background:#fee2e2;color:#991b1b}
+    .phone-actions{display:flex;gap:.5rem;margin-top:.5rem}
+    .phone-actions button{padding:.35rem .75rem;font-size:.85rem}
+    .modal{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center}
+    .modal.active{display:flex}
+    .modal-content{background:#fff;border-radius:.5rem;padding:1.5rem;max-width:400px;width:90%}
+    .modal-content h3{margin-top:0;margin-bottom:1rem;color:#1e3a5f}
+    .modal-actions{display:flex;gap:.5rem;margin-top:1rem;justify-content:flex-end}
 </style>
 {% endblock %}
 
@@ -58,8 +68,22 @@
                 <input type="email" value="{{ user.get('email', '') }}" disabled style="background:#f8fafc;color:#64748b">
             </div>
             <div class="form-group">
-                <label for="phone">Phone Number</label>
-                <input type="tel" id="phone" name="phone" value="{{ user.get('phone', '') or '' }}" placeholder="10-digit mobile number">
+                <label for="phone">Phone Number
+                    {% if user.get('phone') %}
+                        {% if user.get('is_phone_verified') %}
+                            <span class="verify-badge verified">✓ Verified</span>
+                        {% else %}
+                            <span class="verify-badge unverified">⚠ Not Verified</span>
+                        {% endif %}
+                    {% endif %}
+                </label>
+                <input type="tel" id="phone" name="phone" value="{{ user.get('phone', '') or '' }}" placeholder="+91 98765 43210" pattern="^\+\d{10,15}$" disabled>
+                <div class="phone-actions">
+                    <button type="button" class="btn btn-outline btn-sm" onclick="editPhone()">Edit Phone</button>
+                    {% if user.get('phone') and not user.get('is_phone_verified') %}
+                        <button type="button" class="btn btn-primary btn-sm" onclick="verifyPhone()">Verify Now</button>
+                    {% endif %}
+                </div>
             </div>
             <div class="form-group">
                 <label for="gender">Gender</label>
@@ -130,6 +154,34 @@
     <button type="submit" class="btn btn-primary" style="padding:.55rem 1.5rem">Save Profile</button>
 </form>
 
+<!-- Account Information -->
+<div class="section" style="margin-top:1.5rem">
+    <h2>Account Information</h2>
+    <div style="padding:.5rem 0">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:.75rem 0;border-bottom:1px solid #f1f5f9">
+            <div>
+                <div style="font-weight:500;color:#334155">Email Address</div>
+                <div class="hint" id="email-status-hint">Loading...</div>
+            </div>
+            <button type="button" class="btn btn-outline btn-sm" onclick="showLinkEmailModal()" id="link-email-btn" style="display:none">Add Email</button>
+        </div>
+    </div>
+</div>
+
+<!-- Security Settings -->
+<div class="section" style="margin-top:1.5rem">
+    <h2>Security</h2>
+    <div style="padding:.5rem 0">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:.75rem 0;border-bottom:1px solid #f1f5f9">
+            <div>
+                <div style="font-weight:500;color:#334155">Password</div>
+                <div class="hint">Secure your account with a password</div>
+            </div>
+            <button type="button" class="btn btn-outline btn-sm" onclick="showPasswordModal()" id="password-action-btn">Loading...</button>
+        </div>
+    </div>
+</div>
+
 <!-- Followed Organizations -->
 <div class="section" style="margin-top:1.5rem">
     <h2>Followed Organizations</h2>
@@ -170,4 +222,479 @@
         <button type="submit" class="btn btn-outline" style="margin-top:1rem;padding:.45rem 1.25rem">Save Preferences</button>
     </div>
 </form>
+
+<!-- Edit Phone Modal -->
+<div id="edit-phone-modal" class="modal">
+    <div class="modal-content">
+        <h3>Edit Phone Number</h3>
+        <div class="form-group">
+            <label for="new-phone">New Phone Number</label>
+            <input type="tel" id="new-phone" placeholder="+91 98765 43210" pattern="^\+\d{10,15}$">
+        </div>
+        <div class="modal-actions">
+            <button type="button" class="btn btn-outline" onclick="closeEditPhone()">Cancel</button>
+            <button type="button" class="btn btn-primary" onclick="savePhone()">Save</button>
+        </div>
+    </div>
+</div>
+
+<!-- Verify Phone Modal -->
+<div id="verify-phone-modal" class="modal">
+    <div class="modal-content">
+        <h3>Verify Phone Number</h3>
+        <p style="font-size:.9rem;color:#64748b;margin-bottom:1rem">We'll send a verification code to <strong id="verify-phone-display"></strong></p>
+        <div id="recaptcha-container"></div>
+        <div id="verify-otp-input" style="display:none;margin-top:1rem">
+            <div class="form-group">
+                <label for="verify-otp">Enter 6-digit code</label>
+                <input type="text" id="verify-otp" maxlength="6" placeholder="000000">
+            </div>
+        </div>
+        <div class="modal-actions">
+            <button type="button" class="btn btn-outline" onclick="closeVerifyPhone()">Cancel</button>
+            <button type="button" id="send-verify-btn" class="btn btn-primary" onclick="sendVerificationCode()">Send Code</button>
+            <button type="button" id="confirm-verify-btn" class="btn btn-primary" onclick="confirmVerificationCode()" style="display:none">Verify</button>
+        </div>
+    </div>
+</div>
+
+<!-- Set Password Modal (for Google OAuth users) -->
+<div id="set-password-modal" class="modal">
+    <div class="modal-content">
+        <h3>Set Password</h3>
+        <p style="font-size:.9rem;color:#64748b;margin-bottom:1rem">Create a password to enable email/password login</p>
+        <div class="form-group">
+            <label for="new-password-set">New Password</label>
+            <input type="password" id="new-password-set" placeholder="Min 8 chars, 1 uppercase, 1 special" minlength="8">
+            <div class="hint">At least 8 characters with 1 uppercase letter and 1 special character</div>
+        </div>
+        <div class="form-group">
+            <label for="confirm-password-set">Confirm Password</label>
+            <input type="password" id="confirm-password-set" placeholder="Re-enter password" minlength="8">
+        </div>
+        <div class="modal-actions">
+            <button type="button" class="btn btn-outline" onclick="closeSetPassword()">Cancel</button>
+            <button type="button" class="btn btn-primary" onclick="submitSetPassword()">Set Password</button>
+        </div>
+    </div>
+</div>
+
+<!-- Change Password Modal (for users with existing password) -->
+<div id="change-password-modal" class="modal">
+    <div class="modal-content">
+        <h3>Change Password</h3>
+        <p style="font-size:.9rem;color:#64748b;margin-bottom:1rem">Update your account password</p>
+        <div class="form-group">
+            <label for="current-password">Current Password</label>
+            <input type="password" id="current-password" placeholder="Enter current password">
+        </div>
+        <div class="form-group">
+            <label for="new-password-change">New Password</label>
+            <input type="password" id="new-password-change" placeholder="Min 8 chars, 1 uppercase, 1 special" minlength="8">
+            <div class="hint">At least 8 characters with 1 uppercase letter and 1 special character</div>
+        </div>
+        <div class="form-group">
+            <label for="confirm-password-change">Confirm New Password</label>
+            <input type="password" id="confirm-password-change" placeholder="Re-enter new password" minlength="8">
+        </div>
+        <div class="modal-actions">
+            <button type="button" class="btn btn-outline" onclick="closeChangePassword()">Cancel</button>
+            <button type="button" class="btn btn-primary" onclick="submitChangePassword()">Change Password</button>
+        </div>
+    </div>
+</div>
+
+<!-- Link Email Modal (for phone-only users) -->
+<div id="link-email-modal" class="modal">
+    <div class="modal-content">
+        <h3>Add Email & Password</h3>
+        <p style="font-size:.9rem;color:#64748b;margin-bottom:1rem">Link an email address to enable email/password login</p>
+        <div class="form-group">
+            <label for="link-email">Email Address</label>
+            <input type="email" id="link-email" placeholder="your@email.com">
+        </div>
+        <div class="form-group">
+            <label for="link-password">Password</label>
+            <input type="password" id="link-password" placeholder="Min 8 chars, 1 uppercase, 1 special" minlength="8">
+            <div class="hint">At least 8 characters with 1 uppercase letter and 1 special character</div>
+        </div>
+        <div class="form-group">
+            <label for="link-confirm-password">Confirm Password</label>
+            <input type="password" id="link-confirm-password" placeholder="Re-enter password" minlength="8">
+        </div>
+        <div class="modal-actions">
+            <button type="button" class="btn btn-outline" onclick="closeLinkEmail()">Cancel</button>
+            <button type="button" class="btn btn-primary" onclick="submitLinkEmail()">Add Email & Password</button>
+        </div>
+    </div>
+</div>
+
+<!-- Firebase JS SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script>
+(function () {
+    var apiKey = "{{ firebase_api_key }}";
+    var authDomain = "{{ firebase_auth_domain }}";
+    var projectId = "{{ firebase_project_id }}";
+    
+    if (!apiKey) return;
+    
+    firebase.initializeApp({ apiKey: apiKey, authDomain: authDomain, projectId: projectId });
+    var auth = firebase.auth();
+    var recaptchaVerifier = null;
+    var confirmationResult = null;
+    var hasPassword = false;
+    var hasEmail = {% if user.get('email') %}true{% else %}false{% endif %};
+    
+    // Check if user has password provider on load
+    auth.onAuthStateChanged(function (user) {
+        if (user) {
+            var providers = user.providerData.map(function (p) { return p.providerId; });
+            hasPassword = providers.indexOf("password") !== -1;
+            var hasEmailProvider = user.email ? true : false;
+            
+            // Update password button
+            var btn = document.getElementById("password-action-btn");
+            if (btn) {
+                btn.textContent = hasPassword ? "Change Password" : "Set Password";
+            }
+            
+            // Update email status
+            var emailHint = document.getElementById("email-status-hint");
+            var linkEmailBtn = document.getElementById("link-email-btn");
+            
+            if (emailHint) {
+                if (hasEmail) {
+                    emailHint.textContent = "{{ user.get('email', '') }}";
+                    if (linkEmailBtn) linkEmailBtn.style.display = "none";
+                } else {
+                    emailHint.textContent = "No email linked. Add email to enable email/password login.";
+                    if (linkEmailBtn) linkEmailBtn.style.display = "inline-block";
+                }
+            }
+        }
+    });
+    
+    window.editPhone = function () {
+        document.getElementById("new-phone").value = document.getElementById("phone").value;
+        document.getElementById("edit-phone-modal").classList.add("active");
+    };
+    
+    window.closeEditPhone = function () {
+        document.getElementById("edit-phone-modal").classList.remove("active");
+    };
+    
+    window.savePhone = function () {
+        var phone = document.getElementById("new-phone").value.trim();
+        if (!phone || !phone.match(/^\+\d{10,15}$/)) {
+            alert("Please enter a valid phone number (e.g., +91...)");
+            return;
+        }
+        
+        fetch("/users/me/phone", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ phone: phone }),
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            if (data.error) {
+                alert(data.error);
+            } else {
+                alert("Phone number updated. Please verify it.");
+                location.reload();
+            }
+        })
+        .catch(function () {
+            alert("Failed to update phone number.");
+        });
+    };
+    
+    window.verifyPhone = function () {
+        var phone = document.getElementById("phone").value;
+        if (!phone) {
+            alert("No phone number on file.");
+            return;
+        }
+        
+        document.getElementById("verify-phone-display").textContent = phone;
+        document.getElementById("verify-phone-modal").classList.add("active");
+        
+        // Initialize reCAPTCHA
+        if (!recaptchaVerifier) {
+            recaptchaVerifier = new firebase.auth.RecaptchaVerifier("recaptcha-container", {
+                size: "normal",
+            });
+        }
+    };
+    
+    window.closeVerifyPhone = function () {
+        document.getElementById("verify-phone-modal").classList.remove("active");
+        document.getElementById("verify-otp-input").style.display = "none";
+        document.getElementById("send-verify-btn").style.display = "inline-block";
+        document.getElementById("confirm-verify-btn").style.display = "none";
+        if (recaptchaVerifier) {
+            recaptchaVerifier.clear();
+            recaptchaVerifier = null;
+        }
+    };
+    
+    window.sendVerificationCode = function () {
+        var phone = document.getElementById("phone").value;
+        
+        auth.signInWithPhoneNumber(phone, recaptchaVerifier)
+            .then(function (result) {
+                confirmationResult = result;
+                document.getElementById("verify-otp-input").style.display = "block";
+                document.getElementById("send-verify-btn").style.display = "none";
+                document.getElementById("confirm-verify-btn").style.display = "inline-block";
+                document.getElementById("verify-otp").focus();
+            })
+            .catch(function (err) {
+                alert("Failed to send verification code: " + err.message);
+                if (recaptchaVerifier) {
+                    recaptchaVerifier.clear();
+                    recaptchaVerifier = null;
+                }
+            });
+    };
+    
+    window.confirmVerificationCode = function () {
+        var code = document.getElementById("verify-otp").value.trim();
+        if (!code || code.length !== 6) {
+            alert("Please enter the 6-digit code.");
+            return;
+        }
+        
+        if (!confirmationResult) {
+            alert("Please request a new code.");
+            return;
+        }
+        
+        confirmationResult.confirm(code)
+            .then(function (result) {
+                // Phone verified via Firebase - now update backend
+                return result.user.getIdToken();
+            })
+            .then(function (idToken) {
+                // Update backend to mark phone as verified
+                return fetch("/auth/firebase-callback", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ id_token: idToken }),
+                });
+            })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data.error) {
+                    alert("Verification failed: " + data.error);
+                } else {
+                    alert("Phone number verified successfully!");
+                    location.reload();
+                }
+            })
+            .catch(function (err) {
+                alert("Verification failed: " + err.message);
+            });
+    };
+    
+    // ── Password Management ──────────────────────────────────────
+    
+    window.showPasswordModal = function () {
+        if (hasPassword) {
+            document.getElementById("change-password-modal").classList.add("active");
+        } else {
+            document.getElementById("set-password-modal").classList.add("active");
+        }
+    };
+    
+    window.closeSetPassword = function () {
+        document.getElementById("set-password-modal").classList.remove("active");
+        document.getElementById("new-password-set").value = "";
+        document.getElementById("confirm-password-set").value = "";
+    };
+    
+    window.closeChangePassword = function () {
+        document.getElementById("change-password-modal").classList.remove("active");
+        document.getElementById("current-password").value = "";
+        document.getElementById("new-password-change").value = "";
+        document.getElementById("confirm-password-change").value = "";
+    };
+    
+    window.submitSetPassword = function () {
+        var newPass = document.getElementById("new-password-set").value;
+        var confirmPass = document.getElementById("confirm-password-set").value;
+        
+        if (!newPass || newPass.length < 8) {
+            alert("Password must be at least 8 characters.");
+            return;
+        }
+        
+        if (!/[A-Z]/.test(newPass)) {
+            alert("Password must contain at least one uppercase letter.");
+            return;
+        }
+        
+        if (!/[!@#$%^&*(),.?":{}|<>]/.test(newPass)) {
+            alert("Password must contain at least one special character.");
+            return;
+        }
+        
+        if (newPass !== confirmPass) {
+            alert("Passwords do not match.");
+            return;
+        }
+        
+        fetch("/users/me/set-password", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ new_password: newPass }),
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            if (data.error) {
+                alert(data.error);
+            } else {
+                alert("Password set successfully! You can now login with email and password.");
+                closeSetPassword();
+                hasPassword = true;
+                document.getElementById("password-action-btn").textContent = "Change Password";
+            }
+        })
+        .catch(function () {
+            alert("Failed to set password.");
+        });
+    };
+    
+    window.submitChangePassword = function () {
+        var currentPass = document.getElementById("current-password").value;
+        var newPass = document.getElementById("new-password-change").value;
+        var confirmPass = document.getElementById("confirm-password-change").value;
+        
+        if (!currentPass) {
+            alert("Please enter your current password.");
+            return;
+        }
+        
+        if (!newPass || newPass.length < 8) {
+            alert("New password must be at least 8 characters.");
+            return;
+        }
+        
+        if (!/[A-Z]/.test(newPass)) {
+            alert("Password must contain at least one uppercase letter.");
+            return;
+        }
+        
+        if (!/[!@#$%^&*(),.?":{}|<>]/.test(newPass)) {
+            alert("Password must contain at least one special character.");
+            return;
+        }
+        
+        if (newPass !== confirmPass) {
+            alert("New passwords do not match.");
+            return;
+        }
+        
+        // Step 1: Re-authenticate with current password (required by Firebase)
+        var user = auth.currentUser;
+        if (!user || !user.email) {
+            alert("User session expired. Please login again.");
+            return;
+        }
+        
+        var credential = firebase.auth.EmailAuthProvider.credential(user.email, currentPass);
+        
+        user.reauthenticateWithCredential(credential)
+            .then(function () {
+                // Step 2: Update password on backend (which updates Firebase)
+                return fetch("/users/me/change-password", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ current_password: currentPass, new_password: newPass }),
+                });
+            })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data.error) {
+                    alert(data.error);
+                } else {
+                    alert("Password changed successfully!");
+                    closeChangePassword();
+                }
+            })
+            .catch(function (err) {
+                if (err.code === "auth/wrong-password") {
+                    alert("Current password is incorrect.");
+                } else {
+                    alert("Failed to change password: " + (err.message || "Unknown error"));
+                }
+            });
+    };
+    
+    // ── Email Linking (for phone-only users) ────────────────────
+    
+    window.showLinkEmailModal = function () {
+        document.getElementById("link-email-modal").classList.add("active");
+    };
+    
+    window.closeLinkEmail = function () {
+        document.getElementById("link-email-modal").classList.remove("active");
+        document.getElementById("link-email").value = "";
+        document.getElementById("link-password").value = "";
+        document.getElementById("link-confirm-password").value = "";
+    };
+    
+    window.submitLinkEmail = function () {
+        var email = document.getElementById("link-email").value.trim();
+        var password = document.getElementById("link-password").value;
+        var confirmPassword = document.getElementById("link-confirm-password").value;
+        
+        if (!email) {
+            alert("Please enter an email address.");
+            return;
+        }
+        
+        if (!password || password.length < 8) {
+            alert("Password must be at least 8 characters.");
+            return;
+        }
+        
+        if (!/[A-Z]/.test(password)) {
+            alert("Password must contain at least one uppercase letter.");
+            return;
+        }
+        
+        if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+            alert("Password must contain at least one special character.");
+            return;
+        }
+        
+        if (password !== confirmPassword) {
+            alert("Passwords do not match.");
+            return;
+        }
+        
+        fetch("/users/me/link-email-password", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: email, password: password }),
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            if (data.error) {
+                alert(data.error);
+            } else {
+                alert("Email and password added successfully! You can now login with email/password.");
+                closeLinkEmail();
+                location.reload();
+            }
+        })
+        .catch(function () {
+            alert("Failed to link email and password.");
+        });
+    };
+})();
+</script>
 {% endblock %}

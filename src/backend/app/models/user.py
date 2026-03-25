@@ -23,6 +23,7 @@ class User(Base):
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="active", index=True)
     is_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     is_email_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    is_phone_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     last_login: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())

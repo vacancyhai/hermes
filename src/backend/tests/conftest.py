@@ -1,9 +1,11 @@
 """Test configuration — async fixtures for DB, client, auth tokens.
 
-All tests run against the real FastAPI app with real database and Redis.
+All tests run against the real FastAPI app with SEPARATE test database and Redis.
+Set TEST_DATABASE_URL to use a different database (recommended: hermes_test_db).
 A fresh async engine is created per test to avoid event-loop mismatch.
 """
 
+import os
 import uuid
 
 import pytest
@@ -35,15 +37,22 @@ _TRUNCATE_TABLES = [
 ]
 
 
+def _get_test_database_url():
+    """Get test database URL from environment or fall back to settings."""
+    return os.getenv("TEST_DATABASE_URL", settings.DATABASE_URL)
+
+
 @pytest_asyncio.fixture(scope="session", autouse=True)
 async def truncate_all_tables():
     """Truncate all tables before the test session to ensure a clean slate.
 
+    Uses TEST_DATABASE_URL if set, otherwise uses main DATABASE_URL.
     Without this, data committed by previous test runs accumulates in the DB
     (the per-test db fixture rolls back only, but the client fixture commits).
     """
+    test_db_url = _get_test_database_url()
     engine = create_async_engine(
-        settings.DATABASE_URL,
+        test_db_url,
         connect_args={"prepared_statement_cache_size": 0},
     )
     async with engine.connect() as conn:
@@ -61,8 +70,9 @@ from app.routers.auth import create_access_token, create_refresh_token
 
 @pytest_asyncio.fixture
 async def test_engine():
+    test_db_url = _get_test_database_url()
     eng = create_async_engine(
-        settings.DATABASE_URL,
+        test_db_url,
         pool_size=5,
         pool_pre_ping=True,
         connect_args={"prepared_statement_cache_size": 0},

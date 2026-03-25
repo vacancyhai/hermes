@@ -103,29 +103,47 @@ Admin/Operator → Admin Frontend (port 8081)
 ┌──────────────────────────────────────────────────┐
 │ Choose sign-in method                            │
 │                                                  │
-│  A) Email / Password  B) Google  C) Phone OTP   │
+│  A) Email OTP Registration  B) Google  C) Phone │
 └────┬─────────────────────────────────────────────┘
      │
      ├─────────────────────────────────────────────┐
-     │ A) Email/Password                           │
+     │ A) Email OTP Registration (New Users)       │
      ▼                                             │
-┌─────────────────────────┐                        │
-│ signInWithEmailAndPassword│                      │
-│ or createUserWithEmail  │                        │
-│ (Firebase JS SDK)       │                        │
-└────┬────────────────────┘                        │
+┌──────────────────────────────────┐               │
+│ 1. User enters email + full name │               │
+│ POST /auth/send-email-otp        │               │
+│ → Backend sends OTP via email    │               │
+└────┬─────────────────────────────┘               │
      │                                             │
-     │              B) Google                      │
+     ▼                                             │
+┌──────────────────────────────────┐               │
+│ 2. User enters 6-digit OTP       │               │
+│ POST /auth/verify-email-otp      │               │
+│ → Returns verification token     │               │
+└────┬─────────────────────────────┘               │
+     │                                             │
+     ▼                                             │
+┌──────────────────────────────────┐               │
+│ 3. User enters password          │               │
+│ (min 8 chars, 1 uppercase,       │               │
+│  1 special character)            │               │
+│ POST /auth/complete-registration │               │
+│ → Creates Firebase user          │               │
+│ → Returns custom Firebase token  │               │
+└────┬─────────────────────────────┘               │
+     │                                             │
+     │    B) Google OAuth (Existing & New)         │
      │         ┌─────────────────────────┐         │
      │         │ signInWithPopup         │         │
      │         │ (GoogleAuthProvider)    │         │
+     │         │ → Firebase handles auth │         │
      │         └────┬────────────────────┘         │
      │              │                              │
-     │              │       C) Phone OTP           │
+     │              │  C) Phone OTP (Existing)     │
      │              │  ┌──────────────────────┐    │
      │              │  │ signInWithPhone       │    │
-     │              │  │ Number + RecaptchaV.  │    │
-     │              │  │ → SMS sent            │    │
+     │              │  │ (Firebase JS SDK)     │    │
+     │              │  │ → SMS sent via Firebase│   │
      │              │  │ User enters OTP 6-dig │    │
      │              │  │ confirmResult.confirm │    │
      │              │  └──────┬───────────────┘    │

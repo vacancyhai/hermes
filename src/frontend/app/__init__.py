@@ -58,7 +58,7 @@ def create_app():
     def inject_csrf():
         return {"csrf_token": _get_csrf_token()}
 
-    _CSRF_EXEMPT = {"/auth/firebase-callback"}
+    _CSRF_EXEMPT = {"/auth/firebase-callback", "/auth/send-email-otp", "/auth/verify-email-otp", "/auth/complete-registration", "/auth/check-user-providers", "/auth/add-password", "/auth/check-phone-availability"}
 
     @app.before_request
     def validate_csrf():
@@ -464,7 +464,14 @@ def create_app():
         user_data = resp.json() if resp.ok else {}
         following_resp = current_app.api_client.get("/users/me/following", token=token)
         following = following_resp.json().get("followed_organizations", []) if following_resp.ok else []
-        return render_template("profile.html", user=user_data, profile=user_data.get("profile", {}), following=following)
+        return render_template("profile.html", 
+            user=user_data, 
+            profile=user_data.get("profile", {}), 
+            following=following,
+            firebase_api_key=os.environ.get("FIREBASE_WEB_API_KEY", ""),
+            firebase_auth_domain=os.environ.get("FIREBASE_AUTH_DOMAIN", ""),
+            firebase_project_id=os.environ.get("FIREBASE_PROJECT_ID", "")
+        )
 
     @app.route("/profile/follow", methods=["POST"])
     def follow_org():
@@ -488,6 +495,216 @@ def create_app():
 
     # --- Auth Flows (Firebase) ---
 
+    @app.route("/auth/send-email-otp", methods=["POST"])
+    def send_email_otp():
+        """Proxy: generate and send a 6-digit OTP to the user's email."""
+        data = request.get_json(silent=True) or {}
+        email = data.get("email", "")
+        full_name = data.get("full_name", "")
+        if not email or not full_name:
+            return {"error": "Missing email or name"}, 400
+        resp = current_app.api_client.post("/auth/send-email-otp", json={"email": email, "full_name": full_name})
+        if not resp.ok:
+            detail = "Failed to send OTP"
+            if resp.headers.get("content-type", "").startswith("application/json"):
+                detail = resp.json().get("detail", detail)
+            return {"error": detail}, resp.status_code
+        return {"message": "OTP sent to your email"}, 200
+
+    @app.route("/auth/verify-email-otp", methods=["POST"])
+    def verify_email_otp():
+        """Proxy: verify the 6-digit OTP and return verification token."""
+        data = request.get_json(silent=True) or {}
+        email = data.get("email", "")
+        otp = data.get("otp", "")
+        if not email or not otp:
+            return {"error": "Missing fields"}, 400
+        resp = current_app.api_client.post("/auth/verify-email-otp", json={"email": email, "otp": otp})
+        if not resp.ok:
+            detail = "Invalid OTP"
+            if resp.headers.get("content-type", "").startswith("application/json"):
+                detail = resp.json().get("detail", detail)
+            return {"error": detail}, resp.status_code
+        return resp.json(), 200
+
+    @app.route("/auth/complete-registration", methods=["POST"])
+    def complete_registration():
+        """Proxy: complete email/password registration via Firebase Admin SDK."""
+        data = request.get_json(silent=True) or {}
+        email = data.get("email", "")
+        password = data.get("password", "")
+        verification_token = data.get("verification_token", "")
+        if not email or not password or not verification_token:
+            return {"error": "Missing fields"}, 400
+        resp = current_app.api_client.post(
+            "/auth/complete-registration",
+            json={"email": email, "password": password, "verification_token": verification_token},
+        )
+        if not resp.ok:
+            detail = "Registration failed"
+            if resp.headers.get("content-type", "").startswith("application/json"):
+                detail = resp.json().get("detail", detail)
+            return {"error": detail}, resp.status_code
+        return resp.json(), 200
+
+    @app.route("/auth/check-user-providers", methods=["POST"])
+    def check_user_providers():
+        """Proxy: check which authentication providers a user has."""
+        data = request.get_json(silent=True) or {}
+        email = data.get("email", "")
+        if not email:
+            return {"error": "Email required"}, 400
+        resp = current_app.api_client.post("/auth/check-user-providers", json={"email": email})
+        if not resp.ok:
+            return {"error": "Failed to check providers"}, resp.status_code
+        return resp.json(), 200
+
+    @app.route("/auth/add-password", methods=["POST"])
+    def add_password():
+        """Proxy: add password to existing social auth account."""
+        data = request.get_json(silent=True) or {}
+        email = data.get("email", "")
+        password = data.get("password", "")
+        verification_token = data.get("verification_token", "")
+        if not email or not password or not verification_token:
+            return {"error": "Missing fields"}, 400
+        resp = current_app.api_client.post(
+            "/auth/add-password",
+            json={"email": email, "password": password, "verification_token": verification_token},
+        )
+        if not resp.ok:
+            detail = "Failed to add password"
+            if resp.headers.get("content-type", "").startswith("application/json"):
+                detail = resp.json().get("detail", detail)
+            return {"error": detail}, resp.status_code
+        return resp.json(), 200
+
+    @app.route("/auth/check-phone-availability", methods=["POST"])
+    def check_phone_availability():
+        """Proxy: check if phone number is already registered."""
+        data = request.get_json(silent=True) or {}
+        phone = data.get("phone", "")
+        if not phone:
+            return {"error": "Phone number required"}, 400
+        resp = current_app.api_client.post("/auth/check-phone-availability", json={"phone": phone})
+        if not resp.ok:
+            return {"error": "Failed to check phone availability"}, resp.status_code
+        return resp.json(), 200
+
+    @app.route("/users/me/profile", methods=["GET"])
+    def get_user_profile():
+        """Proxy: get user profile with phone verification status."""
+        resp, ok = _api_with_auth(lambda token: current_app.api_client.get("/users/profile", token=token))
+        if not ok:
+            return redirect("/login")
+        if not resp.ok:
+            return {"error": "Failed to fetch profile"}, resp.status_code
+        return resp.json(), 200
+
+    @app.route("/users/me/phone", methods=["PUT"])
+    def update_user_phone():
+        """Proxy: update user phone number."""
+        data = request.get_json(silent=True) or {}
+        phone = data.get("phone", "")
+        if not phone:
+            return {"error": "Phone number required"}, 400
+        resp, ok = _api_with_auth(lambda token: current_app.api_client.put("/users/profile/phone", token=token, json={"phone": phone}))
+        if not ok:
+            return {"error": "Authentication required"}, 401
+        if not resp.ok:
+            detail = "Failed to update phone"
+            if resp.headers.get("content-type", "").startswith("application/json"):
+                detail = resp.json().get("detail", detail)
+            return {"error": detail}, resp.status_code
+        return resp.json(), 200
+
+    @app.route("/users/me/send-phone-otp", methods=["POST"])
+    def send_phone_otp():
+        """Proxy: trigger phone OTP send."""
+        resp, ok = _api_with_auth(lambda token: current_app.api_client.post("/users/me/send-phone-otp", token=token))
+        if not ok:
+            return {"error": "Authentication required"}, 401
+        if not resp.ok:
+            detail = "Failed to send OTP"
+            if resp.headers.get("content-type", "").startswith("application/json"):
+                detail = resp.json().get("detail", detail)
+            return {"error": detail}, resp.status_code
+        return resp.json(), 200
+
+    @app.route("/users/me/verify-phone-otp", methods=["POST"])
+    def verify_phone_otp():
+        """Proxy: verify phone OTP."""
+        data = request.get_json(silent=True) or {}
+        otp = data.get("otp", "")
+        if not otp:
+            return {"error": "OTP required"}, 400
+        resp, ok = _api_with_auth(lambda token: current_app.api_client.post("/users/me/verify-phone-otp", token=token, json={"otp": otp}))
+        if not ok:
+            return {"error": "Authentication required"}, 401
+        if not resp.ok:
+            detail = "Invalid OTP"
+            if resp.headers.get("content-type", "").startswith("application/json"):
+                detail = resp.json().get("detail", detail)
+            return {"error": detail}, resp.status_code
+        return resp.json(), 200
+
+    @app.route("/users/me/set-password", methods=["POST"])
+    def set_password():
+        """Proxy: set password for Google OAuth users."""
+        data = request.get_json(silent=True) or {}
+        new_password = data.get("new_password", "")
+        if not new_password or len(new_password) < 8:
+            return {"error": "Password must be at least 8 characters"}, 400
+        resp, ok = _api_with_auth(lambda token: current_app.api_client.post("/users/me/set-password", token=token, json={"new_password": new_password}))
+        if not ok:
+            return {"error": "Authentication required"}, 401
+        if not resp.ok:
+            detail = "Failed to set password"
+            if resp.headers.get("content-type", "").startswith("application/json"):
+                detail = resp.json().get("detail", detail)
+            return {"error": detail}, resp.status_code
+        return resp.json(), 200
+
+    @app.route("/users/me/change-password", methods=["POST"])
+    def change_password():
+        """Proxy: change password for users with existing password."""
+        data = request.get_json(silent=True) or {}
+        current_password = data.get("current_password", "")
+        new_password = data.get("new_password", "")
+        if not current_password or not new_password:
+            return {"error": "Both current and new passwords required"}, 400
+        if len(new_password) < 8:
+            return {"error": "New password must be at least 8 characters"}, 400
+        resp, ok = _api_with_auth(lambda token: current_app.api_client.post("/users/me/change-password", token=token, json={"current_password": current_password, "new_password": new_password}))
+        if not ok:
+            return {"error": "Authentication required"}, 401
+        if not resp.ok:
+            detail = "Failed to change password"
+            if resp.headers.get("content-type", "").startswith("application/json"):
+                detail = resp.json().get("detail", detail)
+            return {"error": detail}, resp.status_code
+        return resp.json(), 200
+
+    @app.route("/users/me/link-email-password", methods=["POST"])
+    def link_email_password():
+        """Proxy: link email+password to phone-only account."""
+        data = request.get_json(silent=True) or {}
+        email = data.get("email", "")
+        password = data.get("password", "")
+        if not email or not password:
+            return {"error": "Email and password required"}, 400
+        if len(password) < 8:
+            return {"error": "Password must be at least 8 characters"}, 400
+        resp, ok = _api_with_auth(lambda token: current_app.api_client.post("/users/me/link-email-password", token=token, json={"email": email, "password": password}))
+        if not ok:
+            return {"error": "Authentication required"}, 401
+        if not resp.ok:
+            detail = "Failed to link email and password"
+            if resp.headers.get("content-type", "").startswith("application/json"):
+                detail = resp.json().get("detail", detail)
+            return {"error": detail}, resp.status_code
+        return resp.json(), 200
+
     @app.route("/auth/firebase-callback", methods=["POST"])
     def firebase_callback():
         """Receive Firebase ID token from JS, verify via backend, store JWT in session."""
@@ -509,7 +726,7 @@ def create_app():
         session["refresh_token"] = tokens.get("refresh_token")
         me_resp = current_app.api_client.get("/users/profile", token=session["token"])
         session["user_name"] = me_resp.json().get("full_name", "") if me_resp.ok else ""
-        return {"redirect": "/dashboard"}, 200
+        return {"redirect": "/"}, 200
 
     @app.route("/login")
     def login():

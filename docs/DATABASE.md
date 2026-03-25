@@ -75,6 +75,7 @@ Core user account table. Integrated with Firebase Auth.
 | `status` | String(20) | `active`, `suspended`, `deleted` |
 | `is_verified` | Boolean | Identity verification status |
 | `is_email_verified`| Boolean | Email verification status |
+| `is_phone_verified`| Boolean | Phone verification status (via OTP) |
 | `last_login` | DateTime | Timestamp of last activity |
 | `created_at` | DateTime | Account creation timestamp |
 

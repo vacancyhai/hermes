@@ -1,0 +1,20 @@
+{% extends "email/base.html" %}
+{% block content %}
+<h2>Email Address Linked to Your Account</h2>
+<p>Hello {{ name }},</p>
+<p>An email address has been successfully linked to your phone-based account on {{ timestamp }}.</p>
+<p><strong>Email Address:</strong> {{ email }}</p>
+<p>You can now sign in to Hermes using either:</p>
+<ul>
+  <li><strong>Email & Password</strong> — Use {{ email }} with your password</li>
+  <li><strong>Phone OTP</strong> — Continue using {{ phone }}</li>
+</ul>
+<p><a href="{{ base_url }}/login" class="btn">Sign In Now</a></p>
+<p>Benefits of having both email and phone linked:</p>
+<ul>
+  <li>Multiple ways to access your account</li>
+  <li>Enhanced account recovery options</li>
+  <li>Receive notifications via both email and SMS</li>
+</ul>
+<p class="muted" style="margin-top:24px"><strong>Security Notice:</strong> If you did not link this email address, please contact support immediately.</p>
+{% endblock %}

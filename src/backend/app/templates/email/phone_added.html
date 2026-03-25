@@ -1,0 +1,17 @@
+{% extends "email/base.html" %}
+{% block content %}
+<h2>Phone Number Added to Your Account</h2>
+<p>Hello {{ name }},</p>
+<p>A phone number has been added to your account on {{ timestamp }}.</p>
+<p><strong>Phone Number:</strong> {{ phone }}</p>
+<p>To complete the setup, please verify your phone number to enable phone-based login.</p>
+<p><a href="{{ base_url }}/profile" class="btn">Verify Phone Number</a></p>
+<p>Once verified, you'll be able to:</p>
+<ul>
+  <li>Sign in using phone OTP</li>
+  <li>Receive important notifications via SMS</li>
+  <li>Recover your account using your phone number</li>
+</ul>
+<p class="muted" style="margin-top:24px"><strong>Security Notice:</strong> If you did not add this phone number, please remove it from your account immediately and change your password.</p>
+<p class="muted">Account: {{ email }}</p>
+{% endblock %}

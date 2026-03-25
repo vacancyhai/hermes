@@ -69,6 +69,7 @@ One test (`test_send_push_notification_no_firebase_config`) was removed alongsid
 | `unit/test_notification_tasks.py` | 28 | Email, deadline reminders, smart_notify, delayed delivery (legacy push task test removed) |
 | `unit/test_notification_service.py` | 22 | NotificationService: all 4 channels, prefs, dedup, email limits |
 | `integration/test_auth.py` | 19 | Firebase verify-token (new/existing/migrate/suspended/deleted/phone-only), logout, refresh, admin login/logout/refresh, RBAC |
+| `integration/test_auth_extended.py` | 21 | Email OTP registration, password validation (strength requirements), password set/change, phone verification, email linking to phone-only accounts |
 | `integration/test_admin.py` | ~40 | Admin API, analytics, RBAC |
 | `integration/test_jobs.py` | ~25 | Public job listing and search |
 | `integration/test_users.py` | ~30 | User profile API |
@@ -95,6 +96,22 @@ Firebase tests mock `app.firebase.verify_id_token` via `unittest.mock.patch` so 
 - **`tasks/notifications.py`** — Firebase FCM send in `smart_notify` requires `FIREBASE_CREDENTIALS_PATH`, absent in the test environment.
 - **`services/notifications.py`** — FCM `_send_fcm_with_status` happy path and invalid-token cleanup require Firebase credentials; no-credentials path is covered.
 - **`services/matching.py`** — age scoring branch (`age_min`/`age_max` present in eligibility) needs targeted unit tests with fixture jobs that include these fields.
+
+### Phase 12 Test Coverage Gaps
+
+The following Phase 12 features currently have **zero test coverage**:
+
+| Feature | Missing Tests | Priority |
+|---------|---------------|----------|
+| `entrance_exams.py` router | Public exam listing, exam detail by slug, exam document endpoints | High |
+| `job_documents.py` router | Public document endpoints, admin CRUD for admit cards/answer keys/results | High |
+| Frontend route `/admissions` | Admissions section page, exam filters, exam cards | Medium |
+| Frontend route `/admissions/<slug>` | Exam detail page, document tabs, exam-specific UI | Medium |
+| Frontend partials | `_exam_cards.html`, HTMX exam document loading | Medium |
+| Admin exam management | Exam CRUD, per-exam document management in admin UI | Medium |
+| Polymorphic document queries | Tests covering both `job_id` and `exam_id` paths | High |
+
+**Total missing test files:** ~8-10 test files with ~150-200 tests needed to achieve 90%+ coverage for Phase 12 features.
 
 ---
 

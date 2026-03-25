@@ -110,12 +110,12 @@ PostgreSQL and Redis are isolated inside Docker networks — never exposed to th
 
 | Document | Description |
 | -------- | ----------- |
-| [docs/DESIGN.md](docs/DESIGN.md) | Full system design: architecture, database schema, API endpoints, Docker environments, security, deployment |
-| [docs/DIAGRAMS.md](docs/DIAGRAMS.md) | ASCII workflow diagrams for all major user and system flows |
+| [docs/DESIGN.md](docs/DESIGN.md) | System design: architecture, auth, Celery tasks, SEO, notifications, security, deployment |
+| [docs/DATABASE.md](docs/DATABASE.md) | Full database schema: ERD, all 14 tables, column definitions, indexes, CHECK constraints |
 | [docs/API.md](docs/API.md) | Complete API endpoint reference with request/response examples |
-| [docs/hermes.postman_collection.json](docs/hermes.postman_collection.json) | Postman collection for all API endpoints |
-| [docs/CONTEXT.md](docs/CONTEXT.md) | Unified session context — load at start of every new AI session |
+| [docs/DIAGRAMS.md](docs/DIAGRAMS.md) | ASCII workflow diagrams for all major user and system flows |
 | [docs/TESTING.md](docs/TESTING.md) | Test coverage report for all three services |
+| [docs/hermes.postman_collection.json](docs/hermes.postman_collection.json) | Postman collection for all API endpoints |
 
 ## Development Quick Start
 
@@ -124,8 +124,9 @@ PostgreSQL and Redis are isolated inside Docker networks — never exposed to th
 cp config/development/.env.backend.development       src/backend/.env
 cp config/development/.env.frontend.development      src/frontend/.env
 cp config/development/.env.frontend-admin.development src/frontend-admin/.env
-# Edit src/backend/.env — set FIREBASE_WEB_API_KEY, FIREBASE_AUTH_DOMAIN,
-# FIREBASE_PROJECT_ID, and FIREBASE_CREDENTIALS_PATH for your Firebase project.
+# Edit src/backend/.env — required: FIREBASE_WEB_API_KEY, FIREBASE_AUTH_DOMAIN,
+# FIREBASE_PROJECT_ID, FIREBASE_CREDENTIALS_PATH for your Firebase project.
+# Optional: ANTHROPIC_API_KEY (enables AI PDF extraction).
 
 # 2. Start backend (PostgreSQL, Redis, PgBouncer, FastAPI, Celery)
 cd src/backend && docker compose up -d --build
@@ -157,7 +158,7 @@ with engine.connect() as conn:
 cd ../frontend       && docker compose up -d --build
 cd ../frontend-admin && docker compose up -d --build
 
-# 6. (Optional) Start Nginx reverse proxy
+# 6. Start Nginx reverse proxy (must be last — joins all three Docker networks)
 cd ../nginx && docker compose up -d
 
 # 7. Run tests
@@ -177,173 +178,68 @@ Or use the deploy script: `./scripts/deployment/deploy_all.sh development`
 ```
 hermes/
 ├── src/
-│   ├── backend/                          # Backend API (port 8000)
-│   │   ├── Dockerfile
-│   │   ├── docker-compose.yml            # PostgreSQL, Redis, PgBouncer, Backend, Celery
-│   │   ├── requirements.txt
-│   │   ├── alembic.ini
+│   ├── backend/                  # FastAPI REST API (port 8000)
+│   │   ├── docker-compose.yml    # PostgreSQL, Redis, PgBouncer, Backend, Celery Worker, Celery Beat
 │   │   ├── app/
-│   │   │   ├── main.py                   # FastAPI app entry point
-│   │   │   ├── config.py                 # Settings from .env (pydantic-settings)
-│   │   │   ├── database.py               # SQLAlchemy async engine + session
-│   │   │   ├── celery_app.py             # Celery config + Beat schedule
-│   │   │   ├── firebase.py               # Firebase Admin SDK — shared init (Auth + FCM)
-│   │   │   ├── logging_config.py         # structlog JSON logging setup
-│   │   │   ├── dependencies.py           # FastAPI deps (auth, db session)
-│   │   │   ├── routers/                  # FastAPI route modules
-│   │   │   │   ├── health.py             # GET /api/v1/health
-│   │   │   │   ├── auth.py               # /api/v1/auth/* (verify-token, logout, refresh, admin/*)
-│   │   │   │   ├── users.py              # /api/v1/users/*
-│   │   │   │   ├── jobs.py               # /api/v1/jobs/*
-│   │   │   │   ├── applications.py       # /api/v1/applications/*
-│   │   │   │   ├── notifications.py      # /api/v1/notifications/*
-│   │   │   │   ├── admin.py              # /api/v1/admin/*
-│   │   │   │   ├── job_documents.py      # /api/v1/jobs/{id}/admit-cards|answer-keys|results (public+admin)
-│   │   │   │   └── entrance_exams.py     # /api/v1/exams/* (public) + /api/v1/admin/exams/* (admin CRUD)
-│   │   │   ├── models/                   # SQLAlchemy models (14 tables)
-│   │   │   │   ├── base.py               # DeclarativeBase
-│   │   │   │   ├── user.py               # Regular users (no role column)
-│   │   │   │   ├── admin_user.py          # Admin/operator accounts
-│   │   │   │   ├── user_profile.py
-│   │   │   │   ├── job_vacancy.py
-│   │   │   │   ├── application.py
-│   │   │   │   ├── notification.py
-│   │   │   │   ├── user_device.py         # Device registry (FCM, fingerprint, type)
-│   │   │   │   ├── notification_delivery_log.py  # Per-channel delivery tracking
-│   │   │   │   ├── admin_log.py
-│   │   │   │   ├── job_admit_card.py      # Per-phase admit cards (job_id OR exam_id)
-│   │   │   │   ├── job_answer_key.py      # Per-phase answer keys (provisional/final)
-│   │   │   │   ├── job_result.py          # Per-phase results (shortlist/cutoff/merit_list/final)
-│   │   │   │   └── entrance_exam.py       # Entrance/admission exams (NEET, JEE, CLAT, CAT, GATE…)
-│   │   │   ├── schemas/                  # Pydantic request/response models
-│   │   │   │   ├── auth.py
-│   │   │   │   ├── jobs.py               # Includes AdmitCard/AnswerKey/Result schemas
-│   │   │   │   ├── users.py
-│   │   │   │   ├── applications.py
-│   │   │   │   ├── notifications.py
-│   │   │   │   └── entrance_exams.py     # EntranceExam create/update/response/list schemas
-│   │   │   ├── services/                 # Business logic
-│   │   │   │   ├── matching.py           # Job recommendation scoring engine
-│   │   │   │   ├── notifications.py      # NotificationService — smart multi-channel routing
-│   │   │   │   ├── pdf_extractor.py      # PDF text extraction (pdfplumber)
-│   │   │   │   └── ai_extractor.py       # AI structured extraction (Anthropic Claude)
-│   │   │   └── tasks/                    # Celery tasks
-│   │   │       ├── notifications.py      # smart_notify, deadline reminders, job alerts
-│   │   │       ├── cleanup.py            # Purge expired records
-│   │   │       ├── jobs.py               # Close expired listings, PDF extraction
-│   │   │       └── seo.py                # Generate sitemap
-│   │   ├── migrations/                   # Alembic migrations
-│   │   │   ├── env.py                    # Async migration runner
-│   │   │   ├── script.py.mako
-│   │   │   └── versions/
-│   │   │       ├── 0001_initial_schema.py  # Complete base schema (all core tables)
-│   │   │       ├── 0002_add_telegram_channel.py  # Adds telegram to delivery_channel constraint
-│   │   │       ├── 0003_job_documents_tables.py  # job_admit_cards, job_answer_keys, job_results
-│   │   │       └── 0004_entrance_exams.py  # entrance_exams table + exam_id FK on doc tables
-│   │   ├── tests/                               # pytest test suite (313 tests)
-│   │   │   ├── conftest.py                      # Async fixtures (DB, client, tokens)
-│   │   │   ├── unit/                            # Pure logic tests (no DB/Redis)
-│   │   │   ├── integration/                     # API endpoint tests (real DB + Redis)
-│   │   │   │   ├── test_auth.py                 # Auth: Firebase verify-token, logout, refresh, admin login
-│   │   │   │   ├── test_jobs.py                 # Jobs: CRUD, search, slug, pagination
-│   │   │   │   ├── test_applications.py         # Applications: track, update, delete
-│   │   │   │   └── test_admin.py                # Admin: stats, user mgmt, RBAC
-│   │   │   ├── security/                        # OWASP + auth security tests
-│   │   │   │   └── test_security.py             # JWT, uploads, XSS, SQL injection
-│   │   │   └── e2e/                             # Multi-step end-to-end flows
-│   │   │       └── test_user_flow.py            # Full user + admin lifecycle flows
-│   │   └── pytest.ini
-│   ├── frontend/                         # User Frontend (port 8080)
-│   │   ├── Dockerfile
-│   │   ├── docker-compose.yml
-│   │   ├── requirements.txt
-│   │   ├── tests/                        # pytest test suite (80 tests)
-│   │   │   ├── unit/                     # API client tests
-│   │   │   ├── integration/              # Route + template tests
-│   │   │   └── e2e/
-│   │   └── app/
-│   │       ├── __init__.py               # Flask app factory + /auth/firebase-callback relay
-│   │       ├── api_client.py             # HTTP client for backend API
-│   │       ├── static/
-│   │       │   ├── manifest.json         # PWA web app manifest
-│   │       │   ├── sw.js                 # Service worker (offline fallback)
-│   │       │   ├── icon-192.png          # PWA icon 192x192
-│   │       │   └── icon-512.png          # PWA icon 512x512
-│   │       └── templates/
-│   │           ├── base.html             # Base layout (HTMX + Alpine.js + PWA + shared CSS system)
-│   │           ├── index.html            # Jobs section (hero, search, filters, cards)
-│   │           ├── admit_cards.html      # Admit Cards section page
-│   │           ├── answer_keys.html      # Answer Keys section page
-│   │           ├── results.html          # Results section page
-│   │           ├── admissions.html       # Admissions & Entrance Exams section page
-│   │           ├── _job_cards.html       # HTMX partial — all card types + Share button
-│   │           ├── job_detail.html       # Job/admit card/answer key/result detail (type-aware hero)
-│   │           ├── admission_detail.html # Entrance exam detail (purple hero, exam pattern, doc tabs)
-│   │           ├── _admit_cards_panel.html    # HTMX partial — per-phase admit card docs
-│   │           ├── _answer_keys_panel.html    # HTMX partial — per-phase answer key docs
-│   │           ├── _results_panel.html        # HTMX partial — per-phase result docs
-│   │           ├── dashboard.html        # Application tracking dashboard
-│   │           ├── _application_rows.html # HTMX partial (load more apps)
-│   │           ├── notifications.html    # Notification center
-│   │           ├── login.html            # Firebase JS SDK auth (email, Google, phone OTP)
-│   │           ├── profile.html          # User profile + preferences
-│   │           ├── offline.html          # PWA offline fallback
-│   │           └── 404.html
-│   ├── frontend-admin/                   # Admin Frontend (port 8081)
-│   │   ├── Dockerfile
-│   │   ├── docker-compose.yml
-│   │   ├── requirements.txt
-│   │   ├── tests/                        # pytest test suite (88 tests)
-│   │   │   ├── unit/                     # API client tests
-│   │   │   ├── integration/              # Route + template tests
-│   │   │   └── e2e/
-│   │   └── app/
-│   │       ├── __init__.py               # Flask routes (dashboard, jobs, upload, review, users, logs)
-│   │       ├── api_client.py
-│   │       └── templates/
-│   │           ├── base.html             # Admin layout (nav, styling)
-│   │           ├── login.html            # Admin login form
-│   │           ├── dashboard.html        # Stats cards + quick actions
-│   │           ├── jobs.html             # Job management table
-│   │           ├── _job_rows.html        # HTMX partial (job rows)
-│   │           ├── job_upload.html       # PDF upload form
-│   │           ├── job_review.html       # Draft review/edit + approve
-│   │           ├── users.html            # User management table
-│   │           ├── _user_rows.html       # HTMX partial (user rows)
-│   │           ├── logs.html             # Audit log viewer
-│   │           └── _log_rows.html        # HTMX partial (log rows)
-│   ├── mobile-app/                       # React Native mobile app (Phase 9 — planned)
-│   │   ├── google-services.json          # Android Firebase SDK config (com.hermes.app)
-│   │   ├── GoogleService-Info.plist      # iOS Firebase SDK config (com.hermes.app)
-│   │   └── README.md                     # Setup instructions + test credentials
-│   └── nginx/                            # Reverse Proxy (port 80)
-│       ├── docker-compose.yml
-│       ├── nginx.conf                    # Rate limiting, routing, security headers
-│       └── static/                       # Sitemap served here
+│   │   │   ├── main.py           # FastAPI app factory, lifespan, router registration
+│   │   │   ├── config.py         # pydantic-settings (extra="ignore"), singleton
+│   │   │   ├── database.py       # async engine + async_session + sync_engine (Celery)
+│   │   │   ├── celery_app.py     # Celery config, explicit include list, beat_schedule
+│   │   │   ├── firebase.py       # Firebase Admin SDK — shared init (Auth + FCM)
+│   │   │   ├── dependencies.py   # get_db, get_redis, get_current_user, get_current_admin
+│   │   │   ├── routers/          # 9 router modules (see API.md for all endpoints)
+│   │   │   │   ├── auth.py           # /api/v1/auth/*
+│   │   │   │   ├── users.py          # /api/v1/users/* + /api/v1/organizations/*
+│   │   │   │   ├── jobs.py           # /api/v1/jobs/*
+│   │   │   │   ├── applications.py   # /api/v1/applications/*
+│   │   │   │   ├── notifications.py  # /api/v1/notifications/*
+│   │   │   │   ├── admin.py          # /api/v1/admin/*
+│   │   │   │   ├── job_documents.py  # /api/v1/jobs/{id}/admit-cards|answer-keys|results
+│   │   │   │   ├── entrance_exams.py # /api/v1/exams/* + /api/v1/admin/exams/*
+│   │   │   │   └── health.py         # /api/v1/health
+│   │   │   ├── models/           # SQLAlchemy 2.0 Mapped models (14 tables, see DATABASE.md)
+│   │   │   ├── schemas/          # Pydantic v2 request/response models
+│   │   │   ├── services/
+│   │   │   │   ├── matching.py       # Job scoring engine (category +4, state +3, education +2…)
+│   │   │   │   ├── notifications.py  # NotificationService — 5-channel smart routing
+│   │   │   │   ├── pdf_extractor.py  # PDF text extraction (pdfplumber)
+│   │   │   │   └── ai_extractor.py   # Structured extraction (Anthropic Claude)
+│   │   │   └── tasks/            # Celery tasks
+│   │   │       ├── notifications.py  # smart_notify, deadline reminders, job alerts
+│   │   │       ├── cleanup.py        # Purge expired notifications + logs
+│   │   │       ├── jobs.py           # Close expired listings, PDF extraction, exam status update
+│   │   │       └── seo.py            # Generate sitemap.xml
+│   │   ├── migrations/versions/  # 0001_initial_schema → 0004_entrance_exams
+│   │   └── tests/                # 313 tests — 93% coverage (unit, integration, security, e2e)
+│   ├── frontend/                 # User Frontend (Flask + HTMX + Alpine.js, port 8080)
+│   │   ├── app/
+│   │   │   ├── __init__.py       # All routes: /, /admit-cards, /answer-keys, /results,
+│   │   │   │                     # /admissions, /admissions/<slug>, /jobs/<slug>,
+│   │   │   │                     # /partials/*, /dashboard, /notifications, /profile, /login
+│   │   │   ├── api_client.py     # HTTP client for backend API (10s timeout)
+│   │   │   ├── static/           # PWA: manifest.json, sw.js, icons
+│   │   │   └── templates/        # 20+ Jinja2 templates + HTMX partials
+│   │   └── tests/                # 80 tests — 91% coverage
+│   ├── frontend-admin/           # Admin Frontend (Flask + HTMX, port 8081)
+│   │   ├── app/
+│   │   │   ├── __init__.py       # Routes: dashboard, jobs CRUD, exams CRUD, users, logs
+│   │   │   ├── api_client.py     # Same as frontend + post_file() for PDF uploads
+│   │   │   └── templates/        # 15+ templates including exam_edit.html, job_review.html
+│   │   └── tests/                # 88 tests — 97% coverage
+│   ├── mobile-app/               # React Native pre-work (Phase 9 — planned)
+│   │   ├── google-services.json  # Android Firebase config (com.hermes.app)
+│   │   └── GoogleService-Info.plist  # iOS Firebase config
+│   └── nginx/                    # Reverse Proxy (port 80/443)
+│       ├── nginx.conf            # Rate limiting, routing, security headers
+│       └── static/               # Serves sitemap.xml
 ├── config/
-│   ├── development/                      # Dev env templates
-│   │   ├── .env.backend.development
-│   │   ├── .env.frontend.development
-│   │   └── .env.frontend-admin.development
-│   └── production/                       # Prod env templates
-│       ├── .env.backend.production
-│       ├── .env.frontend.production
-│       └── .env.frontend-admin.production
+│   ├── development/              # .env.backend/frontend/frontend-admin templates
+│   ├── staging/                  # Staging .env templates
+│   └── production/               # Production .env templates
 ├── scripts/
-│   ├── backup/
-│   │   ├── backup_db.sh                  # pg_dump daily backup
-│   │   └── restore_db.sh                 # Restore from dump
-│   └── deployment/
-│       ├── deploy_all.sh                 # Copy envs + start all services
-│       └── stop_all.sh                   # Stop all services
-├── docs/
-│   ├── DESIGN.md
-│   ├── DIAGRAMS.md
-│   ├── API.md
-│   ├── hermes.postman_collection.json
-│   ├── CONTEXT.md
-│   ├── TESTING.md
-├── .gitignore
+│   ├── backup/                   # backup_db.sh + restore_db.sh
+│   └── deployment/               # deploy_all.sh + stop_all.sh + check_config.sh
+├── docs/                         # See Documentation table above
 └── README.md
 ```
 

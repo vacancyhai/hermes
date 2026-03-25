@@ -58,10 +58,6 @@ class UserStatusRequest(BaseModel):
     status: str
 
 
-class UserRoleRequest(BaseModel):
-    role: str
-
-
 class AdminCreateRequest(BaseModel):
     email: str = Field(min_length=5, max_length=255)
     password: str = Field(min_length=8, description="Minimum 8 characters")
@@ -546,7 +542,7 @@ async def update_user_status(
     admin=Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
-    """Suspend or activate a user (admin only)."""
+    """Suspend or activate a user (admin only). Also disables/enables Firebase account."""
     new_status = body.status
     if new_status not in ("active", "suspended"):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Status must be 'active' or 'suspended'")
@@ -559,40 +555,69 @@ async def update_user_status(
     old_status = user.status
     user.status = new_status
 
+    # Update Firebase account status if user has firebase_uid
+    if user.firebase_uid:
+        from app.firebase import init_firebase
+        if init_firebase():
+            try:
+                import firebase_admin
+                from firebase_admin import auth as fb_auth
+                
+                if new_status == "suspended":
+                    fb_auth.update_user(user.firebase_uid, disabled=True)
+                    logger.info("firebase_user_disabled", extra={"firebase_uid": user.firebase_uid})
+                elif new_status == "active":
+                    fb_auth.update_user(user.firebase_uid, disabled=False)
+                    logger.info("firebase_user_enabled", extra={"firebase_uid": user.firebase_uid})
+            except firebase_admin.auth.UserNotFoundError:
+                logger.warning("firebase_user_not_found", extra={"firebase_uid": user.firebase_uid})
+            except Exception as exc:
+                logger.error("firebase_update_failed", extra={"firebase_uid": user.firebase_uid, "error": str(exc)})
+
     await _log_action(db, admin, "update_user_status", "user", user_id,
                       changes={"status": {"old": old_status, "new": new_status}}, request=request)
 
     return {"message": f"User status changed to {new_status}"}
 
 
-@router.put("/users/{user_id}/role")
-async def update_user_role(
+@router.delete("/users/{user_id}")
+async def delete_user_permanently(
     user_id: uuid.UUID,
-    body: UserRoleRequest,
     request: Request,
     admin=Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
-    """Change an admin/operator user's role (admin only)."""
-    new_role = body.role
-    if new_role not in ("admin", "operator"):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Role must be 'admin' or 'operator'")
+    """Permanently delete a user from both PostgreSQL and Firebase (admin only)."""
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
-    result = await db.execute(select(AdminUser).where(AdminUser.id == user_id))
-    target = result.scalar_one_or_none()
-    if not target:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Admin user not found")
+    firebase_uid = user.firebase_uid
+    user_email = user.email
 
-    if target.id == admin.id:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot change your own role")
+    # Delete from Firebase first (if exists)
+    if firebase_uid:
+        from app.firebase import init_firebase
+        if init_firebase():
+            try:
+                import firebase_admin
+                from firebase_admin import auth as fb_auth
+                fb_auth.delete_user(firebase_uid)
+                logger.info("firebase_user_deleted", extra={"firebase_uid": firebase_uid, "email": user_email})
+            except firebase_admin.auth.UserNotFoundError:
+                logger.warning("firebase_user_already_deleted", extra={"firebase_uid": firebase_uid})
+            except Exception as exc:
+                logger.error("firebase_delete_failed", extra={"firebase_uid": firebase_uid, "error": str(exc)})
+                # Continue with PostgreSQL deletion even if Firebase fails
 
-    old_role = target.role
-    target.role = new_role
+    # Delete from PostgreSQL
+    await db.delete(user)
+    
+    await _log_action(db, admin, "delete_user_permanently", "user", user_id,
+                      details=f"Deleted user {user_email} from both systems", request=request)
 
-    await _log_action(db, admin, "update_user_role", "admin_user", user_id,
-                      changes={"role": {"old": old_role, "new": new_role}}, request=request)
-
-    return {"message": f"Role changed from {old_role} to {new_role}"}
+    return {"message": "User permanently deleted from both PostgreSQL and Firebase"}
 
 
 # ─── Admin Account Management ───────────────────────────────────────────────

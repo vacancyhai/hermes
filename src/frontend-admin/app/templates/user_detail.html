@@ -43,6 +43,9 @@
                 <button type="submit" class="btn btn-success btn-sm">Activate</button>
             </form>
             {% endif %}
+            <form method="POST" action="/users/{{ user.id }}/delete" onsubmit="return confirm('Permanently delete this user from both PostgreSQL and Firebase? This cannot be undone!')">
+                <button type="submit" class="btn btn-danger btn-sm" style="background:#dc2626">Delete Permanently</button>
+            </form>
         </div>
     </div>
 
@@ -64,24 +67,5 @@
     </div>
 
 </div>
-
-{% if session.get('admin_role') == 'admin' %}
-<!-- Admin User Role Management (for admin_user accounts only) -->
-<div class="card" style="margin-top:1rem;">
-    <h3 style="font-size:1rem;margin-bottom:.75rem;color:#1e3a5f;border-bottom:1px solid #e2e8f0;padding-bottom:.75rem">Admin Role Management</h3>
-    <p style="font-size:.8rem;color:#64748b;margin-bottom:.75rem">Use this to change the role of an admin/operator account. Enter the admin user ID below.</p>
-    <form method="POST" action="/users/{{ user.id }}/role" style="display:flex;gap:.75rem;align-items:flex-end;flex-wrap:wrap">
-        <div>
-            <label style="font-size:.8rem;font-weight:500;color:#475569;display:block;margin-bottom:.25rem">New Role</label>
-            <select name="role" style="padding:.4rem .65rem;border:1px solid #cbd5e1;border-radius:.375rem;font-size:.875rem">
-                <option value="operator">Operator</option>
-                <option value="admin">Admin</option>
-            </select>
-        </div>
-        <button type="submit" class="btn btn-outline" style="padding:.45rem 1rem"
-                onclick="return confirm('Change this admin user\'s role?')">Update Role</button>
-    </form>
-</div>
-{% endif %}
 
 {% endblock %}

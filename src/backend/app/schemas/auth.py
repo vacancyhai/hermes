@@ -2,8 +2,10 @@
 
 import uuid
 from datetime import datetime
+import re
+from typing import Any
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 
 # --- Firebase Auth (user) ---
@@ -41,6 +43,124 @@ class UserResponse(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+# --- Email OTP verification (email/password registration) ---
+
+class EmailOTPRequest(BaseModel):
+    email: EmailStr
+    full_name: str = Field(min_length=1, max_length=100)
+    phone: str | None = Field(None, pattern=r"^\+\d{10,15}$")  # E.164 format
+
+
+class EmailOTPVerifyRequest(BaseModel):
+    email: EmailStr
+    otp: str = Field(min_length=6, max_length=6)
+
+
+class OTPVerifiedResponse(BaseModel):
+    verified: bool
+    verification_token: str  # Short-lived token to complete registration
+
+
+def validate_password_strength(password: str) -> str:
+    """Validate password meets security requirements."""
+    if len(password) < 8:
+        raise ValueError("Password must be at least 8 characters long")
+    if not re.search(r"[A-Z]", password):
+        raise ValueError("Password must contain at least one uppercase letter")
+    if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", password):
+        raise ValueError("Password must contain at least one special character")
+    return password
+
+
+class CompleteRegistrationRequest(BaseModel):
+    email: EmailStr
+    password: str = Field(min_length=8)
+    verification_token: str
+    phone: str | None = Field(default=None, pattern=r"^\+\d{10,15}$")
+    
+    @field_validator("password")
+    @classmethod
+    def validate_password(cls, v: str) -> str:
+        return validate_password_strength(v)  # Optional phone
+
+
+class FirebaseCustomTokenResponse(BaseModel):
+    custom_token: str
+
+
+class CheckUserProvidersRequest(BaseModel):
+    email: EmailStr
+
+
+class UserProvidersResponse(BaseModel):
+    exists: bool
+    has_password: bool = False
+    providers: list[str] = []
+    can_add_password: bool = False
+
+
+class AddPasswordRequest(BaseModel):
+    email: EmailStr
+    password: str = Field(min_length=8)
+    verification_token: str
+    
+    @field_validator("password")
+    @classmethod
+    def validate_password(cls, v: str) -> str:
+        return validate_password_strength(v)  # Requires OTP verification for security
+
+
+class CheckPhoneRequest(BaseModel):
+    phone: str = Field(pattern=r"^\+\d{10,15}$")  # E.164 format
+
+
+class PhoneAvailabilityResponse(BaseModel):
+    available: bool
+    message: str
+    registered: bool
+
+
+class UpdatePhoneRequest(BaseModel):
+    phone: str = Field(pattern=r"^\+\d{10,15}$")  # E.164 format
+
+
+class SendPhoneOTPRequest(BaseModel):
+    pass  # Uses authenticated user's phone from database
+
+
+class VerifyPhoneOTPRequest(BaseModel):
+    otp: str = Field(min_length=6, max_length=6)
+
+
+class SetPasswordRequest(BaseModel):
+    new_password: str = Field(min_length=8)
+    
+    @field_validator("new_password")
+    @classmethod
+    def validate_password(cls, v: str) -> str:
+        return validate_password_strength(v)
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str = Field(min_length=8)
+    
+    @field_validator("new_password")
+    @classmethod
+    def validate_password(cls, v: str) -> str:
+        return validate_password_strength(v)
+
+
+class LinkEmailPasswordRequest(BaseModel):
+    email: EmailStr
+    password: str = Field(min_length=8)
+    
+    @field_validator("password")
+    @classmethod
+    def validate_password(cls, v: str) -> str:
+        return validate_password_strength(v)
 
 
 # --- Admin/Operator schemas (unchanged — local bcrypt + JWT) ---

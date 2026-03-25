@@ -81,12 +81,66 @@
                 <input type="email" id="reg-email" placeholder="you@example.com" required>
             </div>
             <div class="form-group">
-                <label for="reg-password">Password <span style="color:#94a3b8;font-weight:400">(min 6 characters)</span></label>
-                <input type="password" id="reg-password" placeholder="Choose a password" required minlength="6">
+                <label for="reg-phone">Phone Number <span style="color:#94a3b8;font-weight:400">(optional)</span></label>
+                <input type="tel" id="reg-phone" placeholder="+91 98765 43210" pattern="^\+\d{10,15}$">
+            </div>
+            <div class="form-group">
+                <label for="reg-password">Password <span style="color:#94a3b8;font-weight:400">(min 8 chars, 1 uppercase, 1 special)</span></label>
+                <input type="password" id="reg-password" placeholder="Choose a password" required minlength="8">
             </div>
             <button type="button" class="btn btn-primary" style="width:100%;margin-top:.5rem" onclick="registerWithEmail()">Create Account</button>
             <div style="text-align:center;margin-top:.75rem;font-size:.85rem">
                 <button type="button" class="link-btn" onclick="showSignIn()">Back to sign in</button>
+            </div>
+        </div>
+
+        <!-- Step 2: Email OTP verification (shown after registration) -->
+        <div id="email-otp-section" style="display:none">
+            <p style="font-size:.85rem;color:#64748b;margin-bottom:1rem;text-align:center">
+                We sent a 6-digit code to <strong id="otp-email-display"></strong><br>
+                <span style="font-size:.8rem">Check your inbox — expires in 5 minutes.</span>
+            </p>
+            <div class="form-group">
+                <label>Verification Code</label>
+                <input type="text" id="email-otp-code" class="otp-input" maxlength="6" placeholder="000000" autocomplete="one-time-code">
+            </div>
+            <button type="button" class="btn btn-primary" style="width:100%;margin-top:.5rem" onclick="verifyEmailOTP()">Verify &amp; Continue</button>
+            <div style="text-align:center;margin-top:.75rem;font-size:.85rem">
+                <button type="button" class="link-btn" onclick="resendEmailOTP()">Resend code</button>
+            </div>
+        </div>
+
+        <!-- Step 3: Add password to Google account -->
+        <div id="add-password-section" style="display:none">
+            <p style="font-size:.9rem;color:#1e3a5f;margin-bottom:1rem;text-align:center;font-weight:500">
+                You signed up with Google
+            </p>
+            <p style="font-size:.85rem;color:#64748b;margin-bottom:1rem;text-align:center">
+                Add a password to also sign in with email/password.
+            </p>
+            <div class="form-group">
+                <label for="add-pwd">New Password <span style="color:#94a3b8;font-weight:400">(min 6 characters)</span></label>
+                <input type="password" id="add-pwd" placeholder="Choose a password" required minlength="6">
+            </div>
+            <button type="button" class="btn btn-primary" style="width:100%;margin-top:.5rem" onclick="requestAddPassword()">Add Password</button>
+            <div style="text-align:center;margin-top:.75rem;font-size:.85rem">
+                <button type="button" class="link-btn" onclick="showSignIn()">Back to sign in</button>
+            </div>
+        </div>
+
+        <!-- Step 4: Verify OTP for adding password -->
+        <div id="add-password-otp-section" style="display:none">
+            <p style="font-size:.85rem;color:#64748b;margin-bottom:1rem;text-align:center">
+                We sent a 6-digit code to <strong id="add-pwd-email-display"></strong><br>
+                <span style="font-size:.8rem">Verify to add password to your account.</span>
+            </p>
+            <div class="form-group">
+                <label>Verification Code</label>
+                <input type="text" id="add-pwd-otp-code" class="otp-input" maxlength="6" placeholder="000000" autocomplete="one-time-code">
+            </div>
+            <button type="button" class="btn btn-primary" style="width:100%;margin-top:.5rem" onclick="verifyAndAddPassword()">Verify &amp; Add Password</button>
+            <div style="text-align:center;margin-top:.75rem;font-size:.85rem">
+                <button type="button" class="link-btn" onclick="resendAddPasswordOTP()">Resend code</button>
             </div>
         </div>
     </div>
@@ -134,6 +188,16 @@
     var auth = firebase.auth();
     var confirmationResult = null;
     var recaptchaVerifier = null;
+
+    // State for email OTP verification and add-password flows
+    var _regEmail = null;
+    var _regPassword = null;
+    var _regName = null;
+    var _regPhone = null;
+    var _verificationToken = null;
+    var _addPasswordEmail = null;
+    var _addPasswordPassword = null;
+    var _phoneConfirmationResult = null;
 
     // ── Helpers ──────────────────────────────────────────────────
 
@@ -251,28 +315,278 @@
         auth.signInWithEmailAndPassword(email, password)
             .then(function (cred) { return cred.user.getIdToken(); })
             .then(function (idToken) { return sendTokenToServer(idToken); })
-            .catch(function (err) { showError(firebaseErrorMessage(err)); })
+            .catch(function (err) {
+                // Check if account exists with different provider
+                if (err.code === "auth/wrong-password" || err.code === "auth/user-not-found") {
+                    return checkUserProviders(email, password);
+                }
+                showError(firebaseErrorMessage(err));
+            })
             .finally(function () { setLoading(btn, false); });
     };
+
+    function checkUserProviders(email, password) {
+        fetch("/auth/check-user-providers", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: email }),
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            if (!data.exists) {
+                showError("No account found with this email.");
+            } else if (data.can_add_password && data.providers.includes("google")) {
+                // Show option to add password or sign in with Google
+                showError("You signed up with Google. Please sign in with Google or add a password below.");
+                setTimeout(function () {
+                    document.getElementById("email-signin-form").style.display = "none";
+                    document.getElementById("add-password-section").style.display = "block";
+                    document.getElementById("add-pwd").value = password; // Pre-fill password
+                    _addPasswordEmail = email;
+                }, 1500);
+            } else if (!data.has_password) {
+                showError("This account doesn't have a password set. Please sign in with " + data.providers.join(" or ") + ".");
+            } else {
+                showError("Incorrect password.");
+            }
+        })
+        .catch(function () {
+            showError("Invalid email or password.");
+        });
+    }
 
     window.registerWithEmail = function () {
         clearMessages();
         var name = document.getElementById("reg-name").value.trim();
         var email = document.getElementById("reg-email").value.trim();
+        var phone = document.getElementById("reg-phone").value.trim();
         var password = document.getElementById("reg-password").value;
-        if (!name || !email || !password) { showError("Please fill in all fields."); return; }
+        if (!name || !email || !password) { showError("Please fill in all required fields."); return; }
+        if (password.length < 8) { showError("Password must be at least 8 characters."); return; }
+        if (!/[A-Z]/.test(password)) { showError("Password must contain at least one uppercase letter."); return; }
+        if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) { showError("Password must contain at least one special character."); return; }
+        if (phone && !phone.match(/^\+\d{10,15}$/)) { showError("Phone number must be in format +91..."); return; }
 
         var btn = document.querySelector("#email-register-form .btn-primary");
         setLoading(btn, true);
 
-        auth.createUserWithEmailAndPassword(email, password)
-            .then(function (cred) {
-                return cred.user.updateProfile({ displayName: name })
-                    .then(function () { return cred.user.getIdToken(); });
-            })
-            .then(function (idToken) { return sendTokenToServer(idToken, name); })
-            .catch(function (err) { showError(firebaseErrorMessage(err)); })
-            .finally(function () { setLoading(btn, false); });
+        // Store credentials for later (after OTP verification)
+        _regEmail = email;
+        _regPassword = password;
+        _regName = name;
+        _regPhone = phone || null;
+
+        // Send OTP BEFORE creating Firebase account
+        var requestBody = { email: email, full_name: name };
+        if (phone) requestBody.phone = phone;
+        
+        fetch("/auth/send-email-otp", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(requestBody),
+        })
+        .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+        .then(function (res) {
+            if (res.ok) {
+                document.getElementById("email-register-form").style.display = "none";
+                document.getElementById("email-otp-section").style.display = "block";
+                document.getElementById("otp-email-display").textContent = email;
+                document.getElementById("email-otp-code").value = "";
+                document.getElementById("email-otp-code").focus();
+            } else {
+                showError(res.data.error || "Failed to send verification email.");
+            }
+        })
+        .catch(function () { showError("Failed to send verification email. Please try again."); })
+        .finally(function () { setLoading(btn, false); });
+    };
+
+    window.verifyEmailOTP = function () {
+        clearMessages();
+        var otp = document.getElementById("email-otp-code").value.trim();
+        if (!otp || otp.length !== 6) { showError("Please enter the 6-digit code."); return; }
+        if (!_regEmail || !_regPassword) { showError("Session expired. Please register again."); showSignIn(); return; }
+
+        var btn = document.querySelector("#email-otp-section .btn-primary");
+        setLoading(btn, true);
+
+        // Step 1: Verify OTP, get verification token
+        fetch("/auth/verify-email-otp", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: _regEmail, otp: otp }),
+        })
+        .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+        .then(function (res) {
+            if (res.ok && res.data.verified) {
+                _verificationToken = res.data.verification_token;
+                // Step 2: Create Firebase account server-side
+                var requestBody = { 
+                    email: _regEmail, 
+                    password: _regPassword, 
+                    verification_token: _verificationToken 
+                };
+                if (_regPhone) requestBody.phone = _regPhone;
+                
+                return fetch("/auth/complete-registration", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(requestBody),
+                });
+            } else {
+                throw new Error(res.data.error || "Invalid code. Please try again.");
+            }
+        })
+        .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+        .then(function (res) {
+            if (res.ok && res.data.custom_token) {
+                // Step 3: Sign in to Firebase using custom token
+                return auth.signInWithCustomToken(res.data.custom_token);
+            } else {
+                throw new Error(res.data.error || "Failed to create account.");
+            }
+        })
+        .then(function (cred) {
+            // Step 4: Get Firebase ID token and send to backend
+            return cred.user.getIdToken();
+        })
+        .then(function (idToken) {
+            return sendTokenToServer(idToken, _regName);
+        })
+        .catch(function (err) {
+            showError(err.message || "Verification failed. Please try again.");
+        })
+        .finally(function () { setLoading(btn, false); });
+    };
+
+    window.resendEmailOTP = function () {
+        clearMessages();
+        if (!_regEmail || !_regName) { showError("Session expired. Please register again."); showSignIn(); return; }
+
+        fetch("/auth/send-email-otp", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: _regEmail, full_name: _regName }),
+        })
+        .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+        .then(function (res) {
+            if (res.ok) {
+                showSuccess("A new code has been sent to your email.");
+                document.getElementById("email-otp-code").value = "";
+                document.getElementById("email-otp-code").focus();
+            } else {
+                showError(res.data.error || "Failed to resend code.");
+            }
+        })
+        .catch(function () { showError("Failed to resend code. Please try again."); });
+    };
+
+    window.requestAddPassword = function () {
+        clearMessages();
+        var password = document.getElementById("add-pwd").value;
+        if (!_addPasswordEmail) { showError("Session expired. Please sign in again."); showSignIn(); return; }
+        if (!password || password.length < 6) { showError("Password must be at least 6 characters."); return; }
+
+        var btn = document.querySelector("#add-password-section .btn-primary");
+        setLoading(btn, true);
+
+        _addPasswordPassword = password;
+
+        // Send OTP for verification
+        fetch("/auth/send-email-otp", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: _addPasswordEmail, full_name: "User" }),
+        })
+        .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+        .then(function (res) {
+            if (res.ok) {
+                document.getElementById("add-password-section").style.display = "none";
+                document.getElementById("add-password-otp-section").style.display = "block";
+                document.getElementById("add-pwd-email-display").textContent = _addPasswordEmail;
+                document.getElementById("add-pwd-otp-code").focus();
+            } else {
+                showError(res.data.error || "Failed to send verification code.");
+            }
+        })
+        .catch(function () { showError("Failed to send verification code. Please try again."); })
+        .finally(function () { setLoading(btn, false); });
+    };
+
+    window.verifyAndAddPassword = function () {
+        clearMessages();
+        var otp = document.getElementById("add-pwd-otp-code").value.trim();
+        if (!otp || otp.length !== 6) { showError("Please enter the 6-digit code."); return; }
+        if (!_addPasswordEmail || !_addPasswordPassword) { showError("Session expired. Please try again."); showSignIn(); return; }
+
+        var btn = document.querySelector("#add-password-otp-section .btn-primary");
+        setLoading(btn, true);
+
+        // Step 1: Verify OTP
+        fetch("/auth/verify-email-otp", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: _addPasswordEmail, otp: otp }),
+        })
+        .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+        .then(function (res) {
+            if (res.ok && res.data.verified) {
+                _verificationToken = res.data.verification_token;
+                // Step 2: Add password to account
+                return fetch("/auth/add-password", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ 
+                        email: _addPasswordEmail, 
+                        password: _addPasswordPassword, 
+                        verification_token: _verificationToken 
+                    }),
+                });
+            } else {
+                throw new Error(res.data.error || "Invalid code. Please try again.");
+            }
+        })
+        .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+        .then(function (res) {
+            if (res.ok && res.data.custom_token) {
+                // Step 3: Sign in with custom token
+                return auth.signInWithCustomToken(res.data.custom_token);
+            } else {
+                throw new Error(res.data.error || "Failed to add password.");
+            }
+        })
+        .then(function (cred) {
+            return cred.user.getIdToken();
+        })
+        .then(function (idToken) {
+            return sendTokenToServer(idToken);
+        })
+        .catch(function (err) {
+            showError(err.message || "Failed to add password. Please try again.");
+        })
+        .finally(function () { setLoading(btn, false); });
+    };
+
+    window.resendAddPasswordOTP = function () {
+        clearMessages();
+        if (!_addPasswordEmail) { showError("Session expired. Please try again."); showSignIn(); return; }
+
+        fetch("/auth/send-email-otp", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: _addPasswordEmail, full_name: "User" }),
+        })
+        .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+        .then(function (res) {
+            if (res.ok) {
+                showSuccess("A new code has been sent to your email.");
+                document.getElementById("add-pwd-otp-code").value = "";
+                document.getElementById("add-pwd-otp-code").focus();
+            } else {
+                showError(res.data.error || "Failed to resend code.");
+            }
+        })
+        .catch(function () { showError("Failed to resend code. Please try again."); });
     };
 
     window.forgotPassword = function () {
@@ -306,11 +620,36 @@
     window.sendPhoneOTP = function () {
         clearMessages();
         var phone = document.getElementById("phone-number").value.trim();
-        if (!phone) { showError("Please enter a phone number."); return; }
+        if (!phone || !phone.match(/^\+\d{10,15}$/)) {
+            showError("Please enter a valid phone number (e.g., +91...)");
+            return;
+        }
 
         var btn = document.querySelector("#phone-input-step .btn-primary");
         setLoading(btn, true);
 
+        // Step 1: Check if phone is already registered
+        fetch("/auth/check-phone-availability", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ phone: phone }),
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            if (data.registered) {
+                // Phone already registered - this is a sign-in, not registration
+                showSuccess("Phone number found. Sending verification code...");
+            }
+            // Proceed with Firebase phone OTP (works for both new and existing users)
+            return sendFirebasePhoneOTP(phone);
+        })
+        .catch(function () {
+            showError("Failed to verify phone number. Please try again.");
+            setLoading(btn, false);
+        });
+    };
+
+    function sendFirebasePhoneOTP(phone) {
         if (!recaptchaVerifier) {
             recaptchaVerifier = new firebase.auth.RecaptchaVerifier("recaptcha-container", {
                 size: "invisible",
@@ -318,7 +657,8 @@
             });
         }
 
-        auth.signInWithPhoneNumber(phone, recaptchaVerifier)
+        var btn = document.querySelector("#phone-input-step .btn-primary");
+        return auth.signInWithPhoneNumber(phone, recaptchaVerifier)
             .then(function (result) {
                 confirmationResult = result;
                 document.getElementById("otp-phone-display").textContent = phone;
@@ -333,9 +673,10 @@
                     recaptchaVerifier.clear();
                     recaptchaVerifier = null;
                 }
+                throw err;
             })
             .finally(function () { setLoading(btn, false); });
-    };
+    }
 
     window.verifyPhoneOTP = function () {
         clearMessages();
@@ -357,6 +698,9 @@
 
     document.getElementById("password").addEventListener("keydown", function (e) {
         if (e.key === "Enter") loginWithEmail();
+    });
+    document.getElementById("email-otp-code").addEventListener("keydown", function (e) {
+        if (e.key === "Enter") verifyEmailOTP();
     });
     document.getElementById("otp-code").addEventListener("keydown", function (e) {
         if (e.key === "Enter") verifyPhoneOTP();
