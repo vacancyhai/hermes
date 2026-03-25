@@ -144,11 +144,12 @@ def create_app():
 
     @app.route("/jobs")
     def jobs():
+        """Manage job vacancies (latest_job type only)."""
         token = session.get("token")
         if not token:
             return redirect("/login")
 
-        params = {"limit": 20, "offset": 0}
+        params = {"limit": 20, "offset": 0, "job_type": "latest_job"}
         status_filter = request.args.get("status")
         if status_filter:
             params["status"] = status_filter
@@ -157,7 +158,73 @@ def create_app():
         data = resp.json() if resp.ok else {"data": [], "pagination": {}}
 
         return render_template(
-            "jobs.html",
+            "jobs_manage.html",
+            jobs=data["data"],
+            pagination=data.get("pagination", {}),
+            current_status=status_filter,
+        )
+
+    @app.route("/admit-cards")
+    def admit_cards():
+        """Manage admit cards."""
+        token = session.get("token")
+        if not token:
+            return redirect("/login")
+
+        params = {"limit": 20, "offset": 0, "job_type": "admit_card"}
+        status_filter = request.args.get("status")
+        if status_filter:
+            params["status"] = status_filter
+
+        resp = current_app.api_client.get("/admin/jobs", token=token, params=params)
+        data = resp.json() if resp.ok else {"data": [], "pagination": {}}
+
+        return render_template(
+            "admitcards_manage.html",
+            jobs=data["data"],
+            pagination=data.get("pagination", {}),
+            current_status=status_filter,
+        )
+
+    @app.route("/answer-keys")
+    def answer_keys():
+        """Manage answer keys."""
+        token = session.get("token")
+        if not token:
+            return redirect("/login")
+
+        params = {"limit": 20, "offset": 0, "job_type": "answer_key"}
+        status_filter = request.args.get("status")
+        if status_filter:
+            params["status"] = status_filter
+
+        resp = current_app.api_client.get("/admin/jobs", token=token, params=params)
+        data = resp.json() if resp.ok else {"data": [], "pagination": {}}
+
+        return render_template(
+            "answerkeys_manage.html",
+            jobs=data["data"],
+            pagination=data.get("pagination", {}),
+            current_status=status_filter,
+        )
+
+    @app.route("/results")
+    def results():
+        """Manage results."""
+        token = session.get("token")
+        if not token:
+            return redirect("/login")
+
+        params = {"limit": 20, "offset": 0, "job_type": "result"}
+        status_filter = request.args.get("status")
+        if status_filter:
+            params["status"] = status_filter
+
+        resp = current_app.api_client.get("/admin/jobs", token=token, params=params)
+        data = resp.json() if resp.ok else {"data": [], "pagination": {}}
+
+        return render_template(
+            "results_manage.html",
             jobs=data["data"],
             pagination=data.get("pagination", {}),
             current_status=status_filter,
@@ -172,8 +239,11 @@ def create_app():
 
         params = {"limit": 20, "offset": _int_arg("offset", 0)}
         status_filter = request.args.get("status")
+        job_type = request.args.get("job_type")
         if status_filter:
             params["status"] = status_filter
+        if job_type:
+            params["job_type"] = job_type
 
         resp = current_app.api_client.get("/admin/jobs", token=token, params=params)
         data = resp.json() if resp.ok else {"data": [], "pagination": {}}
