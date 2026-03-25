@@ -61,6 +61,96 @@
 			]
 		},
 		{
+			"name": "Auth – User (Email OTP Registration)",
+			"item": [
+				{
+					"name": "Send Email OTP",
+					"description": "Send OTP to email for registration. OTP expires in 10 minutes.",
+					"request": {
+						"method": "POST",
+						"url": "{{base_url}}/auth/send-email-otp",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"newuser@example.com\",\n  \"full_name\": \"New User\"\n}"
+						}
+					}
+				},
+				{
+					"name": "Verify Email OTP",
+					"description": "Verify the 6-digit OTP sent to email. Returns verification token.",
+					"request": {
+						"method": "POST",
+						"url": "{{base_url}}/auth/verify-email-otp",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"newuser@example.com\",\n  \"otp\": \"123456\"\n}"
+						}
+					}
+				},
+				{
+					"name": "Complete Registration",
+					"description": "Complete registration with password after OTP verification. Password must have min 8 chars, 1 uppercase, 1 special character.",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var json = pm.response.json();",
+									"if (json.custom_token) {",
+									"    console.log('Registration complete! Use custom_token with Firebase SDK to sign in.');",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"url": "{{base_url}}/auth/complete-registration",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"verification_token\": \"PASTE_VERIFICATION_TOKEN_HERE\",\n  \"password\": \"StrongPass@123\"\n}"
+						}
+					}
+				},
+				{
+					"name": "Check Phone Availability",
+					"description": "Check if a phone number is already registered.",
+					"request": {
+						"method": "POST",
+						"url": "{{base_url}}/auth/check-phone-availability",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"phone\": \"+919876543210\"\n}"
+						}
+					}
+				}
+			]
+		},
+		{
 			"name": "Auth – User (Firebase)",
 			"item": [
 				{
@@ -719,6 +809,7 @@
 				},
 				{
 					"name": "Update Phone",
+					"description": "Update phone number (marks as unverified until OTP verification).",
 					"request": {
 						"method": "PUT",
 						"url": "{{base_url}}/users/profile/phone",
@@ -734,7 +825,95 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"phone\": \"9876543210\"\n}"
+							"raw": "{\n  \"phone\": \"+919876543210\"\n}"
+						}
+					}
+				},
+				{
+					"name": "Verify Phone OTP",
+					"description": "Verify phone number with OTP sent via Firebase.",
+					"request": {
+						"method": "POST",
+						"url": "{{base_url}}/users/me/verify-phone-otp",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{user_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"otp\": \"123456\"\n}"
+						}
+					}
+				},
+				{
+					"name": "Set Password (Google Users)",
+					"description": "Set password for Google OAuth users who don't have a password yet. Password must have min 8 chars, 1 uppercase, 1 special character.",
+					"request": {
+						"method": "POST",
+						"url": "{{base_url}}/users/me/set-password",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{user_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"new_password\": \"NewPass@123\"\n}"
+						}
+					}
+				},
+				{
+					"name": "Change Password",
+					"description": "Change password (requires current password). New password must have min 8 chars, 1 uppercase, 1 special character.",
+					"request": {
+						"method": "POST",
+						"url": "{{base_url}}/users/me/change-password",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{user_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"current_password\": \"OldPass@123\",\n  \"new_password\": \"NewPass@456\"\n}"
+						}
+					}
+				},
+				{
+					"name": "Link Email+Password to Phone Account",
+					"description": "Link email and password credentials to a phone-only account. Password must have min 8 chars, 1 uppercase, 1 special character.",
+					"request": {
+						"method": "POST",
+						"url": "{{base_url}}/users/me/link-email-password",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{user_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"myemail@example.com\",\n  \"password\": \"MyPass@123\"\n}"
 						}
 					}
 				}
