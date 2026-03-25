@@ -36,6 +36,30 @@
     </div>
 </div>
 
+<h2 style="font-size:1.1rem;margin:1.5rem 0 1rem;color:#1e293b;font-weight:600;">Job Types</h2>
+<div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr));">
+    <div class="stat-card" style="background:linear-gradient(135deg,#2563eb 0%,#1d4ed8 100%);color:white;">
+        <div class="value">{{ stats.get('jobs', {}).get('by_type', {}).get('latest_job', 0) }}</div>
+        <div class="label">Latest Jobs</div>
+    </div>
+    <div class="stat-card" style="background:linear-gradient(135deg,#059669 0%,#047857 100%);color:white;">
+        <div class="value">{{ stats.get('jobs', {}).get('by_type', {}).get('admit_card', 0) }}</div>
+        <div class="label">Admit Cards</div>
+    </div>
+    <div class="stat-card" style="background:linear-gradient(135deg,#7c3aed 0%,#6d28d9 100%);color:white;">
+        <div class="value">{{ stats.get('jobs', {}).get('by_type', {}).get('answer_key', 0) }}</div>
+        <div class="label">Answer Keys</div>
+    </div>
+    <div class="stat-card" style="background:linear-gradient(135deg,#dc2626 0%,#b91c1c 100%);color:white;">
+        <div class="value">{{ stats.get('jobs', {}).get('by_type', {}).get('result', 0) }}</div>
+        <div class="label">Results</div>
+    </div>
+    <div class="stat-card" style="background:linear-gradient(135deg,#ea580c 0%,#c2410c 100%);color:white;">
+        <div class="value">{{ stats.get('entrance_exams', {}).get('total', 0) }}</div>
+        <div class="label">Entrance Exams</div>
+    </div>
+</div>
+
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem;">
     <div class="card">
         <h3 style="font-size:1rem;margin-bottom:.75rem;">Quick Actions</h3>
