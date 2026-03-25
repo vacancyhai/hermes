@@ -264,16 +264,100 @@ async def platform_analytics(
 
 
 @router.get("/jobs")
-async def list_all_jobs(
+async def list_jobs(
     status_filter: str | None = Query(None, alias="status"),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
     admin=Depends(require_operator),
     db: AsyncSession = Depends(get_db),
 ):
-    """List all jobs (admin view, any status)."""
-    query = select(JobVacancy)
-    count_query = select(func.count(JobVacancy.id))
+    """List job vacancies (latest_job type only)."""
+    query = select(JobVacancy).where(JobVacancy.job_type == "latest_job")
+    count_query = select(func.count(JobVacancy.id)).where(JobVacancy.job_type == "latest_job")
+
+    if status_filter:
+        query = query.where(JobVacancy.status == status_filter)
+        count_query = count_query.where(JobVacancy.status == status_filter)
+
+    query = query.order_by(JobVacancy.created_at.desc())
+
+    total = (await db.execute(count_query)).scalar()
+    result = await db.execute(query.offset(offset).limit(limit))
+    jobs = result.scalars().all()
+
+    return {
+        "data": [JobListItem.model_validate(j).model_dump() for j in jobs],
+        "pagination": {"limit": limit, "offset": offset, "total": total, "has_more": (offset + limit) < total},
+    }
+
+
+@router.get("/admit-cards")
+async def list_admit_cards(
+    status_filter: str | None = Query(None, alias="status"),
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    admin=Depends(require_operator),
+    db: AsyncSession = Depends(get_db),
+):
+    """List admit cards (admit_card type only)."""
+    query = select(JobVacancy).where(JobVacancy.job_type == "admit_card")
+    count_query = select(func.count(JobVacancy.id)).where(JobVacancy.job_type == "admit_card")
+
+    if status_filter:
+        query = query.where(JobVacancy.status == status_filter)
+        count_query = count_query.where(JobVacancy.status == status_filter)
+
+    query = query.order_by(JobVacancy.created_at.desc())
+
+    total = (await db.execute(count_query)).scalar()
+    result = await db.execute(query.offset(offset).limit(limit))
+    jobs = result.scalars().all()
+
+    return {
+        "data": [JobListItem.model_validate(j).model_dump() for j in jobs],
+        "pagination": {"limit": limit, "offset": offset, "total": total, "has_more": (offset + limit) < total},
+    }
+
+
+@router.get("/answer-keys")
+async def list_answer_keys(
+    status_filter: str | None = Query(None, alias="status"),
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    admin=Depends(require_operator),
+    db: AsyncSession = Depends(get_db),
+):
+    """List answer keys (answer_key type only)."""
+    query = select(JobVacancy).where(JobVacancy.job_type == "answer_key")
+    count_query = select(func.count(JobVacancy.id)).where(JobVacancy.job_type == "answer_key")
+
+    if status_filter:
+        query = query.where(JobVacancy.status == status_filter)
+        count_query = count_query.where(JobVacancy.status == status_filter)
+
+    query = query.order_by(JobVacancy.created_at.desc())
+
+    total = (await db.execute(count_query)).scalar()
+    result = await db.execute(query.offset(offset).limit(limit))
+    jobs = result.scalars().all()
+
+    return {
+        "data": [JobListItem.model_validate(j).model_dump() for j in jobs],
+        "pagination": {"limit": limit, "offset": offset, "total": total, "has_more": (offset + limit) < total},
+    }
+
+
+@router.get("/results")
+async def list_results(
+    status_filter: str | None = Query(None, alias="status"),
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    admin=Depends(require_operator),
+    db: AsyncSession = Depends(get_db),
+):
+    """List results (result type only)."""
+    query = select(JobVacancy).where(JobVacancy.job_type == "result")
+    count_query = select(func.count(JobVacancy.id)).where(JobVacancy.job_type == "result")
 
     if status_filter:
         query = query.where(JobVacancy.status == status_filter)

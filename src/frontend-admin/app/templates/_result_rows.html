@@ -1,0 +1,56 @@
+{% for job in jobs %}
+<tr>
+    <td>
+        <strong>{{ job.job_title }}</strong>
+        {% if job.is_featured %}<span class="badge badge-active" style="margin-left:.25rem;">Featured</span>{% endif %}
+    </td>
+    <td>{{ job.organization }}</td>
+    <td>{{ job.description.split('—')[0] if job.description and '—' in job.description else '—' }}</td>
+    <td>
+        {% if 'Final' in job.job_title or 'Merit' in job.job_title %}<span class="badge badge-active">Final</span>
+        {% elif 'Provisional' in job.job_title %}<span class="badge" style="background:#fef3c7;color:#92400e;">Provisional</span>
+        {% elif 'Interview' in job.job_title %}<span class="badge" style="background:#ddd6fe;color:#5b21b6;">Interview</span>
+        {% elif 'Written' in job.job_title %}<span class="badge" style="background:#dbeafe;color:#1e40af;">Written</span>
+        {% else %}<span class="badge">Result</span>{% endif %}
+    </td>
+    <td>
+        {% if job.status == 'active' %}<span class="badge badge-active">Active</span>
+        {% elif job.status == 'draft' %}<span class="badge badge-draft">Draft</span>
+        {% elif job.status == 'cancelled' %}<span class="badge badge-cancelled">Cancelled</span>
+        {% else %}<span class="badge">{{ job.status }}</span>{% endif %}
+    </td>
+    <td>{{ job.result_date or job.notification_date or '—' }}</td>
+    <td>{{ '—' }}</td>
+    <td>{{ job.views }}</td>
+    <td>
+        <a href="/jobs/{{ job.id }}/review" class="btn btn-primary btn-sm">View</a>
+        {% if job.status == 'draft' %}
+        <form method="POST" action="/jobs/{{ job.id }}/approve" style="display:inline;">
+            <button type="submit" class="btn btn-success btn-sm">Approve</button>
+        </form>
+        {% endif %}
+        {% if session.get('admin_role') == 'admin' and job.status != 'cancelled' %}
+        <form method="POST" action="/jobs/{{ job.id }}/delete" style="display:inline;" onsubmit="return confirm('Delete this result?')">
+            <button type="submit" class="btn btn-sm" style="color:#dc2626;border-color:#fca5a5;background:#fff;">Delete</button>
+        </form>
+        {% endif %}
+    </td>
+</tr>
+{% endfor %}
+
+{% if not jobs %}
+<tr><td colspan="9" style="text-align:center;color:#64748b;padding:2rem;">No results found.</td></tr>
+{% endif %}
+
+{% if pagination.get('has_more') %}
+<tr>
+    <td colspan="9" style="text-align:center;padding:1rem;">
+        <button class="btn btn-outline"
+                hx-get="/results/list?offset={{ pagination.get('offset', 0) + pagination.get('limit', 20) }}{% if current_status %}&status={{ current_status }}{% endif %}"
+                hx-target="#job-list"
+                hx-swap="beforeend">
+            Load more
+        </button>
+    </td>
+</tr>
+{% endif %}

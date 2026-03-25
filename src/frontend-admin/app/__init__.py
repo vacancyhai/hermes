@@ -149,7 +149,7 @@ def create_app():
         if not token:
             return redirect("/login")
 
-        params = {"limit": 20, "offset": 0, "job_type": "latest_job"}
+        params = {"limit": 20, "offset": 0}
         status_filter = request.args.get("status")
         if status_filter:
             params["status"] = status_filter
@@ -171,12 +171,12 @@ def create_app():
         if not token:
             return redirect("/login")
 
-        params = {"limit": 20, "offset": 0, "job_type": "admit_card"}
+        params = {"limit": 20, "offset": 0}
         status_filter = request.args.get("status")
         if status_filter:
             params["status"] = status_filter
 
-        resp = current_app.api_client.get("/admin/jobs", token=token, params=params)
+        resp = current_app.api_client.get("/admin/admit-cards", token=token, params=params)
         data = resp.json() if resp.ok else {"data": [], "pagination": {}}
 
         return render_template(
@@ -193,12 +193,12 @@ def create_app():
         if not token:
             return redirect("/login")
 
-        params = {"limit": 20, "offset": 0, "job_type": "answer_key"}
+        params = {"limit": 20, "offset": 0}
         status_filter = request.args.get("status")
         if status_filter:
             params["status"] = status_filter
 
-        resp = current_app.api_client.get("/admin/jobs", token=token, params=params)
+        resp = current_app.api_client.get("/admin/answer-keys", token=token, params=params)
         data = resp.json() if resp.ok else {"data": [], "pagination": {}}
 
         return render_template(
@@ -215,12 +215,12 @@ def create_app():
         if not token:
             return redirect("/login")
 
-        params = {"limit": 20, "offset": 0, "job_type": "result"}
+        params = {"limit": 20, "offset": 0}
         status_filter = request.args.get("status")
         if status_filter:
             params["status"] = status_filter
 
-        resp = current_app.api_client.get("/admin/jobs", token=token, params=params)
+        resp = current_app.api_client.get("/admin/results", token=token, params=params)
         data = resp.json() if resp.ok else {"data": [], "pagination": {}}
 
         return render_template(
@@ -239,16 +239,64 @@ def create_app():
 
         params = {"limit": 20, "offset": _int_arg("offset", 0)}
         status_filter = request.args.get("status")
-        job_type = request.args.get("job_type")
         if status_filter:
             params["status"] = status_filter
-        if job_type:
-            params["job_type"] = job_type
 
         resp = current_app.api_client.get("/admin/jobs", token=token, params=params)
         data = resp.json() if resp.ok else {"data": [], "pagination": {}}
 
         return render_template("_job_rows.html", jobs=data["data"], pagination=data.get("pagination", {}), current_status=status_filter)
+
+    @app.route("/admit-cards/list")
+    def admit_cards_list_partial():
+        """HTMX partial — admit card table rows for load-more."""
+        token = session.get("token")
+        if not token:
+            return "", 401
+
+        params = {"limit": 20, "offset": _int_arg("offset", 0)}
+        status_filter = request.args.get("status")
+        if status_filter:
+            params["status"] = status_filter
+
+        resp = current_app.api_client.get("/admin/admit-cards", token=token, params=params)
+        data = resp.json() if resp.ok else {"data": [], "pagination": {}}
+
+        return render_template("_admitcard_rows.html", jobs=data["data"], pagination=data.get("pagination", {}), current_status=status_filter)
+
+    @app.route("/answer-keys/list")
+    def answer_keys_list_partial():
+        """HTMX partial — answer key table rows for load-more."""
+        token = session.get("token")
+        if not token:
+            return "", 401
+
+        params = {"limit": 20, "offset": _int_arg("offset", 0)}
+        status_filter = request.args.get("status")
+        if status_filter:
+            params["status"] = status_filter
+
+        resp = current_app.api_client.get("/admin/answer-keys", token=token, params=params)
+        data = resp.json() if resp.ok else {"data": [], "pagination": {}}
+
+        return render_template("_answerkey_rows.html", jobs=data["data"], pagination=data.get("pagination", {}), current_status=status_filter)
+
+    @app.route("/results/list")
+    def results_list_partial():
+        """HTMX partial — result table rows for load-more."""
+        token = session.get("token")
+        if not token:
+            return "", 401
+
+        params = {"limit": 20, "offset": _int_arg("offset", 0)}
+        status_filter = request.args.get("status")
+        if status_filter:
+            params["status"] = status_filter
+
+        resp = current_app.api_client.get("/admin/results", token=token, params=params)
+        data = resp.json() if resp.ok else {"data": [], "pagination": {}}
+
+        return render_template("_result_rows.html", jobs=data["data"], pagination=data.get("pagination", {}), current_status=status_filter)
 
     @app.route("/jobs/new", methods=["GET", "POST"])
     def new_job():
