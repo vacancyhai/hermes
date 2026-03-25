@@ -1,0 +1,200 @@
+{% extends "base.html" %}
+
+{% block title %}Create New Job — Hermes Admin{% endblock %}
+
+{% block head %}
+<style>
+    .review-form label { font-weight:600; font-size:.8rem; display:block; margin-bottom:.25rem; color:#475569; text-transform:uppercase; letter-spacing:.03em; }
+    .review-form input[type="text"],
+    .review-form input[type="number"],
+    .review-form input[type="date"],
+    .review-form input[type="url"],
+    .review-form textarea,
+    .review-form select { width:100%; padding:.45rem .65rem; border:1px solid #cbd5e1; border-radius:.375rem; font-size:.85rem; font-family:inherit; }
+    .review-form textarea { min-height:120px; resize:vertical; }
+    .review-form .field { margin-bottom:1rem; }
+    .review-form .row { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+    .review-form .row-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:1rem; }
+    @media(max-width:768px) { .review-form .row, .review-form .row-3 { grid-template-columns:1fr; } }
+    .flash-error{background:#fee2e2;color:#991b1b;padding:.5rem .75rem;border-radius:.375rem;font-size:.85rem;margin-bottom:1rem}
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+    <h1 style="font-size:1.35rem;">Create New Job Vacancy</h1>
+    <a href="/jobs" class="btn btn-outline">← Back to Jobs</a>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, message in messages %}
+        <div class="flash-{{ category }}">{{ message }}</div>
+    {% endfor %}
+{% endwith %}
+
+<form method="POST" class="review-form">
+    <input type="hidden" name="job_type" value="latest_job">
+    
+    <div class="card">
+        <h3 style="font-size:1rem;margin-bottom:1rem;color:#1e3a5f;">Basic Information</h3>
+
+        <div class="field">
+            <label>Job Title *</label>
+            <input type="text" name="job_title" required placeholder="e.g. SSC CGL 2026">
+        </div>
+
+        <div class="row">
+            <div class="field">
+                <label>Organization *</label>
+                <input type="text" name="organization" required placeholder="e.g. Staff Selection Commission">
+            </div>
+            <div class="field">
+                <label>Department</label>
+                <input type="text" name="department" placeholder="e.g. Ministry of Finance">
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="field">
+                <label>Employment Type</label>
+                <select name="employment_type">
+                    <option value="permanent">Permanent</option>
+                    <option value="contract">Contract</option>
+                    <option value="temporary">Temporary</option>
+                </select>
+            </div>
+            <div class="field">
+                <label>Qualification Level *</label>
+                <select name="qualification_level" required>
+                    <option value="">— Select —</option>
+                    <option value="10th">10th</option>
+                    <option value="12th">12th</option>
+                    <option value="diploma">Diploma</option>
+                    <option value="graduate">Graduate</option>
+                    <option value="postgraduate">Postgraduate</option>
+                    <option value="phd">PhD</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="field">
+                <label>Total Vacancies *</label>
+                <input type="number" name="total_vacancies" min="1" required placeholder="e.g. 1000">
+            </div>
+            <div class="field">
+                <label>Status</label>
+                <select name="status">
+                    <option value="draft">Draft</option>
+                    <option value="active">Active (Publish immediately)</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="field">
+                <label>
+                    <input type="checkbox" name="is_featured" value="true" style="width:auto;margin-right:0.5rem;">
+                    Featured Job
+                </label>
+            </div>
+            <div class="field">
+                <label>
+                    <input type="checkbox" name="is_urgent" value="true" style="width:auto;margin-right:0.5rem;">
+                    Urgent Hiring
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3 style="font-size:1rem;margin-bottom:1rem;color:#1e3a5f;">Description</h3>
+
+        <div class="field">
+            <label>Short Description *</label>
+            <input type="text" name="short_description" required placeholder="One-line summary (used in cards)">
+        </div>
+
+        <div class="field">
+            <label>Full Description *</label>
+            <textarea name="description" required placeholder="Detailed job description, eligibility, key highlights…"></textarea>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3 style="font-size:1rem;margin-bottom:1rem;color:#1e3a5f;">Important Dates</h3>
+
+        <div class="row">
+            <div class="field">
+                <label>Notification Date *</label>
+                <input type="date" name="notification_date" required>
+            </div>
+            <div class="field">
+                <label>Application Start *</label>
+                <input type="date" name="application_start" required>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="field">
+                <label>Application End (Deadline) *</label>
+                <input type="date" name="application_end" required>
+            </div>
+            <div class="field">
+                <label>Exam Start</label>
+                <input type="date" name="exam_start">
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="field">
+                <label>Exam End</label>
+                <input type="date" name="exam_end">
+            </div>
+            <div class="field">
+                <label>Result Date</label>
+                <input type="date" name="result_date">
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3 style="font-size:1rem;margin-bottom:1rem;color:#1e3a5f;">Application Fees (INR)</h3>
+
+        <div class="row-3">
+            <div class="field"><label>General</label><input type="number" name="fee_general" min="0" placeholder="0 = Free"></div>
+            <div class="field"><label>OBC</label><input type="number" name="fee_obc" min="0" placeholder="0 = Free"></div>
+            <div class="field"><label>SC/ST</label><input type="number" name="fee_sc_st" min="0" placeholder="0 = Free"></div>
+        </div>
+
+        <div class="row-3">
+            <div class="field"><label>EWS</label><input type="number" name="fee_ews" min="0" placeholder="0 = Free"></div>
+            <div class="field"><label>Female</label><input type="number" name="fee_female" min="0" placeholder="0 = Free"></div>
+            <div class="field"></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3 style="font-size:1rem;margin-bottom:1rem;color:#1e3a5f;">Salary Range</h3>
+
+        <div class="row">
+            <div class="field"><label>Initial Salary (Annual INR) *</label><input type="number" name="salary_initial" min="0" required placeholder="e.g. 500000"></div>
+            <div class="field"><label>Maximum Salary (Annual INR)</label><input type="number" name="salary_max" min="0" placeholder="e.g. 800000"></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3 style="font-size:1rem;margin-bottom:1rem;color:#1e3a5f;">Source Information</h3>
+
+        <div class="field">
+            <label>Source URL *</label>
+            <input type="url" name="source_url" required placeholder="https://official-site.gov.in/notification.pdf">
+        </div>
+    </div>
+
+    <div style="display:flex;gap:.75rem;margin-top:.5rem;margin-bottom:2rem;">
+        <button type="submit" class="btn btn-primary">Create Job</button>
+        <a href="/jobs" class="btn btn-outline">Cancel</a>
+    </div>
+</form>
+{% endblock %}

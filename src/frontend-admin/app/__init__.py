@@ -182,7 +182,7 @@ def create_app():
 
     @app.route("/jobs/new", methods=["GET", "POST"])
     def new_job():
-        """Create a job vacancy directly (no PDF)."""
+        """Create a job vacancy (latest_job type)."""
         token = session.get("token")
         if not token:
             return redirect("/login")
@@ -191,7 +191,7 @@ def create_app():
             form = request.form.to_dict()
             payload = {}
             for f in ["job_title", "organization", "department", "job_type", "qualification_level",
-                      "description", "short_description", "source_url"]:
+                      "employment_type", "description", "short_description", "source_url"]:
                 if f in form:
                     payload[f] = form[f] or None
             for f in ["total_vacancies", "fee_general", "fee_obc", "fee_sc_st",
@@ -199,11 +199,13 @@ def create_app():
                 if f in form:
                     val = form[f].strip()
                     payload[f] = int(val) if val else None
-            for f in ["notification_date", "application_start", "application_end", "exam_start"]:
+            for f in ["notification_date", "application_start", "application_end", "exam_start", "exam_end", "result_date"]:
                 if f in form:
                     val = form[f].strip()
                     payload[f] = val if val else None
             payload["status"] = form.get("status", "draft")
+            payload["is_featured"] = form.get("is_featured") == "true"
+            payload["is_urgent"] = form.get("is_urgent") == "true"
 
             resp = current_app.api_client.post("/admin/jobs", token=token, json=payload)
             if resp.ok:
@@ -212,9 +214,118 @@ def create_app():
                 return redirect(f"/jobs/{job_id}/review")
             detail = resp.json().get("detail", "Failed to create job") if resp.headers.get("content-type", "").startswith("application/json") else "Failed to create job"
             flash(detail, "error")
-            return render_template("job_new.html")
+            return render_template("job_create.html")
 
-        return render_template("job_new.html")
+        return render_template("job_create.html")
+
+    @app.route("/admit-cards/new", methods=["GET", "POST"])
+    def new_admit_card():
+        """Create an admit card entry."""
+        token = session.get("token")
+        if not token:
+            return redirect("/login")
+
+        if request.method == "POST":
+            form = request.form.to_dict()
+            payload = {"job_type": "admit_card"}
+            for f in ["job_title", "organization", "department", "qualification_level",
+                      "description", "short_description", "source_url"]:
+                if f in form:
+                    payload[f] = form[f] or None
+            for f in ["total_vacancies"]:
+                if f in form:
+                    val = form[f].strip()
+                    payload[f] = int(val) if val else None
+            for f in ["notification_date", "application_start", "application_end", "exam_start", "exam_end"]:
+                if f in form:
+                    val = form[f].strip()
+                    payload[f] = val if val else None
+            payload["status"] = form.get("status", "draft")
+            payload["is_featured"] = form.get("is_featured") == "true"
+            payload["is_urgent"] = form.get("is_urgent") == "true"
+
+            resp = current_app.api_client.post("/admin/jobs", token=token, json=payload)
+            if resp.ok:
+                job_id = resp.json().get("id")
+                flash("Admit card created successfully.", "success")
+                return redirect(f"/jobs/{job_id}/review")
+            detail = resp.json().get("detail", "Failed to create admit card") if resp.headers.get("content-type", "").startswith("application/json") else "Failed to create admit card"
+            flash(detail, "error")
+            return render_template("admitcard_create.html")
+
+        return render_template("admitcard_create.html")
+
+    @app.route("/answer-keys/new", methods=["GET", "POST"])
+    def new_answer_key():
+        """Create an answer key entry."""
+        token = session.get("token")
+        if not token:
+            return redirect("/login")
+
+        if request.method == "POST":
+            form = request.form.to_dict()
+            payload = {"job_type": "answer_key"}
+            for f in ["job_title", "organization", "department", "qualification_level",
+                      "description", "short_description", "source_url"]:
+                if f in form:
+                    payload[f] = form[f] or None
+            for f in ["total_vacancies"]:
+                if f in form:
+                    val = form[f].strip()
+                    payload[f] = int(val) if val else None
+            for f in ["notification_date", "application_start", "application_end", "exam_start", "result_date"]:
+                if f in form:
+                    val = form[f].strip()
+                    payload[f] = val if val else None
+            payload["status"] = form.get("status", "draft")
+            payload["is_featured"] = form.get("is_featured") == "true"
+
+            resp = current_app.api_client.post("/admin/jobs", token=token, json=payload)
+            if resp.ok:
+                job_id = resp.json().get("id")
+                flash("Answer key created successfully.", "success")
+                return redirect(f"/jobs/{job_id}/review")
+            detail = resp.json().get("detail", "Failed to create answer key") if resp.headers.get("content-type", "").startswith("application/json") else "Failed to create answer key"
+            flash(detail, "error")
+            return render_template("answerkey_create.html")
+
+        return render_template("answerkey_create.html")
+
+    @app.route("/results/new", methods=["GET", "POST"])
+    def new_result():
+        """Create a result entry."""
+        token = session.get("token")
+        if not token:
+            return redirect("/login")
+
+        if request.method == "POST":
+            form = request.form.to_dict()
+            payload = {"job_type": "result"}
+            for f in ["job_title", "organization", "department", "qualification_level",
+                      "description", "short_description", "source_url"]:
+                if f in form:
+                    payload[f] = form[f] or None
+            for f in ["total_vacancies"]:
+                if f in form:
+                    val = form[f].strip()
+                    payload[f] = int(val) if val else None
+            for f in ["notification_date", "application_start", "application_end", "exam_start", "result_date"]:
+                if f in form:
+                    val = form[f].strip()
+                    payload[f] = val if val else None
+            payload["status"] = form.get("status", "draft")
+            payload["is_featured"] = form.get("is_featured") == "true"
+
+            resp = current_app.api_client.post("/admin/jobs", token=token, json=payload)
+            if resp.ok:
+                job_id = resp.json().get("id")
+                flash("Result created successfully.", "success")
+                return redirect(f"/jobs/{job_id}/review")
+            detail = resp.json().get("detail", "Failed to create result") if resp.headers.get("content-type", "").startswith("application/json") else "Failed to create result"
+            flash(detail, "error")
+            return render_template("result_create.html")
+
+        return render_template("result_create.html")
 
     @app.route("/jobs/<job_id>/delete", methods=["POST"])
     def delete_job(job_id):
