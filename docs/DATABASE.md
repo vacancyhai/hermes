@@ -4,29 +4,19 @@ This document outlines the PostgreSQL database schema for the Hermes project, us
 
 ## Migration
 
-Schema is managed through 4 Alembic migrations + 1 SQL migration:
+Schema is managed through a single consolidated SQL migration:
 
 | Migration | Description |
 |-----------|-------------|
-| `0001_initial_schema.py` | All core tables (users, profiles, jobs, applications, notifications, devices, admin, logs) |
-| `0002_add_telegram_channel.py` | Adds `telegram` to `ck_delivery_channel` CHECK constraint |
-| `0003_job_documents_tables.py` | Creates `admit_cards`, `answer_keys`, `results` linked to jobs |
-| `0004_entrance_exams.py` | Creates `entrance_exams`; adds `exam_id` FK + CHECK constraint to doc tables |
-| `007_rename_exam_db_objects.sql` | Renames indexes and constraints from `exam` to `entrance_exam` prefix |
-| `008_remove_job_type_variants.sql` | Removes `admit_card`, `answer_key`, `result` from `jobs`; restricts to `latest_job` only |
-| `009_rename_tables_clean.sql` | Rename tables: `job_vacancies`→`jobs`, `user_job_applications`→`applications`, `job_admit_cards`→`admit_cards`, `job_answer_keys`→`answer_keys`, `job_results`→`results` |
-| `010_drop_job_type_column.sql` | Drop `job_type` column from `jobs` table (no longer needed) |
+| `0001_initial.sql` | Complete database schema with all 13 tables (users, admin_users, user_profiles, jobs, applications, notifications, admin_logs, user_devices, notification_delivery_log, entrance_exams, admit_cards, answer_keys, results) |
 
 **Fresh install:**
 ```bash
-docker exec -w /app -e PYTHONPATH=/app hermes_backend alembic upgrade head
-# Creates all 14 tables in sequence (0001 → 0004)
+# Run the consolidated migration directly
+docker exec -i hermes_postgresql psql -U hermes_user -d hermes_db < migrations/0001_initial.sql
 ```
 
-**Existing database** (already at 0003):
-```bash
-docker exec -w /app -e PYTHONPATH=/app hermes_backend alembic upgrade 0004
-```
+**Note:** This consolidated migration represents the final state of the database after all previous incremental migrations (0001-0005 Alembic + 007-010 SQL migrations). Existing databases should already be at this state.
 
 ---
 
