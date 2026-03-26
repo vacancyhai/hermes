@@ -151,7 +151,7 @@ The `conftest.py` now includes a session-scoped `truncate_all_tables` autouse fi
 | File | Tests | Covers |
 |------|-------|--------|
 | `unit/test_api_client.py` | 18 | All methods including `post_file` (timeout, headers, files) |
-| `integration/test_routes.py` | 70 | All routes: dashboard (analytics for admin vs operator), jobs, new job, job delete, PDF upload, draft review, users, user detail, role management, logs |
+| `integration/test_routes.py` | 70 | All routes: dashboard (analytics for admin vs operator), jobs, new job, job delete, PDF extraction, draft review, users, user detail, role management, logs |
 
 ### Why Some Admin Frontend Lines Are Uncovered
 

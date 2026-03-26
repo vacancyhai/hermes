@@ -385,52 +385,51 @@ Admin creates a job via `POST /api/v1/admin/jobs`. The job is created with
 `source='manual'` and `status='active'` (published immediately). This is the
 only method available in v1.
 
-### Phase 2: PDF Upload → AI Extraction → Review → Publish (Implemented)
+### Phase 2: PDF Inline Extraction → Form Auto-Fill → Publish (Implemented)
 
 Government job notifications are published as PDF documents. Instead of
-manually typing every field, admin/operator uploads the notification PDF and
-AI extracts the structured data for review.
+manually typing every field, admin/operator can upload a PDF on creation pages
+and AI instantly extracts structured data to auto-fill the form.
 
 ```
-Admin/Operator uploads notification PDF
+Admin/Operator on creation page (/jobs/new, /admit-cards/new, etc.)
     │
     ▼
 ┌────────────────────────────────────────┐
-│ Celery task: extract_job_from_pdf        │
-│                                          │
-│ 1. Parse PDF text (PyMuPDF / pdfplumber)  │
-│ 2. Send extracted text to AI model        │
-│    (structured extraction prompt)         │
-│ 3. AI returns JSON:                       │
-│    - job_title, organization, department  │
-│    - eligibility (age, education, category)│
-│    - dates (application, exam, result)    │
-│    - vacancies, salary, fee               │
-│    - official PDF URL (source_url)        │
-│ 4. Create job_vacancies row:              │
-│    status = 'draft'                       │
-│    source = 'pdf_upload'                  │
-│    documents = [{type: "notification",    │
-│                   url: <stored PDF>}]     │
-└───────────────────┬────────────────────┘
-                    │
-                    ▼
+│ Upload PDF + Click "Extract Data"       │
+└────────────────┬───────────────────────┘
+                 │
+                 ▼
 ┌────────────────────────────────────────┐
-│ Review Page (Admin Frontend)             │
+│ POST /admin/jobs/extract-pdf             │
+│ (Synchronous processing)                 │
 │                                          │
-│ Shows AI-extracted data in an editable   │
-│ form pre-filled with all fields:         │
-│   ├─ Job title, org, department           │
-│   ├─ Eligibility (age, education, etc.)   │
-│   ├─ Dates (application, exam, result)    │
-│   ├─ Vacancies, salary, fee               │
-│   ├─ Original PDF (side-by-side view)     │
-│   └─ Confidence indicator per field       │
+│ 1. Parse PDF text (pdfplumber)           │
+│ 2. Send text to AI (Anthropic Claude)    │
+│ 3. AI returns JSON immediately:          │
+│    - job_title, organization, department │
+│    - eligibility, dates, vacancies       │
+│    - salary, fees, source_url            │
+│ 4. Return JSON to frontend               │
+│    (no database write)                   │
+└────────────────┬───────────────────────┘
+                 │
+                 ▼
+┌────────────────────────────────────────┐
+│ Frontend JavaScript Auto-Fills Form      │
+│                                          │
+│ All form fields populated with:          │
+│   ├─ Job title, org, department          │
+│   ├─ Eligibility (age, education, etc.)  │
+│   ├─ Dates (application, exam, result)   │
+│   ├─ Vacancies, salary, fee              │
+│   └─ Source URL                          │
 │                                          │
 │ Operator/Admin can:                      │
-│   ├─ Edit any incorrect field             │
-│   ├─ Add missing data                     │
-│   └─ Approve → status='active'            │
+│   ├─ Review all auto-filled data         │
+│   ├─ Edit any incorrect field            │
+│   ├─ Add missing data                    │
+│   └─ Submit → creates content in DB      │
 │        (triggers user notifications)     │
 └────────────────────────────────────────┘
 ```
@@ -441,20 +440,19 @@ Admin/Operator uploads notification PDF
 | --------- | ---------- | ------- |
 | PDF parsing | pdfplumber | Extract raw text from notification PDF |
 | AI extraction | Anthropic Claude API | Structured data extraction from text |
-| Storage | Docker volume (local disk) | Store uploaded PDF files |
-| Task queue | Celery (existing) | Async PDF processing |
+| Storage | Temporary files only | Immediate cleanup after extraction |
+| Processing | Synchronous (no queue) | Instant response to frontend |
 
-The AI extraction prompt would map PDF text to the `job_vacancies` schema
-fields. The review page shows the extracted data side-by-side with the
-original PDF so the operator can verify and correct before publishing.
+The AI extraction prompt maps PDF text to the `job_vacancies` schema
+fields. The creation form shows the extracted data inline, allowing
+immediate review and editing before submission.
 
-### API Endpoints for Ingestion
+### API Endpoints for PDF Extraction
 
 | Method | Endpoint                          | Description                    | Access   |
 | ------ | --------------------------------- | ------------------------------ | -------- |
-| POST   | `/api/v1/admin/jobs/upload-pdf`   | Upload PDF → trigger extraction | Admin    |
+| POST   | `/api/v1/admin/jobs/extract-pdf`  | Extract PDF → return JSON      | Operator+ |
 | GET    | `/api/v1/admin/jobs?status=draft` | List draft jobs for review     | Operator |
-| GET    | `/api/v1/admin/jobs/:id/review`   | Get draft with AI-extracted data | Operator |
 | PUT    | `/api/v1/admin/jobs/:id/approve`  | Approve draft → active         | Operator |
 
 ---
@@ -892,7 +890,7 @@ All items below are implemented.
   | Update job | `update_job` — full before/after diff per field |
   | Approve job | `approve_job` — job title |
   | Delete job (soft) | `delete_job` — job title |
-  | PDF upload | `upload_pdf` — filename |
+  | Extract PDF | `extract_pdf` — filename |
   | Suspend/activate user | `update_user_status` — old → new status |
   | Change admin role | `update_user_role` — old → new role |
 

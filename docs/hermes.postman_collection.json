@@ -579,10 +579,10 @@
 					}
 				},
 				{
-					"name": "Upload PDF (AI Extraction)",
+					"name": "Extract PDF Data (Form Auto-Fill)",
 					"request": {
 						"method": "POST",
-						"url": "{{base_url}}/admin/jobs/upload-pdf",
+						"url": "{{base_url}}/admin/jobs/extract-pdf",
 						"header": [
 							{
 								"key": "Authorization",
@@ -596,11 +596,12 @@
 									"key": "file",
 									"type": "file",
 									"src": "",
-									"description": "PDF notification file (max 10MB)"
+									"description": "PDF notification file (max 10MB) - returns JSON immediately"
 								}
 							]
 						}
-					}
+					},
+					"response": []
 				}
 			]
 		},
