@@ -1,0 +1,65 @@
+{% if jobs %}
+{% for result in jobs %}
+<div class="job-card card-result">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem">
+        <div style="flex:1;min-width:0">
+            <div class="badges" style="margin-bottom:.4rem">
+                <span class="card-type-tag card-result">🏆 Result</span>
+                {% if result.phase_number %}<span class="badge" style="background:#dbeafe;color:#1e40af">Phase {{ result.phase_number }}</span>{% endif %}
+                {% if result.result_type == 'shortlist' %}<span class="badge" style="background:#fef3c7;color:#92400e">Shortlist</span>
+                {% elif result.result_type == 'cutoff' %}<span class="badge" style="background:#e0e7ff;color:#3730a3">Cut-off</span>
+                {% elif result.result_type == 'merit_list' %}<span class="badge" style="background:#ddd6fe;color:#5b21b6">Merit List</span>
+                {% elif result.result_type == 'final' %}<span class="badge" style="background:#d1fae5;color:#065f46">✓ Final</span>{% endif %}
+            </div>
+            <h3 style="margin-bottom:.2rem">
+                {% if result.download_url %}
+                <a href="{{ result.download_url }}" target="_blank" rel="noopener" style="color:#1e293b;font-size:1rem">{{ result.title }}</a>
+                {% else %}
+                <span style="color:#1e293b;font-size:1rem">{{ result.title }}</span>
+                {% endif %}
+            </h3>
+            <div style="display:flex;flex-wrap:wrap;gap:.6rem;align-items:center;margin-top:.35rem">
+                {% if result.total_qualified %}
+                <span class="meta-pill pill-green">✓ {{ '{:,}'.format(result.total_qualified) }} Qualified</span>
+                {% endif %}
+                {% if result.cutoff_marks %}
+                <span style="font-size:.78rem;color:#64748b">📊 Cut-off marks available</span>
+                {% endif %}
+            </div>
+            {% if result.notes %}
+            <div style="font-size:.825rem;color:#64748b;line-height:1.45;margin-top:.35rem">
+                {{ result.notes[:150] }}{% if result.notes|length > 150 %}&hellip;{% endif %}
+            </div>
+            {% endif %}
+        </div>
+        {% if result.download_url %}
+        <a href="{{ result.download_url }}" target="_blank" rel="noopener"
+            style="flex-shrink:0;font-size:.75rem;padding:.3rem .65rem;border-radius:.375rem;border:1px solid #16a34a;background:#16a34a;color:#fff;cursor:pointer;white-space:nowrap;text-decoration:none">
+            📥 Download
+        </a>
+        {% endif %}
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;margin-top:.35rem">
+        {% if result.published_at %}<span style="font-size:.78rem;color:#64748b">Released: {{ result.published_at[:10] }}</span>{% endif %}
+    </div>
+</div>
+{% endfor %}
+
+{% if pagination.get('has_more') %}
+<div class="load-more">
+    <button class="btn btn-outline"
+            hx-get="/results?offset={{ pagination.get('offset', 0) + pagination.get('limit', 20) }}{% if params.get('q') %}&q={{ params.q }}{% endif %}{% if params.get('organization') %}&organization={{ params.organization }}{% endif %}"
+            hx-target="#job-list"
+            hx-swap="beforeend"
+            hx-indicator=".htmx-indicator">
+        Load more
+    </button>
+    <div class="htmx-indicator" style="color:#94a3b8;margin-top:.5rem">Loading…</div>
+</div>
+{% endif %}
+
+{% else %}
+<div class="empty">
+    <p>No results found{% if params.get('q') %} for &ldquo;{{ params.q }}&rdquo;{% endif %}. Try adjusting your search.</p>
+</div>
+{% endif %}
