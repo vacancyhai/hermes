@@ -1,14 +1,14 @@
 {% if jobs %}
 {% for job in jobs %}
-{% if card_type == 'admit_card' %}{% set _cls = 'card-admit' %}{% set _ppill = 'pill-blue' %}
-{% elif card_type == 'answer_key' %}{% set _cls = 'card-answer' %}{% set _ppill = 'pill-amber' %}
-{% elif card_type == 'result' %}{% set _cls = 'card-result' %}{% set _ppill = 'pill-green' %}
-{% else %}{% set _cls = 'card-latest' %}{% set _ppill = 'pill-purple' %}{% endif %}
+{% if card_type == 'admit_card' %}{% set _cls = 'card-admit' %}{% set _label = 'Admit Card' %}
+{% elif card_type == 'answer_key' %}{% set _cls = 'card-answer' %}{% set _label = 'Answer Key' %}
+{% elif card_type == 'result' %}{% set _cls = 'card-result' %}{% set _label = 'Result' %}
+{% else %}{% set _cls = 'card-latest' %}{% set _label = 'Job' %}{% endif %}
 <div class="job-card {{ _cls }}">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem">
         <div style="flex:1;min-width:0">
             <div class="badges" style="margin-bottom:.4rem">
-                <span class="card-type-tag {{ _cls }} ">{{ card_type | replace('_', ' ') | title }}</span>
+                <span class="card-type-tag {{ _cls }} ">{{ _label }}</span>
                 {% if job.is_featured %}<span class="badge badge-featured">Featured</span>{% endif %}
                 {% if job.is_urgent %}<span class="badge badge-urgent">🔥 Urgent</span>{% endif %}
             </div>

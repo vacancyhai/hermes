@@ -86,7 +86,7 @@ def create_app():
             params.pop("recommended", None)
             resp = current_app.api_client.get("/jobs", params=params)
         data = resp.json() if resp.ok else {"data": [], "pagination": {}}
-        return render_template("index.html", jobs=data["data"], pagination=data.get("pagination", {}), params=params, card_type="latest_job")
+        return render_template("jobs/index.html", jobs=data["data"], pagination=data.get("pagination", {}), params=params, card_type="latest_job")
 
     @app.route("/jobs")
     def job_list_partial():
@@ -99,7 +99,7 @@ def create_app():
             params.pop("recommended", None)
             resp = current_app.api_client.get("/jobs", params=params)
         data = resp.json() if resp.ok else {"data": [], "pagination": {}}
-        return render_template("_job_cards.html", jobs=data["data"], pagination=data.get("pagination", {}), params=params, card_type="latest_job")
+        return render_template("jobs/_job_cards.html", jobs=data["data"], pagination=data.get("pagination", {}), params=params, card_type="latest_job")
 
     @app.route("/admit-cards")
     def admit_cards():
@@ -107,7 +107,7 @@ def create_app():
         params = _job_params()
         resp = current_app.api_client.get("/admit-cards", params=params)
         data = resp.json() if resp.ok else {"data": [], "pagination": {}}
-        return render_template("admit_cards.html", jobs=data["data"], pagination=data.get("pagination", {}), params=params, card_type="admit_card")
+        return render_template("admit_cards/admit_cards.html", jobs=data["data"], pagination=data.get("pagination", {}), params=params, card_type="admit_card")
 
     @app.route("/answer-keys")
     def answer_keys():
@@ -115,7 +115,7 @@ def create_app():
         params = _job_params()
         resp = current_app.api_client.get("/answer-keys", params=params)
         data = resp.json() if resp.ok else {"data": [], "pagination": {}}
-        return render_template("answer_keys.html", jobs=data["data"], pagination=data.get("pagination", {}), params=params, card_type="answer_key")
+        return render_template("answer_keys/answer_keys.html", jobs=data["data"], pagination=data.get("pagination", {}), params=params, card_type="answer_key")
 
     @app.route("/results")
     def results():
@@ -123,37 +123,37 @@ def create_app():
         params = _job_params()
         resp = current_app.api_client.get("/results", params=params)
         data = resp.json() if resp.ok else {"data": [], "pagination": {}}
-        return render_template("results.html", jobs=data["data"], pagination=data.get("pagination", {}), params=params, card_type="result")
+        return render_template("results/results.html", jobs=data["data"], pagination=data.get("pagination", {}), params=params, card_type="result")
 
     @app.route("/jobs/<slug>")
     def job_detail(slug):
         """Job detail page."""
         resp = current_app.api_client.get(f"/jobs/{slug}")
         if not resp.ok:
-            return render_template("404.html"), 404
+            return render_template("shared/404.html"), 404
         job = resp.json()
-        return render_template("job_detail.html", job=job)
+        return render_template("jobs/job_detail.html", job=job)
 
     @app.route("/partials/jobs/<job_id>/admit-cards")
     def partials_admit_cards(job_id):
         """HTMX partial — per-phase admit cards panel for job_detail."""
         resp = current_app.api_client.get(f"/jobs/{job_id}/admit-cards")
         docs = resp.json() if resp.ok else []
-        return render_template("_admit_cards_panel.html", docs=docs)
+        return render_template("admit_cards/_admit_cards_panel.html", docs=docs)
 
     @app.route("/partials/jobs/<job_id>/answer-keys")
     def partials_answer_keys(job_id):
         """HTMX partial — per-phase answer keys panel for job_detail."""
         resp = current_app.api_client.get(f"/jobs/{job_id}/answer-keys")
         docs = resp.json() if resp.ok else []
-        return render_template("_answer_keys_panel.html", docs=docs)
+        return render_template("answer_keys/_answer_keys_panel.html", docs=docs)
 
     @app.route("/partials/jobs/<job_id>/results")
     def partials_results(job_id):
         """HTMX partial — per-phase results panel for job_detail."""
         resp = current_app.api_client.get(f"/jobs/{job_id}/results")
         docs = resp.json() if resp.ok else []
-        return render_template("_results_panel.html", docs=docs)
+        return render_template("results/_results_panel.html", docs=docs)
 
     @app.route("/entrance-exams")
     def entrance_exams():
@@ -167,7 +167,7 @@ def create_app():
         params["offset"] = _int_arg("offset", 0)
         resp = current_app.api_client.get("/entrance-exams", params=params)
         data = resp.json() if resp.ok else {"data": [], "pagination": {}}
-        return render_template("entrance_exams.html", exams=data["data"], pagination=data.get("pagination", {}), params=params)
+        return render_template("entrance_exams/entrance_exams.html", exams=data["data"], pagination=data.get("pagination", {}), params=params)
 
     @app.route("/entrance-exams/partial")
     def entrance_exams_partial():
@@ -181,37 +181,37 @@ def create_app():
         params["offset"] = _int_arg("offset", 0)
         resp = current_app.api_client.get("/entrance-exams", params=params)
         data = resp.json() if resp.ok else {"data": [], "pagination": {}}
-        return render_template("_exam_cards.html", exams=data["data"], pagination=data.get("pagination", {}), params=params)
+        return render_template("entrance_exams/_exam_cards.html", exams=data["data"], pagination=data.get("pagination", {}), params=params)
 
     @app.route("/entrance-exams/<slug>")
     def entrance_exam_detail(slug):
         """Entrance exam detail page."""
         resp = current_app.api_client.get(f"/entrance-exams/{slug}")
         if not resp.ok:
-            return render_template("404.html"), 404
+            return render_template("shared/404.html"), 404
         exam = resp.json()
-        return render_template("entrance_exam_detail.html", exam=exam)
+        return render_template("entrance_exams/entrance_exam_detail.html", exam=exam)
 
     @app.route("/partials/exams/<exam_id>/admit-cards")
     def partials_exam_admit_cards(exam_id):
         """HTMX partial — per-phase admit cards for admission_detail."""
         resp = current_app.api_client.get(f"/entrance-exams/{exam_id}/admit-cards")
         docs = resp.json() if resp.ok else []
-        return render_template("_admit_cards_panel.html", docs=docs)
+        return render_template("admit_cards/_admit_cards_panel.html", docs=docs)
 
     @app.route("/partials/exams/<exam_id>/answer-keys")
     def partials_exam_answer_keys(exam_id):
         """HTMX partial — per-phase answer keys for admission_detail."""
         resp = current_app.api_client.get(f"/entrance-exams/{exam_id}/answer-keys")
         docs = resp.json() if resp.ok else []
-        return render_template("_answer_keys_panel.html", docs=docs)
+        return render_template("answer_keys/_answer_keys_panel.html", docs=docs)
 
     @app.route("/partials/exams/<exam_id>/results")
     def partials_exam_results(exam_id):
         """HTMX partial — per-phase results for admission_detail."""
         resp = current_app.api_client.get(f"/entrance-exams/{exam_id}/results")
         docs = resp.json() if resp.ok else []
-        return render_template("_results_panel.html", docs=docs)
+        return render_template("results/_results_panel.html", docs=docs)
 
     # --- Application Dashboard ---
 
@@ -220,7 +220,7 @@ def create_app():
         """Application tracking dashboard — requires login."""
         token = session.get("token")
         if not token:
-            return render_template("login.html", next="/dashboard")
+            return render_template("auth/login.html", next="/dashboard")
 
         # Fetch stats (refresh token on 401)
         stats_resp = current_app.api_client.get("/applications/stats", token=token)
@@ -241,7 +241,7 @@ def create_app():
         apps_data = apps_resp.json() if apps_resp.ok else {"data": [], "pagination": {}}
 
         return render_template(
-            "dashboard.html",
+            "dashboard/dashboard.html",
             stats=stats,
             applications=apps_data["data"],
             pagination=apps_data.get("pagination", {}),
@@ -307,7 +307,7 @@ def create_app():
         apps_data = apps_resp.json() if apps_resp.ok else {"data": [], "pagination": {}}
 
         return render_template(
-            "_application_rows.html",
+            "dashboard/_application_rows.html",
             applications=apps_data["data"],
             pagination=apps_data.get("pagination", {}),
             current_status=status_filter,
@@ -320,7 +320,7 @@ def create_app():
         """Notifications page — requires login."""
         token = session.get("token")
         if not token:
-            return render_template("login.html", next="/notifications")
+            return render_template("auth/login.html", next="/notifications")
 
         # Fetch unread count (refresh token on 401)
         count_resp = current_app.api_client.get("/notifications/count", token=token)
@@ -337,7 +337,7 @@ def create_app():
         notif_data = notif_resp.json() if notif_resp.ok else {"data": [], "pagination": {}}
 
         return render_template(
-            "notifications.html",
+            "notifications/notifications.html",
             notifications=notif_data["data"],
             pagination=notif_data.get("pagination", {}),
             unread_count=unread_count,
@@ -359,7 +359,7 @@ def create_app():
         next_offset = params["offset"] + params["limit"] if has_more else 0
 
         return render_template(
-            "_notif_items.html",
+            "notifications/_notif_items.html",
             notifications=notif_data["data"],
             has_more=has_more,
             next_offset=next_offset,
@@ -405,7 +405,7 @@ def create_app():
 
     @app.route("/offline")
     def offline():
-        return render_template("offline.html")
+        return render_template("shared/offline.html")
 
     # --- Profile (Phase 10b + 10c + 10f) ---
 
@@ -458,7 +458,7 @@ def create_app():
         user_data = resp.json() if resp.ok else {}
         following_resp = current_app.api_client.get("/users/me/following", token=token)
         following = following_resp.json().get("followed_organizations", []) if following_resp.ok else []
-        return render_template("profile.html", 
+        return render_template("auth/profile.html", 
             user=user_data, 
             profile=user_data.get("profile", {}), 
             following=following,
@@ -725,7 +725,7 @@ def create_app():
     @app.route("/login")
     def login():
         """Render Firebase-powered login page."""
-        return render_template("login.html",
+        return render_template("auth/login.html",
             next=request.args.get("next", "/dashboard"),
             firebase_api_key=os.environ.get("FIREBASE_WEB_API_KEY", ""),
             firebase_auth_domain=os.environ.get("FIREBASE_AUTH_DOMAIN", ""),
@@ -761,7 +761,7 @@ def create_app():
     @app.errorhandler(Exception)
     def handle_unexpected_error(exc):
         app.logger.error("Unhandled exception: %s", exc, exc_info=True)
-        return render_template("404.html"), 500
+        return render_template("shared/404.html"), 500
 
     return app
 

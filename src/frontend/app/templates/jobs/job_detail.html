@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "shared/base.html" %}
 
 {% block title %}{{ job.job_title }} | {{ job.organization }} | Hermes{% endblock %}
 
@@ -41,7 +41,7 @@
 
 <div class="detail-hero {{ hero_cls }}">
     <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.5rem">
-        <span class="card-type-tag" style="background:rgba(255,255,255,.2);color:#fff">Latest Job</span>
+        <span class="card-type-tag" style="background:rgba(255,255,255,.2);color:#fff">Job</span>
         {% if job.is_featured %}<span class="badge badge-featured">Featured</span>{% endif %}
         {% if job.is_urgent %}<span class="badge badge-urgent">Urgent</span>{% endif %}
     </div>
