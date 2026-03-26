@@ -16,7 +16,7 @@ notifications, and an admin panel.
 > **Latest additions:** Separate `entrance_exams` table for admission/entrance exams (NEET, JEE, CLAT, CAT, GATE, CUET etc.)
 > decoupled from `job_vacancies`; polymorphic document tables (`job_admit_cards`, `job_answer_keys`, `job_results`) now
 > support both jobs and entrance exams via `job_id`/`exam_id` FK; 5-section frontend navigation
-> (Jobs / Admit Cards / Answer Keys / Results / Admissions); type-aware gradient detail pages with shared
+> (Jobs / Admit Cards / Answer Keys / Results / Entrance Exams); type-aware gradient detail pages with shared
 > CSS design system; single Web Share API button replacing WhatsApp/Telegram share links; 9 entrance exam seed
 > entries with full metadata and 32 linked phase documents.
 
@@ -95,13 +95,13 @@ PostgreSQL and Redis are isolated inside Docker networks — never exposed to th
   `seats_info`, eligibility, exam pattern — 9 exams seeded with full metadata
 - **Polymorphic Document Tables** — `job_admit_cards`, `job_answer_keys`, `job_results` link to
   either a job (`job_id`) or entrance exam (`exam_id`) via DB CHECK constraint; 32 phase docs seeded
-- **5-Section Navigation** — Jobs, Admit Cards, Answer Keys, Results, Admissions — each with its own
+- **5-Section Navigation** — Jobs, Admit Cards, Answer Keys, Results, Entrance Exams — each with its own
   section page, search, and type-matching gradient hero color
 - **Unified Detail Pages** — Type-aware gradient heroes (navy/blue/amber/green/purple per section);
   structured sections for eligibility, selection process, exam pattern, vacancy breakdown, fee table;
   Web Share API button (with clipboard fallback) replacing WhatsApp/Telegram links
 - **HTMX Doc Tabs** — Per-phase admit cards, answer keys, and results loaded on-demand in tabbed
-  panels on both job detail and admission detail pages
+  panels on both job detail and entrance exam detail pages
 - **Social Share** — Single Share button (Web Share API + clipboard fallback) on every card and detail page
 - **Fee by Category** — Shows personalised application fee (₹0 for SC/ST/EWS,
   reduced for OBC) based on the logged-in user's category
@@ -195,7 +195,7 @@ hermes/
 │   │   │   │   ├── notifications.py  # /api/v1/notifications/*
 │   │   │   │   ├── admin.py          # /api/v1/admin/*
 │   │   │   │   ├── job_documents.py  # /api/v1/jobs/{id}/admit-cards|answer-keys|results
-│   │   │   │   ├── entrance_exams.py # /api/v1/exams/* + /api/v1/admin/exams/*
+│   │   │   │   ├── entrance_exams.py # /api/v1/entrance-exams/* + /api/v1/admin/entrance-exams/*
 │   │   │   │   └── health.py         # /api/v1/health
 │   │   │   ├── models/           # SQLAlchemy 2.0 Mapped models (14 tables, see DATABASE.md)
 │   │   │   ├── schemas/          # Pydantic v2 request/response models
@@ -214,7 +214,7 @@ hermes/
 │   ├── frontend/                 # User Frontend (Flask + HTMX + Alpine.js, port 8080)
 │   │   ├── app/
 │   │   │   ├── __init__.py       # All routes: /, /admit-cards, /answer-keys, /results,
-│   │   │   │                     # /admissions, /admissions/<slug>, /jobs/<slug>,
+│   │   │   │                     # /entrance-exams, /entrance-exams/<slug>, /jobs/<slug>,
 │   │   │   │                     # /partials/*, /dashboard, /notifications, /profile, /login
 │   │   │   ├── api_client.py     # HTTP client for backend API (10s timeout)
 │   │   │   ├── static/           # PWA: manifest.json, sw.js, icons
@@ -222,9 +222,9 @@ hermes/
 │   │   └── tests/                # 80 tests — 91% coverage
 │   ├── frontend-admin/           # Admin Frontend (Flask + HTMX, port 8081)
 │   │   ├── app/
-│   │   │   ├── __init__.py       # Routes: dashboard, jobs CRUD, exams CRUD, users, logs
+│   │   │   ├── __init__.py       # Routes: dashboard, jobs CRUD, entrance exams CRUD, users, logs
 │   │   │   ├── api_client.py     # Same as frontend + post_file() for PDF uploads
-│   │   │   └── templates/        # 15+ templates including exam_edit.html, job_review.html
+│   │   │   └── templates/        # 15+ templates including entrance exam edit, job review
 │   │   └── tests/                # 88 tests — 97% coverage
 │   ├── mobile-app/               # React Native pre-work (Phase 9 — planned)
 │   │   ├── google-services.json  # Android Firebase config (com.hermes.app)

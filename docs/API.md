@@ -656,7 +656,7 @@ The user frontend supports Progressive Web App features:
 
 ---
 
-## Entrance Exams (Admissions)
+## Entrance Exams
 
 Entrance / admission exams (NEET, JEE, CLAT, CAT, GATE, CUET etc.) are stored separately from `job_vacancies`.
 They have exam-specific fields: `stream`, `exam_type`, `counselling_body`, `seats_info`, exam pattern.
@@ -665,13 +665,13 @@ They have exam-specific fields: `stream`, `exam_type`, `counselling_body`, `seat
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/exams` | List active entrance exams (stream/exam_type/search filters) |
-| GET | `/exams/{slug}` | Exam detail by slug (increments views) |
-| GET | `/exams/{exam_id}/admit-cards` | Per-phase admit cards (exam status must not be `cancelled`) |
-| GET | `/exams/{exam_id}/answer-keys` | Per-phase answer keys (exam status must not be `cancelled`) |
-| GET | `/exams/{exam_id}/results` | Per-phase results (exam status must not be `cancelled`) |
+| GET | `/entrance-exams` | List active entrance exams (stream/exam_type/search filters) |
+| GET | `/entrance-exams/{slug}` | Exam detail by slug (increments views) |
+| GET | `/entrance-exams/{exam_id}/admit-cards` | Per-phase admit cards (exam status must not be `cancelled`) |
+| GET | `/entrance-exams/{exam_id}/answer-keys` | Per-phase answer keys (exam status must not be `cancelled`) |
+| GET | `/entrance-exams/{exam_id}/results` | Per-phase results (exam status must not be `cancelled`) |
 
-**Query Parameters for `GET /exams`:**
+**Query Parameters for `GET /entrance-exams`:**
 
 | Param | Type | Description |
 |-------|------|-------------|
@@ -688,24 +688,24 @@ They have exam-specific fields: `stream`, `exam_type`, `counselling_body`, `seat
 
 | Method | Endpoint | Description |
 |--------|----------|-----------|
-| GET | `/admin/exams` | List all exams (any status, filterable by stream/exam_type/status) |
-| GET | `/admin/exams/{id}` | Get single exam detail by ID (any status) |
-| POST | `/admin/exams` | Create entrance exam |
-| PUT | `/admin/exams/{id}` | Update entrance exam |
-| DELETE | `/admin/exams/{id}` | Delete entrance exam (cascades to linked docs) |
-| POST | `/admin/exams/{id}/admit-cards` | Add admit card to exam |
-| PUT | `/admin/exams/{id}/admit-cards/{doc_id}` | Update admit card |
-| DELETE | `/admin/exams/{id}/admit-cards/{doc_id}` | Delete admit card |
-| POST | `/admin/exams/{id}/answer-keys` | Add answer key |
-| PUT | `/admin/exams/{id}/answer-keys/{doc_id}` | Update answer key |
-| DELETE | `/admin/exams/{id}/answer-keys/{doc_id}` | Delete answer key |
-| POST | `/admin/exams/{id}/results` | Add result |
-| PUT | `/admin/exams/{id}/results/{doc_id}` | Update result |
-| DELETE | `/admin/exams/{id}/results/{doc_id}` | Delete result |
+| GET | `/admin/entrance-exams` | List all exams (any status, filterable by stream/exam_type/status) |
+| GET | `/admin/entrance-exams/{id}` | Get single exam detail by ID (any status) |
+| POST | `/admin/entrance-exams` | Create entrance exam |
+| PUT | `/admin/entrance-exams/{id}` | Update entrance exam |
+| DELETE | `/admin/entrance-exams/{id}` | Delete entrance exam (cascades to linked docs) |
+| POST | `/admin/entrance-exams/{id}/admit-cards` | Add admit card to exam |
+| PUT | `/admin/entrance-exams/{id}/admit-cards/{doc_id}` | Update admit card |
+| DELETE | `/admin/entrance-exams/{id}/admit-cards/{doc_id}` | Delete admit card |
+| POST | `/admin/entrance-exams/{id}/answer-keys` | Add answer key |
+| PUT | `/admin/entrance-exams/{id}/answer-keys/{doc_id}` | Update answer key |
+| DELETE | `/admin/entrance-exams/{id}/answer-keys/{doc_id}` | Delete answer key |
+| POST | `/admin/entrance-exams/{id}/results` | Add result |
+| PUT | `/admin/entrance-exams/{id}/results/{doc_id}` | Update result |
+| DELETE | `/admin/entrance-exams/{id}/results/{doc_id}` | Delete result |
 
 ### Example — List Medical Entrance Exams
 ```
-GET /api/v1/exams?stream=medical&limit=10
+GET /api/v1/entrance-exams?stream=medical&limit=10
 → 200 {
   "data": [
     {
@@ -728,7 +728,7 @@ GET /api/v1/exams?stream=medical&limit=10
 
 ### Example — Create Entrance Exam (Admin)
 ```
-POST /api/v1/admin/exams
+POST /api/v1/admin/entrance-exams
 Authorization: Bearer <admin_token>
 {
   "exam_name": "JEE Advanced 2026",

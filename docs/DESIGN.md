@@ -236,7 +236,7 @@ All endpoints versioned under `/api/v1/`. List responses: `{ "data": [...], "pag
 | `notifications.py` | `/api/v1/notifications` | List, count, mark read, delete |
 | `admin.py` | `/api/v1/admin` | Job CRUD + approve, user mgmt, analytics, audit logs, admin-user creation |
 | `job_documents.py` | `/api/v1/jobs/{id}`, `/api/v1/admin/jobs/{id}` | Per-job admit cards, answer keys, results |
-| `entrance_exams.py` | `/api/v1/exams`, `/api/v1/admin/exams` | Public exam listing + detail; admin exam CRUD + per-exam docs |
+| `entrance_exams.py` | `/api/v1/entrance-exams`, `/api/v1/admin/entrance-exams` | Public exam listing + detail; admin exam CRUD + per-exam docs |
 | `health.py` | `/api/v1/health` | Service health check |
 
 ---
@@ -651,7 +651,7 @@ The user frontend is organized into 5 main sections, each with its own page, sea
 | Admit Cards | `/admit-cards` | Exam admit cards | Sky Blue | `job_admit_cards` |
 | Answer Keys | `/answer-keys` | Answer keys | Brown → Amber | `job_answer_keys` |
 | Results | `/results` | Exam results | Dark Green → Green | `job_results` |
-| Admissions | `/admissions` | Entrance exams | Dark Purple → Purple | `entrance_exams` |
+| Entrance Exams | `/entrance-exams` | Entrance exams | Dark Purple → Purple | `entrance_exams` |
 
 ### Type-Aware Design System
 

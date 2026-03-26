@@ -105,8 +105,8 @@ The following Phase 12 features currently have **zero test coverage**:
 |---------|---------------|----------|
 | `entrance_exams.py` router | Public exam listing, exam detail by slug, exam document endpoints | High |
 | `job_documents.py` router | Public document endpoints, admin CRUD for admit cards/answer keys/results | High |
-| Frontend route `/admissions` | Admissions section page, exam filters, exam cards | Medium |
-| Frontend route `/admissions/<slug>` | Exam detail page, document tabs, exam-specific UI | Medium |
+| Frontend route `/entrance-exams` | Entrance exams section page, exam filters, exam cards | Medium |
+| Frontend route `/entrance-exams/<slug>` | Exam detail page, document tabs, exam-specific UI | Medium |
 | Frontend partials | `_exam_cards.html`, HTMX exam document loading | Medium |
 | Admin exam management | Exam CRUD, per-exam document management in admin UI | Medium |
 | Polymorphic document queries | Tests covering both `job_id` and `exam_id` paths | High |

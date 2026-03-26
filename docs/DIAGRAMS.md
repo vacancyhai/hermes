@@ -1579,7 +1579,7 @@ Suspicious Activity Detected
 
 ---
 
-## 13. Entrance Exam / Admissions Data Model
+## 13. Entrance Exam Data Model
 
 Entrance exams (NEET, JEE, CLAT, CAT, GATE, CUET etc.) are stored in a
 separate `entrance_exams` table, distinct from `job_vacancies`. The three
@@ -1588,7 +1588,7 @@ document tables (`job_admit_cards`, `job_answer_keys`, `job_results`) are
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────┐
-│              ENTRANCE EXAM / ADMISSIONS DATA MODEL                       │
+│              ENTRANCE EXAM DATA MODEL                                    │
 └──────────────────────────────────────────────────────────────────────────┘
 
   WHY SEPARATE?
@@ -1678,9 +1678,10 @@ listing page, gradient hero colour, and detail page design.
   SECTION NAV STRIP (shown on all pages):
   ─────────────────────────────────────────
   ┌───────────┬─────────────┬──────────────┬───────────┬──────────────┐
-  │ 💼 Jobs   │ 📄 Admit    │ ✏️ Answer    │ 🏆 Results│ 🎓 Admissions│
-  │     /     │  Cards      │   Keys       │ /results  │ /admissions  │
-  │           │/admit-cards │/answer-keys  │           │              │
+  │ 💼 Jobs   │ 📄 Admit    │ ✏️ Answer    │ 🏆 Results│ 🎓 Entrance  │
+  │     /     │  Cards      │   Keys       │ /results  │    Exams     │
+  │           │/admit-cards │/answer-keys  │           │/entrance-    │
+  │           │             │              │           │  exams       │
   └───────────┴─────────────┴──────────────┴───────────┴──────────────┘
   Active section highlighted with white border-bottom + white text
 
@@ -1692,7 +1693,7 @@ listing page, gradient hero colour, and detail page design.
   Admit Cards   /admit-cards     Blue → Sky Blue        job_vacancies (admit_card)
   Answer Keys   /answer-keys     Brown → Amber          job_vacancies (answer_key)
   Results       /results         Dark Green → Green     job_vacancies (result)
-  Admissions    /admissions      Dark Purple → Purple   entrance_exams
+  Entrance Exams /entrance-exams  Dark Purple → Purple   entrance_exams
 
   JOB CARD LEFT ACCENT (list pages):
   ────────────────────────────────────
@@ -1704,13 +1705,13 @@ listing page, gradient hero colour, and detail page design.
 
   DETAIL PAGE FLOW:
   ─────────────────
-  User clicks job card                  User clicks admission card
+  User clicks job card                  User clicks entrance exam card
         │                                       │
         ▼                                       ▼
-  GET /jobs/<slug>                       GET /admissions/<slug>
+  GET /jobs/<slug>                       GET /entrance-exams/<slug>
         │                                       │
         ▼                                       ▼
-  Flask renders job_detail.html          Flask renders admission_detail.html
+  Flask renders job_detail.html          Flask renders entrance_exam_detail.html
   (type-aware hero: hero-job /           (hero-admission: purple gradient)
    hero-admit / hero-answer /
    hero-result)
@@ -1791,7 +1792,7 @@ via HTMX into tabbed panels on job and admission detail pages.
         ▼
   FastAPI queries job_admit_cards WHERE job_id={id}
         │                 OR
-                    WHERE exam_id={id}  ← for admission_detail.html
+                    WHERE exam_id={id}  ← for entrance_exam_detail.html
         │
         ▼
   Returns list of admit card rows (JSON)
