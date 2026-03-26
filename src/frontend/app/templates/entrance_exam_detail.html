@@ -36,7 +36,7 @@
 {% endblock %}
 
 {% block content %}
-<a href="/admissions" class="back-link">← Admissions</a>
+<a href="/entrance-exams" class="back-link">← Entrance Exams</a>
 
 <div class="detail-hero hero-admission">
     <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.5rem">
@@ -52,7 +52,7 @@
             data-slug="{{ exam.slug }}"
             data-title="{{ exam.exam_name | e }}"
             style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3)"
-            onclick="(function(b){var u=window.location.origin+'/admissions/'+b.dataset.slug,t=b.dataset.title;if(navigator.share){navigator.share({title:t,url:u})}else{navigator.clipboard.writeText(u);var orig=b.textContent;b.textContent='\u2713 Copied';setTimeout(function(){b.textContent=orig},1800)}})(this)">
+            onclick="(function(b){var u=window.location.origin+'/entrance-exams/'+b.dataset.slug,t=b.dataset.title;if(navigator.share){navigator.share({title:t,url:u})}else{navigator.clipboard.writeText(u);var orig=b.textContent;b.textContent='\u2713 Copied';setTimeout(function(){b.textContent=orig},1800)}})(this)">
             Share
         </button>
         {% if exam.source_url %}

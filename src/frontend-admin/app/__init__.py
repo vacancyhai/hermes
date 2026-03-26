@@ -763,8 +763,8 @@ def create_app():
 
     # --- Entrance Exam Management ---
 
-    @app.route("/exams")
-    def exams():
+    @app.route("/entrance-exams")
+    def entrance_exams():
         token = session.get("token")
         if not token:
             return redirect("/login")
@@ -779,10 +779,10 @@ def create_app():
                 return redirect("/login")
             resp = current_app.api_client.get("/admin/entrance-exams", token=token, params=params)
         data = resp.json() if resp.ok else {"data": [], "pagination": {}}
-        return render_template("exams.html", exams=data["data"], pagination=data.get("pagination", {}), current_stream=stream)
+        return render_template("entrance_exams.html", exams=data["data"], pagination=data.get("pagination", {}), current_stream=stream)
 
-    @app.route("/exams/list")
-    def exams_list_partial():
+    @app.route("/entrance-exams/list")
+    def entrance_exams_list_partial():
         """HTMX partial — exam table rows for load-more."""
         token = session.get("token")
         if not token:
@@ -795,8 +795,8 @@ def create_app():
         data = resp.json() if resp.ok else {"data": [], "pagination": {}}
         return render_template("_exam_rows.html", exams=data["data"], pagination=data.get("pagination", {}), current_stream=stream)
 
-    @app.route("/exams/new", methods=["GET", "POST"])
-    def new_exam():
+    @app.route("/entrance-exams/new", methods=["GET", "POST"])
+    def new_entrance_exam():
         """Create a new entrance exam."""
         token = session.get("token")
         if not token:
@@ -820,13 +820,13 @@ def create_app():
             if resp.ok:
                 exam_id = resp.json().get("id")
                 flash("Entrance exam created.", "success")
-                return redirect(f"/exams/{exam_id}/edit")
+                return redirect(f"/entrance-exams/{exam_id}/edit")
             detail = resp.json().get("detail", "Failed to create exam") if resp.headers.get("content-type", "").startswith("application/json") else "Failed to create exam"
             flash(detail, "error")
         return render_template("exam_edit.html", exam=None, mode="new")
 
-    @app.route("/exams/<exam_id>/edit", methods=["GET", "POST"])
-    def edit_exam(exam_id):
+    @app.route("/entrance-exams/<exam_id>/edit", methods=["GET", "POST"])
+    def edit_entrance_exam(exam_id):
         """Edit an existing entrance exam."""
         token = session.get("token")
         if not token:
@@ -851,12 +851,12 @@ def create_app():
                 flash("Exam updated.", "success")
             else:
                 flash("Failed to update exam.", "error")
-            return redirect(f"/exams/{exam_id}/edit")
+            return redirect(f"/entrance-exams/{exam_id}/edit")
 
         resp_detail_req = current_app.api_client.get(f"/admin/entrance-exams/{exam_id}", token=token)
         if not resp_detail_req.ok:
             flash("Exam not found.", "error")
-            return redirect("/exams")
+            return redirect("/entrance-exams")
         resp_detail = resp_detail_req.json()
 
         ac_resp = current_app.api_client.get(f"/entrance-exams/{exam_id}/admit-cards", token=token)
@@ -869,20 +869,20 @@ def create_app():
         return render_template("exam_edit.html", exam=resp_detail, mode="edit",
                                admit_cards=admit_cards, answer_keys=answer_keys, results=results)
 
-    @app.route("/exams/<exam_id>/delete", methods=["POST"])
-    def delete_exam(exam_id):
+    @app.route("/entrance-exams/<exam_id>/delete", methods=["POST"])
+    def delete_entrance_exam(exam_id):
         """Delete an entrance exam (admin only)."""
         token = session.get("token")
         if not token:
             return redirect("/login")
         current_app.api_client.delete(f"/admin/entrance-exams/{exam_id}", token=token)
         flash("Exam deleted.", "success")
-        return redirect("/exams")
+        return redirect("/entrance-exams")
 
     # Per-exam phase document management
 
-    @app.route("/exams/<exam_id>/docs/admit-cards", methods=["POST"])
-    def exam_add_admit_card(exam_id):
+    @app.route("/entrance-exams/<exam_id>/docs/admit-cards", methods=["POST"])
+    def entrance_exam_add_admit_card(exam_id):
         token = session.get("token")
         if not token:
             return redirect("/login")
@@ -897,10 +897,10 @@ def create_app():
         }
         current_app.api_client.post(f"/admin/entrance-exams/{exam_id}/admit-cards", token=token, json=payload)
         flash("Admit card added.", "success")
-        return redirect(f"/exams/{exam_id}/edit#docs")
+        return redirect(f"/entrance-exams/{exam_id}/edit#docs")
 
-    @app.route("/exams/<exam_id>/docs/answer-keys", methods=["POST"])
-    def exam_add_answer_key(exam_id):
+    @app.route("/entrance-exams/<exam_id>/docs/answer-keys", methods=["POST"])
+    def entrance_exam_add_answer_key(exam_id):
         token = session.get("token")
         if not token:
             return redirect("/login")
@@ -919,10 +919,10 @@ def create_app():
         }
         current_app.api_client.post(f"/admin/entrance-exams/{exam_id}/answer-keys", token=token, json=payload)
         flash("Answer key added.", "success")
-        return redirect(f"/exams/{exam_id}/edit#docs")
+        return redirect(f"/entrance-exams/{exam_id}/edit#docs")
 
-    @app.route("/exams/<exam_id>/docs/results", methods=["POST"])
-    def exam_add_result(exam_id):
+    @app.route("/entrance-exams/<exam_id>/docs/results", methods=["POST"])
+    def entrance_exam_add_result(exam_id):
         token = session.get("token")
         if not token:
             return redirect("/login")
@@ -937,16 +937,16 @@ def create_app():
         }
         current_app.api_client.post(f"/admin/entrance-exams/{exam_id}/results", token=token, json=payload)
         flash("Result added.", "success")
-        return redirect(f"/exams/{exam_id}/edit#docs")
+        return redirect(f"/entrance-exams/{exam_id}/edit#docs")
 
-    @app.route("/exams/<exam_id>/docs/<doc_type>/<doc_id>/delete", methods=["POST"])
-    def exam_delete_doc(exam_id, doc_type, doc_id):
+    @app.route("/entrance-exams/<exam_id>/docs/<doc_type>/<doc_id>/delete", methods=["POST"])
+    def entrance_exam_delete_doc(exam_id, doc_type, doc_id):
         token = session.get("token")
         if not token:
             return redirect("/login")
         current_app.api_client.delete(f"/admin/entrance-exams/{exam_id}/{doc_type}/{doc_id}", token=token)
         flash("Document deleted.", "success")
-        return redirect(f"/exams/{exam_id}/edit#docs")
+        return redirect(f"/entrance-exams/{exam_id}/edit#docs")
 
     # --- Audit Logs ---
 

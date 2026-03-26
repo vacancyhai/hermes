@@ -37,7 +37,7 @@
     <p>NEET, JEE, CLAT, CAT, CUET, GATE and more — all in one place</p>
 </div>
 
-<form action="/admissions" method="get" id="exam-form">
+<form action="/entrance-exams" method="get" id="exam-form">
     <div class="search-row">
         <input type="text" name="q" placeholder="Search… NEET PG, JEE Advanced, CLAT, CAT 2025" value="{{ params.get('q', '') }}">
         <button class="btn btn-primary" type="submit">Search</button>
@@ -46,7 +46,7 @@
     <div class="stream-tabs">
         {% set cur_stream = params.get('stream', '') %}
         {% for val, label, icon in [('', 'All', '📚'), ('medical', 'Medical', '🩺'), ('engineering', 'Engineering', '⚙️'), ('law', 'Law', '⚖️'), ('management', 'Management', '💼'), ('general', 'General', '�')] %}
-        <a href="/admissions?stream={{ val }}{% if params.get('q') %}&q={{ params.q }}{% endif %}{% if params.get('exam_type') %}&exam_type={{ params.exam_type }}{% endif %}"
+        <a href="/entrance-exams?stream={{ val }}{% if params.get('q') %}&q={{ params.q }}{% endif %}{% if params.get('exam_type') %}&exam_type={{ params.exam_type }}{% endif %}"
            class="stream-tab {{ 'active' if cur_stream == val }}">{{ icon }} {{ label }}</a>
         {% endfor %}
     </div>

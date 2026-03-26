@@ -2,7 +2,7 @@
 {% block title %}{{ 'Edit' if mode == 'edit' else 'New' }} Entrance Exam — Hermes Admin{% endblock %}
 {% block content %}
 <div style="margin-bottom:1rem">
-    <a href="/exams" style="font-size:.875rem;color:#6b7280">← Back to Exams</a>
+    <a href="/entrance-exams" style="font-size:.875rem;color:#6b7280">← Back to Entrance Exams</a>
 </div>
 
 <h1 style="font-size:1.35rem;margin-bottom:1.25rem">
@@ -16,7 +16,7 @@
 {% endwith %}
 
 <!-- ── Exam Details Form ─────────────────────────────────────────────── -->
-<form method="POST" action="{{ '/exams/' ~ exam.id ~ '/edit' if mode == 'edit' else '/exams/new' }}"
+<form method="POST" action="{{ '/entrance-exams/' ~ exam.id ~ '/edit' if mode == 'edit' else '/entrance-exams/new' }}"
       style="margin-bottom:2rem">
     <div class="form-grid">
         <div class="form-group form-full">
@@ -127,9 +127,9 @@
         <button type="submit" class="btn btn-primary">
             {{ 'Save Changes' if mode == 'edit' else 'Create Exam' }}
         </button>
-        <a href="/exams" class="btn btn-outline">Cancel</a>
+        <a href="/entrance-exams" class="btn btn-outline">Cancel</a>
         {% if mode == 'edit' and session.get('admin_role') == 'admin' %}
-        <form method="POST" action="/exams/{{ exam.id }}/delete" style="margin-left:auto"
+        <form method="POST" action="/entrance-exams/{{ exam.id }}/delete" style="margin-left:auto"
               onsubmit="return confirm('Permanently delete this exam and all its phase documents?')">
             <button type="submit" class="btn btn-danger">Delete Exam</button>
         </form>
@@ -155,7 +155,7 @@
                 <td>{{ ac.title }}</td>
                 <td style="font-size:.8rem">{{ ac.valid_from or '' }}{% if ac.valid_from and ac.valid_until %} – {% endif %}{{ ac.valid_until or '' }}</td>
                 <td>
-                    <form method="POST" action="/exams/{{ exam.id }}/docs/admit-cards/{{ ac.id }}/delete"
+                    <form method="POST" action="/entrance-exams/{{ exam.id }}/docs/admit-cards/{{ ac.id }}/delete"
                           onsubmit="return confirm('Delete this admit card?')">
                         <button type="submit" class="btn btn-sm btn-danger">Delete</button>
                     </form>
@@ -167,7 +167,7 @@
         {% endif %}
         <details class="doc-add-form" style="margin-top:.75rem">
             <summary class="btn btn-sm btn-outline" style="cursor:pointer;display:inline-block">+ Add Admit Card</summary>
-            <form method="POST" action="/exams/{{ exam.id }}/docs/admit-cards" style="margin-top:.75rem">
+            <form method="POST" action="/entrance-exams/{{ exam.id }}/docs/admit-cards" style="margin-top:.75rem">
                 <div class="form-grid form-grid-tight">
                     <div class="form-group"><label>Title *</label><input type="text" name="title" required placeholder="NEET PG 2026 Admit Card"></div>
                     <div class="form-group"><label>Download URL *</label><input type="url" name="download_url" required placeholder="https://..."></div>
@@ -195,7 +195,7 @@
                 <td><span class="badge {{ 'badge-success' if ak.answer_key_type == 'final' else 'badge-warning' }}">{{ ak.answer_key_type }}</span></td>
                 <td style="font-size:.8rem">{{ ak.objection_deadline or '—' }}</td>
                 <td>
-                    <form method="POST" action="/exams/{{ exam.id }}/docs/answer-keys/{{ ak.id }}/delete"
+                    <form method="POST" action="/entrance-exams/{{ exam.id }}/docs/answer-keys/{{ ak.id }}/delete"
                           onsubmit="return confirm('Delete this answer key?')">
                         <button type="submit" class="btn btn-sm btn-danger">Delete</button>
                     </form>
@@ -207,7 +207,7 @@
         {% endif %}
         <details class="doc-add-form" style="margin-top:.75rem">
             <summary class="btn btn-sm btn-outline" style="cursor:pointer;display:inline-block">+ Add Answer Key</summary>
-            <form method="POST" action="/exams/{{ exam.id }}/docs/answer-keys" style="margin-top:.75rem">
+            <form method="POST" action="/entrance-exams/{{ exam.id }}/docs/answer-keys" style="margin-top:.75rem">
                 <div class="form-grid form-grid-tight">
                     <div class="form-group"><label>Title *</label><input type="text" name="title" required placeholder="NEET PG 2026 Provisional Answer Key"></div>
                     <div class="form-group">
@@ -244,7 +244,7 @@
                 <td><span class="badge badge-info">{{ res.result_type | replace('_',' ') }}</span></td>
                 <td style="font-size:.8rem">{{ res.total_qualified or '—' }}</td>
                 <td>
-                    <form method="POST" action="/exams/{{ exam.id }}/docs/results/{{ res.id }}/delete"
+                    <form method="POST" action="/entrance-exams/{{ exam.id }}/docs/results/{{ res.id }}/delete"
                           onsubmit="return confirm('Delete this result?')">
                         <button type="submit" class="btn btn-sm btn-danger">Delete</button>
                     </form>
@@ -256,7 +256,7 @@
         {% endif %}
         <details class="doc-add-form" style="margin-top:.75rem">
             <summary class="btn btn-sm btn-outline" style="cursor:pointer;display:inline-block">+ Add Result</summary>
-            <form method="POST" action="/exams/{{ exam.id }}/docs/results" style="margin-top:.75rem">
+            <form method="POST" action="/entrance-exams/{{ exam.id }}/docs/results" style="margin-top:.75rem">
                 <div class="form-grid form-grid-tight">
                     <div class="form-group"><label>Title *</label><input type="text" name="title" required placeholder="NEET PG 2026 Result & Score Card"></div>
                     <div class="form-group">

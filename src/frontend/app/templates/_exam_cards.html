@@ -7,7 +7,7 @@
                 <span style="font-size:.7rem;background:#ede9fe;color:#5b21b6;padding:.15rem .5rem;border-radius:9999px;font-weight:600">{{ exam.exam_type | upper }}</span>
                 {% if exam.is_featured %}<span class="badge badge-featured">Featured</span>{% endif %}
             </div>
-            <h3><a href="/admissions/{{ exam.slug }}">{{ exam.exam_name }}</a></h3>
+            <h3><a href="/entrance-exams/{{ exam.slug }}">{{ exam.exam_name }}</a></h3>
             <div class="meta">🏛 {{ exam.conducting_body }}{% if exam.counselling_body %} · Counselling: {{ exam.counselling_body }}{% endif %}</div>
             {% if exam.short_description %}
             <div style="font-size:.825rem;color:#64748b;line-height:1.45;margin-bottom:.35rem">
@@ -18,7 +18,7 @@
         <button
             data-slug="{{ exam.slug }}"
             data-title="{{ exam.exam_name | e }}"
-            onclick="(function(b){var u=window.location.origin+'/admissions/'+b.dataset.slug,t=b.dataset.title;if(navigator.share){navigator.share({title:t,url:u})}else{navigator.clipboard.writeText(u);var orig=b.textContent;b.textContent='\u2713 Copied';setTimeout(function(){b.textContent=orig},1800)}})(this)"
+            onclick="(function(b){var u=window.location.origin+'/entrance-exams/'+b.dataset.slug,t=b.dataset.title;if(navigator.share){navigator.share({title:t,url:u})}else{navigator.clipboard.writeText(u);var orig=b.textContent;b.textContent='\u2713 Copied';setTimeout(function(){b.textContent=orig},1800)}})(this)"
             style="flex-shrink:0;font-size:.75rem;padding:.3rem .65rem;border-radius:.375rem;border:1px solid #ddd6fe;background:#fff;color:#7c3aed;cursor:pointer;white-space:nowrap">
             Share
         </button>
@@ -40,7 +40,7 @@
 {% if pagination.get('has_more') %}
 <div class="load-more">
     <button class="btn btn-outline"
-            hx-get="/admissions/partial?offset={{ pagination.get('offset', 0) + pagination.get('limit', 20) }}{% if params.get('stream') %}&stream={{ params.stream }}{% endif %}{% if params.get('q') %}&q={{ params.q }}{% endif %}{% if params.get('exam_type') %}&exam_type={{ params.exam_type }}{% endif %}"
+            hx-get="/entrance-exams/partial?offset={{ pagination.get('offset', 0) + pagination.get('limit', 20) }}{% if params.get('stream') %}&stream={{ params.stream }}{% endif %}{% if params.get('q') %}&q={{ params.q }}{% endif %}{% if params.get('exam_type') %}&exam_type={{ params.exam_type }}{% endif %}"
             hx-target="#exam-list"
             hx-swap="beforeend"
             hx-indicator=".htmx-indicator">Load more</button>

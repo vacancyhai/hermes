@@ -155,9 +155,9 @@ def create_app():
         docs = resp.json() if resp.ok else []
         return render_template("_results_panel.html", docs=docs)
 
-    @app.route("/admissions")
-    def admissions():
-        """Admissions & entrance exams section page."""
+    @app.route("/entrance-exams")
+    def entrance_exams():
+        """Entrance exams section page."""
         params = {}
         for key in ("q", "stream", "exam_type"):
             val = request.args.get(key)
@@ -167,11 +167,11 @@ def create_app():
         params["offset"] = _int_arg("offset", 0)
         resp = current_app.api_client.get("/entrance-exams", params=params)
         data = resp.json() if resp.ok else {"data": [], "pagination": {}}
-        return render_template("admissions.html", exams=data["data"], pagination=data.get("pagination", {}), params=params)
+        return render_template("entrance_exams.html", exams=data["data"], pagination=data.get("pagination", {}), params=params)
 
-    @app.route("/admissions/partial")
-    def admissions_partial():
-        """HTMX partial for admissions load-more — returns card rows only."""
+    @app.route("/entrance-exams/partial")
+    def entrance_exams_partial():
+        """HTMX partial for entrance exams load-more — returns card rows only."""
         params = {}
         for key in ("q", "stream", "exam_type"):
             val = request.args.get(key)
@@ -183,14 +183,14 @@ def create_app():
         data = resp.json() if resp.ok else {"data": [], "pagination": {}}
         return render_template("_exam_cards.html", exams=data["data"], pagination=data.get("pagination", {}), params=params)
 
-    @app.route("/admissions/<slug>")
-    def admission_detail(slug):
-        """Admission / entrance exam detail page."""
+    @app.route("/entrance-exams/<slug>")
+    def entrance_exam_detail(slug):
+        """Entrance exam detail page."""
         resp = current_app.api_client.get(f"/entrance-exams/{slug}")
         if not resp.ok:
             return render_template("404.html"), 404
         exam = resp.json()
-        return render_template("admission_detail.html", exam=exam)
+        return render_template("entrance_exam_detail.html", exam=exam)
 
     @app.route("/partials/exams/<exam_id>/admit-cards")
     def partials_exam_admit_cards(exam_id):
