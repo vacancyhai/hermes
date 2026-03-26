@@ -20,7 +20,7 @@ answer_keys_router = APIRouter(prefix="/api/v1/answer-keys", tags=["answer-keys"
 results_router = APIRouter(prefix="/api/v1/results", tags=["results"])
 
 
-@admit_cards_router.get("", response_model=list[AdmitCardResponse])
+@admit_cards_router.get("")
 async def list_admit_cards(
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
@@ -34,10 +34,18 @@ async def list_admit_cards(
     result = await db.execute(query.offset(offset).limit(limit))
     cards = result.scalars().all()
 
-    return [AdmitCardResponse.model_validate(c) for c in cards]
+    return {
+        "data": [AdmitCardResponse.model_validate(c).model_dump() for c in cards],
+        "pagination": {
+            "limit": limit,
+            "offset": offset,
+            "total": total,
+            "has_more": (offset + limit) < total,
+        },
+    }
 
 
-@answer_keys_router.get("", response_model=list[AnswerKeyResponse])
+@answer_keys_router.get("")
 async def list_answer_keys(
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
@@ -51,10 +59,18 @@ async def list_answer_keys(
     result = await db.execute(query.offset(offset).limit(limit))
     keys = result.scalars().all()
 
-    return [AnswerKeyResponse.model_validate(k) for k in keys]
+    return {
+        "data": [AnswerKeyResponse.model_validate(k).model_dump() for k in keys],
+        "pagination": {
+            "limit": limit,
+            "offset": offset,
+            "total": total,
+            "has_more": (offset + limit) < total,
+        },
+    }
 
 
-@results_router.get("", response_model=list[ResultResponse])
+@results_router.get("")
 async def list_results(
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
@@ -68,4 +84,12 @@ async def list_results(
     result = await db.execute(query.offset(offset).limit(limit))
     results = result.scalars().all()
 
-    return [ResultResponse.model_validate(r) for r in results]
+    return {
+        "data": [ResultResponse.model_validate(r).model_dump() for r in results],
+        "pagination": {
+            "limit": limit,
+            "offset": offset,
+            "total": total,
+            "has_more": (offset + limit) < total,
+        },
+    }
