@@ -40,7 +40,7 @@ def test_health(client):
 def test_index_renders_jobs(client, mock_api):
     mock_api.get.return_value = _ok({
         "data": [{"id": "1", "job_title": "SSC CGL", "slug": "ssc-cgl", "organization": "SSC",
-                  "status": "active", "job_type": "latest_job", "is_featured": False,
+                  "status": "active", "is_featured": False,
                   "is_urgent": False, "created_at": "2026-01-01T00:00:00"}],
         "pagination": {"total": 1, "has_more": False},
     })
@@ -57,7 +57,7 @@ def test_index_api_failure_shows_empty(client, mock_api):
 
 def test_index_with_filter_params(client, mock_api):
     mock_api.get.return_value = _ok({"data": [], "pagination": {}})
-    resp = client.get("/?q=UPSC&job_type=latest_job&limit=10&offset=0")
+    resp = client.get("/?q=UPSC&limit=10&offset=0")
     assert resp.status_code == 200
     call_kwargs = mock_api.get.call_args[1]
     assert call_kwargs["params"]["q"] == "UPSC"

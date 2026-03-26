@@ -10,7 +10,6 @@
 <meta property="og:url" content="{{ request.url }}">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Hermes">
-{% if job.job_type == 'latest_job' %}
 <script type="application/ld+json">
 {
     "@context": "https://schema.org/",
@@ -25,12 +24,12 @@
     {% if job.salary_initial %},"baseSalary": {"@type": "MonetaryAmount","currency": "INR","value": {"@type": "QuantitativeValue","minValue": {{ job.salary_initial }}{% if job.salary_max %},"maxValue": {{ job.salary_max }}{% endif %},"unitText": "YEAR"}}{% endif %}
 }
 </script>
-{% endif %}
 {% endblock %}
 
 {% block content %}
-{% set type_map = {'latest_job': ('/', '← Jobs', 'hero-job'), 'admit_card': ('/admit-cards', '← Admit Cards', 'hero-admit'), 'answer_key': ('/answer-keys', '← Answer Keys', 'hero-answer'), 'result': ('/results', '← Results', 'hero-result')} %}
-{% set back_href, back_label, hero_cls = type_map.get(job.job_type, ('/', '← Jobs', 'hero-job')) %}
+{% set back_href = '/' %}
+{% set back_label = '← Jobs' %}
+{% set hero_cls = 'hero-job' %}
 
 <a href="{{ back_href }}" class="back-link">{{ back_label }}</a>
 
@@ -42,7 +41,7 @@
 
 <div class="detail-hero {{ hero_cls }}">
     <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.5rem">
-        <span class="card-type-tag" style="background:rgba(255,255,255,.2);color:#fff">{{ job.job_type | replace('_',' ') | title }}</span>
+        <span class="card-type-tag" style="background:rgba(255,255,255,.2);color:#fff">Latest Job</span>
         {% if job.is_featured %}<span class="badge badge-featured">Featured</span>{% endif %}
         {% if job.is_urgent %}<span class="badge badge-urgent">Urgent</span>{% endif %}
     </div>
@@ -264,7 +263,6 @@
 </div>
 {% endif %}
 
-{% if job.job_type == 'latest_job' %}
 <div class="detail-section" style="margin-top:1.5rem">
     <h2>📂 Exam Documents</h2>
     <div x-data="{tab:'admit_cards'}">
@@ -290,5 +288,4 @@
         </div>
     </div>
 </div>
-{% endif %}
 {% endblock %}

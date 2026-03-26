@@ -86,7 +86,7 @@ def create_app():
             params.pop("recommended", None)
             resp = current_app.api_client.get("/jobs", params=params)
         data = resp.json() if resp.ok else {"data": [], "pagination": {}}
-        return render_template("index.html", jobs=data["data"], pagination=data.get("pagination", {}), params=params)
+        return render_template("index.html", jobs=data["data"], pagination=data.get("pagination", {}), params=params, card_type="latest_job")
 
     @app.route("/jobs")
     def job_list_partial():
@@ -99,7 +99,7 @@ def create_app():
             params.pop("recommended", None)
             resp = current_app.api_client.get("/jobs", params=params)
         data = resp.json() if resp.ok else {"data": [], "pagination": {}}
-        return render_template("_job_cards.html", jobs=data["data"], pagination=data.get("pagination", {}), params=params)
+        return render_template("_job_cards.html", jobs=data["data"], pagination=data.get("pagination", {}), params=params, card_type="latest_job")
 
     @app.route("/admit-cards")
     def admit_cards():
@@ -107,7 +107,7 @@ def create_app():
         params = _job_params()
         resp = current_app.api_client.get("/admit-cards", params=params)
         data = resp.json() if resp.ok else {"data": [], "pagination": {}}
-        return render_template("admit_cards.html", jobs=data["data"], pagination=data.get("pagination", {}), params=params)
+        return render_template("admit_cards.html", jobs=data["data"], pagination=data.get("pagination", {}), params=params, card_type="admit_card")
 
     @app.route("/answer-keys")
     def answer_keys():
@@ -115,7 +115,7 @@ def create_app():
         params = _job_params()
         resp = current_app.api_client.get("/answer-keys", params=params)
         data = resp.json() if resp.ok else {"data": [], "pagination": {}}
-        return render_template("answer_keys.html", jobs=data["data"], pagination=data.get("pagination", {}), params=params)
+        return render_template("answer_keys.html", jobs=data["data"], pagination=data.get("pagination", {}), params=params, card_type="answer_key")
 
     @app.route("/results")
     def results():
@@ -123,7 +123,7 @@ def create_app():
         params = _job_params()
         resp = current_app.api_client.get("/results", params=params)
         data = resp.json() if resp.ok else {"data": [], "pagination": {}}
-        return render_template("results.html", jobs=data["data"], pagination=data.get("pagination", {}), params=params)
+        return render_template("results.html", jobs=data["data"], pagination=data.get("pagination", {}), params=params, card_type="result")
 
     @app.route("/jobs/<slug>")
     def job_detail(slug):
@@ -743,7 +743,7 @@ def create_app():
     def _job_params() -> dict:
         """Build query params from request args."""
         params: dict = {}
-        for key in ("q", "job_type", "qualification_level", "organization", "department", "recommended"):
+        for key in ("q", "qualification_level", "organization", "department", "recommended"):
             val = request.args.get(key)
             if val:
                 params[key] = val

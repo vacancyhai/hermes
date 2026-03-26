@@ -1,14 +1,14 @@
 {% if jobs %}
 {% for job in jobs %}
-{% if job.job_type == 'admit_card' %}{% set _cls = 'card-admit' %}{% set _ppill = 'pill-blue' %}
-{% elif job.job_type == 'answer_key' %}{% set _cls = 'card-answer' %}{% set _ppill = 'pill-amber' %}
-{% elif job.job_type == 'result' %}{% set _cls = 'card-result' %}{% set _ppill = 'pill-green' %}
+{% if card_type == 'admit_card' %}{% set _cls = 'card-admit' %}{% set _ppill = 'pill-blue' %}
+{% elif card_type == 'answer_key' %}{% set _cls = 'card-answer' %}{% set _ppill = 'pill-amber' %}
+{% elif card_type == 'result' %}{% set _cls = 'card-result' %}{% set _ppill = 'pill-green' %}
 {% else %}{% set _cls = 'card-latest' %}{% set _ppill = 'pill-purple' %}{% endif %}
 <div class="job-card {{ _cls }}">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem">
         <div style="flex:1;min-width:0">
             <div class="badges" style="margin-bottom:.4rem">
-                <span class="card-type-tag {{ _cls }} ">{{ job.job_type | replace('_', ' ') | title }}</span>
+                <span class="card-type-tag {{ _cls }} ">{{ card_type | replace('_', ' ') | title }}</span>
                 {% if job.is_featured %}<span class="badge badge-featured">Featured</span>{% endif %}
                 {% if job.is_urgent %}<span class="badge badge-urgent">🔥 Urgent</span>{% endif %}
             </div>
@@ -31,13 +31,13 @@
         </button>
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;margin-top:.35rem">
-        {% if job.job_type == 'admit_card' %}
+        {% if card_type == 'admit_card' %}
             {% if job.exam_start %}<span class="meta-pill pill-blue">📅 Exam: {{ job.exam_start }}</span>{% endif %}
             {% if job.published_at %}<span style="font-size:.78rem;color:#64748b">Released: {{ job.published_at[:10] }}</span>{% endif %}
-        {% elif job.job_type == 'answer_key' %}
+        {% elif card_type == 'answer_key' %}
             {% if job.exam_start %}<span class="meta-pill pill-amber">📅 Exam: {{ job.exam_start }}</span>{% endif %}
             {% if job.published_at %}<span style="font-size:.78rem;color:#64748b">Released: {{ job.published_at[:10] }}</span>{% endif %}
-        {% elif job.job_type == 'result' %}
+        {% elif card_type == 'result' %}
             {% if job.result_date %}<span class="meta-pill pill-green">🏆 Result: {{ job.result_date }}</span>{% endif %}
             {% if not job.result_date and job.published_at %}<span style="font-size:.78rem;color:#64748b">Released: {{ job.published_at[:10] }}</span>{% endif %}
         {% else %}
@@ -52,7 +52,7 @@
 {% if pagination.get('has_more') %}
 <div class="load-more">
     <button class="btn btn-outline"
-            hx-get="/jobs?offset={{ pagination.get('offset', 0) + pagination.get('limit', 20) }}{% if params.get('q') %}&q={{ params.q }}{% endif %}{% if params.get('job_type') %}&job_type={{ params.job_type }}{% endif %}{% if params.get('qualification_level') %}&qualification_level={{ params.qualification_level }}{% endif %}{% if params.get('organization') %}&organization={{ params.organization }}{% endif %}"
+            hx-get="/jobs?offset={{ pagination.get('offset', 0) + pagination.get('limit', 20) }}{% if params.get('q') %}&q={{ params.q }}{% endif %}{% if params.get('qualification_level') %}&qualification_level={{ params.qualification_level }}{% endif %}{% if params.get('organization') %}&organization={{ params.organization }}{% endif %}"
             hx-target="#job-list"
             hx-swap="beforeend"
             hx-indicator=".htmx-indicator">
