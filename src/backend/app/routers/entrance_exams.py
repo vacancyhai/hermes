@@ -74,9 +74,9 @@ async def list_exams(
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
 ):
-    """List entrance exams — active only."""
-    query = select(EntranceExam).where(EntranceExam.status == "active")
-    count_query = select(func.count(EntranceExam.id)).where(EntranceExam.status == "active")
+    """List entrance exams — all statuses."""
+    query = select(EntranceExam)
+    count_query = select(func.count(EntranceExam.id))
 
     if q:
         query = query.where(text("search_vector @@ plainto_tsquery('english', :q)")).params(q=q)
@@ -109,7 +109,7 @@ async def list_exams(
 async def get_exam_by_slug(slug: str, db: AsyncSession = Depends(get_db)):
     """Get entrance exam detail by slug."""
     result = await db.execute(
-        select(EntranceExam).where(EntranceExam.slug == slug, EntranceExam.status == "active")
+        select(EntranceExam).where(EntranceExam.slug == slug)
     )
     exam = result.scalar_one_or_none()
     if not exam:
