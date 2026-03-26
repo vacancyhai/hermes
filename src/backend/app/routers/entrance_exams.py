@@ -1,11 +1,11 @@
 """Entrance exam endpoints (NEET, JEE, CLAT, CAT etc.).
 
 Public (read-only):
-  GET  /api/v1/exams              — list with stream/status/search filters
-  GET  /api/v1/exams/:slug        — detail by slug
-  GET  /api/v1/exams/:id/admit-cards   — per-phase admit cards
-  GET  /api/v1/exams/:id/answer-keys   — per-phase answer keys
-  GET  /api/v1/exams/:id/results       — per-phase results
+  GET  /api/v1/entrance-exams              — list with stream/status/search filters
+  GET  /api/v1/entrance-exams/:slug        — detail by slug
+  GET  /api/v1/entrance-exams/:id/admit-cards   — per-phase admit cards
+  GET  /api/v1/entrance-exams/:id/answer-keys   — per-phase answer keys
+  GET  /api/v1/entrance-exams/:id/results       — per-phase results
 
 Admin CRUD (operator+):
   POST   /api/v1/admin/exams
@@ -40,8 +40,8 @@ from app.schemas.jobs import (
     ResultCreateRequest, ResultUpdateRequest, ResultResponse,
 )
 
-public_router = APIRouter(prefix="/api/v1/exams", tags=["exams"])
-admin_router = APIRouter(prefix="/api/v1/admin/exams", tags=["admin"])
+public_router = APIRouter(prefix="/api/v1/entrance-exams", tags=["entrance-exams"])
+admin_router = APIRouter(prefix="/api/v1/admin/exams", tags=["admin-exams"])
 
 
 def _slugify(text_: str) -> str:
