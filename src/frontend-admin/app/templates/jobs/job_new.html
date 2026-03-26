@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "shared/base.html" %}
 
 {% block title %}New Job — Hermes Admin{% endblock %}
 
@@ -57,7 +57,7 @@
                 <label>Job Type *</label>
                 <select name="job_type" required>
                     <option value="">— Select —</option>
-                    {% for val, label in [('latest_job','Latest Job'),('result','Result'),('admit_card','Admit Card'),('answer_key','Answer Key'),('syllabus','Syllabus'),('admission','Admission')] %}
+                    {% for val, label in [('latest_job','Job'),('result','Result'),('admit_card','Admit Card'),('answer_key','Answer Key'),('syllabus','Syllabus'),('admission','Admission')] %}
                     <option value="{{ val }}">{{ label }}</option>
                     {% endfor %}
                 </select>

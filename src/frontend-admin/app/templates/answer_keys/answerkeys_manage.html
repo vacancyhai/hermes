@@ -1,17 +1,17 @@
-{% extends "base.html" %}
+{% extends "shared/base.html" %}
 
-{% block title %}Manage Admit Cards — Hermes Admin{% endblock %}
+{% block title %}Manage Answer Keys — Hermes Admin{% endblock %}
 
 {% block content %}
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
-    <h1 style="font-size:1.35rem;">Admit Cards Management</h1>
+    <h1 style="font-size:1.35rem;">Answer Keys Management</h1>
     <div style="display:flex;gap:.5rem;">
-        <a href="/admit-cards/new" class="btn btn-primary">+ New Admit Card</a>
+        <a href="/answer-keys/new" class="btn btn-primary">+ New Answer Key</a>
     </div>
 </div>
 
 <div class="filters">
-    <form method="GET" action="/admit-cards" style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;">
+    <form method="GET" action="/answer-keys" style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;">
         <select name="status" onchange="this.form.submit()">
             <option value="">All Statuses</option>
             <option value="active" {% if current_status == 'active' %}selected{% endif %}>Active</option>
@@ -25,18 +25,19 @@
     <table>
         <thead>
             <tr>
-                <th>Admit Card Title</th>
+                <th>Answer Key Title</th>
                 <th>Organization</th>
                 <th>Exam Name</th>
+                <th>Type</th>
                 <th>Status</th>
                 <th>Release Date</th>
-                <th>Exam Date</th>
+                <th>Objection End</th>
                 <th>Views</th>
                 <th>Actions</th>
             </tr>
         </thead>
         <tbody id="job-list">
-            {% include "_admitcard_rows.html" %}
+            {% include "_answerkey_rows.html" %}
         </tbody>
     </table>
 </div>

@@ -1,6 +1,6 @@
-{% extends "base.html" %}
+{% extends "shared/base.html" %}
 
-{% block title %}Create Result — Hermes Admin{% endblock %}
+{% block title %}Create Answer Key — Hermes Admin{% endblock %}
 
 {% block head %}
 <style>
@@ -22,7 +22,7 @@
 
 {% block content %}
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
-    <h1 style="font-size:1.35rem;">Create New Result</h1>
+    <h1 style="font-size:1.35rem;">Create New Answer Key</h1>
     <a href="/jobs" class="btn btn-outline">← Back to Jobs</a>
 </div>
 
@@ -45,15 +45,15 @@
     </div>
 </div>
 
-<form method="POST" class="review-form" id="result-form">
-    <input type="hidden" name="job_type" value="result">
+<form method="POST" class="review-form" id="answerkey-form">
+    <input type="hidden" name="job_type" value="answer_key">
     
     <div class="card">
         <h3 style="font-size:1rem;margin-bottom:1rem;color:#1e3a5f;">Basic Information</h3>
 
         <div class="field">
-            <label>Result Title *</label>
-            <input type="text" name="job_title" required placeholder="e.g. SSC CGL Tier-1 2025 Result Declared">
+            <label>Answer Key Title *</label>
+            <input type="text" name="job_title" required placeholder="e.g. SSC CGL Tier-1 2025 Provisional Answer Key">
         </div>
 
         <div class="row">
@@ -74,20 +74,18 @@
             </div>
             <div class="field">
                 <label>Phase/Tier</label>
-                <input type="text" name="phase" placeholder="e.g. Tier-1, Prelims, Mains, Final">
+                <input type="text" name="phase" placeholder="e.g. Tier-1, Prelims, Mains">
             </div>
         </div>
 
         <div class="row">
             <div class="field">
-                <label>Result Type *</label>
-                <select name="result_type" required>
+                <label>Answer Key Type *</label>
+                <select name="answer_key_type" required>
                     <option value="">— Select —</option>
-                    <option value="written">Written Exam Result</option>
-                    <option value="interview">Interview Result</option>
-                    <option value="final">Final Merit List</option>
-                    <option value="provisional">Provisional Result</option>
-                    <option value="revised">Revised Result</option>
+                    <option value="provisional">Provisional (Subject to Objections)</option>
+                    <option value="final">Final</option>
+                    <option value="revised">Revised</option>
                 </select>
             </div>
             <div class="field">
@@ -126,12 +124,12 @@
 
         <div class="field">
             <label>Short Description *</label>
-            <input type="text" name="short_description" required placeholder="One-line summary about this result announcement">
+            <input type="text" name="short_description" required placeholder="One-line summary about this answer key release">
         </div>
 
         <div class="field">
             <label>Detailed Information *</label>
-            <textarea name="description" required placeholder="How to check result, cut-off marks, next steps, important instructions…"></textarea>
+            <textarea name="description" required placeholder="How to view answer key, objection process (if provisional), important instructions…"></textarea>
         </div>
     </div>
 
@@ -140,69 +138,32 @@
 
         <div class="row">
             <div class="field">
-                <label>Result Declaration Date *</label>
+                <label>Answer Key Release Date *</label>
                 <input type="date" name="notification_date" required>
             </div>
             <div class="field">
-                <label>Result Available From *</label>
-                <input type="date" name="result_date" required>
+                <label>Available From *</label>
+                <input type="date" name="application_start" required>
             </div>
         </div>
 
         <div class="row">
+            <div class="field">
+                <label>Objection Period Ends (if provisional)</label>
+                <input type="date" name="application_end" placeholder="Last date to raise objections">
+            </div>
             <div class="field">
                 <label>Exam Conducted On</label>
                 <input type="date" name="exam_start">
             </div>
-            <div class="field">
-                <label>Next Phase Start Date</label>
-                <input type="date" name="application_start" placeholder="e.g. Tier-2 registration start">
-            </div>
         </div>
 
         <div class="row">
             <div class="field">
-                <label>Next Phase End Date</label>
-                <input type="date" name="application_end" placeholder="e.g. Tier-2 registration end">
+                <label>Result Expected Date</label>
+                <input type="date" name="result_date">
             </div>
             <div class="field"></div>
-        </div>
-    </div>
-
-    <div class="card">
-        <h3 style="font-size:1rem;margin-bottom:1rem;color:#1e3a5f;">Result Statistics</h3>
-
-        <div class="row">
-            <div class="field">
-                <label>Total Appeared</label>
-                <input type="number" name="total_appeared" min="0" placeholder="e.g. 50000">
-            </div>
-            <div class="field">
-                <label>Total Qualified</label>
-                <input type="number" name="total_qualified" min="0" placeholder="e.g. 5000">
-            </div>
-        </div>
-
-        <div class="row">
-            <div class="field">
-                <label>Cut-off Marks (General)</label>
-                <input type="number" name="cutoff_general" step="0.01" placeholder="e.g. 120.50">
-            </div>
-            <div class="field">
-                <label>Cut-off Marks (OBC)</label>
-                <input type="number" name="cutoff_obc" step="0.01" placeholder="e.g. 115.25">
-            </div>
-        </div>
-
-        <div class="row">
-            <div class="field">
-                <label>Cut-off Marks (SC)</label>
-                <input type="number" name="cutoff_sc" step="0.01" placeholder="e.g. 105.75">
-            </div>
-            <div class="field">
-                <label>Cut-off Marks (ST)</label>
-                <input type="number" name="cutoff_st" step="0.01" placeholder="e.g. 100.00">
-            </div>
         </div>
     </div>
 
@@ -210,18 +171,28 @@
         <h3 style="font-size:1rem;margin-bottom:1rem;color:#1e3a5f;">Download Links</h3>
 
         <div class="field">
-            <label>Official Result URL *</label>
-            <input type="url" name="source_url" required placeholder="https://official-site.gov.in/result">
+            <label>Official Answer Key URL *</label>
+            <input type="url" name="source_url" required placeholder="https://official-site.gov.in/answer-key">
         </div>
 
         <div class="field">
             <label>Direct PDF Link (if available)</label>
-            <input type="url" name="pdf_url" placeholder="https://official-site.gov.in/result.pdf">
+            <input type="url" name="pdf_url" placeholder="https://official-site.gov.in/answer-key.pdf">
         </div>
+    </div>
 
-        <div class="field">
-            <label>Merit List PDF URL</label>
-            <input type="url" name="merit_list_url" placeholder="https://official-site.gov.in/merit-list.pdf">
+    <div class="card">
+        <h3 style="font-size:1rem;margin-bottom:1rem;color:#1e3a5f;">Objection Details (For Provisional Answer Keys)</h3>
+
+        <div class="row">
+            <div class="field">
+                <label>Objection Fee (per question)</label>
+                <input type="number" name="objection_fee" min="0" placeholder="e.g. 100">
+            </div>
+            <div class="field">
+                <label>Objection Portal URL</label>
+                <input type="url" name="objection_url" placeholder="https://official-site.gov.in/raise-objection">
+            </div>
         </div>
     </div>
 
@@ -230,18 +201,18 @@
 
         <div class="row">
             <div class="field">
-                <label>Total Vacancies</label>
-                <input type="number" name="total_vacancies" min="0" placeholder="e.g. 5000">
+                <label>Total Questions</label>
+                <input type="number" name="total_questions" min="0" placeholder="e.g. 100">
             </div>
             <div class="field">
-                <label>Document Verification Start Date</label>
-                <input type="date" name="dv_start_date">
+                <label>Total Vacancies (if applicable)</label>
+                <input type="number" name="total_vacancies" min="0" placeholder="e.g. 5000">
             </div>
         </div>
     </div>
 
     <div style="display:flex;gap:.75rem;margin-top:.5rem;margin-bottom:2rem;">
-        <button type="submit" class="btn btn-primary">Create Result</button>
+        <button type="submit" class="btn btn-primary">Create Answer Key</button>
         <a href="/jobs" class="btn btn-outline">Cancel</a>
     </div>
 </form>
@@ -287,7 +258,7 @@ document.getElementById('extract-btn').addEventListener('click', async function(
         const result = await response.json();
         const data = result.data;
         
-        const form = document.getElementById('result-form');
+        const form = document.getElementById('answerkey-form');
         if (data.job_title) form.querySelector('[name="job_title"]').value = data.job_title;
         if (data.organization) form.querySelector('[name="organization"]').value = data.organization;
         if (data.department) form.querySelector('[name="department"]').value = data.department;
@@ -295,7 +266,6 @@ document.getElementById('extract-btn').addEventListener('click', async function(
         if (data.description) form.querySelector('[name="description"]').value = data.description;
         if (data.short_description) form.querySelector('[name="short_description"]').value = data.short_description;
         if (data.notification_date) form.querySelector('[name="notification_date"]').value = data.notification_date;
-        if (data.application_start) form.querySelector('[name="application_start"]').value = data.application_start;
         if (data.application_end) form.querySelector('[name="application_end"]').value = data.application_end;
         if (data.exam_start) form.querySelector('[name="exam_start"]').value = data.exam_start;
         if (data.result_date) form.querySelector('[name="result_date"]').value = data.result_date;

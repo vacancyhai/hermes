@@ -1,6 +1,6 @@
-{% extends "base.html" %}
+{% extends "shared/base.html" %}
 
-{% block title %}Create Answer Key — Hermes Admin{% endblock %}
+{% block title %}Create Admit Card — Hermes Admin{% endblock %}
 
 {% block head %}
 <style>
@@ -22,7 +22,7 @@
 
 {% block content %}
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
-    <h1 style="font-size:1.35rem;">Create New Answer Key</h1>
+    <h1 style="font-size:1.35rem;">Create New Admit Card</h1>
     <a href="/jobs" class="btn btn-outline">← Back to Jobs</a>
 </div>
 
@@ -45,15 +45,15 @@
     </div>
 </div>
 
-<form method="POST" class="review-form" id="answerkey-form">
-    <input type="hidden" name="job_type" value="answer_key">
+<form method="POST" class="review-form" id="admitcard-form">
+    <input type="hidden" name="job_type" value="admit_card">
     
     <div class="card">
         <h3 style="font-size:1rem;margin-bottom:1rem;color:#1e3a5f;">Basic Information</h3>
 
         <div class="field">
-            <label>Answer Key Title *</label>
-            <input type="text" name="job_title" required placeholder="e.g. SSC CGL Tier-1 2025 Provisional Answer Key">
+            <label>Admit Card Title *</label>
+            <input type="text" name="job_title" required placeholder="e.g. SSC CGL Tier-1 2025 Admit Card Released">
         </div>
 
         <div class="row">
@@ -80,15 +80,6 @@
 
         <div class="row">
             <div class="field">
-                <label>Answer Key Type *</label>
-                <select name="answer_key_type" required>
-                    <option value="">— Select —</option>
-                    <option value="provisional">Provisional (Subject to Objections)</option>
-                    <option value="final">Final</option>
-                    <option value="revised">Revised</option>
-                </select>
-            </div>
-            <div class="field">
                 <label>Qualification Level</label>
                 <select name="qualification_level">
                     <option value="">— Select —</option>
@@ -100,9 +91,6 @@
                     <option value="phd">PhD</option>
                 </select>
             </div>
-        </div>
-
-        <div class="row">
             <div class="field">
                 <label>Status</label>
                 <select name="status">
@@ -110,10 +98,19 @@
                     <option value="active">Active (Publish immediately)</option>
                 </select>
             </div>
+        </div>
+
+        <div class="row">
             <div class="field">
                 <label>
                     <input type="checkbox" name="is_featured" value="true" style="width:auto;margin-right:0.5rem;">
                     Featured
+                </label>
+            </div>
+            <div class="field">
+                <label>
+                    <input type="checkbox" name="is_urgent" value="true" style="width:auto;margin-right:0.5rem;">
+                    Urgent/Last Date Approaching
                 </label>
             </div>
         </div>
@@ -124,12 +121,12 @@
 
         <div class="field">
             <label>Short Description *</label>
-            <input type="text" name="short_description" required placeholder="One-line summary about this answer key release">
+            <input type="text" name="short_description" required placeholder="One-line summary about this admit card release">
         </div>
 
         <div class="field">
             <label>Detailed Information *</label>
-            <textarea name="description" required placeholder="How to view answer key, objection process (if provisional), important instructions…"></textarea>
+            <textarea name="description" required placeholder="How to download admit card, important instructions, exam details…"></textarea>
         </div>
     </div>
 
@@ -138,30 +135,30 @@
 
         <div class="row">
             <div class="field">
-                <label>Answer Key Release Date *</label>
+                <label>Admit Card Release Date *</label>
                 <input type="date" name="notification_date" required>
             </div>
             <div class="field">
-                <label>Available From *</label>
+                <label>Download Available From *</label>
                 <input type="date" name="application_start" required>
             </div>
         </div>
 
         <div class="row">
             <div class="field">
-                <label>Objection Period Ends (if provisional)</label>
-                <input type="date" name="application_end" placeholder="Last date to raise objections">
+                <label>Download Available Until</label>
+                <input type="date" name="application_end">
             </div>
             <div class="field">
-                <label>Exam Conducted On</label>
-                <input type="date" name="exam_start">
+                <label>Exam Date *</label>
+                <input type="date" name="exam_start" required>
             </div>
         </div>
 
         <div class="row">
             <div class="field">
-                <label>Result Expected Date</label>
-                <input type="date" name="result_date">
+                <label>Exam End Date</label>
+                <input type="date" name="exam_end">
             </div>
             <div class="field"></div>
         </div>
@@ -171,38 +168,28 @@
         <h3 style="font-size:1rem;margin-bottom:1rem;color:#1e3a5f;">Download Links</h3>
 
         <div class="field">
-            <label>Official Answer Key URL *</label>
-            <input type="url" name="source_url" required placeholder="https://official-site.gov.in/answer-key">
+            <label>Official Admit Card Download URL *</label>
+            <input type="url" name="source_url" required placeholder="https://official-site.gov.in/admit-card">
         </div>
 
         <div class="field">
             <label>Direct PDF Link (if available)</label>
-            <input type="url" name="pdf_url" placeholder="https://official-site.gov.in/answer-key.pdf">
+            <input type="url" name="pdf_url" placeholder="https://official-site.gov.in/admit-card.pdf">
         </div>
     </div>
 
     <div class="card">
-        <h3 style="font-size:1rem;margin-bottom:1rem;color:#1e3a5f;">Objection Details (For Provisional Answer Keys)</h3>
+        <h3 style="font-size:1rem;margin-bottom:1rem;color:#1e3a5f;">Exam Details</h3>
 
         <div class="row">
             <div class="field">
-                <label>Objection Fee (per question)</label>
-                <input type="number" name="objection_fee" min="0" placeholder="e.g. 100">
-            </div>
-            <div class="field">
-                <label>Objection Portal URL</label>
-                <input type="url" name="objection_url" placeholder="https://official-site.gov.in/raise-objection">
-            </div>
-        </div>
-    </div>
-
-    <div class="card">
-        <h3 style="font-size:1rem;margin-bottom:1rem;color:#1e3a5f;">Additional Information</h3>
-
-        <div class="row">
-            <div class="field">
-                <label>Total Questions</label>
-                <input type="number" name="total_questions" min="0" placeholder="e.g. 100">
+                <label>Exam Mode</label>
+                <select name="exam_mode">
+                    <option value="">— Select —</option>
+                    <option value="online">Online (CBT)</option>
+                    <option value="offline">Offline (Pen & Paper)</option>
+                    <option value="mixed">Mixed Mode</option>
+                </select>
             </div>
             <div class="field">
                 <label>Total Vacancies (if applicable)</label>
@@ -212,7 +199,7 @@
     </div>
 
     <div style="display:flex;gap:.75rem;margin-top:.5rem;margin-bottom:2rem;">
-        <button type="submit" class="btn btn-primary">Create Answer Key</button>
+        <button type="submit" class="btn btn-primary">Create Admit Card</button>
         <a href="/jobs" class="btn btn-outline">Cancel</a>
     </div>
 </form>
@@ -258,7 +245,7 @@ document.getElementById('extract-btn').addEventListener('click', async function(
         const result = await response.json();
         const data = result.data;
         
-        const form = document.getElementById('answerkey-form');
+        const form = document.getElementById('admitcard-form');
         if (data.job_title) form.querySelector('[name="job_title"]').value = data.job_title;
         if (data.organization) form.querySelector('[name="organization"]').value = data.organization;
         if (data.department) form.querySelector('[name="department"]').value = data.department;
@@ -266,9 +253,8 @@ document.getElementById('extract-btn').addEventListener('click', async function(
         if (data.description) form.querySelector('[name="description"]').value = data.description;
         if (data.short_description) form.querySelector('[name="short_description"]').value = data.short_description;
         if (data.notification_date) form.querySelector('[name="notification_date"]').value = data.notification_date;
-        if (data.application_end) form.querySelector('[name="application_end"]').value = data.application_end;
         if (data.exam_start) form.querySelector('[name="exam_start"]').value = data.exam_start;
-        if (data.result_date) form.querySelector('[name="result_date"]').value = data.result_date;
+        if (data.exam_end) form.querySelector('[name="exam_end"]').value = data.exam_end;
         if (data.source_url) form.querySelector('[name="source_url"]').value = data.source_url;
         if (data.total_vacancies) form.querySelector('[name="total_vacancies"]').value = data.total_vacancies;
         

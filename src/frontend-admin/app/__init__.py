@@ -86,7 +86,7 @@ def create_app():
         if request.method == "GET":
             csrf_token = secrets.token_hex(16)
             session["csrf_token"] = csrf_token
-            return render_template("login.html", csrf_token=csrf_token)
+            return render_template("auth/login.html", csrf_token=csrf_token)
 
         # Validate CSRF token
         form_csrf = request.form.get("csrf_token", "")
@@ -138,7 +138,7 @@ def create_app():
             analytics_resp = current_app.api_client.get("/admin/analytics", token=token)
             analytics = analytics_resp.json() if analytics_resp.ok else {}
 
-        return render_template("dashboard.html", stats=stats, analytics=analytics)
+        return render_template("auth/dashboard.html", stats=stats, analytics=analytics)
 
     # --- Job Management ---
 
@@ -158,7 +158,7 @@ def create_app():
         data = resp.json() if resp.ok else {"data": [], "pagination": {}}
 
         return render_template(
-            "jobs_manage.html",
+            "jobs/jobs_manage.html",
             jobs=data["data"],
             pagination=data.get("pagination", {}),
             current_status=status_filter,
@@ -180,7 +180,7 @@ def create_app():
         data = resp.json() if resp.ok else {"data": [], "pagination": {}}
 
         return render_template(
-            "admitcards_manage.html",
+            "admit_cards/admitcards_manage.html",
             jobs=data["data"],
             pagination=data.get("pagination", {}),
             current_status=status_filter,
@@ -202,7 +202,7 @@ def create_app():
         data = resp.json() if resp.ok else {"data": [], "pagination": {}}
 
         return render_template(
-            "answerkeys_manage.html",
+            "answer_keys/answerkeys_manage.html",
             jobs=data["data"],
             pagination=data.get("pagination", {}),
             current_status=status_filter,
@@ -224,7 +224,7 @@ def create_app():
         data = resp.json() if resp.ok else {"data": [], "pagination": {}}
 
         return render_template(
-            "results_manage.html",
+            "results/results_manage.html",
             jobs=data["data"],
             pagination=data.get("pagination", {}),
             current_status=status_filter,
@@ -245,7 +245,7 @@ def create_app():
         resp = current_app.api_client.get("/admin/jobs", token=token, params=params)
         data = resp.json() if resp.ok else {"data": [], "pagination": {}}
 
-        return render_template("_job_rows.html", jobs=data["data"], pagination=data.get("pagination", {}), current_status=status_filter)
+        return render_template("jobs/_job_rows.html", jobs=data["data"], pagination=data.get("pagination", {}), current_status=status_filter)
 
     @app.route("/admit-cards/list")
     def admit_cards_list_partial():
@@ -262,7 +262,7 @@ def create_app():
         resp = current_app.api_client.get("/admin/admit-cards", token=token, params=params)
         data = resp.json() if resp.ok else {"data": [], "pagination": {}}
 
-        return render_template("_admitcard_rows.html", jobs=data["data"], pagination=data.get("pagination", {}), current_status=status_filter)
+        return render_template("admit_cards/_admitcard_rows.html", jobs=data["data"], pagination=data.get("pagination", {}), current_status=status_filter)
 
     @app.route("/answer-keys/list")
     def answer_keys_list_partial():
@@ -279,7 +279,7 @@ def create_app():
         resp = current_app.api_client.get("/admin/answer-keys", token=token, params=params)
         data = resp.json() if resp.ok else {"data": [], "pagination": {}}
 
-        return render_template("_answerkey_rows.html", jobs=data["data"], pagination=data.get("pagination", {}), current_status=status_filter)
+        return render_template("answer_keys/_answerkey_rows.html", jobs=data["data"], pagination=data.get("pagination", {}), current_status=status_filter)
 
     @app.route("/results/list")
     def results_list_partial():
@@ -296,7 +296,7 @@ def create_app():
         resp = current_app.api_client.get("/admin/results", token=token, params=params)
         data = resp.json() if resp.ok else {"data": [], "pagination": {}}
 
-        return render_template("_result_rows.html", jobs=data["data"], pagination=data.get("pagination", {}), current_status=status_filter)
+        return render_template("results/_result_rows.html", jobs=data["data"], pagination=data.get("pagination", {}), current_status=status_filter)
 
     @app.route("/api/extract-pdf", methods=["POST"])
     def extract_pdf():
@@ -357,9 +357,9 @@ def create_app():
                 return redirect(f"/jobs/{job_id}/review")
             detail = resp.json().get("detail", "Failed to create job") if resp.headers.get("content-type", "").startswith("application/json") else "Failed to create job"
             flash(detail, "error")
-            return render_template("job_create.html")
+            return render_template("jobs/job_create.html")
 
-        return render_template("job_create.html")
+        return render_template("jobs/job_create.html")
 
     @app.route("/admit-cards/new", methods=["GET", "POST"])
     def new_admit_card():
@@ -394,9 +394,9 @@ def create_app():
                 return redirect(f"/jobs/{job_id}/review")
             detail = resp.json().get("detail", "Failed to create admit card") if resp.headers.get("content-type", "").startswith("application/json") else "Failed to create admit card"
             flash(detail, "error")
-            return render_template("admitcard_create.html")
+            return render_template("admit_cards/admitcard_create.html")
 
-        return render_template("admitcard_create.html")
+        return render_template("admit_cards/admitcard_create.html")
 
     @app.route("/answer-keys/new", methods=["GET", "POST"])
     def new_answer_key():
@@ -430,9 +430,9 @@ def create_app():
                 return redirect(f"/jobs/{job_id}/review")
             detail = resp.json().get("detail", "Failed to create answer key") if resp.headers.get("content-type", "").startswith("application/json") else "Failed to create answer key"
             flash(detail, "error")
-            return render_template("answerkey_create.html")
+            return render_template("answer_keys/answerkey_create.html")
 
-        return render_template("answerkey_create.html")
+        return render_template("answer_keys/answerkey_create.html")
 
     @app.route("/results/new", methods=["GET", "POST"])
     def new_result():
@@ -466,9 +466,9 @@ def create_app():
                 return redirect(f"/jobs/{job_id}/review")
             detail = resp.json().get("detail", "Failed to create result") if resp.headers.get("content-type", "").startswith("application/json") else "Failed to create result"
             flash(detail, "error")
-            return render_template("result_create.html")
+            return render_template("results/result_create.html")
 
-        return render_template("result_create.html")
+        return render_template("results/result_create.html")
 
     @app.route("/jobs/<job_id>/delete", methods=["POST"])
     def delete_job(job_id):
@@ -539,7 +539,7 @@ def create_app():
             return redirect("/jobs")
         job = resp.json()
 
-        return render_template("job_review.html", job=job)
+        return render_template("jobs/job_review.html", job=job)
 
     # --- User Management ---
 
@@ -561,7 +561,7 @@ def create_app():
         data = resp.json() if resp.ok else {"data": [], "pagination": {}}
 
         return render_template(
-            "users.html",
+            "users/users.html",
             users=data["data"],
             pagination=data.get("pagination", {}),
             current_status=status_filter,
@@ -586,7 +586,7 @@ def create_app():
         resp = current_app.api_client.get("/admin/users", token=token, params=params)
         data = resp.json() if resp.ok else {"data": [], "pagination": {}}
 
-        return render_template("_user_rows.html", users=data["data"], pagination=data.get("pagination", {}), current_status=status_filter, search_q=q or "")
+        return render_template("users/_user_rows.html", users=data["data"], pagination=data.get("pagination", {}), current_status=status_filter, search_q=q or "")
 
     @app.route("/users/<user_id>")
     def user_detail(user_id):
@@ -600,7 +600,7 @@ def create_app():
             flash("User not found.", "error")
             return redirect("/users")
         user = resp.json()
-        return render_template("user_detail.html", user=user)
+        return render_template("users/user_detail.html", user=user)
 
     @app.route("/users/<user_id>/suspend", methods=["POST"])
     def toggle_user_status(user_id):
@@ -779,7 +779,7 @@ def create_app():
                 return redirect("/login")
             resp = current_app.api_client.get("/admin/entrance-exams", token=token, params=params)
         data = resp.json() if resp.ok else {"data": [], "pagination": {}}
-        return render_template("entrance_exams.html", exams=data["data"], pagination=data.get("pagination", {}), current_stream=stream)
+        return render_template("entrance_exams/entrance_exams.html", exams=data["data"], pagination=data.get("pagination", {}), current_stream=stream)
 
     @app.route("/entrance-exams/list")
     def entrance_exams_list_partial():
@@ -793,7 +793,7 @@ def create_app():
             params["stream"] = stream
         resp = current_app.api_client.get("/admin/entrance-exams", token=token, params=params)
         data = resp.json() if resp.ok else {"data": [], "pagination": {}}
-        return render_template("_exam_rows.html", exams=data["data"], pagination=data.get("pagination", {}), current_stream=stream)
+        return render_template("entrance_exams/_exam_rows.html", exams=data["data"], pagination=data.get("pagination", {}), current_stream=stream)
 
     @app.route("/entrance-exams/new", methods=["GET", "POST"])
     def new_entrance_exam():
@@ -823,7 +823,7 @@ def create_app():
                 return redirect(f"/entrance-exams/{exam_id}/edit")
             detail = resp.json().get("detail", "Failed to create exam") if resp.headers.get("content-type", "").startswith("application/json") else "Failed to create exam"
             flash(detail, "error")
-        return render_template("exam_edit.html", exam=None, mode="new")
+        return render_template("entrance_exams/exam_edit.html", exam=None, mode="new")
 
     @app.route("/entrance-exams/<exam_id>/edit", methods=["GET", "POST"])
     def edit_entrance_exam(exam_id):
@@ -866,7 +866,7 @@ def create_app():
         answer_keys = ak_resp.json() if ak_resp.ok else []
         results = re_resp.json() if re_resp.ok else []
 
-        return render_template("exam_edit.html", exam=resp_detail, mode="edit",
+        return render_template("entrance_exams/exam_edit.html", exam=resp_detail, mode="edit",
                                admit_cards=admit_cards, answer_keys=answer_keys, results=results)
 
     @app.route("/entrance-exams/<exam_id>/delete", methods=["POST"])
@@ -960,7 +960,7 @@ def create_app():
         resp = current_app.api_client.get("/admin/logs", token=token, params=params)
         data = resp.json() if resp.ok else {"data": [], "pagination": {}}
 
-        return render_template("logs.html", logs=data["data"], pagination=data.get("pagination", {}))
+        return render_template("logs/logs.html", logs=data["data"], pagination=data.get("pagination", {}))
 
     @app.route("/logs/list")
     def logs_list_partial():
@@ -973,7 +973,7 @@ def create_app():
         resp = current_app.api_client.get("/admin/logs", token=token, params=params)
         data = resp.json() if resp.ok else {"data": [], "pagination": {}}
 
-        return render_template("_log_rows.html", logs=data["data"], pagination=data.get("pagination", {}))
+        return render_template("logs/_log_rows.html", logs=data["data"], pagination=data.get("pagination", {}))
 
     def _int_arg(name: str, default: int) -> int:
         """Parse an integer query parameter safely."""
@@ -985,7 +985,7 @@ def create_app():
     @app.errorhandler(Exception)
     def handle_unexpected_error(exc):
         app.logger.error("Unhandled exception: %s", exc, exc_info=True)
-        return render_template("login.html"), 500
+        return render_template("auth/login.html"), 500
 
     return app
 
