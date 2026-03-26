@@ -772,12 +772,12 @@ def create_app():
         stream = request.args.get("stream")
         if stream:
             params["stream"] = stream
-        resp = current_app.api_client.get("/admin/exams", token=token, params=params)
+        resp = current_app.api_client.get("/admin/entrance-exams", token=token, params=params)
         if resp.status_code == 401:
             token = _try_refresh()
             if not token:
                 return redirect("/login")
-            resp = current_app.api_client.get("/admin/exams", token=token, params=params)
+            resp = current_app.api_client.get("/admin/entrance-exams", token=token, params=params)
         data = resp.json() if resp.ok else {"data": [], "pagination": {}}
         return render_template("exams.html", exams=data["data"], pagination=data.get("pagination", {}), current_stream=stream)
 
@@ -791,7 +791,7 @@ def create_app():
         stream = request.args.get("stream")
         if stream:
             params["stream"] = stream
-        resp = current_app.api_client.get("/admin/exams", token=token, params=params)
+        resp = current_app.api_client.get("/admin/entrance-exams", token=token, params=params)
         data = resp.json() if resp.ok else {"data": [], "pagination": {}}
         return render_template("_exam_rows.html", exams=data["data"], pagination=data.get("pagination", {}), current_stream=stream)
 
@@ -816,7 +816,7 @@ def create_app():
                 payload[f] = val if val else None
             payload["is_featured"] = form.get("is_featured") == "on"
             payload.setdefault("status", "active")
-            resp = current_app.api_client.post("/admin/exams", token=token, json=payload)
+            resp = current_app.api_client.post("/admin/entrance-exams", token=token, json=payload)
             if resp.ok:
                 exam_id = resp.json().get("id")
                 flash("Entrance exam created.", "success")
@@ -846,22 +846,22 @@ def create_app():
                 val = form.get(f, "").strip()
                 update[f] = val if val else None
             update["is_featured"] = form.get("is_featured") == "on"
-            resp = current_app.api_client.put(f"/admin/exams/{exam_id}", token=token, json=update)
+            resp = current_app.api_client.put(f"/admin/entrance-exams/{exam_id}", token=token, json=update)
             if resp.ok:
                 flash("Exam updated.", "success")
             else:
                 flash("Failed to update exam.", "error")
             return redirect(f"/exams/{exam_id}/edit")
 
-        resp_detail_req = current_app.api_client.get(f"/admin/exams/{exam_id}", token=token)
+        resp_detail_req = current_app.api_client.get(f"/admin/entrance-exams/{exam_id}", token=token)
         if not resp_detail_req.ok:
             flash("Exam not found.", "error")
             return redirect("/exams")
         resp_detail = resp_detail_req.json()
 
-        ac_resp = current_app.api_client.get(f"/exams/{exam_id}/admit-cards", token=token)
-        ak_resp = current_app.api_client.get(f"/exams/{exam_id}/answer-keys", token=token)
-        re_resp = current_app.api_client.get(f"/exams/{exam_id}/results", token=token)
+        ac_resp = current_app.api_client.get(f"/entrance-exams/{exam_id}/admit-cards", token=token)
+        ak_resp = current_app.api_client.get(f"/entrance-exams/{exam_id}/answer-keys", token=token)
+        re_resp = current_app.api_client.get(f"/entrance-exams/{exam_id}/results", token=token)
         admit_cards = ac_resp.json() if ac_resp.ok else []
         answer_keys = ak_resp.json() if ak_resp.ok else []
         results = re_resp.json() if re_resp.ok else []
@@ -875,7 +875,7 @@ def create_app():
         token = session.get("token")
         if not token:
             return redirect("/login")
-        current_app.api_client.delete(f"/admin/exams/{exam_id}", token=token)
+        current_app.api_client.delete(f"/admin/entrance-exams/{exam_id}", token=token)
         flash("Exam deleted.", "success")
         return redirect("/exams")
 
@@ -895,7 +895,7 @@ def create_app():
             "valid_until": form.get("valid_until") or None,
             "notes": form.get("notes") or None,
         }
-        current_app.api_client.post(f"/admin/exams/{exam_id}/admit-cards", token=token, json=payload)
+        current_app.api_client.post(f"/admin/entrance-exams/{exam_id}/admit-cards", token=token, json=payload)
         flash("Admit card added.", "success")
         return redirect(f"/exams/{exam_id}/edit#docs")
 
@@ -917,7 +917,7 @@ def create_app():
             "objection_url": form.get("objection_url") or None,
             "objection_deadline": form.get("objection_deadline") or None,
         }
-        current_app.api_client.post(f"/admin/exams/{exam_id}/answer-keys", token=token, json=payload)
+        current_app.api_client.post(f"/admin/entrance-exams/{exam_id}/answer-keys", token=token, json=payload)
         flash("Answer key added.", "success")
         return redirect(f"/exams/{exam_id}/edit#docs")
 
@@ -935,7 +935,7 @@ def create_app():
             "total_qualified": int(form["total_qualified"]) if form.get("total_qualified") else None,
             "notes": form.get("notes") or None,
         }
-        current_app.api_client.post(f"/admin/exams/{exam_id}/results", token=token, json=payload)
+        current_app.api_client.post(f"/admin/entrance-exams/{exam_id}/results", token=token, json=payload)
         flash("Result added.", "success")
         return redirect(f"/exams/{exam_id}/edit#docs")
 
@@ -944,7 +944,7 @@ def create_app():
         token = session.get("token")
         if not token:
             return redirect("/login")
-        current_app.api_client.delete(f"/admin/exams/{exam_id}/{doc_type}/{doc_id}", token=token)
+        current_app.api_client.delete(f"/admin/entrance-exams/{exam_id}/{doc_type}/{doc_id}", token=token)
         flash("Document deleted.", "success")
         return redirect(f"/exams/{exam_id}/edit#docs")
 

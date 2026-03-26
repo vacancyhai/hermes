@@ -8,13 +8,13 @@ Public (read-only):
   GET  /api/v1/entrance-exams/:id/results       — per-phase results
 
 Admin CRUD (operator+):
-  POST   /api/v1/admin/exams
-  PUT    /api/v1/admin/exams/:id
-  DELETE /api/v1/admin/exams/:id
+  POST   /api/v1/admin/entrance-exams
+  PUT    /api/v1/admin/entrance-exams/:id
+  DELETE /api/v1/admin/entrance-exams/:id
 
-  POST/PUT/DELETE /api/v1/admin/exams/:id/admit-cards[/:doc_id]
-  POST/PUT/DELETE /api/v1/admin/exams/:id/answer-keys[/:doc_id]
-  POST/PUT/DELETE /api/v1/admin/exams/:id/results[/:doc_id]
+  POST/PUT/DELETE /api/v1/admin/entrance-exams/:id/admit-cards[/:doc_id]
+  POST/PUT/DELETE /api/v1/admin/entrance-exams/:id/answer-keys[/:doc_id]
+  POST/PUT/DELETE /api/v1/admin/entrance-exams/:id/results[/:doc_id]
 """
 
 import re
@@ -41,7 +41,7 @@ from app.schemas.jobs import (
 )
 
 public_router = APIRouter(prefix="/api/v1/entrance-exams", tags=["entrance-exams"])
-admin_router = APIRouter(prefix="/api/v1/admin/exams", tags=["admin-exams"])
+admin_router = APIRouter(prefix="/api/v1/admin/entrance-exams", tags=["admin-entrance-exams"])
 
 
 def _slugify(text_: str) -> str:
