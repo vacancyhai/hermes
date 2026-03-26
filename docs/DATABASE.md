@@ -13,6 +13,7 @@ Schema is managed through 4 Alembic migrations + 1 SQL migration:
 | `0003_job_documents_tables.py` | Creates `job_admit_cards`, `job_answer_keys`, `job_results` linked to jobs |
 | `0004_entrance_exams.py` | Creates `entrance_exams`; adds `exam_id` FK + CHECK constraint to doc tables |
 | `007_rename_exam_db_objects.sql` | Renames indexes and constraints from `exam` to `entrance_exam` prefix |
+| `008_remove_job_type_variants.sql` | Removes `admit_card`, `answer_key`, `result` from `job_vacancies`; restricts to `latest_job` only |
 
 **Fresh install:**
 ```bash
@@ -118,19 +119,15 @@ Internal staff accounts (Admin/Operator).
 | `status` | String(20) | `active`, `suspended` |
 
 ### 4. `job_vacancies`
-The primary entity for government jobs and related content types.
+Government job postings and employment opportunities.
 
-**Multi-purpose table:** This table stores four different content types, differentiated by the `job_type` field:
-- `latest_job` - Job vacancies and employment opportunities
-- `admit_card` - Exam admit card releases
-- `answer_key` - Provisional/final answer key publications
-- `result` - Exam results and merit lists
+**Note:** This table now exclusively stores job vacancies (`job_type='latest_job'`). 
+Document announcements (admit cards, answer keys, results) are managed through:
+- Table 10: `job_admit_cards` - Per-phase admit card download links
+- Table 11: `job_answer_keys` - Per-phase answer key files  
+- Table 12: `job_results` - Per-phase result downloads
 
-The admin panel has separate endpoints and management pages for each content type:
-- `GET /api/v1/admin/jobs` - Lists only latest_job entries
-- `GET /api/v1/admin/admit-cards` - Lists only admit_card entries
-- `GET /api/v1/admin/answer-keys` - Lists only answer_key entries
-- `GET /api/v1/admin/results` - Lists only result entries
+These document tables can link to either a job (via `job_id`) or an entrance exam (via `exam_id`).
 
 | Column | Type | Description |
 |--------|------|-------------|
@@ -139,7 +136,7 @@ The admin panel has separate endpoints and management pages for each content typ
 | `slug` | String(500) | URL slug (unique) |
 | `organization` | String(255) | Hiring authority (SSC, UPSC, etc.) |
 | `department` | String(255) | Specific department |
-| `job_type` | String(50) | Content type: `latest_job`, `admit_card`, `answer_key`, `result` |
+| `job_type` | String(50) | Content type: `latest_job` (only value allowed) |
 | `employment_type` | String(50) | `permanent`, `contract`, etc. (for latest_job only) |
 | `qualification_level`| String(50) | `10th`, `graduate`, etc. |
 | `total_vacancies` | Integer | Total seat count |

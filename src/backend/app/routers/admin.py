@@ -124,38 +124,17 @@ async def dashboard_stats(
         )
     )).scalar()
     
-    # Admit Cards
-    admit_cards_count = (await db.execute(
-        select(func.count(JobVacancy.id)).where(JobVacancy.job_type == "admit_card")
-    )).scalar()
-    admit_cards_active = (await db.execute(
-        select(func.count(JobVacancy.id)).where(
-            JobVacancy.job_type == "admit_card",
-            JobVacancy.status == "active"
-        )
-    )).scalar()
+    # Admit Cards (from job_admit_cards table)
+    from app.models.job_admit_card import JobAdmitCard
+    admit_cards_count = (await db.execute(select(func.count(JobAdmitCard.id)))).scalar()
     
-    # Answer Keys
-    answer_keys_count = (await db.execute(
-        select(func.count(JobVacancy.id)).where(JobVacancy.job_type == "answer_key")
-    )).scalar()
-    answer_keys_active = (await db.execute(
-        select(func.count(JobVacancy.id)).where(
-            JobVacancy.job_type == "answer_key",
-            JobVacancy.status == "active"
-        )
-    )).scalar()
+    # Answer Keys (from job_answer_keys table)
+    from app.models.job_answer_key import JobAnswerKey
+    answer_keys_count = (await db.execute(select(func.count(JobAnswerKey.id)))).scalar()
     
-    # Results
-    results_count = (await db.execute(
-        select(func.count(JobVacancy.id)).where(JobVacancy.job_type == "result")
-    )).scalar()
-    results_active = (await db.execute(
-        select(func.count(JobVacancy.id)).where(
-            JobVacancy.job_type == "result",
-            JobVacancy.status == "active"
-        )
-    )).scalar()
+    # Results (from job_results table)
+    from app.models.job_result import JobResult
+    results_count = (await db.execute(select(func.count(JobResult.id)))).scalar()
     
     # Entrance Exams
     entrance_exams_count = (await db.execute(select(func.count(EntranceExam.id)))).scalar()
@@ -176,9 +155,9 @@ async def dashboard_stats(
 
     return {
         "jobs": {"total": jobs_count, "active": jobs_active, "draft": jobs_draft},
-        "admit_cards": {"total": admit_cards_count, "active": admit_cards_active},
-        "answer_keys": {"total": answer_keys_count, "active": answer_keys_active},
-        "results": {"total": results_count, "active": results_active},
+        "admit_cards": {"total": admit_cards_count},
+        "answer_keys": {"total": answer_keys_count},
+        "results": {"total": results_count},
         "entrance_exams": {"total": entrance_exams_count, "active": entrance_exams_active},
         "users": {"total": users_total, "active": users_active, "new_this_week": users_new_this_week},
         "applications": {"total": apps_total},
@@ -293,84 +272,72 @@ async def list_jobs(
 
 @router.get("/admit-cards")
 async def list_admit_cards(
-    status_filter: str | None = Query(None, alias="status"),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
     admin=Depends(require_operator),
     db: AsyncSession = Depends(get_db),
 ):
-    """List admit cards (admit_card type only)."""
-    query = select(JobVacancy).where(JobVacancy.job_type == "admit_card")
-    count_query = select(func.count(JobVacancy.id)).where(JobVacancy.job_type == "admit_card")
-
-    if status_filter:
-        query = query.where(JobVacancy.status == status_filter)
-        count_query = count_query.where(JobVacancy.status == status_filter)
-
-    query = query.order_by(JobVacancy.created_at.desc())
+    """List all admit cards from job_admit_cards table."""
+    from app.models.job_admit_card import JobAdmitCard
+    from app.schemas.jobs import AdmitCardResponse
+    
+    query = select(JobAdmitCard).order_by(JobAdmitCard.created_at.desc())
+    count_query = select(func.count(JobAdmitCard.id))
 
     total = (await db.execute(count_query)).scalar()
     result = await db.execute(query.offset(offset).limit(limit))
-    jobs = result.scalars().all()
+    cards = result.scalars().all()
 
     return {
-        "data": [JobListItem.model_validate(j).model_dump() for j in jobs],
+        "data": [AdmitCardResponse.model_validate(c).model_dump() for c in cards],
         "pagination": {"limit": limit, "offset": offset, "total": total, "has_more": (offset + limit) < total},
     }
 
 
 @router.get("/answer-keys")
 async def list_answer_keys(
-    status_filter: str | None = Query(None, alias="status"),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
     admin=Depends(require_operator),
     db: AsyncSession = Depends(get_db),
 ):
-    """List answer keys (answer_key type only)."""
-    query = select(JobVacancy).where(JobVacancy.job_type == "answer_key")
-    count_query = select(func.count(JobVacancy.id)).where(JobVacancy.job_type == "answer_key")
-
-    if status_filter:
-        query = query.where(JobVacancy.status == status_filter)
-        count_query = count_query.where(JobVacancy.status == status_filter)
-
-    query = query.order_by(JobVacancy.created_at.desc())
+    """List all answer keys from job_answer_keys table."""
+    from app.models.job_answer_key import JobAnswerKey
+    from app.schemas.jobs import AnswerKeyResponse
+    
+    query = select(JobAnswerKey).order_by(JobAnswerKey.created_at.desc())
+    count_query = select(func.count(JobAnswerKey.id))
 
     total = (await db.execute(count_query)).scalar()
     result = await db.execute(query.offset(offset).limit(limit))
-    jobs = result.scalars().all()
+    keys = result.scalars().all()
 
     return {
-        "data": [JobListItem.model_validate(j).model_dump() for j in jobs],
+        "data": [AnswerKeyResponse.model_validate(k).model_dump() for k in keys],
         "pagination": {"limit": limit, "offset": offset, "total": total, "has_more": (offset + limit) < total},
     }
 
 
 @router.get("/results")
 async def list_results(
-    status_filter: str | None = Query(None, alias="status"),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
     admin=Depends(require_operator),
     db: AsyncSession = Depends(get_db),
 ):
-    """List results (result type only)."""
-    query = select(JobVacancy).where(JobVacancy.job_type == "result")
-    count_query = select(func.count(JobVacancy.id)).where(JobVacancy.job_type == "result")
-
-    if status_filter:
-        query = query.where(JobVacancy.status == status_filter)
-        count_query = count_query.where(JobVacancy.status == status_filter)
-
-    query = query.order_by(JobVacancy.created_at.desc())
+    """List all results from job_results table."""
+    from app.models.job_result import JobResult
+    from app.schemas.jobs import ResultResponse
+    
+    query = select(JobResult).order_by(JobResult.created_at.desc())
+    count_query = select(func.count(JobResult.id))
 
     total = (await db.execute(count_query)).scalar()
     result = await db.execute(query.offset(offset).limit(limit))
-    jobs = result.scalars().all()
+    results = result.scalars().all()
 
     return {
-        "data": [JobListItem.model_validate(j).model_dump() for j in jobs],
+        "data": [ResultResponse.model_validate(r).model_dump() for r in results],
         "pagination": {"limit": limit, "offset": offset, "total": total, "has_more": (offset + limit) < total},
     }
 
