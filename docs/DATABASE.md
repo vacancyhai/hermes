@@ -117,7 +117,19 @@ Internal staff accounts (Admin/Operator).
 | `status` | String(20) | `active`, `suspended` |
 
 ### 4. `job_vacancies`
-The primary entity for government jobs.
+The primary entity for government jobs and related content types.
+
+**Multi-purpose table:** This table stores four different content types, differentiated by the `job_type` field:
+- `latest_job` - Job vacancies and employment opportunities
+- `admit_card` - Exam admit card releases
+- `answer_key` - Provisional/final answer key publications
+- `result` - Exam results and merit lists
+
+The admin panel has separate endpoints and management pages for each content type:
+- `GET /api/v1/admin/jobs` - Lists only latest_job entries
+- `GET /api/v1/admin/admit-cards` - Lists only admit_card entries
+- `GET /api/v1/admin/answer-keys` - Lists only answer_key entries
+- `GET /api/v1/admin/results` - Lists only result entries
 
 | Column | Type | Description |
 |--------|------|-------------|
@@ -126,8 +138,8 @@ The primary entity for government jobs.
 | `slug` | String(500) | URL slug (unique) |
 | `organization` | String(255) | Hiring authority (SSC, UPSC, etc.) |
 | `department` | String(255) | Specific department |
-| `job_type` | String(50) | `latest_job`, `result`, `admit_card`, etc. |
-| `employment_type` | String(50) | `permanent`, `contract`, etc. |
+| `job_type` | String(50) | Content type: `latest_job`, `admit_card`, `answer_key`, `result` |
+| `employment_type` | String(50) | `permanent`, `contract`, etc. (for latest_job only) |
 | `qualification_level`| String(50) | `10th`, `graduate`, etc. |
 | `total_vacancies` | Integer | Total seat count |
 | `vacancy_breakdown` | JSONB | Seat distribution by category/state |

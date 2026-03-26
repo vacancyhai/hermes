@@ -122,17 +122,63 @@ When a job from a followed org is approved (draft → active), a `new_job_from_f
 
 All admin endpoints require an admin JWT token (`user_type: "admin"`).
 
-### Job Management
+### Content Management
+
+The admin panel manages different content types stored in `job_vacancies` table with different `job_type` values:
+- `latest_job` - Job vacancies and employment opportunities
+- `admit_card` - Exam admit card releases
+- `answer_key` - Answer key publications (provisional/final)
+- `result` - Exam results and merit lists
+
+Each content type has its own dedicated endpoints for listing and management.
+
+#### Job Vacancies (latest_job)
 
 | Method | Endpoint | Role | Description |
 |--------|----------|------|-------------|
-| GET | `/admin/jobs` | Operator+ | List all jobs (any status) |
-| POST | `/admin/jobs` | Operator+ | Create job vacancy |
+| GET | `/admin/jobs` | Operator+ | List job vacancies (latest_job type only) |
+| POST | `/admin/jobs` | Operator+ | Create job vacancy (job_type: latest_job) |
 | POST | `/admin/jobs/upload-pdf` | Operator+ | Upload PDF → AI extraction → draft job |
-| GET | `/admin/jobs/:id` | Operator+ | Get single job detail |
-| PUT | `/admin/jobs/:id` | Operator+ | Update job |
+
+#### Admit Cards (admit_card)
+
+| Method | Endpoint | Role | Description |
+|--------|----------|------|-------------|
+| GET | `/admin/admit-cards` | Operator+ | List admit cards (admit_card type only) |
+| POST | `/admin/jobs` | Operator+ | Create admit card (job_type: admit_card) |
+
+#### Answer Keys (answer_key)
+
+| Method | Endpoint | Role | Description |
+|--------|----------|------|-------------|
+| GET | `/admin/answer-keys` | Operator+ | List answer keys (answer_key type only) |
+| POST | `/admin/jobs` | Operator+ | Create answer key (job_type: answer_key) |
+
+#### Results (result)
+
+| Method | Endpoint | Role | Description |
+|--------|----------|------|-------------|
+| GET | `/admin/results` | Operator+ | List results (result type only) |
+| POST | `/admin/jobs` | Operator+ | Create result (job_type: result) |
+
+#### Common Content Operations
+
+These operations work for all content types (jobs, admit cards, answer keys, results):
+
+| Method | Endpoint | Role | Description |
+|--------|----------|------|-------------|
+| GET | `/admin/jobs/:id` | Operator+ | Get single content detail |
+| PUT | `/admin/jobs/:id` | Operator+ | Update content |
 | PUT | `/admin/jobs/:id/approve` | Operator+ | Approve draft → active |
 | DELETE | `/admin/jobs/:id` | Admin only | Soft-delete (→ cancelled) |
+
+**Query Parameters for List Endpoints:**
+
+| Param | Type | Description |
+|-------|------|-------------|
+| `status` | string | Filter by status (active/draft/cancelled) |
+| `limit` | int | 1-100, default: 20 |
+| `offset` | int | Default: 0 |
 
 ### User Management
 
@@ -453,10 +499,23 @@ GET /api/v1/admin/stats
 Authorization: Bearer <admin_token>
 → 200 {
   "jobs": { "total": 7, "active": 6, "draft": 0 },
+  "admit_cards": { "total": 15, "active": 15 },
+  "answer_keys": { "total": 3, "active": 3 },
+  "results": { "total": 2, "active": 2 },
+  "entrance_exams": { "total": 5, "active": 4 },
   "users": { "total": 3, "active": 3, "new_this_week": 1 },
   "applications": { "total": 12 }
 }
 ```
+
+**Content Type Breakdown:**
+- `jobs` - Job vacancies (job_type: latest_job)
+- `admit_cards` - Admit card releases (job_type: admit_card)
+- `answer_keys` - Answer key publications (job_type: answer_key)
+- `results` - Exam results (job_type: result)
+- `entrance_exams` - Entrance exam information (separate table)
+
+All content types stored in `job_vacancies` table are differentiated by their `job_type` field.
 
 ---
 
