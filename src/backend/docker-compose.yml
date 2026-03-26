@@ -78,6 +78,8 @@ services:
       - ./app:/app/app  # Hot-reload in development
       - ./tests:/app/tests
       - ./pytest.ini:/app/pytest.ini
+      - ../../migrations:/app/migrations  # Alembic migrations
+      - ../../alembic.ini:/app/alembic.ini  # Alembic config
       - uploads_data:/app/uploads
       - ../../secrets:/app/secrets:ro  # Firebase credentials
     depends_on:
@@ -109,6 +111,8 @@ services:
       - .env
     volumes:
       - ./app:/app/app
+      - ../../migrations:/app/migrations
+      - ../../alembic.ini:/app/alembic.ini
       - uploads_data:/app/uploads
       - ../../secrets:/app/secrets:ro  # Firebase credentials
     depends_on:
@@ -133,6 +137,8 @@ services:
       - .env
     volumes:
       - ./app:/app/app
+      - ../../migrations:/app/migrations
+      - ../../alembic.ini:/app/alembic.ini
       - ../../secrets:/app/secrets:ro  # Firebase credentials
     depends_on:
       pgbouncer:

@@ -209,7 +209,6 @@ hermes/
 │   │   │       ├── cleanup.py        # Purge expired notifications + logs
 │   │   │       ├── jobs.py           # Close expired listings, PDF extraction, exam status update
 │   │   │       └── seo.py            # Generate sitemap.xml
-│   │   ├── migrations/versions/  # 0001_initial_schema → 0004_entrance_exams
 │   │   └── tests/                # 313 tests — 93% coverage (unit, integration, security, e2e)
 │   ├── frontend/                 # User Frontend (Flask + HTMX + Alpine.js, port 8080)
 │   │   ├── app/
