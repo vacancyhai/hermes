@@ -29,14 +29,12 @@ async def list_admit_cards(
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
 ):
-    """List admit cards with filters and search. Returns only active admit cards by default."""
+    """List admit cards with filters and search. Returns all admit cards."""
     query = select(JobVacancy).where(
-        JobVacancy.job_type == "admit_card",
-        JobVacancy.status == "active"
+        JobVacancy.job_type == "admit_card"
     )
     count_query = select(func.count(JobVacancy.id)).where(
-        JobVacancy.job_type == "admit_card",
-        JobVacancy.status == "active"
+        JobVacancy.job_type == "admit_card"
     )
 
     # Full-text search
@@ -90,14 +88,12 @@ async def list_answer_keys(
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
 ):
-    """List answer keys with filters and search. Returns only active answer keys by default."""
+    """List answer keys with filters and search. Returns all answer keys."""
     query = select(JobVacancy).where(
-        JobVacancy.job_type == "answer_key",
-        JobVacancy.status == "active"
+        JobVacancy.job_type == "answer_key"
     )
     count_query = select(func.count(JobVacancy.id)).where(
-        JobVacancy.job_type == "answer_key",
-        JobVacancy.status == "active"
+        JobVacancy.job_type == "answer_key"
     )
 
     # Full-text search
@@ -151,14 +147,12 @@ async def list_results(
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
 ):
-    """List results with filters and search. Returns only active results by default."""
+    """List results with filters and search. Returns all results."""
     query = select(JobVacancy).where(
-        JobVacancy.job_type == "result",
-        JobVacancy.status == "active"
+        JobVacancy.job_type == "result"
     )
     count_query = select(func.count(JobVacancy.id)).where(
-        JobVacancy.job_type == "result",
-        JobVacancy.status == "active"
+        JobVacancy.job_type == "result"
     )
 
     # Full-text search

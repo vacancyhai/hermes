@@ -32,14 +32,14 @@ async def list_jobs(
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
 ):
-    """List job vacancies (latest_job type only) with filters and full-text search. Returns only active jobs by default."""
+    """List job vacancies (latest_job type only) with filters and full-text search. Returns all jobs."""
     query = select(JobVacancy).where(JobVacancy.job_type == "latest_job")
     count_query = select(func.count(JobVacancy.id)).where(JobVacancy.job_type == "latest_job")
 
-    # Default to active jobs for public listing
-    effective_status = status_filter or "active"
-    query = query.where(JobVacancy.status == effective_status)
-    count_query = count_query.where(JobVacancy.status == effective_status)
+    # Apply status filter if explicitly provided
+    if status_filter:
+        query = query.where(JobVacancy.status == status_filter)
+        count_query = count_query.where(JobVacancy.status == status_filter)
 
     # Full-text search
     if q:

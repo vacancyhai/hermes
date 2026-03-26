@@ -51,8 +51,9 @@ async def _require_job(job_id: uuid.UUID, db: AsyncSession) -> JobVacancy:
 
 
 async def _require_active_job(job_id: uuid.UUID, db: AsyncSession) -> JobVacancy:
+    """Get job by ID (any status). Note: Function name kept for backward compatibility."""
     result = await db.execute(
-        select(JobVacancy).where(JobVacancy.id == job_id, JobVacancy.status == "active")
+        select(JobVacancy).where(JobVacancy.id == job_id)
     )
     job = result.scalar_one_or_none()
     if not job:
@@ -67,7 +68,7 @@ async def _require_active_job(job_id: uuid.UUID, db: AsyncSession) -> JobVacancy
 
 @public_router.get("/{job_id}/admit-cards", response_model=list[AdmitCardResponse])
 async def list_admit_cards(job_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
-    """List all admit cards for an active job, ordered by phase."""
+    """List all admit cards for a job, ordered by phase."""
     await _require_active_job(job_id, db)
     rows = await db.execute(
         select(JobAdmitCard)
@@ -79,7 +80,7 @@ async def list_admit_cards(job_id: uuid.UUID, db: AsyncSession = Depends(get_db)
 
 @public_router.get("/{job_id}/answer-keys", response_model=list[AnswerKeyResponse])
 async def list_answer_keys(job_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
-    """List all answer keys for an active job, ordered by phase."""
+    """List all answer keys for a job, ordered by phase."""
     await _require_active_job(job_id, db)
     rows = await db.execute(
         select(JobAnswerKey)
@@ -91,7 +92,7 @@ async def list_answer_keys(job_id: uuid.UUID, db: AsyncSession = Depends(get_db)
 
 @public_router.get("/{job_id}/results", response_model=list[ResultResponse])
 async def list_results(job_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
-    """List all results for an active job, ordered by phase."""
+    """List all results for a job, ordered by phase."""
     await _require_active_job(job_id, db)
     rows = await db.execute(
         select(JobResult)
