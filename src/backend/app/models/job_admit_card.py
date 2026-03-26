@@ -12,10 +12,10 @@ from app.models.base import Base
 
 
 class JobAdmitCard(Base):
-    __tablename__ = "job_admit_cards"
+    __tablename__ = "admit_cards"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    job_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey("job_vacancies.id", ondelete="CASCADE"), nullable=True, index=True)
+    job_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey("jobs.id", ondelete="CASCADE"), nullable=True, index=True)
     exam_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey("entrance_exams.id", ondelete="CASCADE"), nullable=True, index=True)
     phase_number: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
     title: Mapped[str] = mapped_column(String(255), nullable=False)

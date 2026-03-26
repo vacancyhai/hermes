@@ -11,7 +11,7 @@ from app.models.base import Base
 
 
 class JobVacancy(Base):
-    __tablename__ = "job_vacancies"
+    __tablename__ = "jobs"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     job_title: Mapped[str] = mapped_column(String(500), nullable=False)

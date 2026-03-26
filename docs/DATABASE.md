@@ -10,10 +10,11 @@ Schema is managed through 4 Alembic migrations + 1 SQL migration:
 |-----------|-------------|
 | `0001_initial_schema.py` | All core tables (users, profiles, jobs, applications, notifications, devices, admin, logs) |
 | `0002_add_telegram_channel.py` | Adds `telegram` to `ck_delivery_channel` CHECK constraint |
-| `0003_job_documents_tables.py` | Creates `job_admit_cards`, `job_answer_keys`, `job_results` linked to jobs |
+| `0003_job_documents_tables.py` | Creates `admit_cards`, `answer_keys`, `results` linked to jobs |
 | `0004_entrance_exams.py` | Creates `entrance_exams`; adds `exam_id` FK + CHECK constraint to doc tables |
 | `007_rename_exam_db_objects.sql` | Renames indexes and constraints from `exam` to `entrance_exam` prefix |
-| `008_remove_job_type_variants.sql` | Removes `admit_card`, `answer_key`, `result` from `job_vacancies`; restricts to `latest_job` only |
+| `008_remove_job_type_variants.sql` | Removes `admit_card`, `answer_key`, `result` from `jobs`; restricts to `latest_job` only |
+| `009_rename_tables_clean.sql` | Rename tables: `job_vacancies`→`jobs`, `user_job_applications`→`applications`, `job_admit_cards`→`admit_cards`, `job_answer_keys`→`answer_keys`, `job_results`→`results` |
 
 **Fresh install:**
 ```bash
@@ -33,28 +34,28 @@ docker exec -w /app -e PYTHONPATH=/app hermes_backend alembic upgrade 0004
 ```mermaid
 erDiagram
     USERS ||--o| USER_PROFILES : has
-    USERS ||--o{ USER_JOB_APPLICATIONS : tracks
+    USERS ||--o{ APPLICATIONS : tracks
     USERS ||--o{ NOTIFICATIONS : receives
     USERS ||--o{ USER_DEVICES : registers
 
-    ADMIN_USERS ||--o{ JOB_VACANCIES : creates
+    ADMIN_USERS ||--o{ JOBS : creates
     ADMIN_USERS ||--o{ ADMIN_LOGS : performs
 
-    JOB_VACANCIES ||--o{ USER_JOB_APPLICATIONS : "is tracked by"
-    JOB_VACANCIES ||--o{ JOB_ADMIT_CARDS : "has (job_id)"
-    JOB_VACANCIES ||--o{ JOB_ANSWER_KEYS : "has (job_id)"
-    JOB_VACANCIES ||--o{ JOB_RESULTS : "has (job_id)"
+    JOBS ||--o{ APPLICATIONS : "is tracked by"
+    JOBS ||--o{ ADMIT_CARDS : "has (job_id)"
+    JOBS ||--o{ ANSWER_KEYS : "has (job_id)"
+    JOBS ||--o{ RESULTS : "has (job_id)"
 
-    ENTRANCE_EXAMS ||--o{ JOB_ADMIT_CARDS : "has (exam_id)"
-    ENTRANCE_EXAMS ||--o{ JOB_ANSWER_KEYS : "has (exam_id)"
-    ENTRANCE_EXAMS ||--o{ JOB_RESULTS : "has (exam_id)"
+    ENTRANCE_EXAMS ||--o{ ADMIT_CARDS : "has (exam_id)"
+    ENTRANCE_EXAMS ||--o{ ANSWER_KEYS : "has (exam_id)"
+    ENTRANCE_EXAMS ||--o{ RESULTS : "has (exam_id)"
 
     NOTIFICATIONS ||--o{ NOTIFICATION_DELIVERY_LOG : attempts
     USER_DEVICES ||--o{ NOTIFICATION_DELIVERY_LOG : targets
     USERS ||--o{ NOTIFICATION_DELIVERY_LOG : "is notified"
 ```
 
-> **Polymorphic constraint:** `job_admit_cards`, `job_answer_keys`, and `job_results` each have a DB-level
+> **Polymorphic constraint:** `admit_cards`, `answer_keys`, and `results` each have a DB-level
 > CHECK constraint `(job_id IS NOT NULL AND exam_id IS NULL) OR (job_id IS NULL AND exam_id IS NOT NULL)`
 > ensuring exactly one parent reference per row.
 
@@ -118,14 +119,14 @@ Internal staff accounts (Admin/Operator).
 | `permissions` | JSONB | Granular permission flags |
 | `status` | String(20) | `active`, `suspended` |
 
-### 4. `job_vacancies`
+### 4. `jobs`
 Government job postings and employment opportunities.
 
 **Note:** This table now exclusively stores job vacancies (`job_type='latest_job'`). 
 Document announcements (admit cards, answer keys, results) are managed through:
-- Table 10: `job_admit_cards` - Per-phase admit card download links
-- Table 11: `job_answer_keys` - Per-phase answer key files  
-- Table 12: `job_results` - Per-phase result downloads
+- Table 10: `admit_cards` - Per-phase admit card download links
+- Table 11: `answer_keys` - Per-phase answer key files  
+- Table 12: `results` - Per-phase result downloads
 
 These document tables can link to either a job (via `job_id`) or an entrance exam (via `exam_id`).
 
@@ -155,14 +156,14 @@ These document tables can link to either a job (via `job_id`) or an entrance exa
 | `is_urgent` | Boolean | Close to deadline |
 | `created_by` | UUID (FK) | Reference to `admin_users.id` |
 
-### 5. `user_job_applications`
+### 5. `applications`
 Tracks which user is interested in which job.
 
 | Column | Type | Description |
 |--------|------|-------------|
 | `id` | UUID (PK) | Unique identifier |
 | `user_id` | UUID (FK) | Reference to `users.id` |
-| `job_id` | UUID (FK) | Reference to `job_vacancies.id` |
+| `job_id` | UUID (FK) | Reference to `jobs.id` |
 | `application_number`| String(100) | User's actual reg number from gov site |
 | `is_priority` | Boolean | User-marked priority |
 | `status` | String(50) | `applied`, `shortlisted`, `rejected`, etc. |
@@ -226,13 +227,13 @@ Channel-level delivery tracking.
 
 ---
 
-### 10. `job_admit_cards`
+### 10. `admit_cards`
 Per-phase admit card links. Linked to either a **job** or an **entrance exam** (polymorphic).
 
 | Column | Type | Description |
 |--------|------|-------------|
 | `id` | UUID (PK) | Unique identifier |
-| `job_id` | UUID (FK, nullable) | Reference to `job_vacancies.id` |
+| `job_id` | UUID (FK, nullable) | Reference to `jobs.id` |
 | `exam_id` | UUID (FK, nullable) | Reference to `entrance_exams.id` |
 | `phase_number` | SmallInteger | Exam phase (1, 2, …) |
 | `title` | String(255) | E.g. "SSC CGL Tier-1 2025 Admit Card" |
@@ -246,13 +247,13 @@ Per-phase admit card links. Linked to either a **job** or an **entrance exam** (
 
 ---
 
-### 11. `job_answer_keys`
+### 11. `answer_keys`
 Per-phase answer keys (provisional or final). Polymorphic.
 
 | Column | Type | Description |
 |--------|------|-------------|
 | `id` | UUID (PK) | Unique identifier |
-| `job_id` | UUID (FK, nullable) | Reference to `job_vacancies.id` |
+| `job_id` | UUID (FK, nullable) | Reference to `jobs.id` |
 | `exam_id` | UUID (FK, nullable) | Reference to `entrance_exams.id` |
 | `phase_number` | SmallInteger | Exam phase |
 | `title` | String(255) | E.g. "JEE Main Session 1 Provisional Answer Key" |
@@ -264,13 +265,13 @@ Per-phase answer keys (provisional or final). Polymorphic.
 
 ---
 
-### 12. `job_results`
+### 12. `results`
 Per-phase results (shortlist, cutoff, merit list, final). Polymorphic.
 
 | Column | Type | Description |
 |--------|------|-------------|
 | `id` | UUID (PK) | Unique identifier |
-| `job_id` | UUID (FK, nullable) | Reference to `job_vacancies.id` |
+| `job_id` | UUID (FK, nullable) | Reference to `jobs.id` |
 | `exam_id` | UUID (FK, nullable) | Reference to `entrance_exams.id` |
 | `phase_number` | SmallInteger | Exam phase |
 | `title` | String(255) | E.g. "NEET PG 2026 Result & Score Card" |

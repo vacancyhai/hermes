@@ -11,11 +11,11 @@ from app.models.base import Base
 
 
 class UserJobApplication(Base):
-    __tablename__ = "user_job_applications"
+    __tablename__ = "applications"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    job_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("job_vacancies.id", ondelete="CASCADE"), nullable=False)
+    job_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("jobs.id", ondelete="CASCADE"), nullable=False)
     application_number: Mapped[str | None] = mapped_column(String(100))
     is_priority: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     applied_on: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
