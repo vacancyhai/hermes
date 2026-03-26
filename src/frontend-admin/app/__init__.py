@@ -298,6 +298,31 @@ def create_app():
 
         return render_template("_result_rows.html", jobs=data["data"], pagination=data.get("pagination", {}), current_status=status_filter)
 
+    @app.route("/api/extract-pdf", methods=["POST"])
+    def extract_pdf():
+        """Proxy endpoint for PDF extraction - uploads file to backend API and returns extracted data."""
+        token = session.get("token")
+        if not token:
+            return {"error": "Not authenticated"}, 401
+
+        if "file" not in request.files:
+            return {"error": "No file provided"}, 400
+
+        file = request.files["file"]
+        
+        # Forward to backend API
+        resp = current_app.api_client.post(
+            "/admin/jobs/extract-pdf",
+            token=token,
+            files={"file": (file.filename, file.stream, file.content_type)}
+        )
+        
+        if resp.ok:
+            return resp.json(), 200
+        else:
+            error_data = resp.json() if resp.headers.get("content-type", "").startswith("application/json") else {"detail": "Extraction failed"}
+            return error_data, resp.status_code
+
     @app.route("/jobs/new", methods=["GET", "POST"])
     def new_job():
         """Create a job vacancy (latest_job type)."""

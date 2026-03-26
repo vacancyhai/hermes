@@ -464,6 +464,67 @@ async def create_job(
     return JobResponse.model_validate(job).model_dump()
 
 
+@router.post("/jobs/extract-pdf", status_code=status.HTTP_200_OK)
+@limiter.limit("10/minute")
+async def extract_pdf_data(
+    file: UploadFile,
+    request: Request,
+    current_admin=Depends(require_operator),
+    db: AsyncSession = Depends(get_db),
+):
+    """Upload PDF → extract data → return JSON (no job created). For inline form auto-fill."""
+    admin = current_admin
+
+    if not file.filename or not file.filename.lower().endswith(".pdf"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only PDF files are accepted")
+
+    if file.content_type and file.content_type != "application/pdf":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only PDF files are accepted")
+
+    content = await file.read()
+    max_bytes = settings.PDF_MAX_SIZE_MB * 1024 * 1024
+    if len(content) > max_bytes:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"File exceeds {settings.PDF_MAX_SIZE_MB}MB limit",
+        )
+
+    # Extract text from PDF
+    import tempfile
+    from app.services.pdf_extractor import extract_text_from_pdf
+    from app.services.ai_extractor import extract_job_data
+
+    with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
+        tmp.write(content)
+        tmp_path = tmp.name
+
+    try:
+        pdf_text = extract_text_from_pdf(tmp_path)
+        if not pdf_text.strip():
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="PDF has no extractable text")
+
+        # AI extraction
+        extracted = extract_job_data(pdf_text)
+        if not extracted:
+            # Fallback: return minimal data
+            extracted = {
+                "job_title": f"PDF Upload - {file.filename}",
+                "organization": "Unknown",
+                "description": pdf_text[:2000],
+            }
+
+        await _log_action(db, admin, "extract_pdf", "job_vacancy", details=f"PDF: {file.filename}", request=request)
+
+        return {"status": "success", "data": extracted}
+
+    finally:
+        # Clean up temp file
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+
+
 @router.post("/jobs/upload-pdf", status_code=status.HTTP_202_ACCEPTED)
 @limiter.limit("5/minute")
 async def upload_pdf(
