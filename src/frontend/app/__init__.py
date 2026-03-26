@@ -77,14 +77,13 @@ def create_app():
 
     @app.route("/")
     def index():
-        """Landing page — latest_job listings only."""
+        """Landing page — job vacancies only."""
         params = _job_params()
         token = session.get("token")
         if params.get("recommended") and token:
             resp = current_app.api_client.get("/jobs/recommended", token=token, params={"limit": params.get("limit", 20), "offset": params.get("offset", 0)})
         else:
             params.pop("recommended", None)
-            params["job_type"] = "latest_job"
             resp = current_app.api_client.get("/jobs", params=params)
         data = resp.json() if resp.ok else {"data": [], "pagination": {}}
         return render_template("index.html", jobs=data["data"], pagination=data.get("pagination", {}), params=params)
@@ -98,8 +97,6 @@ def create_app():
             resp = current_app.api_client.get("/jobs/recommended", token=token, params={"limit": params.get("limit", 20), "offset": params.get("offset", 0)})
         else:
             params.pop("recommended", None)
-            if "job_type" not in params:
-                params["job_type"] = "latest_job"
             resp = current_app.api_client.get("/jobs", params=params)
         data = resp.json() if resp.ok else {"data": [], "pagination": {}}
         return render_template("_job_cards.html", jobs=data["data"], pagination=data.get("pagination", {}), params=params)
@@ -108,8 +105,7 @@ def create_app():
     def admit_cards():
         """Admit cards section page."""
         params = _job_params()
-        params["job_type"] = "admit_card"
-        resp = current_app.api_client.get("/jobs", params=params)
+        resp = current_app.api_client.get("/admit-cards", params=params)
         data = resp.json() if resp.ok else {"data": [], "pagination": {}}
         return render_template("admit_cards.html", jobs=data["data"], pagination=data.get("pagination", {}), params=params)
 
@@ -117,8 +113,7 @@ def create_app():
     def answer_keys():
         """Answer keys section page."""
         params = _job_params()
-        params["job_type"] = "answer_key"
-        resp = current_app.api_client.get("/jobs", params=params)
+        resp = current_app.api_client.get("/answer-keys", params=params)
         data = resp.json() if resp.ok else {"data": [], "pagination": {}}
         return render_template("answer_keys.html", jobs=data["data"], pagination=data.get("pagination", {}), params=params)
 
@@ -126,8 +121,7 @@ def create_app():
     def results():
         """Results section page."""
         params = _job_params()
-        params["job_type"] = "result"
-        resp = current_app.api_client.get("/jobs", params=params)
+        resp = current_app.api_client.get("/results", params=params)
         data = resp.json() if resp.ok else {"data": [], "pagination": {}}
         return render_template("results.html", jobs=data["data"], pagination=data.get("pagination", {}), params=params)
 

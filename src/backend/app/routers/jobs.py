@@ -22,7 +22,6 @@ router = APIRouter(prefix="/api/v1/jobs", tags=["jobs"])
 @router.get("")
 async def list_jobs(
     q: str | None = Query(None, description="Full-text search query"),
-    job_type: str | None = Query(None),
     qualification_level: str | None = Query(None),
     organization: str | None = Query(None),
     department: str | None = Query(None),
@@ -33,9 +32,9 @@ async def list_jobs(
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
 ):
-    """List jobs with filters and full-text search. Returns only active jobs by default."""
-    query = select(JobVacancy)
-    count_query = select(func.count(JobVacancy.id))
+    """List job vacancies (latest_job type only) with filters and full-text search. Returns only active jobs by default."""
+    query = select(JobVacancy).where(JobVacancy.job_type == "latest_job")
+    count_query = select(func.count(JobVacancy.id)).where(JobVacancy.job_type == "latest_job")
 
     # Default to active jobs for public listing
     effective_status = status_filter or "active"
@@ -51,9 +50,6 @@ async def list_jobs(
         query = query.order_by(text("ts_rank(search_vector, plainto_tsquery('english', :q)) DESC").params(q=q))
 
     # Filters
-    if job_type:
-        query = query.where(JobVacancy.job_type == job_type)
-        count_query = count_query.where(JobVacancy.job_type == job_type)
     if qualification_level:
         query = query.where(JobVacancy.qualification_level == qualification_level)
         count_query = count_query.where(JobVacancy.qualification_level == qualification_level)

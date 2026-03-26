@@ -18,6 +18,7 @@ import app.models  # noqa: F401 — register all models for SQLAlchemy relations
 from app.routers import auth, health, jobs, notifications, users, admin, applications
 from app.routers.job_documents import public_router as job_docs_public_router, admin_router as job_docs_admin_router
 from app.routers.entrance_exams import public_router as exams_public_router, admin_router as exams_admin_router
+from app.routers.content import admit_cards_router, answer_keys_router, results_router
 
 
 @asynccontextmanager
@@ -142,6 +143,9 @@ app.include_router(health.router)
 app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(jobs.router)
+app.include_router(admit_cards_router)
+app.include_router(answer_keys_router)
+app.include_router(results_router)
 app.include_router(job_docs_public_router)
 app.include_router(applications.router)
 app.include_router(notifications.router)
