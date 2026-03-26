@@ -22,21 +22,21 @@ from sqlalchemy.orm import Session
 from app.database import sync_engine
 from app.models.admin_user import AdminUser
 from app.models.entrance_exam import EntranceExam
-from app.models.job_admit_card import JobAdmitCard
-from app.models.job_answer_key import JobAnswerKey
-from app.models.job_result import JobResult
-from app.models.job_vacancy import JobVacancy
+from app.models.admit_card import AdmitCard
+from app.models.answer_key import AnswerKey
+from app.models.result import Result
+from app.models.job import Job
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
 def _slug_exists(session: Session, slug: str) -> bool:
-    return session.execute(select(JobVacancy).where(JobVacancy.slug == slug)).scalar_one_or_none() is not None
+    return session.execute(select(Job).where(Job.slug == slug)).scalar_one_or_none() is not None
 
 
 def _get_job_id(session: Session, slug: str) -> uuid.UUID | None:
-    row = session.execute(select(JobVacancy.id).where(JobVacancy.slug == slug)).scalar_one_or_none()
+    row = session.execute(select(Job.id).where(Job.slug == slug)).scalar_one_or_none()
     return row
 
 
@@ -74,7 +74,7 @@ JOBS = [
         "slug": "ssc-gd-constable-recruitment-2025",
         "organization": "Staff Selection Commission",
         "department": "SSC",
-        "job_type": "latest_job",
+        
         "employment_type": "permanent",
         "qualification_level": "10th",
         "total_vacancies": 25487,
@@ -175,7 +175,7 @@ JOBS = [
         "slug": "upsc-civil-services-examination-2026",
         "organization": "Union Public Service Commission",
         "department": "UPSC",
-        "job_type": "latest_job",
+        
         "employment_type": "permanent",
         "qualification_level": "graduate",
         "total_vacancies": 1105,
@@ -258,7 +258,7 @@ JOBS = [
         "slug": "rrb-ntpc-graduate-level-recruitment-2025",
         "organization": "Railway Recruitment Board",
         "department": "Ministry of Railways",
-        "job_type": "latest_job",
+        
         "employment_type": "permanent",
         "qualification_level": "graduate",
         "total_vacancies": 11558,
@@ -354,7 +354,7 @@ JOBS = [
         "slug": "ibps-po-recruitment-2025",
         "organization": "Institute of Banking Personnel Selection",
         "department": "IBPS",
-        "job_type": "latest_job",
+        
         "employment_type": "permanent",
         "qualification_level": "graduate",
         "total_vacancies": 4455,
@@ -449,7 +449,7 @@ JOBS = [
         "slug": "ssc-cgl-combined-graduate-level-2025",
         "organization": "Staff Selection Commission",
         "department": "SSC",
-        "job_type": "latest_job",
+        
         "employment_type": "permanent",
         "qualification_level": "graduate",
         "total_vacancies": 14582,
@@ -542,7 +542,7 @@ JOBS = [
         "slug": "indian-army-tes-technical-entry-scheme-2026",
         "organization": "Indian Army",
         "department": "Ministry of Defence",
-        "job_type": "latest_job",
+        
         "employment_type": "permanent",
         "qualification_level": "10+2",
         "total_vacancies": 90,
@@ -622,7 +622,7 @@ JOBS = [
         "slug": "mpsc-rajyaseva-state-services-examination-2025",
         "organization": "Maharashtra Public Service Commission",
         "department": "MPSC",
-        "job_type": "latest_job",
+        
         "employment_type": "permanent",
         "qualification_level": "graduate",
         "total_vacancies": 444,
@@ -708,7 +708,7 @@ JOBS = [
         "slug": "drdo-scientist-b-gate-2025",
         "organization": "Defence Research and Development Organisation",
         "department": "Ministry of Defence",
-        "job_type": "latest_job",
+        
         "employment_type": "permanent",
         "qualification_level": "graduate",
         "total_vacancies": 228,
@@ -794,7 +794,7 @@ JOBS = [
         "slug": "ibps-clerk-crp-xv-2025",
         "organization": "Institute of Banking Personnel Selection",
         "department": "IBPS",
-        "job_type": "latest_job",
+        
         "employment_type": "permanent",
         "qualification_level": "graduate",
         "total_vacancies": 6128,
@@ -2130,9 +2130,9 @@ PHASE_DOCS = {
 # Insert
 # ---------------------------------------------------------------------------
 
-def _make_job(data: dict, admin_id) -> JobVacancy:
-    """Build a JobVacancy ORM object from a data dict."""
-    return JobVacancy(
+def _make_job(data: dict, admin_id) -> Job:
+    """Build a Job ORM object from a data dict."""
+    return Job(
         id=uuid.uuid4(),
         job_title=data["job_title"],
         slug=data["slug"],
@@ -2189,37 +2189,37 @@ def _insert_phase_docs(session, phase_docs_dict: dict, id_by_slug: dict, use_exa
         for ac in docs.get("admit_cards", []):
             kwargs = {"exam_id": parent_id} if use_exam_id else {"job_id": parent_id}
             exists = session.execute(
-                select(JobAdmitCard).where(
-                    JobAdmitCard.exam_id == parent_id if use_exam_id else JobAdmitCard.job_id == parent_id,
-                    JobAdmitCard.title == ac["title"],
+                select(AdmitCard).where(
+                    AdmitCard.exam_id == parent_id if use_exam_id else AdmitCard.job_id == parent_id,
+                    AdmitCard.title == ac["title"],
                 )
             ).scalar_one_or_none()
             if not exists:
-                session.add(JobAdmitCard(id=uuid.uuid4(), **kwargs, **ac))
+                session.add(AdmitCard(id=uuid.uuid4(), **kwargs, **ac))
                 count += 1
 
         for ak in docs.get("answer_keys", []):
             kwargs = {"exam_id": parent_id} if use_exam_id else {"job_id": parent_id}
             exists = session.execute(
-                select(JobAnswerKey).where(
-                    JobAnswerKey.exam_id == parent_id if use_exam_id else JobAnswerKey.job_id == parent_id,
-                    JobAnswerKey.title == ak["title"],
+                select(AnswerKey).where(
+                    AnswerKey.exam_id == parent_id if use_exam_id else AnswerKey.job_id == parent_id,
+                    AnswerKey.title == ak["title"],
                 )
             ).scalar_one_or_none()
             if not exists:
-                session.add(JobAnswerKey(id=uuid.uuid4(), **kwargs, **ak))
+                session.add(AnswerKey(id=uuid.uuid4(), **kwargs, **ak))
                 count += 1
 
         for res in docs.get("results", []):
             kwargs = {"exam_id": parent_id} if use_exam_id else {"job_id": parent_id}
             exists = session.execute(
-                select(JobResult).where(
-                    JobResult.exam_id == parent_id if use_exam_id else JobResult.job_id == parent_id,
-                    JobResult.title == res["title"],
+                select(Result).where(
+                    Result.exam_id == parent_id if use_exam_id else Result.job_id == parent_id,
+                    Result.title == res["title"],
                 )
             ).scalar_one_or_none()
             if not exists:
-                session.add(JobResult(id=uuid.uuid4(), **kwargs, **res))
+                session.add(Result(id=uuid.uuid4(), **kwargs, **res))
                 count += 1
     return count
 
@@ -2235,7 +2235,7 @@ def seed():
         # ── Step 1: Remove restructured job_vacancies slugs ────────────
         for old_slug in SLUGS_TO_REPLACE:
             old = session.execute(
-                select(JobVacancy).where(JobVacancy.slug == old_slug)
+                select(Job).where(Job.slug == old_slug)
             ).scalar_one_or_none()
             if old:
                 session.delete(old)
@@ -2248,7 +2248,7 @@ def seed():
 
         for data in all_jobs:
             existing = session.execute(
-                select(JobVacancy).where(JobVacancy.slug == data["slug"])
+                select(Job).where(Job.slug == data["slug"])
             ).scalar_one_or_none()
             if existing:
                 job_id_by_slug[data["slug"]] = existing.id

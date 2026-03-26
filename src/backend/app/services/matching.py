@@ -5,7 +5,7 @@ from datetime import date, timedelta
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.job_vacancy import JobVacancy
+from app.models.job import Job
 from app.models.user_profile import UserProfile
 
 # Maximum candidates fetched from DB before in-memory scoring (avoids loading all jobs)
@@ -72,8 +72,8 @@ async def get_recommended_jobs(
     # Base query: active jobs with future (or null) deadlines
     today = date.today()
     base_filter = (
-        JobVacancy.status == "active",
-        (JobVacancy.application_end >= today) | (JobVacancy.application_end.is_(None)),
+        Job.status == "active",
+        (Job.application_end >= today) | (Job.application_end.is_(None)),
     )
 
     has_prefs = profile and (
@@ -87,12 +87,12 @@ async def get_recommended_jobs(
     if not has_prefs:
         # No preferences — return newest active jobs using DB-level pagination
         total = (await db.execute(
-            select(func.count(JobVacancy.id)).where(*base_filter)
+            select(func.count(Job.id)).where(*base_filter)
         )).scalar() or 0
         result = await db.execute(
-            select(JobVacancy)
+            select(Job)
             .where(*base_filter)
-            .order_by(JobVacancy.created_at.desc())
+            .order_by(Job.created_at.desc())
             .offset(offset)
             .limit(limit)
         )
@@ -101,9 +101,9 @@ async def get_recommended_jobs(
     # Cap candidate pool at CANDIDATE_LIMIT to avoid loading all jobs into memory.
     # Jobs are pre-sorted by recency so the best candidates are always included.
     result = await db.execute(
-        select(JobVacancy)
+        select(Job)
         .where(*base_filter)
-        .order_by(JobVacancy.created_at.desc())
+        .order_by(Job.created_at.desc())
         .limit(CANDIDATE_LIMIT)
     )
     jobs = result.scalars().all()
@@ -116,7 +116,7 @@ async def get_recommended_jobs(
     user_age = _user_age(profile.date_of_birth)
     recency_cutoff = today - timedelta(days=RECENCY_DAYS)
 
-    scored: list[tuple[int, date | None, JobVacancy]] = []
+    scored: list[tuple[int, date | None, Job]] = []
     for job in jobs:
         score = 0
 

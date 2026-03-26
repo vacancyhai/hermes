@@ -1,4 +1,4 @@
-"""JobAdmitCard model — maps to `job_admit_cards` table."""
+"""AdmitCard model — maps to `admit_cards` table."""
 
 import uuid
 from datetime import date, datetime
@@ -11,7 +11,7 @@ from typing import Optional
 from app.models.base import Base
 
 
-class JobAdmitCard(Base):
+class AdmitCard(Base):
     __tablename__ = "admit_cards"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -27,5 +27,5 @@ class JobAdmitCard(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
 
-    job = relationship("JobVacancy", back_populates="admit_cards")
+    job = relationship("Job", back_populates="admit_cards")
     exam = relationship("EntranceExam", back_populates="admit_cards")

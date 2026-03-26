@@ -38,8 +38,8 @@ from app.rate_limit import limiter
 from app.dependencies import get_current_admin, get_db, require_admin, require_operator
 from app.models.admin_log import AdminLog
 from app.models.admin_user import AdminUser
-from app.models.application import UserJobApplication
-from app.models.job_vacancy import JobVacancy
+from app.models.application import Application
+from app.models.job import Job
 from app.models.user import User
 from app.models.user_profile import UserProfile
 from app.schemas.jobs import JobCreateRequest, JobListItem, JobResponse, JobUpdateRequest
@@ -107,34 +107,30 @@ async def dashboard_stats(
     """Dashboard stats: separate counts for jobs, admit cards, answer keys, results, entrance exams."""
     from app.models.entrance_exam import EntranceExam
     
-    # Jobs (only latest_job type)
-    jobs_count = (await db.execute(
-        select(func.count(JobVacancy.id)).where(JobVacancy.job_type == "latest_job")
-    )).scalar()
+    # Jobs
+    jobs_count = (await db.execute(select(func.count(Job.id)))).scalar()
     jobs_active = (await db.execute(
-        select(func.count(JobVacancy.id)).where(
-            JobVacancy.job_type == "latest_job",
-            JobVacancy.status == "active"
+        select(func.count(Job.id)).where(
+            Job.status == "active"
         )
     )).scalar()
     jobs_draft = (await db.execute(
-        select(func.count(JobVacancy.id)).where(
-            JobVacancy.job_type == "latest_job",
-            JobVacancy.status == "draft"
+        select(func.count(Job.id)).where(
+            Job.status == "draft"
         )
     )).scalar()
     
     # Admit Cards (from job_admit_cards table)
-    from app.models.job_admit_card import JobAdmitCard
-    admit_cards_count = (await db.execute(select(func.count(JobAdmitCard.id)))).scalar()
+    from app.models.admit_card import AdmitCard
+    admit_cards_count = (await db.execute(select(func.count(AdmitCard.id)))).scalar()
     
     # Answer Keys (from job_answer_keys table)
-    from app.models.job_answer_key import JobAnswerKey
-    answer_keys_count = (await db.execute(select(func.count(JobAnswerKey.id)))).scalar()
+    from app.models.answer_key import AnswerKey
+    answer_keys_count = (await db.execute(select(func.count(AnswerKey.id)))).scalar()
     
     # Results (from job_results table)
-    from app.models.job_result import JobResult
-    results_count = (await db.execute(select(func.count(JobResult.id)))).scalar()
+    from app.models.result import Result
+    results_count = (await db.execute(select(func.count(Result.id)))).scalar()
     
     # Entrance Exams
     entrance_exams_count = (await db.execute(select(func.count(EntranceExam.id)))).scalar()
@@ -151,7 +147,7 @@ async def dashboard_stats(
     )).scalar()
 
     # Applications
-    apps_total = (await db.execute(select(func.count(UserJobApplication.id)))).scalar()
+    apps_total = (await db.execute(select(func.count(Application.id)))).scalar()
 
     return {
         "jobs": {"total": jobs_count, "active": jobs_active, "draft": jobs_draft},
@@ -192,10 +188,10 @@ async def platform_analytics(
     thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
     daily_apps = await db.execute(
         select(
-            func.date_trunc("day", UserJobApplication.applied_on).label("day"),
-            func.count(UserJobApplication.id),
+            func.date_trunc("day", Application.applied_on).label("day"),
+            func.count(Application.id),
         )
-        .where(UserJobApplication.applied_on >= thirty_days_ago)
+        .where(Application.applied_on >= thirty_days_ago)
         .group_by("day")
         .order_by("day")
     )
@@ -206,18 +202,18 @@ async def platform_analytics(
 
     # Popular organizations — top 10 by job count
     popular_orgs = await db.execute(
-        select(JobVacancy.organization, func.count(JobVacancy.id).label("job_count"))
-        .where(JobVacancy.status == "active")
-        .group_by(JobVacancy.organization)
-        .order_by(func.count(JobVacancy.id).desc())
+        select(Job.organization, func.count(Job.id).label("job_count"))
+        .where(Job.status == "active")
+        .group_by(Job.organization)
+        .order_by(func.count(Job.id).desc())
         .limit(10)
     )
     top_organizations = [{"organization": row[0], "job_count": row[1]} for row in popular_orgs.all()]
 
     # Application status breakdown
     status_counts = await db.execute(
-        select(UserJobApplication.status, func.count(UserJobApplication.id))
-        .group_by(UserJobApplication.status)
+        select(Application.status, func.count(Application.id))
+        .group_by(Application.status)
     )
     application_statuses = {row[0]: row[1] for row in status_counts.all()}
 
@@ -250,15 +246,15 @@ async def list_jobs(
     admin=Depends(require_operator),
     db: AsyncSession = Depends(get_db),
 ):
-    """List job vacancies (latest_job type only)."""
-    query = select(JobVacancy).where(JobVacancy.job_type == "latest_job")
-    count_query = select(func.count(JobVacancy.id)).where(JobVacancy.job_type == "latest_job")
+    """List all jobs."""
+    query = select(Job)
+    count_query = select(func.count(Job.id))
 
     if status_filter:
-        query = query.where(JobVacancy.status == status_filter)
-        count_query = count_query.where(JobVacancy.status == status_filter)
+        query = query.where(Job.status == status_filter)
+        count_query = count_query.where(Job.status == status_filter)
 
-    query = query.order_by(JobVacancy.created_at.desc())
+    query = query.order_by(Job.created_at.desc())
 
     total = (await db.execute(count_query)).scalar()
     result = await db.execute(query.offset(offset).limit(limit))
@@ -278,11 +274,11 @@ async def list_admit_cards(
     db: AsyncSession = Depends(get_db),
 ):
     """List all admit cards from job_admit_cards table."""
-    from app.models.job_admit_card import JobAdmitCard
+    from app.models.admit_card import AdmitCard
     from app.schemas.jobs import AdmitCardResponse
     
-    query = select(JobAdmitCard).order_by(JobAdmitCard.created_at.desc())
-    count_query = select(func.count(JobAdmitCard.id))
+    query = select(AdmitCard).order_by(AdmitCard.created_at.desc())
+    count_query = select(func.count(AdmitCard.id))
 
     total = (await db.execute(count_query)).scalar()
     result = await db.execute(query.offset(offset).limit(limit))
@@ -302,11 +298,11 @@ async def list_answer_keys(
     db: AsyncSession = Depends(get_db),
 ):
     """List all answer keys from job_answer_keys table."""
-    from app.models.job_answer_key import JobAnswerKey
+    from app.models.answer_key import AnswerKey
     from app.schemas.jobs import AnswerKeyResponse
     
-    query = select(JobAnswerKey).order_by(JobAnswerKey.created_at.desc())
-    count_query = select(func.count(JobAnswerKey.id))
+    query = select(AnswerKey).order_by(AnswerKey.created_at.desc())
+    count_query = select(func.count(AnswerKey.id))
 
     total = (await db.execute(count_query)).scalar()
     result = await db.execute(query.offset(offset).limit(limit))
@@ -326,11 +322,11 @@ async def list_results(
     db: AsyncSession = Depends(get_db),
 ):
     """List all results from job_results table."""
-    from app.models.job_result import JobResult
+    from app.models.result import Result
     from app.schemas.jobs import ResultResponse
     
-    query = select(JobResult).order_by(JobResult.created_at.desc())
-    count_query = select(func.count(JobResult.id))
+    query = select(Result).order_by(Result.created_at.desc())
+    count_query = select(func.count(Result.id))
 
     total = (await db.execute(count_query)).scalar()
     result = await db.execute(query.offset(offset).limit(limit))
@@ -349,7 +345,7 @@ async def get_job(
     db: AsyncSession = Depends(get_db),
 ):
     """Get a single job (admin view, any status)."""
-    result = await db.execute(select(JobVacancy).where(JobVacancy.id == job_id))
+    result = await db.execute(select(Job).where(Job.id == job_id))
     job = result.scalar_one_or_none()
     if not job:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
@@ -369,7 +365,7 @@ async def create_job(
     # Generate unique slug: fetch all collisions in one query, pick next free suffix
     base_slug = _slugify(body.job_title)
     existing_slugs_result = await db.execute(
-        select(JobVacancy.slug).where(JobVacancy.slug.like(f"{base_slug}%"))
+        select(Job.slug).where(Job.slug.like(f"{base_slug}%"))
     )
     existing_slugs = {row[0] for row in existing_slugs_result.all()}
     slug = base_slug
@@ -378,7 +374,7 @@ async def create_job(
         slug = f"{base_slug}-{counter}"
         counter += 1
 
-    job = JobVacancy(
+    job = Job(
         job_title=body.job_title,
         slug=slug,
         organization=body.organization,
@@ -502,7 +498,7 @@ async def update_job(
 ):
     """Update a job vacancy. Operators can only modify limited fields."""
     admin = current_admin
-    result = await db.execute(select(JobVacancy).where(JobVacancy.id == job_id))
+    result = await db.execute(select(Job).where(Job.id == job_id))
     job = result.scalar_one_or_none()
     if not job:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
@@ -555,7 +551,7 @@ async def approve_job(
 ):
     """Approve a draft job → set status to active."""
     admin = current_admin
-    result = await db.execute(select(JobVacancy).where(JobVacancy.id == job_id))
+    result = await db.execute(select(Job).where(Job.id == job_id))
     job = result.scalar_one_or_none()
     if not job:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
@@ -584,7 +580,7 @@ async def delete_job(
     db: AsyncSession = Depends(get_db),
 ):
     """Soft-delete a job vacancy (admin only, not operators)."""
-    result = await db.execute(select(JobVacancy).where(JobVacancy.id == job_id))
+    result = await db.execute(select(Job).where(Job.id == job_id))
     job = result.scalar_one_or_none()
     if not job:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")

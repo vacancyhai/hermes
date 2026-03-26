@@ -44,6 +44,6 @@ class EntranceExam(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
 
-    admit_cards = relationship("JobAdmitCard", back_populates="exam", cascade="all, delete-orphan", order_by="JobAdmitCard.phase_number")
-    answer_keys = relationship("JobAnswerKey", back_populates="exam", cascade="all, delete-orphan", order_by="JobAnswerKey.phase_number")
-    results = relationship("JobResult", back_populates="exam", cascade="all, delete-orphan", order_by="JobResult.phase_number")
+    admit_cards = relationship("AdmitCard", back_populates="exam", cascade="all, delete-orphan", order_by="AdmitCard.phase_number")
+    answer_keys = relationship("AnswerKey", back_populates="exam", cascade="all, delete-orphan", order_by="AnswerKey.phase_number")
+    results = relationship("Result", back_populates="exam", cascade="all, delete-orphan", order_by="Result.phase_number")

@@ -27,9 +27,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import get_db, require_operator
 from app.models.entrance_exam import EntranceExam
-from app.models.job_admit_card import JobAdmitCard
-from app.models.job_answer_key import JobAnswerKey
-from app.models.job_result import JobResult
+from app.models.admit_card import AdmitCard
+from app.models.answer_key import AnswerKey
+from app.models.result import Result
 from app.schemas.entrance_exams import (
     EntranceExamCreateRequest, EntranceExamUpdateRequest,
     EntranceExamListItem, EntranceExamResponse,
@@ -131,9 +131,9 @@ async def list_exam_admit_cards(exam_id: uuid.UUID, db: AsyncSession = Depends(g
     if not result.scalar_one_or_none():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Exam not found")
     rows = await db.execute(
-        select(JobAdmitCard)
-        .where(JobAdmitCard.exam_id == exam_id)
-        .order_by(JobAdmitCard.phase_number.nulls_last(), JobAdmitCard.published_at.desc())
+        select(AdmitCard)
+        .where(AdmitCard.exam_id == exam_id)
+        .order_by(AdmitCard.phase_number.nulls_last(), AdmitCard.published_at.desc())
     )
     return [AdmitCardResponse.model_validate(r) for r in rows.scalars().all()]
 
@@ -147,9 +147,9 @@ async def list_exam_answer_keys(exam_id: uuid.UUID, db: AsyncSession = Depends(g
     if not result.scalar_one_or_none():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Exam not found")
     rows = await db.execute(
-        select(JobAnswerKey)
-        .where(JobAnswerKey.exam_id == exam_id)
-        .order_by(JobAnswerKey.phase_number.nulls_last(), JobAnswerKey.answer_key_type, JobAnswerKey.published_at.desc())
+        select(AnswerKey)
+        .where(AnswerKey.exam_id == exam_id)
+        .order_by(AnswerKey.phase_number.nulls_last(), AnswerKey.answer_key_type, AnswerKey.published_at.desc())
     )
     return [AnswerKeyResponse.model_validate(r) for r in rows.scalars().all()]
 
@@ -163,9 +163,9 @@ async def list_exam_results(exam_id: uuid.UUID, db: AsyncSession = Depends(get_d
     if not result.scalar_one_or_none():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Exam not found")
     rows = await db.execute(
-        select(JobResult)
-        .where(JobResult.exam_id == exam_id)
-        .order_by(JobResult.phase_number.nulls_last(), JobResult.published_at.desc())
+        select(Result)
+        .where(Result.exam_id == exam_id)
+        .order_by(Result.phase_number.nulls_last(), Result.published_at.desc())
     )
     return [ResultResponse.model_validate(r) for r in rows.scalars().all()]
 
@@ -275,7 +275,7 @@ async def create_exam_admit_card(
     admin=Depends(require_operator), db: AsyncSession = Depends(get_db),
 ):
     await _require_exam(exam_id, db)
-    doc = JobAdmitCard(id=uuid.uuid4(), exam_id=exam_id, **body.model_dump())
+    doc = AdmitCard(id=uuid.uuid4(), exam_id=exam_id, **body.model_dump())
     db.add(doc)
     await db.flush()
     return AdmitCardResponse.model_validate(doc)
@@ -286,7 +286,7 @@ async def update_exam_admit_card(
     exam_id: uuid.UUID, doc_id: uuid.UUID, body: AdmitCardUpdateRequest,
     admin=Depends(require_operator), db: AsyncSession = Depends(get_db),
 ):
-    r = (await db.execute(select(JobAdmitCard).where(JobAdmitCard.id == doc_id, JobAdmitCard.exam_id == exam_id))).scalar_one_or_none()
+    r = (await db.execute(select(AdmitCard).where(AdmitCard.id == doc_id, AdmitCard.exam_id == exam_id))).scalar_one_or_none()
     if not r:
         raise HTTPException(status_code=404, detail="Admit card not found")
     for f, v in body.model_dump(exclude_unset=True).items():
@@ -300,7 +300,7 @@ async def delete_exam_admit_card(
     exam_id: uuid.UUID, doc_id: uuid.UUID,
     admin=Depends(require_operator), db: AsyncSession = Depends(get_db),
 ):
-    r = (await db.execute(select(JobAdmitCard).where(JobAdmitCard.id == doc_id, JobAdmitCard.exam_id == exam_id))).scalar_one_or_none()
+    r = (await db.execute(select(AdmitCard).where(AdmitCard.id == doc_id, AdmitCard.exam_id == exam_id))).scalar_one_or_none()
     if not r:
         raise HTTPException(status_code=404, detail="Admit card not found")
     await db.delete(r)
@@ -312,7 +312,7 @@ async def create_exam_answer_key(
     admin=Depends(require_operator), db: AsyncSession = Depends(get_db),
 ):
     await _require_exam(exam_id, db)
-    doc = JobAnswerKey(id=uuid.uuid4(), exam_id=exam_id, **body.model_dump())
+    doc = AnswerKey(id=uuid.uuid4(), exam_id=exam_id, **body.model_dump())
     db.add(doc)
     await db.flush()
     return AnswerKeyResponse.model_validate(doc)
@@ -323,7 +323,7 @@ async def update_exam_answer_key(
     exam_id: uuid.UUID, doc_id: uuid.UUID, body: AnswerKeyUpdateRequest,
     admin=Depends(require_operator), db: AsyncSession = Depends(get_db),
 ):
-    r = (await db.execute(select(JobAnswerKey).where(JobAnswerKey.id == doc_id, JobAnswerKey.exam_id == exam_id))).scalar_one_or_none()
+    r = (await db.execute(select(AnswerKey).where(AnswerKey.id == doc_id, AnswerKey.exam_id == exam_id))).scalar_one_or_none()
     if not r:
         raise HTTPException(status_code=404, detail="Answer key not found")
     for f, v in body.model_dump(exclude_unset=True).items():
@@ -337,7 +337,7 @@ async def delete_exam_answer_key(
     exam_id: uuid.UUID, doc_id: uuid.UUID,
     admin=Depends(require_operator), db: AsyncSession = Depends(get_db),
 ):
-    r = (await db.execute(select(JobAnswerKey).where(JobAnswerKey.id == doc_id, JobAnswerKey.exam_id == exam_id))).scalar_one_or_none()
+    r = (await db.execute(select(AnswerKey).where(AnswerKey.id == doc_id, AnswerKey.exam_id == exam_id))).scalar_one_or_none()
     if not r:
         raise HTTPException(status_code=404, detail="Answer key not found")
     await db.delete(r)
@@ -349,7 +349,7 @@ async def create_exam_result(
     admin=Depends(require_operator), db: AsyncSession = Depends(get_db),
 ):
     await _require_exam(exam_id, db)
-    doc = JobResult(id=uuid.uuid4(), exam_id=exam_id, **body.model_dump())
+    doc = Result(id=uuid.uuid4(), exam_id=exam_id, **body.model_dump())
     db.add(doc)
     await db.flush()
     return ResultResponse.model_validate(doc)
@@ -360,7 +360,7 @@ async def update_exam_result(
     exam_id: uuid.UUID, doc_id: uuid.UUID, body: ResultUpdateRequest,
     admin=Depends(require_operator), db: AsyncSession = Depends(get_db),
 ):
-    r = (await db.execute(select(JobResult).where(JobResult.id == doc_id, JobResult.exam_id == exam_id))).scalar_one_or_none()
+    r = (await db.execute(select(Result).where(Result.id == doc_id, Result.exam_id == exam_id))).scalar_one_or_none()
     if not r:
         raise HTTPException(status_code=404, detail="Result not found")
     for f, v in body.model_dump(exclude_unset=True).items():
@@ -374,7 +374,7 @@ async def delete_exam_result(
     exam_id: uuid.UUID, doc_id: uuid.UUID,
     admin=Depends(require_operator), db: AsyncSession = Depends(get_db),
 ):
-    r = (await db.execute(select(JobResult).where(JobResult.id == doc_id, JobResult.exam_id == exam_id))).scalar_one_or_none()
+    r = (await db.execute(select(Result).where(Result.id == doc_id, Result.exam_id == exam_id))).scalar_one_or_none()
     if not r:
         raise HTTPException(status_code=404, detail="Result not found")
     await db.delete(r)

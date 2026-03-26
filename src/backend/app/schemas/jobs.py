@@ -6,7 +6,6 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
 
-JOB_TYPES = Literal["latest_job", "result", "admit_card", "answer_key"]
 EMPLOYMENT_TYPES = Literal["permanent", "temporary", "contract", "apprentice"]
 QUALIFICATION_LEVELS = Literal["10th", "12th", "diploma", "graduate", "postgraduate", "phd"]
 JOB_STATUSES = Literal["draft", "active", "expired", "cancelled", "upcoming"]
@@ -18,7 +17,6 @@ class JobCreateRequest(BaseModel):
     job_title: str = Field(min_length=1, max_length=500)
     organization: str = Field(min_length=1, max_length=255)
     department: str | None = None
-    job_type: JOB_TYPES = "latest_job"
     employment_type: EMPLOYMENT_TYPES | None = "permanent"
     qualification_level: QUALIFICATION_LEVELS | None = None
     total_vacancies: int | None = None
@@ -61,7 +59,6 @@ class JobUpdateRequest(BaseModel):
     job_title: str | None = None
     organization: str | None = None
     department: str | None = None
-    job_type: JOB_TYPES | None = None
     employment_type: EMPLOYMENT_TYPES | None = None
     qualification_level: QUALIFICATION_LEVELS | None = None
     total_vacancies: int | None = None
@@ -108,7 +105,6 @@ class JobResponse(BaseModel):
     slug: str
     organization: str
     department: str | None
-    job_type: str
     employment_type: str | None
     qualification_level: str | None
     total_vacancies: int | None
@@ -155,7 +151,6 @@ class JobListItem(BaseModel):
     slug: str
     organization: str
     department: str | None
-    job_type: str
     employment_type: str | None
     qualification_level: str | None
     total_vacancies: int | None

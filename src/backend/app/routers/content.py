@@ -10,9 +10,9 @@ from sqlalchemy import func, select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import get_db
-from app.models.job_admit_card import JobAdmitCard
-from app.models.job_answer_key import JobAnswerKey
-from app.models.job_result import JobResult
+from app.models.admit_card import AdmitCard
+from app.models.answer_key import AnswerKey
+from app.models.result import Result
 from app.schemas.jobs import AdmitCardResponse, AnswerKeyResponse, ResultResponse
 
 admit_cards_router = APIRouter(prefix="/api/v1/admit-cards", tags=["admit-cards"])
@@ -27,8 +27,8 @@ async def list_admit_cards(
     db: AsyncSession = Depends(get_db),
 ):
     """List all admit cards from job_admit_cards table, ordered by published_at."""
-    query = select(JobAdmitCard).order_by(JobAdmitCard.published_at.desc().nulls_last(), JobAdmitCard.created_at.desc())
-    count_query = select(func.count(JobAdmitCard.id))
+    query = select(AdmitCard).order_by(AdmitCard.published_at.desc().nulls_last(), AdmitCard.created_at.desc())
+    count_query = select(func.count(AdmitCard.id))
 
     total = (await db.execute(count_query)).scalar()
     result = await db.execute(query.offset(offset).limit(limit))
@@ -44,8 +44,8 @@ async def list_answer_keys(
     db: AsyncSession = Depends(get_db),
 ):
     """List all answer keys from job_answer_keys table, ordered by published_at."""
-    query = select(JobAnswerKey).order_by(JobAnswerKey.published_at.desc().nulls_last(), JobAnswerKey.created_at.desc())
-    count_query = select(func.count(JobAnswerKey.id))
+    query = select(AnswerKey).order_by(AnswerKey.published_at.desc().nulls_last(), AnswerKey.created_at.desc())
+    count_query = select(func.count(AnswerKey.id))
 
     total = (await db.execute(count_query)).scalar()
     result = await db.execute(query.offset(offset).limit(limit))
@@ -61,8 +61,8 @@ async def list_results(
     db: AsyncSession = Depends(get_db),
 ):
     """List all results from job_results table, ordered by published_at."""
-    query = select(JobResult).order_by(JobResult.published_at.desc().nulls_last(), JobResult.created_at.desc())
-    count_query = select(func.count(JobResult.id))
+    query = select(Result).order_by(Result.published_at.desc().nulls_last(), Result.created_at.desc())
+    count_query = select(func.count(Result.id))
 
     total = (await db.execute(count_query)).scalar()
     result = await db.execute(query.offset(offset).limit(limit))

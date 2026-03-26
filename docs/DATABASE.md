@@ -15,6 +15,7 @@ Schema is managed through 4 Alembic migrations + 1 SQL migration:
 | `007_rename_exam_db_objects.sql` | Renames indexes and constraints from `exam` to `entrance_exam` prefix |
 | `008_remove_job_type_variants.sql` | Removes `admit_card`, `answer_key`, `result` from `jobs`; restricts to `latest_job` only |
 | `009_rename_tables_clean.sql` | Rename tables: `job_vacancies`→`jobs`, `user_job_applications`→`applications`, `job_admit_cards`→`admit_cards`, `job_answer_keys`→`answer_keys`, `job_results`→`results` |
+| `010_drop_job_type_column.sql` | Drop `job_type` column from `jobs` table (no longer needed) |
 
 **Fresh install:**
 ```bash

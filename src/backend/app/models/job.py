@@ -1,4 +1,4 @@
-"""JobVacancy model — maps to `job_vacancies` table."""
+"""Job model — maps to `jobs` table."""
 
 import uuid
 from datetime import date, datetime
@@ -10,7 +10,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import Base
 
 
-class JobVacancy(Base):
+class Job(Base):
     __tablename__ = "jobs"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -18,7 +18,6 @@ class JobVacancy(Base):
     slug: Mapped[str] = mapped_column(String(500), unique=True, nullable=False)
     organization: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     department: Mapped[str | None] = mapped_column(String(255))
-    job_type: Mapped[str] = mapped_column(String(50), nullable=False, default="latest_job")
     employment_type: Mapped[str | None] = mapped_column(String(50), default="permanent")
     qualification_level: Mapped[str | None] = mapped_column(String(50), index=True)
     total_vacancies: Mapped[int | None] = mapped_column(Integer)
@@ -58,7 +57,7 @@ class JobVacancy(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
 
     # Relationships
-    applications = relationship("UserJobApplication", back_populates="job")
-    admit_cards = relationship("JobAdmitCard", back_populates="job", cascade="all, delete-orphan", order_by="JobAdmitCard.phase_number")
-    answer_keys = relationship("JobAnswerKey", back_populates="job", cascade="all, delete-orphan", order_by="JobAnswerKey.phase_number")
-    results = relationship("JobResult", back_populates="job", cascade="all, delete-orphan", order_by="JobResult.phase_number")
+    applications = relationship("Application", back_populates="job")
+    admit_cards = relationship("AdmitCard", back_populates="job", cascade="all, delete-orphan", order_by="AdmitCard.phase_number")
+    answer_keys = relationship("AnswerKey", back_populates="job", cascade="all, delete-orphan", order_by="AnswerKey.phase_number")
+    results = relationship("Result", back_populates="job", cascade="all, delete-orphan", order_by="Result.phase_number")

@@ -1,4 +1,4 @@
-"""UserJobApplication model — maps to `user_job_applications` table."""
+"""Application model — maps to `applications` table."""
 
 import uuid
 from datetime import datetime
@@ -10,7 +10,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import Base
 
 
-class UserJobApplication(Base):
+class Application(Base):
     __tablename__ = "applications"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -30,5 +30,5 @@ class UserJobApplication(Base):
     )
 
     # Relationships
+    job = relationship("Job", back_populates="applications")
     user = relationship("User", back_populates="applications")
-    job = relationship("JobVacancy", back_populates="applications")

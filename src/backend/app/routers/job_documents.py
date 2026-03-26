@@ -26,10 +26,10 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import get_db, require_operator
-from app.models.job_admit_card import JobAdmitCard
-from app.models.job_answer_key import JobAnswerKey
-from app.models.job_result import JobResult
-from app.models.job_vacancy import JobVacancy
+from app.models.admit_card import AdmitCard
+from app.models.answer_key import AnswerKey
+from app.models.result import Result
+from app.models.job import Job
 from app.schemas.jobs import (
     AdmitCardCreateRequest, AdmitCardUpdateRequest, AdmitCardResponse,
     AnswerKeyCreateRequest, AnswerKeyUpdateRequest, AnswerKeyResponse,
@@ -42,18 +42,18 @@ admin_router = APIRouter(prefix="/api/v1/admin/jobs", tags=["admin"])
 
 # ── helpers ────────────────────────────────────────────────────────────────────
 
-async def _require_job(job_id: uuid.UUID, db: AsyncSession) -> JobVacancy:
-    result = await db.execute(select(JobVacancy).where(JobVacancy.id == job_id))
+async def _require_job(job_id: uuid.UUID, db: AsyncSession) -> Job:
+    result = await db.execute(select(Job).where(Job.id == job_id))
     job = result.scalar_one_or_none()
     if not job:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
     return job
 
 
-async def _require_active_job(job_id: uuid.UUID, db: AsyncSession) -> JobVacancy:
+async def _require_active_job(job_id: uuid.UUID, db: AsyncSession) -> Job:
     """Get job by ID (any status). Note: Function name kept for backward compatibility."""
     result = await db.execute(
-        select(JobVacancy).where(JobVacancy.id == job_id)
+        select(Job).where(Job.id == job_id)
     )
     job = result.scalar_one_or_none()
     if not job:
@@ -71,9 +71,9 @@ async def list_admit_cards(job_id: uuid.UUID, db: AsyncSession = Depends(get_db)
     """List all admit cards for a job, ordered by phase."""
     await _require_active_job(job_id, db)
     rows = await db.execute(
-        select(JobAdmitCard)
-        .where(JobAdmitCard.job_id == job_id)
-        .order_by(JobAdmitCard.phase_number.nulls_last(), JobAdmitCard.published_at.desc())
+        select(AdmitCard)
+        .where(AdmitCard.job_id == job_id)
+        .order_by(AdmitCard.phase_number.nulls_last(), AdmitCard.published_at.desc())
     )
     return [AdmitCardResponse.model_validate(r) for r in rows.scalars().all()]
 
@@ -83,9 +83,9 @@ async def list_answer_keys(job_id: uuid.UUID, db: AsyncSession = Depends(get_db)
     """List all answer keys for a job, ordered by phase."""
     await _require_active_job(job_id, db)
     rows = await db.execute(
-        select(JobAnswerKey)
-        .where(JobAnswerKey.job_id == job_id)
-        .order_by(JobAnswerKey.phase_number.nulls_last(), JobAnswerKey.answer_key_type, JobAnswerKey.published_at.desc())
+        select(AnswerKey)
+        .where(AnswerKey.job_id == job_id)
+        .order_by(AnswerKey.phase_number.nulls_last(), AnswerKey.answer_key_type, AnswerKey.published_at.desc())
     )
     return [AnswerKeyResponse.model_validate(r) for r in rows.scalars().all()]
 
@@ -95,9 +95,9 @@ async def list_results(job_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     """List all results for a job, ordered by phase."""
     await _require_active_job(job_id, db)
     rows = await db.execute(
-        select(JobResult)
-        .where(JobResult.job_id == job_id)
-        .order_by(JobResult.phase_number.nulls_last(), JobResult.published_at.desc())
+        select(Result)
+        .where(Result.job_id == job_id)
+        .order_by(Result.phase_number.nulls_last(), Result.published_at.desc())
     )
     return [ResultResponse.model_validate(r) for r in rows.scalars().all()]
 
@@ -116,7 +116,7 @@ async def create_admit_card(
 ):
     """Add an admit card to a job."""
     await _require_job(job_id, db)
-    doc = JobAdmitCard(
+    doc = AdmitCard(
         job_id=job_id,
         phase_number=body.phase_number,
         title=body.title,
@@ -141,7 +141,7 @@ async def update_admit_card(
 ):
     """Update an admit card."""
     result = await db.execute(
-        select(JobAdmitCard).where(JobAdmitCard.id == doc_id, JobAdmitCard.job_id == job_id)
+        select(AdmitCard).where(AdmitCard.id == doc_id, AdmitCard.job_id == job_id)
     )
     doc = result.scalar_one_or_none()
     if not doc:
@@ -163,7 +163,7 @@ async def delete_admit_card(
 ):
     """Delete an admit card."""
     result = await db.execute(
-        select(JobAdmitCard).where(JobAdmitCard.id == doc_id, JobAdmitCard.job_id == job_id)
+        select(AdmitCard).where(AdmitCard.id == doc_id, AdmitCard.job_id == job_id)
     )
     doc = result.scalar_one_or_none()
     if not doc:
@@ -185,7 +185,7 @@ async def create_answer_key(
 ):
     """Add an answer key to a job."""
     await _require_job(job_id, db)
-    doc = JobAnswerKey(
+    doc = AnswerKey(
         job_id=job_id,
         phase_number=body.phase_number,
         title=body.title,
@@ -210,7 +210,7 @@ async def update_answer_key(
 ):
     """Update an answer key."""
     result = await db.execute(
-        select(JobAnswerKey).where(JobAnswerKey.id == doc_id, JobAnswerKey.job_id == job_id)
+        select(AnswerKey).where(AnswerKey.id == doc_id, AnswerKey.job_id == job_id)
     )
     doc = result.scalar_one_or_none()
     if not doc:
@@ -232,7 +232,7 @@ async def delete_answer_key(
 ):
     """Delete an answer key."""
     result = await db.execute(
-        select(JobAnswerKey).where(JobAnswerKey.id == doc_id, JobAnswerKey.job_id == job_id)
+        select(AnswerKey).where(AnswerKey.id == doc_id, AnswerKey.job_id == job_id)
     )
     doc = result.scalar_one_or_none()
     if not doc:
@@ -254,7 +254,7 @@ async def create_result(
 ):
     """Add a result to a job."""
     await _require_job(job_id, db)
-    doc = JobResult(
+    doc = Result(
         job_id=job_id,
         phase_number=body.phase_number,
         title=body.title,
@@ -280,7 +280,7 @@ async def update_result(
 ):
     """Update a result."""
     result = await db.execute(
-        select(JobResult).where(JobResult.id == doc_id, JobResult.job_id == job_id)
+        select(Result).where(Result.id == doc_id, Result.job_id == job_id)
     )
     doc = result.scalar_one_or_none()
     if not doc:
@@ -302,7 +302,7 @@ async def delete_result(
 ):
     """Delete a result."""
     result = await db.execute(
-        select(JobResult).where(JobResult.id == doc_id, JobResult.job_id == job_id)
+        select(Result).where(Result.id == doc_id, Result.job_id == job_id)
     )
     doc = result.scalar_one_or_none()
     if not doc:

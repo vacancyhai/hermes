@@ -12,7 +12,7 @@ from sqlalchemy import func, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import get_current_user, get_db
-from app.models.job_vacancy import JobVacancy
+from app.models.job import Job
 from app.schemas.jobs import JobListItem, JobResponse
 from app.services.matching import get_recommended_jobs
 
@@ -33,13 +33,13 @@ async def list_jobs(
     db: AsyncSession = Depends(get_db),
 ):
     """List job vacancies (latest_job type only) with filters and full-text search. Returns all jobs."""
-    query = select(JobVacancy).where(JobVacancy.job_type == "latest_job")
-    count_query = select(func.count(JobVacancy.id)).where(JobVacancy.job_type == "latest_job")
+    query = select(Job)
+    count_query = select(func.count(Job.id))
 
     # Apply status filter if explicitly provided
     if status_filter:
-        query = query.where(JobVacancy.status == status_filter)
-        count_query = count_query.where(JobVacancy.status == status_filter)
+        query = query.where(Job.status == status_filter)
+        count_query = count_query.where(Job.status == status_filter)
 
     # Full-text search
     if q:
@@ -51,24 +51,24 @@ async def list_jobs(
 
     # Filters
     if qualification_level:
-        query = query.where(JobVacancy.qualification_level == qualification_level)
-        count_query = count_query.where(JobVacancy.qualification_level == qualification_level)
+        query = query.where(Job.qualification_level == qualification_level)
+        count_query = count_query.where(Job.qualification_level == qualification_level)
     if organization:
-        query = query.where(JobVacancy.organization.ilike(f"%{organization}%"))
-        count_query = count_query.where(JobVacancy.organization.ilike(f"%{organization}%"))
+        query = query.where(Job.organization.ilike(f"%{organization}%"))
+        count_query = count_query.where(Job.organization.ilike(f"%{organization}%"))
     if department:
-        query = query.where(JobVacancy.department.ilike(f"%{department}%"))
-        count_query = count_query.where(JobVacancy.department.ilike(f"%{department}%"))
+        query = query.where(Job.department.ilike(f"%{department}%"))
+        count_query = count_query.where(Job.department.ilike(f"%{department}%"))
     if is_featured is not None:
-        query = query.where(JobVacancy.is_featured == is_featured)
-        count_query = count_query.where(JobVacancy.is_featured == is_featured)
+        query = query.where(Job.is_featured == is_featured)
+        count_query = count_query.where(Job.is_featured == is_featured)
     if is_urgent is not None:
-        query = query.where(JobVacancy.is_urgent == is_urgent)
-        count_query = count_query.where(JobVacancy.is_urgent == is_urgent)
+        query = query.where(Job.is_urgent == is_urgent)
+        count_query = count_query.where(Job.is_urgent == is_urgent)
 
     # Default ordering (newest first) when not searching
     if not q:
-        query = query.order_by(JobVacancy.created_at.desc())
+        query = query.order_by(Job.created_at.desc())
 
     # Count total before pagination
     total_result = await db.execute(count_query)
@@ -115,14 +115,14 @@ async def recommended_jobs(
 @router.get("/{slug}")
 async def get_job(slug: str, db: AsyncSession = Depends(get_db)):
     """Get job detail by slug. Increments view count."""
-    result = await db.execute(select(JobVacancy).where(JobVacancy.slug == slug))
+    result = await db.execute(select(Job).where(Job.slug == slug))
     job = result.scalar_one_or_none()
     if not job:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
 
     # Atomic view counter increment (avoids lost-update under concurrent reads)
     await db.execute(
-        update(JobVacancy).where(JobVacancy.id == job.id).values(views=JobVacancy.views + 1)
+        update(Job).where(Job.id == job.id).values(views=Job.views + 1)
     )
 
     return JobResponse.model_validate(job).model_dump()

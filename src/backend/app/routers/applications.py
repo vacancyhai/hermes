@@ -18,8 +18,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import get_current_user, get_db
-from app.models.application import UserJobApplication
-from app.models.job_vacancy import JobVacancy
+from app.models.application import Application
+from app.models.job import Job
 from app.schemas.applications import (
     ApplicationCreateRequest,
     ApplicationResponse,
@@ -39,9 +39,9 @@ async def application_stats(
     """Counts of applications grouped by status."""
     user, _ = current_user
     result = await db.execute(
-        select(UserJobApplication.status, func.count())
-        .where(UserJobApplication.user_id == user.id)
-        .group_by(UserJobApplication.status)
+        select(Application.status, func.count())
+        .where(Application.user_id == user.id)
+        .group_by(Application.status)
     )
     rows = result.all()
     counts = {row[0]: row[1] for row in rows}
@@ -60,20 +60,20 @@ async def list_applications(
 ):
     """List own tracked applications with optional filters."""
     user, _ = current_user
-    query = select(UserJobApplication).where(UserJobApplication.user_id == user.id)
-    count_query = select(func.count(UserJobApplication.id)).where(UserJobApplication.user_id == user.id)
+    query = select(Application).where(Application.user_id == user.id)
+    count_query = select(func.count(Application.id)).where(Application.user_id == user.id)
 
     if status_filter:
-        query = query.where(UserJobApplication.status == status_filter)
-        count_query = count_query.where(UserJobApplication.status == status_filter)
+        query = query.where(Application.status == status_filter)
+        count_query = count_query.where(Application.status == status_filter)
     if is_priority is not None:
-        query = query.where(UserJobApplication.is_priority == is_priority)
-        count_query = count_query.where(UserJobApplication.is_priority == is_priority)
+        query = query.where(Application.is_priority == is_priority)
+        count_query = count_query.where(Application.is_priority == is_priority)
 
     total_result = await db.execute(count_query)
     total = total_result.scalar()
 
-    query = query.order_by(UserJobApplication.applied_on.desc()).offset(offset).limit(limit)
+    query = query.order_by(Application.applied_on.desc()).offset(offset).limit(limit)
     result = await db.execute(query)
     apps = result.scalars().all()
 
@@ -81,7 +81,7 @@ async def list_applications(
     job_ids = [app.job_id for app in apps]
     jobs_map: dict = {}
     if job_ids:
-        jobs_result = await db.execute(select(JobVacancy).where(JobVacancy.id.in_(job_ids)))
+        jobs_result = await db.execute(select(Job).where(Job.id.in_(job_ids)))
         jobs_map = {j.id: j for j in jobs_result.scalars().all()}
 
     data = []
@@ -113,22 +113,22 @@ async def track_job(
     user, _ = current_user
 
     # Verify job exists and is active
-    job_result = await db.execute(select(JobVacancy).where(JobVacancy.id == body.job_id))
+    job_result = await db.execute(select(Job).where(Job.id == body.job_id))
     job = job_result.scalar_one_or_none()
     if not job:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
 
     # Check duplicate (fast path for UX)
     existing = await db.execute(
-        select(UserJobApplication).where(
-            UserJobApplication.user_id == user.id,
-            UserJobApplication.job_id == body.job_id,
+        select(Application).where(
+            Application.user_id == user.id,
+            Application.job_id == body.job_id,
         )
     )
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Already tracking this job")
 
-    app = UserJobApplication(
+    app = Application(
         user_id=user.id,
         job_id=body.job_id,
         application_number=body.application_number,
@@ -145,8 +145,8 @@ async def track_job(
 
     # Atomic applications_count increment
     await db.execute(
-        update(JobVacancy).where(JobVacancy.id == body.job_id)
-        .values(applications_count=JobVacancy.applications_count + 1)
+        update(Job).where(Job.id == body.job_id)
+        .values(applications_count=Job.applications_count + 1)
     )
     logger.info("application_tracked", extra={"user_id": str(user.id), "job_id": str(body.job_id)})
 
@@ -170,9 +170,9 @@ async def update_application(
     """Update an application (status, notes, priority, application_number)."""
     user, _ = current_user
     result = await db.execute(
-        select(UserJobApplication).where(
-            UserJobApplication.id == application_id,
-            UserJobApplication.user_id == user.id,
+        select(Application).where(
+            Application.id == application_id,
+            Application.user_id == user.id,
         )
     )
     app = result.scalar_one_or_none()
@@ -202,9 +202,9 @@ async def remove_application(
     """Remove a job from the tracker."""
     user, _ = current_user
     result = await db.execute(
-        select(UserJobApplication).where(
-            UserJobApplication.id == application_id,
-            UserJobApplication.user_id == user.id,
+        select(Application).where(
+            Application.id == application_id,
+            Application.user_id == user.id,
         )
     )
     app = result.scalar_one_or_none()
@@ -213,8 +213,8 @@ async def remove_application(
 
     # Atomic applications_count decrement (floor at 0)
     await db.execute(
-        update(JobVacancy).where(JobVacancy.id == app.job_id)
-        .values(applications_count=func.greatest(JobVacancy.applications_count - 1, 0))
+        update(Job).where(Job.id == app.job_id)
+        .values(applications_count=func.greatest(Job.applications_count - 1, 0))
     )
 
     await db.delete(app)
