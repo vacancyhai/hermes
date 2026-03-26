@@ -4,7 +4,7 @@ This document outlines the PostgreSQL database schema for the Hermes project, us
 
 ## Migration
 
-Schema is managed through 4 migration files:
+Schema is managed through 4 Alembic migrations + 1 SQL migration:
 
 | Migration | Description |
 |-----------|-------------|
@@ -12,6 +12,7 @@ Schema is managed through 4 migration files:
 | `0002_add_telegram_channel.py` | Adds `telegram` to `ck_delivery_channel` CHECK constraint |
 | `0003_job_documents_tables.py` | Creates `job_admit_cards`, `job_answer_keys`, `job_results` linked to jobs |
 | `0004_entrance_exams.py` | Creates `entrance_exams`; adds `exam_id` FK + CHECK constraint to doc tables |
+| `007_rename_exam_db_objects.sql` | Renames indexes and constraints from `exam` to `entrance_exam` prefix |
 
 **Fresh install:**
 ```bash
@@ -296,8 +297,8 @@ These are educational admissions, not government job recruitments.
 | `exam_name` | String(500) | E.g. "NTA NEET PG 2026 — Medical PG Entrance" |
 | `conducting_body` | String(255) | E.g. "National Testing Agency" |
 | `counselling_body` | String(255) | E.g. "MCC", "JoSAA", "CLAT Consortium" |
-| `exam_type` | String(20) | `ck_exam_type`: `ug`, `pg`, `doctoral`, `lateral` |
-| `stream` | String(30) | `ck_exam_stream`: `medical`, `engineering`, `law`, `management`, `arts_science`, `general` |
+| `exam_type` | String(20) | `ck_entrance_exam_type`: `ug`, `pg`, `doctoral`, `lateral` |
+| `stream` | String(30) | `ck_entrance_exam_stream`: `medical`, `engineering`, `law`, `management`, `arts_science`, `general` |
 | `eligibility` | JSONB | `{min_qualification, attempts_limit, age_limit, registration, ...}` |
 | `exam_details` | JSONB | `{exam_pattern: [{phase, subjects, total_marks, duration_minutes, negative_marking, exam_mode}]}` |
 | `selection_process` | JSONB | `[{phase, name, qualifying}]` |
@@ -315,11 +316,16 @@ These are educational admissions, not government job recruitments.
 | `description` | Text | Full HTML description |
 | `short_description` | Text | One-liner for listing cards |
 | `source_url` | Text | Official website URL |
-| `status` | String(20) | `ck_exam_status`: `upcoming`, `active`, `completed`, `cancelled` |
+| `status` | String(20) | `ck_entrance_exam_status`: `upcoming`, `active`, `completed`, `cancelled` |
 | `is_featured` | Boolean | Highlight in listings |
 | `views` | Integer | View count (incremented on detail page load) |
 | `published_at` | DateTime | When first published |
 | `search_vector` | tsvector | GENERATED ALWAYS — GIN-indexed FTS on exam_name + conducting_body + description |
+
+**Indexes:**
+- `idx_entrance_exams_search` — GIN index on `search_vector` for full-text search
+- `idx_entrance_exams_slug` — UNIQUE index on `slug`
+- `idx_entrance_exams_stream_status` — Composite index on `(stream, status, created_at)` for filtered listings
 
 **Key design difference from `job_vacancies`:**
 
