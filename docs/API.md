@@ -138,7 +138,7 @@ Each content type has its own dedicated endpoints for listing and management.
 |--------|----------|------|-------------|
 | GET | `/admin/jobs` | Operator+ | List job vacancies (latest_job type only) |
 | POST | `/admin/jobs` | Operator+ | Create job vacancy (job_type: latest_job) |
-| POST | `/admin/jobs/upload-pdf` | Operator+ | Upload PDF → AI extraction → draft job |
+| POST | `/admin/jobs/extract-pdf` | Operator+ | Extract PDF data → return JSON (for form auto-fill) |
 
 #### Admit Cards (admit_card)
 
@@ -548,20 +548,36 @@ WhatsApp and Telegram share links have been removed.
 
 ---
 
-## PDF Upload & AI Extraction
+## PDF Inline Extraction (Form Auto-Fill)
 
-### Upload PDF
+### Extract PDF Data
 ```
-POST /api/v1/admin/jobs/upload-pdf
+POST /api/v1/admin/jobs/extract-pdf
 Authorization: Bearer <admin_token>
 Content-Type: multipart/form-data
 
 file: <pdf_file>
 
-→ 202 {
-  "message": "PDF uploaded, extraction in progress",
-  "task_id": "celery-task-uuid",
-  "filename": "notification.pdf"
+→ 200 {
+  "status": "success",
+  "data": {
+    "job_title": "SSC CGL 2026",
+    "organization": "Staff Selection Commission",
+    "department": "Various Ministries",
+    "qualification_level": "graduate",
+    "total_vacancies": 5000,
+    "description": "Combined Graduate Level Examination...",
+    "short_description": "SSC CGL recruitment for Group B and C posts",
+    "notification_date": "2026-01-15",
+    "application_start": "2026-01-20",
+    "application_end": "2026-02-20",
+    "exam_start": "2026-03-15",
+    "fee_general": 100,
+    "fee_obc": 100,
+    "fee_sc_st": 0,
+    "salary_initial": 500000,
+    "source_url": "https://ssc.nic.in/notification.pdf"
+  }
 }
 ```
 
@@ -569,17 +585,21 @@ file: <pdf_file>
 - Only `.pdf` files accepted
 - Maximum file size: 10MB (configurable via `PDF_MAX_SIZE_MB`)
 - Requires `ANTHROPIC_API_KEY` for AI extraction (graceful fallback if not set)
+- Rate limited: 10 requests/minute
+- Synchronous processing (no background task)
 
 **Workflow:**
-1. Upload PDF → saved to `/app/uploads/pdfs/`
-2. Celery task `extract_job_from_pdf` triggered
-3. PDF text extracted via `pdfplumber`
-4. Text sent to Anthropic Claude for structured field extraction
-5. Draft job created in DB with extracted data
-6. Admin reviews draft via `/jobs/{id}/review` in admin frontend
-7. Admin approves → job goes live
+1. Upload PDF → temporary file created
+2. PDF text extracted via `pdfplumber` (up to 8000 chars)
+3. Text sent to Anthropic Claude for structured field extraction
+4. JSON data returned immediately to frontend
+5. Frontend JavaScript auto-fills form fields
+6. Admin reviews and edits extracted data
+7. Admin submits form to create content
 
-**Extracted fields:** job_title, organization, department, qualification_level, total_vacancies, description, dates, fees, salary, eligibility, selection_process, source_url.
+**Use Case:** Used in creation pages (`/jobs/new`, `/admit-cards/new`, `/answer-keys/new`, `/results/new`) to automatically populate form fields from uploaded PDF notifications. Does not create any database records.
+
+**Extracted fields:** job_title, organization, department, qualification_level, employment_type, total_vacancies, description, short_description, notification_date, application_start, application_end, exam_start, exam_end, result_date, fees (general/obc/sc_st/ews/female), salary (initial/max), source_url, eligibility, selection_process.
 
 ---
 

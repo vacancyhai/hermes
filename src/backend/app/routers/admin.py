@@ -3,7 +3,7 @@
 Job Management:
   GET    /api/v1/admin/jobs              — List all jobs (any status)
   POST   /api/v1/admin/jobs              — Create job
-  POST   /api/v1/admin/jobs/upload-pdf   — Upload PDF → AI extraction → draft job
+  POST   /api/v1/admin/jobs/extract-pdf  — Extract PDF data → return JSON (for form auto-fill)
   PUT    /api/v1/admin/jobs/:id          — Update job
   PUT    /api/v1/admin/jobs/:id/approve  — Approve draft → active
   DELETE /api/v1/admin/jobs/:id          — Soft delete
@@ -523,47 +523,6 @@ async def extract_pdf_data(
             os.unlink(tmp_path)
         except OSError:
             pass
-
-
-@router.post("/jobs/upload-pdf", status_code=status.HTTP_202_ACCEPTED)
-@limiter.limit("5/minute")
-async def upload_pdf(
-    file: UploadFile,
-    request: Request,
-    current_admin=Depends(require_operator),
-    db: AsyncSession = Depends(get_db),
-):
-    """Upload a PDF notification → AI extraction → create draft job."""
-    admin = current_admin
-
-    if not file.filename or not file.filename.lower().endswith(".pdf"):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only PDF files are accepted")
-
-    if file.content_type and file.content_type != "application/pdf":
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only PDF files are accepted")
-
-    content = await file.read()
-    max_bytes = settings.PDF_MAX_SIZE_MB * 1024 * 1024
-    if len(content) > max_bytes:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"File exceeds {settings.PDF_MAX_SIZE_MB}MB limit",
-        )
-
-    upload_dir = Path(settings.PDF_UPLOAD_DIR)
-    upload_dir.mkdir(parents=True, exist_ok=True)
-
-    safe_name = re.sub(r"[^\w.\-]", "_", file.filename or "upload.pdf")
-    file_id = uuid.uuid4().hex[:12]
-    dest = upload_dir / f"{file_id}_{safe_name}"
-    dest.write_bytes(content)
-
-    from app.tasks.jobs import extract_job_from_pdf
-    task = extract_job_from_pdf.delay(str(dest), str(admin.id))
-
-    await _log_action(db, admin, "upload_pdf", "job_vacancy", details=f"PDF: {safe_name}", request=request)
-
-    return {"message": "PDF uploaded, extraction in progress", "task_id": task.id, "filename": safe_name}
 
 
 @router.put("/jobs/{job_id}")

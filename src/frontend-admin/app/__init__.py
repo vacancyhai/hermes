@@ -7,9 +7,9 @@ Routes:
   /logout                         — Clear session
   /jobs                           — Job management (list, search, status filter)
   /jobs/list                      — HTMX partial for job table rows
-  /jobs/upload                    — Upload PDF for AI extraction
   /jobs/<id>/review               — Review/edit draft job, approve or update
   /jobs/<id>/approve              — Approve draft → active
+  /api/extract-pdf                — PDF extraction for form auto-fill (inline)
   /jobs/<id>/docs/admit-cards                — POST: add admit card to job
   /jobs/<id>/docs/answer-keys     — POST: add answer key to job
   /jobs/<id>/docs/results         — POST: add result to job
@@ -488,37 +488,6 @@ def create_app():
 
         current_app.api_client.put(f"/admin/jobs/{job_id}/approve", token=token)
         return redirect("/jobs")
-
-    # --- PDF Upload ---
-
-    @app.route("/jobs/upload", methods=["GET", "POST"])
-    def upload_pdf():
-        token = session.get("token")
-        if not token:
-            return redirect("/login")
-
-        if request.method == "GET":
-            return render_template("job_upload.html")
-
-        file = request.files.get("pdf_file")
-        if not file or not file.filename:
-            flash("Please select a PDF file", "error")
-            return render_template("job_upload.html")
-
-        resp = current_app.api_client.post_file(
-            "/admin/jobs/upload-pdf",
-            token=token,
-            files={"file": (file.filename, file.stream, "application/pdf")},
-        )
-
-        if resp.ok:
-            data = resp.json()
-            flash(f"PDF uploaded successfully. Extraction task started (ID: {data.get('task_id', 'N/A')[:8]}...)", "success")
-            return redirect("/jobs?status=draft")
-
-        detail = resp.json().get("detail", "Upload failed") if resp.headers.get("content-type", "").startswith("application/json") else "Upload failed"
-        flash(detail, "error")
-        return render_template("job_upload.html")
 
     # --- Draft Review ---
 
