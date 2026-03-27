@@ -125,6 +125,33 @@ def create_app():
         data = resp.json() if resp.ok else {"data": [], "pagination": {}}
         return render_template("results/results.html", jobs=data["data"], pagination=data.get("pagination", {}), params=params, card_type="result")
 
+    @app.route("/admit-cards/<card_id>")
+    def admit_card_detail(card_id):
+        """Admit card detail page."""
+        resp = current_app.api_client.get(f"/admit-cards/{card_id}")
+        if not resp.ok:
+            return render_template("shared/404.html"), 404
+        card = resp.json()
+        return render_template("admit_cards/admit_card_detail.html", card=card)
+
+    @app.route("/answer-keys/<key_id>")
+    def answer_key_detail(key_id):
+        """Answer key detail page."""
+        resp = current_app.api_client.get(f"/answer-keys/{key_id}")
+        if not resp.ok:
+            return render_template("shared/404.html"), 404
+        key = resp.json()
+        return render_template("answer_keys/answer_key_detail.html", key=key)
+
+    @app.route("/results/<result_id>")
+    def result_detail(result_id):
+        """Result detail page."""
+        resp = current_app.api_client.get(f"/results/{result_id}")
+        if not resp.ok:
+            return render_template("shared/404.html"), 404
+        result = resp.json()
+        return render_template("results/result_detail.html", result=result)
+
     @app.route("/jobs/<slug>")
     def job_detail(slug):
         """Job detail page."""

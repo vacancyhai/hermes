@@ -1,11 +1,16 @@
 """Public content endpoints for admit cards, answer keys, and results.
 
-GET    /api/v1/admit-cards    — List all admit cards from job_admit_cards table
-GET    /api/v1/answer-keys    — List all answer keys from job_answer_keys table
-GET    /api/v1/results        — List all results from job_results table
+GET    /api/v1/admit-cards       — List all admit cards from admit_cards table
+GET    /api/v1/admit-cards/{id}  — Get single admit card by ID
+GET    /api/v1/answer-keys       — List all answer keys from answer_keys table
+GET    /api/v1/answer-keys/{id}  — Get single answer key by ID
+GET    /api/v1/results           — List all results from results table
+GET    /api/v1/results/{id}      — Get single result by ID
 """
 
-from fastapi import APIRouter, Depends, Query
+import uuid
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -45,6 +50,24 @@ async def list_admit_cards(
     }
 
 
+@admit_cards_router.get("/{card_id}")
+async def get_admit_card(
+    card_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    """Get single admit card by ID."""
+    result = await db.execute(select(AdmitCard).where(AdmitCard.id == card_id))
+    card = result.scalar_one_or_none()
+    
+    if not card:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Admit card not found"
+        )
+    
+    return AdmitCardResponse.model_validate(card).model_dump()
+
+
 @answer_keys_router.get("")
 async def list_answer_keys(
     limit: int = Query(20, ge=1, le=100),
@@ -70,6 +93,24 @@ async def list_answer_keys(
     }
 
 
+@answer_keys_router.get("/{key_id}")
+async def get_answer_key(
+    key_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    """Get single answer key by ID."""
+    result = await db.execute(select(AnswerKey).where(AnswerKey.id == key_id))
+    key = result.scalar_one_or_none()
+    
+    if not key:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Answer key not found"
+        )
+    
+    return AnswerKeyResponse.model_validate(key).model_dump()
+
+
 @results_router.get("")
 async def list_results(
     limit: int = Query(20, ge=1, le=100),
@@ -93,3 +134,21 @@ async def list_results(
             "has_more": (offset + limit) < total,
         },
     }
+
+
+@results_router.get("/{result_id}")
+async def get_result(
+    result_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    """Get single result by ID."""
+    result = await db.execute(select(Result).where(Result.id == result_id))
+    result_obj = result.scalar_one_or_none()
+    
+    if not result_obj:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Result not found"
+        )
+    
+    return ResultResponse.model_validate(result_obj).model_dump()

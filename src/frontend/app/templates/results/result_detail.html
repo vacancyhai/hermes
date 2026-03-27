@@ -1,0 +1,185 @@
+{% extends "shared/base.html" %}
+
+{% block title %}{{ result.title }} — Hermes{% endblock %}
+
+{% block content %}
+<a href="/results" class="back-link">← All Results</a>
+
+<div class="detail-hero" style="background:linear-gradient(135deg,#16a34a 0%,#22c55e 100%)">
+    <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.5rem">
+        <span class="card-type-tag" style="background:rgba(255,255,255,.2);color:#fff">🏆 Result</span>
+        {% if result.phase_number %}<span class="badge" style="background:rgba(255,255,255,.25);color:#fff">Phase {{ result.phase_number }}</span>{% endif %}
+        {% if result.result_type == 'shortlist' %}<span class="badge" style="background:#fef3c7;color:#92400e">Shortlist</span>
+        {% elif result.result_type == 'cutoff' %}<span class="badge" style="background:#e0e7ff;color:#3730a3">Cut-off</span>
+        {% elif result.result_type == 'merit_list' %}<span class="badge" style="background:#ddd6fe;color:#5b21b6">Merit List</span>
+        {% elif result.result_type == 'final' %}<span class="badge" style="background:#d1fae5;color:#065f46">✓ Final</span>{% endif %}
+    </div>
+    <h1>{{ result.title }}</h1>
+    
+    <div class="action-bar" style="margin-top:.85rem">
+        {% if result.download_url %}
+        <a href="{{ result.download_url }}" target="_blank" rel="noopener" class="btn" style="background:#fff;color:#16a34a;font-weight:600">
+            📥 Download Result
+        </a>
+        {% endif %}
+        <button class="share-btn"
+            data-title="{{ result.title | e }}"
+            data-url="{{ request.url }}"
+            style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3)"
+            onclick="(function(b){var u=b.dataset.url,t=b.dataset.title;if(navigator.share){navigator.share({title:t,url:u})}else{navigator.clipboard.writeText(u);var orig=b.textContent;b.textContent='\u2713 Copied';setTimeout(function(){b.textContent=orig},1800)}})(this)">
+            Share
+        </button>
+    </div>
+</div>
+
+<div class="detail-body">
+    <div class="detail-main">
+        {% if result.total_qualified %}
+        <section class="section" style="background:#f0fdf4;border-left:3px solid #16a34a;padding:1rem">
+            <h2 style="color:#16a34a">✓ Candidates Qualified</h2>
+            <div class="detail-content">
+                <p style="font-size:1.5rem;font-weight:700;color:#16a34a;margin:0">{{ '{:,}'.format(result.total_qualified) }}</p>
+                <p style="font-size:.9rem;color:#64748b;margin-top:.25rem">candidates have been shortlisted</p>
+            </div>
+        </section>
+        {% endif %}
+
+        {% if result.cutoff_marks %}
+        <section class="section">
+            <h2>📊 Cut-off Marks</h2>
+            <div class="detail-content">
+                <div style="display:grid;gap:.75rem">
+                    {% for category, marks in result.cutoff_marks.items() %}
+                    <div style="display:flex;justify-content:space-between;align-items:center;padding:.75rem;border:1px solid #e2e8f0;border-radius:.5rem;background:#f8fafc">
+                        <div style="font-weight:600;color:#1e293b">{{ category }}</div>
+                        <div style="font-size:1.1rem;font-weight:700;color:#16a34a">{{ marks }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+        {% endif %}
+
+        {% if result.notes %}
+        <section class="section">
+            <h2>📝 Important Information</h2>
+            <div class="detail-content">
+                <p>{{ result.notes }}</p>
+            </div>
+        </section>
+        {% endif %}
+
+        <section class="section">
+            <h2>ℹ️ About This Result</h2>
+            <div class="detail-content">
+                {% if result.result_type == 'shortlist' %}
+                <p><strong>Shortlist:</strong> This is the list of candidates who have qualified for the next stage of selection.</p>
+                <ul>
+                    <li>Check if your roll number is in the list</li>
+                    <li>Download the result PDF for complete details</li>
+                    <li>Prepare for the next stage (interview/document verification/next exam)</li>
+                    <li>Check for any additional instructions or requirements</li>
+                </ul>
+                {% elif result.result_type == 'cutoff' %}
+                <p><strong>Cut-off Marks:</strong> These are the minimum qualifying marks for different categories.</p>
+                <ul>
+                    <li>Compare your score with the cut-off for your category</li>
+                    <li>Cut-off may vary based on the number of vacancies and difficulty level</li>
+                    <li>If you're above the cut-off, you may be called for next round</li>
+                </ul>
+                {% elif result.result_type == 'merit_list' %}
+                <p><strong>Merit List:</strong> This is the ranked list of qualified candidates.</p>
+                <ul>
+                    <li>Check your rank in the merit list</li>
+                    <li>Higher rank indicates better chances of selection</li>
+                    <li>Selection is based on rank and available vacancies</li>
+                </ul>
+                {% elif result.result_type == 'final' %}
+                <p><strong>Final Result:</strong> This is the final selection list for the position.</p>
+                <ul>
+                    <li>Congratulations if you're selected!</li>
+                    <li>Follow the joining instructions carefully</li>
+                    <li>Complete document verification within the deadline</li>
+                    <li>Check for training dates and joining formalities</li>
+                </ul>
+                {% endif %}
+            </div>
+        </section>
+
+        <section class="section">
+            <h2>🔍 How to Check Your Result</h2>
+            <div class="detail-content">
+                <ol>
+                    <li>Download the result PDF using the button above</li>
+                    <li>Use Ctrl+F (or Cmd+F on Mac) to search for your roll number</li>
+                    <li>Alternatively, check the official website for roll number search</li>
+                    <li>Download your score card or marks sheet if available</li>
+                    <li>Keep a copy for future reference</li>
+                </ol>
+            </div>
+        </section>
+
+        {% if result.published_at %}
+        <section class="section">
+            <h2>📅 Published Date</h2>
+            <div class="detail-content">
+                <p>{{ result.published_at[:10] }}</p>
+            </div>
+        </section>
+        {% endif %}
+    </div>
+
+    <aside class="detail-sidebar">
+        {% if result.download_url %}
+        <div class="sidebar-card">
+            <h3>📥 Download</h3>
+            <a href="{{ result.download_url }}" target="_blank" rel="noopener" class="btn btn-primary" style="width:100%;text-align:center;margin-bottom:.5rem">
+                Download Result PDF
+            </a>
+            <p style="font-size:.8rem;color:#64748b;margin-top:.5rem">Check your result and save a copy</p>
+        </div>
+        {% endif %}
+
+        {% if result.total_qualified %}
+        <div class="sidebar-card">
+            <h3>👥 Qualified Candidates</h3>
+            <p style="font-size:1.8rem;font-weight:700;color:#16a34a;margin:.5rem 0">{{ '{:,}'.format(result.total_qualified) }}</p>
+            <p style="font-size:.8rem;color:#64748b">candidates qualified</p>
+        </div>
+        {% endif %}
+
+        <div class="sidebar-card">
+            <h3>📋 Result Type</h3>
+            <p style="font-size:.9rem;color:#334155">
+                {% if result.result_type == 'shortlist' %}
+                <span style="background:#fef3c7;color:#92400e;padding:.25rem .5rem;border-radius:.25rem;font-weight:600">Shortlist</span>
+                <br><small style="color:#64748b;margin-top:.5rem;display:block">Qualified for next stage</small>
+                {% elif result.result_type == 'cutoff' %}
+                <span style="background:#e0e7ff;color:#3730a3;padding:.25rem .5rem;border-radius:.25rem;font-weight:600">Cut-off</span>
+                <br><small style="color:#64748b;margin-top:.5rem;display:block">Minimum qualifying marks</small>
+                {% elif result.result_type == 'merit_list' %}
+                <span style="background:#ddd6fe;color:#5b21b6;padding:.25rem .5rem;border-radius:.25rem;font-weight:600">Merit List</span>
+                <br><small style="color:#64748b;margin-top:.5rem;display:block">Ranked list of candidates</small>
+                {% elif result.result_type == 'final' %}
+                <span style="background:#d1fae5;color:#065f46;padding:.25rem .5rem;border-radius:.25rem;font-weight:600">✓ Final</span>
+                <br><small style="color:#64748b;margin-top:.5rem;display:block">Final selection list</small>
+                {% endif %}
+            </p>
+        </div>
+
+        {% if result.cutoff_marks %}
+        <div class="sidebar-card">
+            <h3>📊 Cut-off Summary</h3>
+            <div style="font-size:.85rem">
+                {% for category, marks in result.cutoff_marks.items() %}
+                <div style="display:flex;justify-content:space-between;padding:.4rem 0;border-bottom:1px solid #e2e8f0">
+                    <span style="color:#64748b">{{ category }}</span>
+                    <span style="font-weight:600;color:#16a34a">{{ marks }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </aside>
+</div>
+{% endblock %}

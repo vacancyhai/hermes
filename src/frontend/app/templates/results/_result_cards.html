@@ -12,11 +12,7 @@
                 {% elif result.result_type == 'final' %}<span class="badge" style="background:#d1fae5;color:#065f46">✓ Final</span>{% endif %}
             </div>
             <h3 style="margin-bottom:.2rem">
-                {% if result.download_url %}
-                <a href="{{ result.download_url }}" target="_blank" rel="noopener" style="color:#1e293b;font-size:1rem">{{ result.title }}</a>
-                {% else %}
-                <span style="color:#1e293b;font-size:1rem">{{ result.title }}</span>
-                {% endif %}
+                <a href="/results/{{ result.id }}" style="color:#1e293b;font-size:1rem">{{ result.title }}</a>
             </h3>
             <div style="display:flex;flex-wrap:wrap;gap:.6rem;align-items:center;margin-top:.35rem">
                 {% if result.total_qualified %}

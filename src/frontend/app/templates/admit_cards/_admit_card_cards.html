@@ -8,7 +8,7 @@
                 {% if card.phase_number %}<span class="badge" style="background:#dbeafe;color:#1e40af">Phase {{ card.phase_number }}</span>{% endif %}
             </div>
             <h3 style="margin-bottom:.2rem">
-                <a href="{{ card.download_url }}" target="_blank" rel="noopener" style="color:#1e293b;font-size:1rem">{{ card.title }}</a>
+                <a href="/admit-cards/{{ card.id }}" style="color:#1e293b;font-size:1rem">{{ card.title }}</a>
             </h3>
             {% if card.valid_from or card.valid_until %}
             <div class="meta" style="margin-bottom:.25rem">

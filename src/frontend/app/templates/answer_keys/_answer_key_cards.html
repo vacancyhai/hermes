@@ -10,7 +10,7 @@
                 {% elif key.answer_key_type == 'final' %}<span class="badge" style="background:#d1fae5;color:#065f46">✓ Final</span>{% endif %}
             </div>
             <h3 style="margin-bottom:.2rem">
-                <span style="color:#1e293b;font-size:1rem">{{ key.title }}</span>
+                <a href="/answer-keys/{{ key.id }}" style="color:#1e293b;font-size:1rem">{{ key.title }}</a>
             </h3>
             {% if key.objection_deadline %}
             <div class="meta" style="margin-bottom:.25rem;color:#dc2626">
