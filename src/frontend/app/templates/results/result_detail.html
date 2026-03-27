@@ -15,6 +15,19 @@
         {% elif result.result_type == 'final' %}<span class="badge" style="background:#d1fae5;color:#065f46">✓ Final</span>{% endif %}
     </div>
     <h1>{{ result.title }}</h1>
+    {% if result.job %}
+    <div class="org" style="margin-top:.5rem">
+        <a href="/jobs/{{ result.job.slug }}" style="color:rgba(255,255,255,.9);text-decoration:none">
+            {{ result.job.job_title }} — {{ result.job.organization }}
+        </a>
+    </div>
+    {% elif result.exam %}
+    <div class="org" style="margin-top:.5rem">
+        <a href="/entrance-exams/{{ result.exam.slug }}" style="color:rgba(255,255,255,.9);text-decoration:none">
+            {{ result.exam.exam_name }} — {{ result.exam.conducting_body }}
+        </a>
+    </div>
+    {% endif %}
     
     <div class="action-bar" style="margin-top:.85rem">
         {% if result.download_url %}

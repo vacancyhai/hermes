@@ -11,6 +11,19 @@
         {% if card.phase_number %}<span class="badge" style="background:rgba(255,255,255,.25);color:#fff">Phase {{ card.phase_number }}</span>{% endif %}
     </div>
     <h1>{{ card.title }}</h1>
+    {% if card.job %}
+    <div class="org" style="margin-top:.5rem">
+        <a href="/jobs/{{ card.job.slug }}" style="color:rgba(255,255,255,.9);text-decoration:none">
+            {{ card.job.job_title }} — {{ card.job.organization }}
+        </a>
+    </div>
+    {% elif card.exam %}
+    <div class="org" style="margin-top:.5rem">
+        <a href="/entrance-exams/{{ card.exam.slug }}" style="color:rgba(255,255,255,.9);text-decoration:none">
+            {{ card.exam.exam_name }} — {{ card.exam.conducting_body }}
+        </a>
+    </div>
+    {% endif %}
     
     <div class="action-bar" style="margin-top:.85rem">
         <a href="{{ card.download_url }}" target="_blank" rel="noopener" class="btn" style="background:#fff;color:#1e40af;font-weight:600">

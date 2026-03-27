@@ -13,11 +13,14 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 
 from app.dependencies import get_db
 from app.models.admit_card import AdmitCard
 from app.models.answer_key import AnswerKey
 from app.models.result import Result
+from app.models.job import Job
+from app.models.entrance_exam import EntranceExam
 from app.schemas.jobs import AdmitCardResponse, AnswerKeyResponse, ResultResponse
 
 admit_cards_router = APIRouter(prefix="/api/v1/admit-cards", tags=["admit-cards"])
@@ -55,8 +58,13 @@ async def get_admit_card(
     card_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
 ):
-    """Get single admit card by ID."""
-    result = await db.execute(select(AdmitCard).where(AdmitCard.id == card_id))
+    """Get single admit card by ID with related job/exam."""
+    query = select(AdmitCard).options(
+        joinedload(AdmitCard.job),
+        joinedload(AdmitCard.exam)
+    ).where(AdmitCard.id == card_id)
+    
+    result = await db.execute(query)
     card = result.scalar_one_or_none()
     
     if not card:
@@ -65,7 +73,25 @@ async def get_admit_card(
             detail="Admit card not found"
         )
     
-    return AdmitCardResponse.model_validate(card).model_dump()
+    card_data = AdmitCardResponse.model_validate(card).model_dump()
+    
+    # Add job/exam context
+    if card.job:
+        card_data["job"] = {
+            "id": str(card.job.id),
+            "slug": card.job.slug,
+            "job_title": card.job.job_title,
+            "organization": card.job.organization
+        }
+    elif card.exam:
+        card_data["exam"] = {
+            "id": str(card.exam.id),
+            "slug": card.exam.slug,
+            "exam_name": card.exam.exam_name,
+            "conducting_body": card.exam.conducting_body
+        }
+    
+    return card_data
 
 
 @answer_keys_router.get("")
@@ -98,8 +124,13 @@ async def get_answer_key(
     key_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
 ):
-    """Get single answer key by ID."""
-    result = await db.execute(select(AnswerKey).where(AnswerKey.id == key_id))
+    """Get single answer key by ID with related job/exam."""
+    query = select(AnswerKey).options(
+        joinedload(AnswerKey.job),
+        joinedload(AnswerKey.exam)
+    ).where(AnswerKey.id == key_id)
+    
+    result = await db.execute(query)
     key = result.scalar_one_or_none()
     
     if not key:
@@ -108,7 +139,25 @@ async def get_answer_key(
             detail="Answer key not found"
         )
     
-    return AnswerKeyResponse.model_validate(key).model_dump()
+    key_data = AnswerKeyResponse.model_validate(key).model_dump()
+    
+    # Add job/exam context
+    if key.job:
+        key_data["job"] = {
+            "id": str(key.job.id),
+            "slug": key.job.slug,
+            "job_title": key.job.job_title,
+            "organization": key.job.organization
+        }
+    elif key.exam:
+        key_data["exam"] = {
+            "id": str(key.exam.id),
+            "slug": key.exam.slug,
+            "exam_name": key.exam.exam_name,
+            "conducting_body": key.exam.conducting_body
+        }
+    
+    return key_data
 
 
 @results_router.get("")
@@ -141,8 +190,13 @@ async def get_result(
     result_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
 ):
-    """Get single result by ID."""
-    result = await db.execute(select(Result).where(Result.id == result_id))
+    """Get single result by ID with related job/exam."""
+    query = select(Result).options(
+        joinedload(Result.job),
+        joinedload(Result.exam)
+    ).where(Result.id == result_id)
+    
+    result = await db.execute(query)
     result_obj = result.scalar_one_or_none()
     
     if not result_obj:
@@ -151,4 +205,22 @@ async def get_result(
             detail="Result not found"
         )
     
-    return ResultResponse.model_validate(result_obj).model_dump()
+    result_data = ResultResponse.model_validate(result_obj).model_dump()
+    
+    # Add job/exam context
+    if result_obj.job:
+        result_data["job"] = {
+            "id": str(result_obj.job.id),
+            "slug": result_obj.job.slug,
+            "job_title": result_obj.job.job_title,
+            "organization": result_obj.job.organization
+        }
+    elif result_obj.exam:
+        result_data["exam"] = {
+            "id": str(result_obj.exam.id),
+            "slug": result_obj.exam.slug,
+            "exam_name": result_obj.exam.exam_name,
+            "conducting_body": result_obj.exam.conducting_body
+        }
+    
+    return result_data

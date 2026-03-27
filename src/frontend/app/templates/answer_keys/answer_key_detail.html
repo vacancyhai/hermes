@@ -13,6 +13,19 @@
         {% elif key.answer_key_type == 'final' %}<span class="badge" style="background:#d1fae5;color:#065f46">✓ Final</span>{% endif %}
     </div>
     <h1>{{ key.title }}</h1>
+    {% if key.job %}
+    <div class="org" style="margin-top:.5rem">
+        <a href="/jobs/{{ key.job.slug }}" style="color:rgba(255,255,255,.9);text-decoration:none">
+            {{ key.job.job_title }} — {{ key.job.organization }}
+        </a>
+    </div>
+    {% elif key.exam %}
+    <div class="org" style="margin-top:.5rem">
+        <a href="/entrance-exams/{{ key.exam.slug }}" style="color:rgba(255,255,255,.9);text-decoration:none">
+            {{ key.exam.exam_name }} — {{ key.exam.conducting_body }}
+        </a>
+    </div>
+    {% endif %}
     
     <div class="action-bar" style="margin-top:.85rem">
         {% if key.files and key.files|length > 0 and key.files[0].url %}
