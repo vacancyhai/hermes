@@ -221,17 +221,17 @@
         </div>
         <div class="doc-panel" x-show="tab==='admit_cards'"
              hx-get="/partials/exams/{{ exam.id }}/admit-cards"
-             hx-trigger="load" hx-swap="innerHTML">
+             hx-trigger="intersect once" hx-swap="innerHTML">
             <p class="doc-empty">Loading…</p>
         </div>
         <div class="doc-panel" x-show="tab==='answer_keys'"
              hx-get="/partials/exams/{{ exam.id }}/answer-keys"
-             hx-trigger="load" hx-swap="innerHTML">
+             hx-trigger="intersect once" hx-swap="innerHTML">
             <p class="doc-empty">Loading…</p>
         </div>
         <div class="doc-panel" x-show="tab==='results'"
              hx-get="/partials/exams/{{ exam.id }}/results"
-             hx-trigger="load" hx-swap="innerHTML">
+             hx-trigger="intersect once" hx-swap="innerHTML">
             <p class="doc-empty">Loading…</p>
         </div>
     </div>
