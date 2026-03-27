@@ -1,0 +1,48 @@
+<div style="background:#fff;border-radius:.5rem;overflow:hidden">
+    <div style="padding:1rem;border-bottom:1px solid #e2e8f0">
+        <h3 style="font-size:1.1rem;color:#1e293b;margin-bottom:.5rem">{{ job.job_title }}</h3>
+        <p style="font-size:.9rem;color:#64748b">{{ job.organization }}{% if job.department %} — {{ job.department }}{% endif %}</p>
+    </div>
+    
+    <div style="padding:1rem;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem">
+        {% if job.total_vacancies %}
+        <div>
+            <p style="font-size:.75rem;color:#64748b;margin-bottom:.25rem">Total Vacancies</p>
+            <p style="font-weight:600;color:#1e293b">{{ job.total_vacancies }}</p>
+        </div>
+        {% endif %}
+        
+        {% if job.qualification_level %}
+        <div>
+            <p style="font-size:.75rem;color:#64748b;margin-bottom:.25rem">Qualification</p>
+            <p style="font-weight:600;color:#1e293b">{{ job.qualification_level }}</p>
+        </div>
+        {% endif %}
+        
+        {% if job.application_end %}
+        <div>
+            <p style="font-size:.75rem;color:#64748b;margin-bottom:.25rem">Application Deadline</p>
+            <p style="font-weight:600;color:#dc2626">{{ job.application_end }}</p>
+        </div>
+        {% endif %}
+        
+        {% if job.exam_start %}
+        <div>
+            <p style="font-size:.75rem;color:#64748b;margin-bottom:.25rem">Exam Date</p>
+            <p style="font-weight:600;color:#1e293b">{{ job.exam_start }}</p>
+        </div>
+        {% endif %}
+    </div>
+    
+    {% if job.short_description %}
+    <div style="padding:1rem;border-top:1px solid #e2e8f0">
+        <p style="font-size:.9rem;color:#475569;line-height:1.6">{{ job.short_description }}</p>
+    </div>
+    {% endif %}
+    
+    <div style="padding:1rem;border-top:1px solid #e2e8f0">
+        <a href="/jobs/{{ job.slug }}" class="btn" style="display:inline-block;background:#2563eb;color:#fff;padding:.5rem 1rem;border-radius:.375rem;text-decoration:none;font-size:.9rem">
+            View Full Job Details →
+        </a>
+    </div>
+</div>

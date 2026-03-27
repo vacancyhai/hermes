@@ -120,4 +120,50 @@
         {% endif %}
     </aside>
 </div>
+
+{% if card.job %}
+<div class="detail-section" style="margin-top:1.5rem">
+    <h2>💼 Related Job Details</h2>
+    <div x-data="{expanded:false}">
+        <button 
+            class="doc-tab-btn" 
+            @click="expanded=!expanded"
+            style="width:100%;background:#f1f5f9;border:1px solid #e2e8f0;padding:1rem;border-radius:.5rem;text-align:left;cursor:pointer;display:flex;justify-content:space-between;align-items:center">
+            <span style="font-weight:600;font-size:.95rem">{{ card.job.job_title }}</span>
+            <span x-text="expanded ? '▼' : '▶'"></span>
+        </button>
+        <div 
+            x-show="expanded" 
+            x-collapse
+            hx-get="/partials/jobs/{{ card.job.id }}/details"
+            hx-trigger="intersect once"
+            hx-swap="innerHTML"
+            style="margin-top:1rem;padding:1rem;background:#f8fafc;border:1px solid #e2e8f0;border-radius:.5rem">
+            <p style="color:#64748b">Loading job details...</p>
+        </div>
+    </div>
+</div>
+{% elif card.exam %}
+<div class="detail-section" style="margin-top:1.5rem">
+    <h2>🎓 Related Exam Details</h2>
+    <div x-data="{expanded:false}">
+        <button 
+            class="doc-tab-btn" 
+            @click="expanded=!expanded"
+            style="width:100%;background:#f1f5f9;border:1px solid #e2e8f0;padding:1rem;border-radius:.5rem;text-align:left;cursor:pointer;display:flex;justify-content:space-between;align-items:center">
+            <span style="font-weight:600;font-size:.95rem">{{ card.exam.exam_name }}</span>
+            <span x-text="expanded ? '▼' : '▶'"></span>
+        </button>
+        <div 
+            x-show="expanded" 
+            x-collapse
+            hx-get="/partials/exams/{{ card.exam.id }}/details"
+            hx-trigger="intersect once"
+            hx-swap="innerHTML"
+            style="margin-top:1rem;padding:1rem;background:#f8fafc;border:1px solid #e2e8f0;border-radius:.5rem">
+            <p style="color:#64748b">Loading exam details...</p>
+        </div>
+    </div>
+</div>
+{% endif %}
 {% endblock %}

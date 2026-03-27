@@ -1,0 +1,48 @@
+<div style="background:#fff;border-radius:.5rem;overflow:hidden">
+    <div style="padding:1rem;border-bottom:1px solid #e2e8f0">
+        <h3 style="font-size:1.1rem;color:#1e293b;margin-bottom:.5rem">{{ exam.exam_name }}</h3>
+        <p style="font-size:.9rem;color:#64748b">{{ exam.conducting_body }}</p>
+    </div>
+    
+    <div style="padding:1rem;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem">
+        {% if exam.stream %}
+        <div>
+            <p style="font-size:.75rem;color:#64748b;margin-bottom:.25rem">Stream</p>
+            <p style="font-weight:600;color:#1e293b">{{ exam.stream }}</p>
+        </div>
+        {% endif %}
+        
+        {% if exam.exam_type %}
+        <div>
+            <p style="font-size:.75rem;color:#64748b;margin-bottom:.25rem">Exam Type</p>
+            <p style="font-weight:600;color:#1e293b">{{ exam.exam_type }}</p>
+        </div>
+        {% endif %}
+        
+        {% if exam.registration_end %}
+        <div>
+            <p style="font-size:.75rem;color:#64748b;margin-bottom:.25rem">Registration Deadline</p>
+            <p style="font-weight:600;color:#dc2626">{{ exam.registration_end }}</p>
+        </div>
+        {% endif %}
+        
+        {% if exam.exam_start %}
+        <div>
+            <p style="font-size:.75rem;color:#64748b;margin-bottom:.25rem">Exam Date</p>
+            <p style="font-weight:600;color:#1e293b">{{ exam.exam_start }}</p>
+        </div>
+        {% endif %}
+    </div>
+    
+    {% if exam.short_description %}
+    <div style="padding:1rem;border-top:1px solid #e2e8f0">
+        <p style="font-size:.9rem;color:#475569;line-height:1.6">{{ exam.short_description }}</p>
+    </div>
+    {% endif %}
+    
+    <div style="padding:1rem;border-top:1px solid #e2e8f0">
+        <a href="/entrance-exams/{{ exam.slug }}" class="btn" style="display:inline-block;background:#2563eb;color:#fff;padding:.5rem 1rem;border-radius:.375rem;text-decoration:none;font-size:.9rem">
+            View Full Exam Details →
+        </a>
+    </div>
+</div>

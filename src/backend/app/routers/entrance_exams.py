@@ -105,6 +105,16 @@ async def list_exams(
     }
 
 
+@public_router.get("/by-id/{exam_id}")
+async def get_exam_by_id(exam_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    """Get entrance exam detail by ID (for partials, no view increment)."""
+    result = await db.execute(select(EntranceExam).where(EntranceExam.id == exam_id))
+    exam = result.scalar_one_or_none()
+    if not exam:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Exam not found")
+    return EntranceExamResponse.model_validate(exam).model_dump()
+
+
 @public_router.get("/{slug}")
 async def get_exam_by_slug(slug: str, db: AsyncSession = Depends(get_db)):
     """Get entrance exam detail by slug."""

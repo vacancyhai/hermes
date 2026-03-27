@@ -112,6 +112,16 @@ async def recommended_jobs(
     }
 
 
+@router.get("/by-id/{job_id}")
+async def get_job_by_id(job_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    """Get job detail by ID (for partials, no view increment)."""
+    result = await db.execute(select(Job).where(Job.id == job_id))
+    job = result.scalar_one_or_none()
+    if not job:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
+    return JobResponse.model_validate(job).model_dump()
+
+
 @router.get("/{slug}")
 async def get_job(slug: str, db: AsyncSession = Depends(get_db)):
     """Get job detail by slug. Increments view count."""

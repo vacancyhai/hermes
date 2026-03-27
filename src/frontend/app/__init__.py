@@ -182,6 +182,15 @@ def create_app():
         docs = resp.json() if resp.ok else []
         return render_template("results/_results_panel.html", docs=docs)
 
+    @app.route("/partials/jobs/<job_id>/details")
+    def partials_job_details(job_id):
+        """HTMX partial — job details for document pages."""
+        resp = current_app.api_client.get(f"/jobs/by-id/{job_id}")
+        if not resp.ok:
+            return "<p style='color:#ef4444'>Job not found</p>", 404
+        job = resp.json()
+        return render_template("jobs/_job_details_partial.html", job=job)
+
     @app.route("/entrance-exams")
     def entrance_exams():
         """Entrance exams section page."""
@@ -239,6 +248,15 @@ def create_app():
         resp = current_app.api_client.get(f"/entrance-exams/{exam_id}/results")
         docs = resp.json() if resp.ok else []
         return render_template("results/_results_panel.html", docs=docs)
+
+    @app.route("/partials/exams/<exam_id>/details")
+    def partials_exam_details(exam_id):
+        """HTMX partial — exam details for document pages."""
+        resp = current_app.api_client.get(f"/entrance-exams/by-id/{exam_id}")
+        if not resp.ok:
+            return "<p style='color:#ef4444'>Exam not found</p>", 404
+        exam = resp.json()
+        return render_template("entrance_exams/_exam_details_partial.html", exam=exam)
 
     # --- Application Dashboard ---
 
