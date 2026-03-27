@@ -209,9 +209,9 @@
         </button>
         <div 
             x-show="expanded" 
-            x-collapse
+            x-transition
             hx-get="/partials/jobs/{{ result.job.id }}/details"
-            hx-trigger="intersect once"
+            hx-trigger="revealed once"
             hx-swap="innerHTML"
             style="margin-top:1rem;padding:1rem;background:#f8fafc;border:1px solid #e2e8f0;border-radius:.5rem">
             <p style="color:#64748b">Loading job details...</p>
@@ -231,9 +231,9 @@
         </button>
         <div 
             x-show="expanded" 
-            x-collapse
+            x-transition
             hx-get="/partials/exams/{{ result.exam.id }}/details"
-            hx-trigger="intersect once"
+            hx-trigger="revealed once"
             hx-swap="innerHTML"
             style="margin-top:1rem;padding:1rem;background:#f8fafc;border:1px solid #e2e8f0;border-radius:.5rem">
             <p style="color:#64748b">Loading exam details...</p>
