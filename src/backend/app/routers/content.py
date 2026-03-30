@@ -32,16 +32,28 @@ from sqlalchemy import func, select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
-from app.dependencies import get_db, require_operator
+from app.dependencies import get_admin_user, get_current_user, get_db
 from app.models.admit_card import AdmitCard
 from app.models.answer_key import AnswerKey
-from app.models.result import Result
 from app.models.job import Job
 from app.models.entrance_exam import EntranceExam
+from app.models.result import Result
 from app.schemas.jobs import (
-    AdmitCardResponse, AdmitCardCreateRequest, AdmitCardUpdateRequest,
-    AnswerKeyResponse, AnswerKeyCreateRequest, AnswerKeyUpdateRequest,
-    ResultResponse, ResultCreateRequest, ResultUpdateRequest,
+    AdmitCardCreate,
+    AdmitCardResponse,
+    AdmitCardUpdateRequest,
+    AnswerKeyCreate,
+    AnswerKeyResponse,
+    AnswerKeyUpdateRequest,
+    ResultCreate,
+    ResultResponse,
+    ResultCreateRequest,
+    ResultUpdateRequest,
+)
+from app.services.matching import (
+    get_recommended_admit_cards,
+    get_recommended_answer_keys,
+    get_recommended_results,
 )
 
 # Public routers
@@ -69,6 +81,28 @@ async def list_admit_cards(
     result = await db.execute(query.offset(offset).limit(limit))
     cards = result.scalars().all()
 
+    return {
+        "data": [AdmitCardResponse.model_validate(c).model_dump() for c in cards],
+        "pagination": {
+            "limit": limit,
+            "offset": offset,
+            "total": total,
+            "has_more": (offset + limit) < total,
+        },
+    }
+
+
+@admit_cards_router.get("/recommended")
+async def recommended_admit_cards(
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Personalized admit card recommendations based on user profile."""
+    user, _ = current_user
+    cards, total = await get_recommended_admit_cards(user.id, db, limit=limit, offset=offset)
+    
     return {
         "data": [AdmitCardResponse.model_validate(c).model_dump() for c in cards],
         "pagination": {
@@ -146,6 +180,28 @@ async def list_answer_keys(
     }
 
 
+@answer_keys_router.get("/recommended")
+async def recommended_answer_keys(
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Personalized answer key recommendations based on user profile."""
+    user, _ = current_user
+    keys, total = await get_recommended_answer_keys(user.id, db, limit=limit, offset=offset)
+    
+    return {
+        "data": [AnswerKeyResponse.model_validate(k).model_dump() for k in keys],
+        "pagination": {
+            "limit": limit,
+            "offset": offset,
+            "total": total,
+            "has_more": (offset + limit) < total,
+        },
+    }
+
+
 @answer_keys_router.get("/{key_id}")
 async def get_answer_key(
     key_id: uuid.UUID,
@@ -199,10 +255,32 @@ async def list_results(
 
     total = (await db.execute(count_query)).scalar()
     result = await db.execute(query.offset(offset).limit(limit))
-    results = result.scalars().all()
+    results_list = result.scalars().all()
 
     return {
-        "data": [ResultResponse.model_validate(r).model_dump() for r in results],
+        "data": [ResultResponse.model_validate(r).model_dump() for r in results_list],
+        "pagination": {
+            "limit": limit,
+            "offset": offset,
+            "total": total,
+            "has_more": (offset + limit) < total,
+        },
+    }
+
+
+@results_router.get("/recommended")
+async def recommended_results(
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Personalized result recommendations based on user profile."""
+    user, _ = current_user
+    results_list, total = await get_recommended_results(user.id, db, limit=limit, offset=offset)
+    
+    return {
+        "data": [ResultResponse.model_validate(r).model_dump() for r in results_list],
         "pagination": {
             "limit": limit,
             "offset": offset,

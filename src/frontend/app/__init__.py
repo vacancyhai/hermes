@@ -103,27 +103,57 @@ def create_app():
 
     @app.route("/admit-cards")
     def admit_cards():
-        """Admit cards section page."""
-        params = _job_params()
-        resp = current_app.api_client.get("/admit-cards", params=params)
+        """Browse admit cards."""
+        token = session.get("token")
+        params = {"limit": 20, "offset": request.args.get("offset", 0, type=int)}
+        if request.args.get("q"):
+            params["q"] = request.args.get("q")
+        if request.args.get("organization"):
+            params["organization"] = request.args.get("organization")
+        
+        if request.args.get("recommended") and token:
+            resp = current_app.api_client.get("/admit-cards/recommended", token=token, params={"limit": params.get("limit", 20), "offset": params.get("offset", 0)})
+        else:
+            resp = current_app.api_client.get("/admit-cards", params=params)
+        
         data = resp.json() if resp.ok else {"data": [], "pagination": {}}
-        return render_template("admit_cards/admit_cards.html", jobs=data["data"], pagination=data.get("pagination", {}), params=params, card_type="admit_card")
+        return render_template("admit_cards/admit_cards.html", cards=data["data"], pagination=data.get("pagination", {}), params=request.args)
 
     @app.route("/answer-keys")
     def answer_keys():
         """Answer keys section page."""
-        params = _job_params()
-        resp = current_app.api_client.get("/answer-keys", params=params)
+        token = session.get("token")
+        params = {"limit": 20, "offset": request.args.get("offset", 0, type=int)}
+        if request.args.get("q"):
+            params["q"] = request.args.get("q")
+        if request.args.get("organization"):
+            params["organization"] = request.args.get("organization")
+        
+        if request.args.get("recommended") and token:
+            resp = current_app.api_client.get("/answer-keys/recommended", token=token, params={"limit": params.get("limit", 20), "offset": params.get("offset", 0)})
+        else:
+            resp = current_app.api_client.get("/answer-keys", params=params)
+        
         data = resp.json() if resp.ok else {"data": [], "pagination": {}}
-        return render_template("answer_keys/answer_keys.html", jobs=data["data"], pagination=data.get("pagination", {}), params=params, card_type="answer_key")
+        return render_template("answer_keys/answer_keys.html", keys=data["data"], pagination=data.get("pagination", {}), params=request.args)
 
     @app.route("/results")
     def results():
         """Results section page."""
-        params = _job_params()
-        resp = current_app.api_client.get("/results", params=params)
+        token = session.get("token")
+        params = {"limit": 20, "offset": request.args.get("offset", 0, type=int)}
+        if request.args.get("q"):
+            params["q"] = request.args.get("q")
+        if request.args.get("organization"):
+            params["organization"] = request.args.get("organization")
+        
+        if request.args.get("recommended") and token:
+            resp = current_app.api_client.get("/results/recommended", token=token, params={"limit": params.get("limit", 20), "offset": params.get("offset", 0)})
+        else:
+            resp = current_app.api_client.get("/results", params=params)
+        
         data = resp.json() if resp.ok else {"data": [], "pagination": {}}
-        return render_template("results/results.html", jobs=data["data"], pagination=data.get("pagination", {}), params=params, card_type="result")
+        return render_template("results/results.html", results=data["data"], pagination=data.get("pagination", {}), params=request.args)
 
     @app.route("/admit-cards/<card_id>")
     def admit_card_detail(card_id):
@@ -194,6 +224,7 @@ def create_app():
     @app.route("/entrance-exams")
     def entrance_exams():
         """Entrance exams section page."""
+        token = session.get("token")
         params = {}
         for key in ("q", "stream", "exam_type"):
             val = request.args.get(key)
@@ -201,9 +232,14 @@ def create_app():
                 params[key] = val
         params["limit"] = min(_int_arg("limit", 20), 100)
         params["offset"] = _int_arg("offset", 0)
-        resp = current_app.api_client.get("/entrance-exams", params=params)
+        
+        if request.args.get("recommended") and token:
+            resp = current_app.api_client.get("/entrance-exams/recommended", token=token, params={"limit": params.get("limit", 20), "offset": params.get("offset", 0)})
+        else:
+            resp = current_app.api_client.get("/entrance-exams", params=params)
+        
         data = resp.json() if resp.ok else {"data": [], "pagination": {}}
-        return render_template("entrance_exams/entrance_exams.html", exams=data["data"], pagination=data.get("pagination", {}), params=params)
+        return render_template("entrance_exams/entrance_exams.html", exams=data["data"], pagination=data.get("pagination", {}), params=request.args)
 
     @app.route("/entrance-exams/partial")
     def entrance_exams_partial():

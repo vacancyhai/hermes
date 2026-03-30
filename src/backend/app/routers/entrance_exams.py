@@ -26,7 +26,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.dependencies import get_db, require_operator
+from app.dependencies import get_admin_user, get_current_user, get_db, require_operator
+from app.services.matching import get_recommended_entrance_exams
 from app.models.entrance_exam import EntranceExam
 from app.models.admit_card import AdmitCard
 from app.models.answer_key import AnswerKey
@@ -103,6 +104,28 @@ async def list_exams(
     return {
         "data": [EntranceExamListItem.model_validate(r).model_dump() for r in rows],
         "pagination": {"limit": limit, "offset": offset, "total": total, "has_more": (offset + limit) < total},
+    }
+
+
+@public_router.get("/recommended")
+async def recommended_exams(
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Personalized entrance exam recommendations based on user profile."""
+    user, _ = current_user
+    exams, total = await get_recommended_entrance_exams(user.id, db, limit=limit, offset=offset)
+    
+    return {
+        "data": [EntranceExamListItem.model_validate(e).model_dump() for e in exams],
+        "pagination": {
+            "limit": limit,
+            "offset": offset,
+            "total": total,
+            "has_more": (offset + limit) < total,
+        },
     }
 
 

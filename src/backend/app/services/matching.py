@@ -5,7 +5,11 @@ from datetime import date, timedelta
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.admit_card import AdmitCard
+from app.models.answer_key import AnswerKey
+from app.models.entrance_exam import EntranceExam
 from app.models.job import Job
+from app.models.result import Result
 from app.models.user_profile import UserProfile
 
 # Maximum candidates fetched from DB before in-memory scoring (avoids loading all jobs)
@@ -179,6 +183,152 @@ async def get_recommended_jobs(
     far_future = date(9999, 12, 31)
     scored.sort(key=lambda t: (-t[0], t[1] or far_future))
 
+    total = len(scored)
+    page = scored[offset : offset + limit]
+    return [t[2] for t in page], total
+
+
+async def get_recommended_admit_cards(
+    user_id,
+    db: AsyncSession,
+    limit: int = 20,
+    offset: int = 0,
+) -> tuple[list[dict], int]:
+    """Return admit cards from recommended jobs/exams."""
+    # Get recommended jobs first
+    jobs, _ = await get_recommended_jobs(user_id, db, limit=100, offset=0)
+    job_ids = [j.id for j in jobs]
+    
+    # Get admit cards for those jobs
+    result = await db.execute(
+        select(AdmitCard)
+        .where(AdmitCard.job_id.in_(job_ids))
+        .order_by(AdmitCard.published_at.desc())
+    )
+    cards = list(result.scalars().all())
+    
+    total = len(cards)
+    page = cards[offset : offset + limit]
+    return page, total
+
+
+async def get_recommended_answer_keys(
+    user_id,
+    db: AsyncSession,
+    limit: int = 20,
+    offset: int = 0,
+) -> tuple[list[dict], int]:
+    """Return answer keys from recommended jobs/exams."""
+    jobs, _ = await get_recommended_jobs(user_id, db, limit=100, offset=0)
+    job_ids = [j.id for j in jobs]
+    
+    result = await db.execute(
+        select(AnswerKey)
+        .where(AnswerKey.job_id.in_(job_ids))
+        .order_by(AnswerKey.published_at.desc())
+    )
+    keys = list(result.scalars().all())
+    
+    total = len(keys)
+    page = keys[offset : offset + limit]
+    return page, total
+
+
+async def get_recommended_results(
+    user_id,
+    db: AsyncSession,
+    limit: int = 20,
+    offset: int = 0,
+) -> tuple[list[dict], int]:
+    """Return results from recommended jobs/exams."""
+    jobs, _ = await get_recommended_jobs(user_id, db, limit=100, offset=0)
+    job_ids = [j.id for j in jobs]
+    
+    result = await db.execute(
+        select(Result)
+        .where(Result.job_id.in_(job_ids))
+        .order_by(Result.published_at.desc())
+    )
+    results_list = list(result.scalars().all())
+    
+    total = len(results_list)
+    page = results_list[offset : offset + limit]
+    return page, total
+
+
+async def get_recommended_entrance_exams(
+    user_id,
+    db: AsyncSession,
+    limit: int = 20,
+    offset: int = 0,
+) -> tuple[list[dict], int]:
+    """Return entrance exams based on user's education and preferences."""
+    result = await db.execute(
+        select(UserProfile).where(UserProfile.user_id == user_id)
+    )
+    profile = result.scalar_one_or_none()
+    
+    # Base query: active exams
+    today = date.today()
+    base_filter = (
+        EntranceExam.status == "active",
+        (EntranceExam.exam_date >= today) | (EntranceExam.exam_date.is_(None)),
+    )
+    
+    has_prefs = profile and (profile.highest_qualification or profile.preferred_states)
+    
+    if not has_prefs:
+        total = (await db.execute(
+            select(func.count(EntranceExam.id)).where(*base_filter)
+        )).scalar() or 0
+        result = await db.execute(
+            select(EntranceExam)
+            .where(*base_filter)
+            .order_by(EntranceExam.created_at.desc())
+            .offset(offset)
+            .limit(limit)
+        )
+        return list(result.scalars().all()), total
+    
+    # Fetch candidates
+    result = await db.execute(
+        select(EntranceExam)
+        .where(*base_filter)
+        .order_by(EntranceExam.created_at.desc())
+        .limit(CANDIDATE_LIMIT)
+    )
+    exams = result.scalars().all()
+    
+    # Score exams
+    pref_states = {s.lower() for s in (profile.preferred_states or [])}
+    user_edu_rank = _education_rank(profile.highest_qualification)
+    recency_cutoff = today - timedelta(days=RECENCY_DAYS)
+    
+    scored: list[tuple[int, date | None, EntranceExam]] = []
+    for exam in exams:
+        score = 0
+        
+        # Education match
+        exam_edu_rank = _education_rank(exam.qualification_required)
+        if user_edu_rank >= 0 and exam_edu_rank >= 0 and user_edu_rank >= exam_edu_rank:
+            score += EDUCATION_MATCH
+        
+        # State match (exam conducting states)
+        exam_states = set()
+        if exam.conducting_states:
+            exam_states = {s.lower() for s in exam.conducting_states}
+        if pref_states and (not exam_states or pref_states & exam_states):
+            score += STATE_MATCH
+        
+        # Recency bonus
+        if exam.created_at and exam.created_at.date() >= recency_cutoff:
+            score += RECENCY_BONUS
+        
+        scored.append((score, exam.exam_date, exam))
+    
+    far_future = date(9999, 12, 31)
+    scored.sort(key=lambda t: (-t[0], t[1] or far_future))
+    
     total = len(scored)
     page = scored[offset : offset + limit]
     return [t[2] for t in page], total

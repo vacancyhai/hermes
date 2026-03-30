@@ -17,6 +17,10 @@
     .job-card:hover{box-shadow:0 2px 10px rgba(22,163,74,.1)}
     .job-card .meta{font-size:.85rem;color:#64748b;margin-bottom:.2rem}
     .job-card .badges{display:flex;gap:.35rem;flex-wrap:wrap}
+    .tab-row{display:flex;gap:0;border-bottom:2px solid #e2e8f0;margin-bottom:1.25rem}
+    .tab-link{padding:.45rem 1rem;font-size:.88rem;font-weight:500;border-bottom:2px solid transparent;margin-bottom:-2px;color:#64748b;display:inline-block;text-decoration:none}
+    .tab-link:hover{color:#16a34a;text-decoration:none}
+    .tab-link.active{border-bottom-color:#16a34a;color:#16a34a;font-weight:600}
     .load-more{text-align:center;padding:1rem 0}
     .empty{text-align:center;padding:3rem 0;color:#94a3b8}
 </style>
@@ -50,6 +54,13 @@
         {% endif %}
     </div>
 </form>
+
+<div class="tab-row">
+    <a href="/results" class="tab-link {{ 'active' if not params.get('recommended') }}">All Results</a>
+    {% if session.get('token') %}
+    <a href="/results?recommended=1" class="tab-link {{ 'active' if params.get('recommended') }}">✨ For You</a>
+    {% endif %}
+</div>
 
 <div id="job-list">
     {% include "results/_result_cards.html" %}

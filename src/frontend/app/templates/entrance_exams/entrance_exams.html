@@ -26,6 +26,10 @@
     .stream-management{background:#dcfce7;color:#166534}
     .stream-arts_science{background:#e0e7ff;color:#3730a3}
     .stream-general{background:#f1f5f9;color:#475569}
+    .tab-row{display:flex;gap:0;border-bottom:2px solid #e2e8f0;margin-bottom:1.25rem;margin-top:1rem}
+    .tab-link{padding:.45rem 1rem;font-size:.88rem;font-weight:500;border-bottom:2px solid transparent;margin-bottom:-2px;color:#64748b;display:inline-block;text-decoration:none}
+    .tab-link:hover{color:#7c3aed;text-decoration:none}
+    .tab-link.active{border-bottom-color:#7c3aed;color:#7c3aed;font-weight:600}
     .load-more{text-align:center;padding:1rem 0}
     .empty{text-align:center;padding:3rem 0;color:#94a3b8}
 </style>
@@ -45,12 +49,19 @@
 
     <div class="stream-tabs">
         {% set cur_stream = params.get('stream', '') %}
-        {% for val, label, icon in [('', 'All', '📚'), ('medical', 'Medical', '🩺'), ('engineering', 'Engineering', '⚙️'), ('law', 'Law', '⚖️'), ('management', 'Management', '💼'), ('general', 'General', '�')] %}
+        {% for val, label, icon in [('', 'All', '📚'), ('medical', 'Medical', '🩺'), ('engineering', 'Engineering', '⚙️'), ('law', 'Law', '⚖️'), ('management', 'Management', '💼'), ('general', 'General', '📖')] %}
         <a href="/entrance-exams?stream={{ val }}{% if params.get('q') %}&q={{ params.q }}{% endif %}{% if params.get('exam_type') %}&exam_type={{ params.exam_type }}{% endif %}"
            class="stream-tab {{ 'active' if cur_stream == val }}">{{ icon }} {{ label }}</a>
         {% endfor %}
     </div>
 </form>
+
+<div class="tab-row">
+    <a href="/entrance-exams{% if params.get('stream') %}?stream={{ params.stream }}{% endif %}" class="tab-link {{ 'active' if not params.get('recommended') }}">All Exams</a>
+    {% if session.get('token') %}
+    <a href="/entrance-exams?recommended=1{% if params.get('stream') %}&stream={{ params.stream }}{% endif %}" class="tab-link {{ 'active' if params.get('recommended') }}">✨ For You</a>
+    {% endif %}
+</div>
 
 <div id="exam-list">
     {% include "entrance_exams/_exam_cards.html" %}
