@@ -1,11 +1,28 @@
-"""Public content endpoints for admit cards, answer keys, and results.
+"""Top-level content endpoints for admit cards, answer keys, and results.
 
-GET    /api/v1/admit-cards       — List all admit cards from admit_cards table
-GET    /api/v1/admit-cards/{id}  — Get single admit card by ID
-GET    /api/v1/answer-keys       — List all answer keys from answer_keys table
-GET    /api/v1/answer-keys/{id}  — Get single answer key by ID
-GET    /api/v1/results           — List all results from results table
-GET    /api/v1/results/{id}      — Get single result by ID
+Public endpoints:
+  GET    /api/v1/admit-cards           — List all admit cards
+  GET    /api/v1/admit-cards/{id}      — Get single admit card by ID
+  GET    /api/v1/answer-keys           — List all answer keys
+  GET    /api/v1/answer-keys/{id}      — Get single answer key by ID
+  GET    /api/v1/results               — List all results
+  GET    /api/v1/results/{id}          — Get single result by ID
+
+Admin endpoints:
+  POST   /api/v1/admin/admit-cards     — Create admit card
+  PUT    /api/v1/admin/admit-cards/{id} — Update admit card
+  DELETE /api/v1/admin/admit-cards/{id} — Delete admit card
+  GET    /api/v1/admin/admit-cards     — List all admit cards (any status)
+  
+  POST   /api/v1/admin/answer-keys     — Create answer key
+  PUT    /api/v1/admin/answer-keys/{id} — Update answer key
+  DELETE /api/v1/admin/answer-keys/{id} — Delete answer key
+  GET    /api/v1/admin/answer-keys     — List all answer keys (any status)
+  
+  POST   /api/v1/admin/results         — Create result
+  PUT    /api/v1/admin/results/{id}     — Update result
+  DELETE /api/v1/admin/results/{id}     — Delete result
+  GET    /api/v1/admin/results         — List all results (any status)
 """
 
 import uuid
@@ -15,17 +32,27 @@ from sqlalchemy import func, select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
-from app.dependencies import get_db
+from app.dependencies import get_db, require_operator
 from app.models.admit_card import AdmitCard
 from app.models.answer_key import AnswerKey
 from app.models.result import Result
 from app.models.job import Job
 from app.models.entrance_exam import EntranceExam
-from app.schemas.jobs import AdmitCardResponse, AnswerKeyResponse, ResultResponse
+from app.schemas.jobs import (
+    AdmitCardResponse, AdmitCardCreateRequest, AdmitCardUpdateRequest,
+    AnswerKeyResponse, AnswerKeyCreateRequest, AnswerKeyUpdateRequest,
+    ResultResponse, ResultCreateRequest, ResultUpdateRequest,
+)
 
+# Public routers
 admit_cards_router = APIRouter(prefix="/api/v1/admit-cards", tags=["admit-cards"])
 answer_keys_router = APIRouter(prefix="/api/v1/answer-keys", tags=["answer-keys"])
 results_router = APIRouter(prefix="/api/v1/results", tags=["results"])
+
+# Admin routers
+admit_cards_admin_router = APIRouter(prefix="/api/v1/admin/admit-cards", tags=["admin"])
+answer_keys_admin_router = APIRouter(prefix="/api/v1/admin/answer-keys", tags=["admin"])
+results_admin_router = APIRouter(prefix="/api/v1/admin/results", tags=["admin"])
 
 
 @admit_cards_router.get("")
@@ -224,3 +251,334 @@ async def get_result(
         }
     
     return result_data
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# ADMIN — Admit Cards CRUD
+# ══════════════════════════════════════════════════════════════════════════════
+
+
+@admit_cards_admin_router.get("")
+async def admin_list_admit_cards(
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db),
+    admin=Depends(require_operator),
+):
+    """Admin: List all admit cards (no filtering by parent status)."""
+    query = select(AdmitCard).order_by(AdmitCard.published_at.desc().nulls_last(), AdmitCard.created_at.desc())
+    count_query = select(func.count(AdmitCard.id))
+
+    total = (await db.execute(count_query)).scalar()
+    result = await db.execute(query.offset(offset).limit(limit))
+    cards = result.scalars().all()
+
+    return {
+        "data": [AdmitCardResponse.model_validate(c).model_dump() for c in cards],
+        "pagination": {
+            "limit": limit,
+            "offset": offset,
+            "total": total,
+            "has_more": (offset + limit) < total,
+        },
+    }
+
+
+@admit_cards_admin_router.post("", status_code=status.HTTP_201_CREATED, response_model=AdmitCardResponse)
+async def admin_create_admit_card(
+    body: AdmitCardCreateRequest,
+    admin=Depends(require_operator),
+    db: AsyncSession = Depends(get_db),
+):
+    """Create a new admit card. Must specify either job_id or exam_id."""
+    # Validate that exactly one parent is specified
+    if body.job_id and body.exam_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot specify both job_id and exam_id"
+        )
+    if not body.job_id and not body.exam_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Must specify either job_id or exam_id"
+        )
+    
+    # Validate parent exists
+    if body.job_id:
+        result = await db.execute(select(Job).where(Job.id == body.job_id))
+        if not result.scalar_one_or_none():
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
+    else:
+        result = await db.execute(select(EntranceExam).where(EntranceExam.id == body.exam_id))
+        if not result.scalar_one_or_none():
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Entrance exam not found")
+    
+    doc = AdmitCard(
+        job_id=body.job_id,
+        exam_id=body.exam_id,
+        phase_number=body.phase_number,
+        title=body.title,
+        download_url=body.download_url,
+        valid_from=body.valid_from,
+        valid_until=body.valid_until,
+        notes=body.notes,
+        published_at=body.published_at,
+    )
+    db.add(doc)
+    await db.flush()
+    return AdmitCardResponse.model_validate(doc)
+
+
+@admit_cards_admin_router.put("/{card_id}", response_model=AdmitCardResponse)
+async def admin_update_admit_card(
+    card_id: uuid.UUID,
+    body: AdmitCardUpdateRequest,
+    admin=Depends(require_operator),
+    db: AsyncSession = Depends(get_db),
+):
+    """Update an admit card."""
+    result = await db.execute(select(AdmitCard).where(AdmitCard.id == card_id))
+    doc = result.scalar_one_or_none()
+    if not doc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Admit card not found")
+
+    for field, value in body.model_dump(exclude_unset=True).items():
+        setattr(doc, field, value)
+
+    await db.flush()
+    return AdmitCardResponse.model_validate(doc)
+
+
+@admit_cards_admin_router.delete("/{card_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def admin_delete_admit_card(
+    card_id: uuid.UUID,
+    admin=Depends(require_operator),
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete an admit card."""
+    result = await db.execute(select(AdmitCard).where(AdmitCard.id == card_id))
+    doc = result.scalar_one_or_none()
+    if not doc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Admit card not found")
+    await db.delete(doc)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# ADMIN — Answer Keys CRUD
+# ══════════════════════════════════════════════════════════════════════════════
+
+
+@answer_keys_admin_router.get("")
+async def admin_list_answer_keys(
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db),
+    admin=Depends(require_operator),
+):
+    """Admin: List all answer keys (no filtering by parent status)."""
+    query = select(AnswerKey).order_by(AnswerKey.published_at.desc().nulls_last(), AnswerKey.created_at.desc())
+    count_query = select(func.count(AnswerKey.id))
+
+    total = (await db.execute(count_query)).scalar()
+    result = await db.execute(query.offset(offset).limit(limit))
+    keys = result.scalars().all()
+
+    return {
+        "data": [AnswerKeyResponse.model_validate(k).model_dump() for k in keys],
+        "pagination": {
+            "limit": limit,
+            "offset": offset,
+            "total": total,
+            "has_more": (offset + limit) < total,
+        },
+    }
+
+
+@answer_keys_admin_router.post("", status_code=status.HTTP_201_CREATED, response_model=AnswerKeyResponse)
+async def admin_create_answer_key(
+    body: AnswerKeyCreateRequest,
+    admin=Depends(require_operator),
+    db: AsyncSession = Depends(get_db),
+):
+    """Create a new answer key. Must specify either job_id or exam_id."""
+    # Validate that exactly one parent is specified
+    if body.job_id and body.exam_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot specify both job_id and exam_id"
+        )
+    if not body.job_id and not body.exam_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Must specify either job_id or exam_id"
+        )
+    
+    # Validate parent exists
+    if body.job_id:
+        result = await db.execute(select(Job).where(Job.id == body.job_id))
+        if not result.scalar_one_or_none():
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
+    else:
+        result = await db.execute(select(EntranceExam).where(EntranceExam.id == body.exam_id))
+        if not result.scalar_one_or_none():
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Entrance exam not found")
+    
+    doc = AnswerKey(
+        job_id=body.job_id,
+        exam_id=body.exam_id,
+        phase_number=body.phase_number,
+        title=body.title,
+        answer_key_type=body.answer_key_type,
+        files=body.files,
+        objection_url=body.objection_url,
+        objection_deadline=body.objection_deadline,
+        published_at=body.published_at,
+    )
+    db.add(doc)
+    await db.flush()
+    return AnswerKeyResponse.model_validate(doc)
+
+
+@answer_keys_admin_router.put("/{key_id}", response_model=AnswerKeyResponse)
+async def admin_update_answer_key(
+    key_id: uuid.UUID,
+    body: AnswerKeyUpdateRequest,
+    admin=Depends(require_operator),
+    db: AsyncSession = Depends(get_db),
+):
+    """Update an answer key."""
+    result = await db.execute(select(AnswerKey).where(AnswerKey.id == key_id))
+    doc = result.scalar_one_or_none()
+    if not doc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Answer key not found")
+
+    for field, value in body.model_dump(exclude_unset=True).items():
+        setattr(doc, field, value)
+
+    await db.flush()
+    return AnswerKeyResponse.model_validate(doc)
+
+
+@answer_keys_admin_router.delete("/{key_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def admin_delete_answer_key(
+    key_id: uuid.UUID,
+    admin=Depends(require_operator),
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete an answer key."""
+    result = await db.execute(select(AnswerKey).where(AnswerKey.id == key_id))
+    doc = result.scalar_one_or_none()
+    if not doc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Answer key not found")
+    await db.delete(doc)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# ADMIN — Results CRUD
+# ══════════════════════════════════════════════════════════════════════════════
+
+
+@results_admin_router.get("")
+async def admin_list_results(
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db),
+    admin=Depends(require_operator),
+):
+    """Admin: List all results (no filtering by parent status)."""
+    query = select(Result).order_by(Result.published_at.desc().nulls_last(), Result.created_at.desc())
+    count_query = select(func.count(Result.id))
+
+    total = (await db.execute(count_query)).scalar()
+    result = await db.execute(query.offset(offset).limit(limit))
+    results = result.scalars().all()
+
+    return {
+        "data": [ResultResponse.model_validate(r).model_dump() for r in results],
+        "pagination": {
+            "limit": limit,
+            "offset": offset,
+            "total": total,
+            "has_more": (offset + limit) < total,
+        },
+    }
+
+
+@results_admin_router.post("", status_code=status.HTTP_201_CREATED, response_model=ResultResponse)
+async def admin_create_result(
+    body: ResultCreateRequest,
+    admin=Depends(require_operator),
+    db: AsyncSession = Depends(get_db),
+):
+    """Create a new result. Must specify either job_id or exam_id."""
+    # Validate that exactly one parent is specified
+    if body.job_id and body.exam_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot specify both job_id and exam_id"
+        )
+    if not body.job_id and not body.exam_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Must specify either job_id or exam_id"
+        )
+    
+    # Validate parent exists
+    if body.job_id:
+        result = await db.execute(select(Job).where(Job.id == body.job_id))
+        if not result.scalar_one_or_none():
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
+    else:
+        result = await db.execute(select(EntranceExam).where(EntranceExam.id == body.exam_id))
+        if not result.scalar_one_or_none():
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Entrance exam not found")
+    
+    doc = Result(
+        job_id=body.job_id,
+        exam_id=body.exam_id,
+        phase_number=body.phase_number,
+        title=body.title,
+        result_type=body.result_type,
+        download_url=body.download_url,
+        cutoff_marks=body.cutoff_marks,
+        total_qualified=body.total_qualified,
+        notes=body.notes,
+        published_at=body.published_at,
+    )
+    db.add(doc)
+    await db.flush()
+    return ResultResponse.model_validate(doc)
+
+
+@results_admin_router.put("/{result_id}", response_model=ResultResponse)
+async def admin_update_result(
+    result_id: uuid.UUID,
+    body: ResultUpdateRequest,
+    admin=Depends(require_operator),
+    db: AsyncSession = Depends(get_db),
+):
+    """Update a result."""
+    result = await db.execute(select(Result).where(Result.id == result_id))
+    doc = result.scalar_one_or_none()
+    if not doc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Result not found")
+
+    for field, value in body.model_dump(exclude_unset=True).items():
+        setattr(doc, field, value)
+
+    await db.flush()
+    return ResultResponse.model_validate(doc)
+
+
+@results_admin_router.delete("/{result_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def admin_delete_result(
+    result_id: uuid.UUID,
+    admin=Depends(require_operator),
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete a result."""
+    result = await db.execute(select(Result).where(Result.id == result_id))
+    doc = result.scalar_one_or_none()
+    if not doc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Result not found")
+    await db.delete(doc)

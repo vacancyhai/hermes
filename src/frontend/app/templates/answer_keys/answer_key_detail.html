@@ -171,44 +171,22 @@
 {% if key.job %}
 <div class="detail-section" style="margin-top:1.5rem">
     <h2>💼 Related Job Details</h2>
-    <div x-data="{expanded:false}">
-        <button 
-            class="doc-tab-btn" 
-            @click="expanded=!expanded"
-            style="width:100%;background:#f1f5f9;border:1px solid #e2e8f0;padding:1rem;border-radius:.5rem;text-align:left;cursor:pointer;display:flex;justify-content:space-between;align-items:center">
-            <span style="font-weight:600;font-size:.95rem">{{ key.job.job_title }}</span>
-            <span x-text="expanded ? '▼' : '▶'"></span>
-        </button>
-        <div 
-            x-show="expanded" 
-            x-transition
-            hx-get="/partials/jobs/{{ key.job.id }}/details"
-            hx-trigger="revealed once"
-            hx-swap="innerHTML"
-            style="margin-top:1rem;padding:1rem;background:#f8fafc;border:1px solid #e2e8f0;border-radius:.5rem">
-            <p style="color:#64748b">Loading job details...</p>
+    <div x-data="{expanded:true}" x-init="$nextTick(() => { document.getElementById('job-details-{{ key.job.id }}').dispatchEvent(new Event('load')) })">
+        <div id="job-details-{{ key.job.id }}"
+             hx-get="/partials/jobs/{{ key.job.id }}/details"
+             hx-trigger="load once" hx-swap="innerHTML">
+            <p class="doc-empty">Loading job details…</p>
         </div>
     </div>
 </div>
 {% elif key.exam %}
 <div class="detail-section" style="margin-top:1.5rem">
     <h2>🎓 Related Exam Details</h2>
-    <div x-data="{expanded:false}">
-        <button 
-            class="doc-tab-btn" 
-            @click="expanded=!expanded"
-            style="width:100%;background:#f1f5f9;border:1px solid #e2e8f0;padding:1rem;border-radius:.5rem;text-align:left;cursor:pointer;display:flex;justify-content:space-between;align-items:center">
-            <span style="font-weight:600;font-size:.95rem">{{ key.exam.exam_name }}</span>
-            <span x-text="expanded ? '▼' : '▶'"></span>
-        </button>
-        <div 
-            x-show="expanded" 
-            x-transition
-            hx-get="/partials/exams/{{ key.exam.id }}/details"
-            hx-trigger="revealed once"
-            hx-swap="innerHTML"
-            style="margin-top:1rem;padding:1rem;background:#f8fafc;border:1px solid #e2e8f0;border-radius:.5rem">
-            <p style="color:#64748b">Loading exam details...</p>
+    <div x-data="{expanded:true}" x-init="$nextTick(() => { document.getElementById('exam-details-{{ key.exam.id }}').dispatchEvent(new Event('load')) })">
+        <div id="exam-details-{{ key.exam.id }}"
+             hx-get="/partials/exams/{{ key.exam.id }}/details"
+             hx-trigger="load once" hx-swap="innerHTML">
+            <p class="doc-empty">Loading exam details…</p>
         </div>
     </div>
 </div>

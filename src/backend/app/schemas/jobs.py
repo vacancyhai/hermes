@@ -179,6 +179,8 @@ class PaginatedResponse(BaseModel):
 # ── Admit Card schemas ────────────────────────────────────────────────────────
 
 class AdmitCardCreateRequest(BaseModel):
+    job_id: uuid.UUID | None = None
+    exam_id: uuid.UUID | None = None
     phase_number: int | None = Field(None, ge=1, le=10)
     title: str = Field(min_length=1, max_length=255)
     download_url: str = Field(min_length=1)
@@ -221,6 +223,8 @@ ANSWER_KEY_TYPES = Literal["provisional", "final"]
 
 
 class AnswerKeyCreateRequest(BaseModel):
+    job_id: uuid.UUID | None = None
+    exam_id: uuid.UUID | None = None
     phase_number: int | None = Field(None, ge=1, le=10)
     title: str = Field(min_length=1, max_length=255)
     answer_key_type: ANSWER_KEY_TYPES = "provisional"
@@ -263,6 +267,8 @@ RESULT_TYPES = Literal["shortlist", "cutoff", "merit_list", "final"]
 
 
 class ResultCreateRequest(BaseModel):
+    job_id: uuid.UUID | None = None
+    exam_id: uuid.UUID | None = None
     phase_number: int | None = Field(None, ge=1, le=10)
     title: str = Field(min_length=1, max_length=255)
     result_type: RESULT_TYPES

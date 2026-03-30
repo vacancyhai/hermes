@@ -803,6 +803,20 @@ def create_app():
         except (ValueError, TypeError):
             return default
 
+    @app.route("/favicon.ico")
+    def favicon():
+        """Serve favicon or return 204 if not found."""
+        from flask import send_from_directory
+        import os
+        favicon_path = os.path.join(app.root_path, "static", "favicon.ico")
+        if os.path.exists(favicon_path):
+            return send_from_directory(os.path.join(app.root_path, "static"), "favicon.ico")
+        return "", 204
+
+    @app.errorhandler(404)
+    def not_found(e):
+        return render_template("shared/404.html"), 404
+
     @app.errorhandler(Exception)
     def handle_unexpected_error(exc):
         app.logger.error("Unhandled exception: %s", exc, exc_info=True)

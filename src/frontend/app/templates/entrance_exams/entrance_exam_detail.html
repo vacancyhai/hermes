@@ -213,23 +213,23 @@
 
 <div class="detail-section" style="margin-top:1.5rem">
     <h2>📂 Exam Documents</h2>
-    <div x-data="{tab:'admit_cards'}">
+    <div x-data="{tab:'admit_cards'}" x-init="$nextTick(() => { document.getElementById('tab-admit-cards-{{ exam.id }}').dispatchEvent(new Event('load')) })">
         <div class="doc-tabs-bar">
             <button class="doc-tab-btn" :class="{'active':tab==='admit_cards'}" @click="tab='admit_cards'">📄 Admit Cards</button>
             <button class="doc-tab-btn" :class="{'active':tab==='answer_keys'}" @click="tab='answer_keys'">✏️ Answer Keys</button>
             <button class="doc-tab-btn" :class="{'active':tab==='results'}" @click="tab='results'">🏆 Results</button>
         </div>
-        <div class="doc-panel" x-show="tab==='admit_cards'"
+        <div class="doc-panel" id="tab-admit-cards-{{ exam.id }}" x-show="tab==='admit_cards'"
              hx-get="/partials/exams/{{ exam.id }}/admit-cards"
-             hx-trigger="intersect once" hx-swap="innerHTML">
+             hx-trigger="load once" hx-swap="innerHTML">
             <p class="doc-empty">Loading…</p>
         </div>
-        <div class="doc-panel" x-show="tab==='answer_keys'"
+        <div class="doc-panel" x-show="tab==='answer_keys'" x-cloak
              hx-get="/partials/exams/{{ exam.id }}/answer-keys"
              hx-trigger="intersect once" hx-swap="innerHTML">
             <p class="doc-empty">Loading…</p>
         </div>
-        <div class="doc-panel" x-show="tab==='results'"
+        <div class="doc-panel" x-show="tab==='results'" x-cloak
              hx-get="/partials/exams/{{ exam.id }}/results"
              hx-trigger="intersect once" hx-swap="innerHTML">
             <p class="doc-empty">Loading…</p>

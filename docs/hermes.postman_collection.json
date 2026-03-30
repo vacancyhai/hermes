@@ -44,6 +44,30 @@
 		{
 			"key": "notification_id",
 			"value": ""
+		},
+		{
+			"key": "exam_id",
+			"value": ""
+		},
+		{
+			"key": "exam_slug",
+			"value": ""
+		},
+		{
+			"key": "doc_id",
+			"value": ""
+		},
+		{
+			"key": "card_id",
+			"value": ""
+		},
+		{
+			"key": "key_id",
+			"value": ""
+		},
+		{
+			"key": "result_id",
+			"value": ""
 		}
 	],
 	"item": [
@@ -196,6 +220,32 @@
 								"value": "Bearer {{user_token}}"
 							}
 						]
+					}
+				},
+				{
+					"name": "Check User Providers",
+					"description": "Check which authentication providers (Google, email/password) a user has.",
+					"request": {
+						"method": "POST",
+						"url": "{{base_url}}/auth/check-user-providers",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"user@example.com\"\n}"
+						}
+					}
+				},
+				{
+					"name": "Add Password to Google Account",
+					"description": "Add password to a Google OAuth account that doesn't have one yet.",
+					"request": {
+						"method": "POST",
+						"url": "{{base_url}}/auth/add-password",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"id_token\": \"PASTE_FIREBASE_ID_TOKEN_HERE\",\n  \"password\": \"NewPass@123\"\n}"
+						}
 					}
 				},
 				{
@@ -444,6 +494,100 @@
 			]
 		},
 		{
+			"name": "Entrance Exams – Public",
+			"item": [
+				{
+					"name": "List Entrance Exams",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/entrance-exams?limit=20&offset=0",
+							"host": ["{{base_url}}"],
+							"path": ["entrance-exams"],
+							"query": [
+								{"key": "limit", "value": "20"},
+								{"key": "offset", "value": "0"},
+								{"key": "q", "value": "", "disabled": true},
+								{"key": "stream", "value": "", "disabled": true},
+								{"key": "exam_type", "value": "", "disabled": true},
+								{"key": "is_featured", "value": "true", "disabled": true}
+							]
+						},
+						"header": []
+					}
+				},
+				{
+					"name": "Get Exam by Slug",
+					"request": {
+						"method": "GET",
+						"url": "{{base_url}}/entrance-exams/{{exam_slug}}",
+						"header": []
+					}
+				},
+				{
+					"name": "Get Exam by ID",
+					"request": {
+						"method": "GET",
+						"url": "{{base_url}}/entrance-exams/by-id/{{exam_id}}",
+						"header": []
+					}
+				},
+				{
+					"name": "Get Exam Admit Cards",
+					"request": {
+						"method": "GET",
+						"url": "{{base_url}}/entrance-exams/{{exam_id}}/admit-cards",
+						"header": []
+					}
+				},
+				{
+					"name": "Get Exam Answer Keys",
+					"request": {
+						"method": "GET",
+						"url": "{{base_url}}/entrance-exams/{{exam_id}}/answer-keys",
+						"header": []
+					}
+				},
+				{
+					"name": "Get Exam Results",
+					"request": {
+						"method": "GET",
+						"url": "{{base_url}}/entrance-exams/{{exam_id}}/results",
+						"header": []
+					}
+				}
+			]
+		},
+		{
+			"name": "Job Documents – Public",
+			"item": [
+				{
+					"name": "Get Job Admit Cards",
+					"request": {
+						"method": "GET",
+						"url": "{{base_url}}/jobs/{{job_id}}/admit-cards",
+						"header": []
+					}
+				},
+				{
+					"name": "Get Job Answer Keys",
+					"request": {
+						"method": "GET",
+						"url": "{{base_url}}/jobs/{{job_id}}/answer-keys",
+						"header": []
+					}
+				},
+				{
+					"name": "Get Job Results",
+					"request": {
+						"method": "GET",
+						"url": "{{base_url}}/jobs/{{job_id}}/results",
+						"header": []
+					}
+				}
+			]
+		},
+		{
 			"name": "Admin – Jobs",
 			"item": [
 				{
@@ -602,6 +746,60 @@
 						}
 					},
 					"response": []
+				},
+				{
+					"name": "List Admit Cards (Admin)",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/admin/admit-cards?limit=20&offset=0",
+							"host": ["{{base_url}}"],
+							"path": ["admin", "admit-cards"],
+							"query": [
+								{"key": "limit", "value": "20"},
+								{"key": "offset", "value": "0"}
+							]
+						},
+						"header": [
+							{"key": "Authorization", "value": "Bearer {{admin_token}}"}
+						]
+					}
+				},
+				{
+					"name": "List Answer Keys (Admin)",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/admin/answer-keys?limit=20&offset=0",
+							"host": ["{{base_url}}"],
+							"path": ["admin", "answer-keys"],
+							"query": [
+								{"key": "limit", "value": "20"},
+								{"key": "offset", "value": "0"}
+							]
+						},
+						"header": [
+							{"key": "Authorization", "value": "Bearer {{admin_token}}"}
+						]
+					}
+				},
+				{
+					"name": "List Results (Admin)",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/admin/results?limit=20&offset=0",
+							"host": ["{{base_url}}"],
+							"path": ["admin", "results"],
+							"query": [
+								{"key": "limit", "value": "20"},
+								{"key": "offset", "value": "0"}
+							]
+						},
+						"header": [
+							{"key": "Authorization", "value": "Bearer {{admin_token}}"}
+						]
+					}
 				}
 			]
 		},
@@ -703,6 +901,292 @@
 							"mode": "raw",
 							"raw": "{\n  \"role\": \"operator\"\n}"
 						}
+					}
+				},
+				{
+					"name": "Create Admin User (Admin only)",
+					"description": "Create a new admin or operator account. Only admins can create new admin users.",
+					"request": {
+						"method": "POST",
+						"url": "{{base_url}}/admin/admin-users",
+						"header": [
+							{"key": "Content-Type", "value": "application/json"},
+							{"key": "Authorization", "value": "Bearer {{admin_token}}"}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"operator@example.com\",\n  \"password\": \"Operator@123\",\n  \"full_name\": \"New Operator\",\n  \"role\": \"operator\",\n  \"phone\": null,\n  \"department\": null\n}"
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Admin – Entrance Exams",
+			"item": [
+				{
+					"name": "List Entrance Exams (Admin)",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/admin/entrance-exams?limit=20&offset=0",
+							"host": ["{{base_url}}"],
+							"path": ["admin", "entrance-exams"],
+							"query": [
+								{"key": "limit", "value": "20"},
+								{"key": "offset", "value": "0"},
+								{"key": "stream", "value": "", "disabled": true},
+								{"key": "exam_type", "value": "", "disabled": true},
+								{"key": "status", "value": "", "disabled": true}
+							]
+						},
+						"header": [{"key": "Authorization", "value": "Bearer {{admin_token}}"}]
+					}
+				},
+				{
+					"name": "Get Entrance Exam (Admin)",
+					"request": {
+						"method": "GET",
+						"url": "{{base_url}}/admin/entrance-exams/{{exam_id}}",
+						"header": [{"key": "Authorization", "value": "Bearer {{admin_token}}"}]
+					}
+				},
+				{
+					"name": "Create Entrance Exam",
+					"event": [{"listen": "test", "script": {"exec": ["var json = pm.response.json();", "if (json.id) {", "    pm.collectionVariables.set('exam_id', json.id);", "    pm.collectionVariables.set('exam_slug', json.slug);", "}"]}}],
+					"request": {
+						"method": "POST",
+						"url": "{{base_url}}/admin/entrance-exams",
+						"header": [
+							{"key": "Content-Type", "value": "application/json"},
+							{"key": "Authorization", "value": "Bearer {{admin_token}}"}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"exam_name\": \"JEE Advanced 2026\",\n  \"conducting_body\": \"IIT Bombay\",\n  \"stream\": \"engineering\",\n  \"exam_type\": \"ug\",\n  \"exam_date\": \"2026-05-25\",\n  \"fee_general\": 3200,\n  \"status\": \"active\"\n}"
+						}
+					}
+				},
+				{
+					"name": "Update Entrance Exam",
+					"request": {
+						"method": "PUT",
+						"url": "{{base_url}}/admin/entrance-exams/{{exam_id}}",
+						"header": [
+							{"key": "Content-Type", "value": "application/json"},
+							{"key": "Authorization", "value": "Bearer {{admin_token}}"}
+						],
+						"body": {"mode": "raw", "raw": "{\n  \"is_featured\": true\n}"}
+					}
+				},
+				{
+					"name": "Delete Entrance Exam",
+					"request": {
+						"method": "DELETE",
+						"url": "{{base_url}}/admin/entrance-exams/{{exam_id}}",
+						"header": [{"key": "Authorization", "value": "Bearer {{admin_token}}"}]
+					}
+				}
+			]
+		},
+		{
+			"name": "Admin – Job Documents",
+			"item": [
+				{
+					"name": "Create Job Admit Card",
+					"request": {
+						"method": "POST",
+						"url": "{{base_url}}/admin/jobs/{{job_id}}/admit-cards",
+						"header": [
+							{"key": "Content-Type", "value": "application/json"},
+							{"key": "Authorization", "value": "Bearer {{admin_token}}"}
+						],
+						"body": {"mode": "raw", "raw": "{\n  \"title\": \"Tier-1 Admit Card\",\n  \"phase_number\": 1,\n  \"download_url\": \"https://example.com/admit-card.pdf\",\n  \"published_at\": \"2026-01-15T00:00:00Z\"\n}"}
+					}
+				},
+				{
+					"name": "Update Job Admit Card",
+					"request": {
+						"method": "PUT",
+						"url": "{{base_url}}/admin/jobs/{{job_id}}/admit-cards/{{doc_id}}",
+						"header": [
+							{"key": "Content-Type", "value": "application/json"},
+							{"key": "Authorization", "value": "Bearer {{admin_token}}"}
+						],
+						"body": {"mode": "raw", "raw": "{\n  \"title\": \"Updated Admit Card\"\n}"}
+					}
+				},
+				{
+					"name": "Delete Job Admit Card",
+					"request": {
+						"method": "DELETE",
+						"url": "{{base_url}}/admin/jobs/{{job_id}}/admit-cards/{{doc_id}}",
+						"header": [{"key": "Authorization", "value": "Bearer {{admin_token}}"}]
+					}
+				},
+				{
+					"name": "Create Job Answer Key",
+					"request": {
+						"method": "POST",
+						"url": "{{base_url}}/admin/jobs/{{job_id}}/answer-keys",
+						"header": [
+							{"key": "Content-Type", "value": "application/json"},
+							{"key": "Authorization", "value": "Bearer {{admin_token}}"}
+						],
+						"body": {"mode": "raw", "raw": "{\n  \"title\": \"Tier-1 Answer Key\",\n  \"phase_number\": 1,\n  \"answer_key_type\": \"provisional\",\n  \"files\": [{\"label\": \"Set A\", \"url\": \"https://example.com/key-a.pdf\"}],\n  \"published_at\": \"2026-02-01T00:00:00Z\"\n}"}
+					}
+				},
+				{
+					"name": "Update Job Answer Key",
+					"request": {
+						"method": "PUT",
+						"url": "{{base_url}}/admin/jobs/{{job_id}}/answer-keys/{{doc_id}}",
+						"header": [
+							{"key": "Content-Type", "value": "application/json"},
+							{"key": "Authorization", "value": "Bearer {{admin_token}}"}
+						],
+						"body": {"mode": "raw", "raw": "{\n  \"answer_key_type\": \"final\"\n}"}
+					}
+				},
+				{
+					"name": "Delete Job Answer Key",
+					"request": {
+						"method": "DELETE",
+						"url": "{{base_url}}/admin/jobs/{{job_id}}/answer-keys/{{doc_id}}",
+						"header": [{"key": "Authorization", "value": "Bearer {{admin_token}}"}]
+					}
+				},
+				{
+					"name": "Create Job Result",
+					"request": {
+						"method": "POST",
+						"url": "{{base_url}}/admin/jobs/{{job_id}}/results",
+						"header": [
+							{"key": "Content-Type", "value": "application/json"},
+							{"key": "Authorization", "value": "Bearer {{admin_token}}"}
+						],
+						"body": {"mode": "raw", "raw": "{\n  \"title\": \"Tier-1 Result\",\n  \"phase_number\": 1,\n  \"result_type\": \"shortlist\",\n  \"download_url\": \"https://example.com/result.pdf\",\n  \"published_at\": \"2026-03-01T00:00:00Z\"\n}"}
+					}
+				},
+				{
+					"name": "Update Job Result",
+					"request": {
+						"method": "PUT",
+						"url": "{{base_url}}/admin/jobs/{{job_id}}/results/{{doc_id}}",
+						"header": [
+							{"key": "Content-Type", "value": "application/json"},
+							{"key": "Authorization", "value": "Bearer {{admin_token}}"}
+						],
+						"body": {"mode": "raw", "raw": "{\n  \"result_type\": \"final\"\n}"}
+					}
+				},
+				{
+					"name": "Delete Job Result",
+					"request": {
+						"method": "DELETE",
+						"url": "{{base_url}}/admin/jobs/{{job_id}}/results/{{doc_id}}",
+						"header": [{"key": "Authorization", "value": "Bearer {{admin_token}}"}]
+					}
+				}
+			]
+		},
+		{
+			"name": "Admin – Exam Documents",
+			"item": [
+				{
+					"name": "Create Exam Admit Card",
+					"request": {
+						"method": "POST",
+						"url": "{{base_url}}/admin/entrance-exams/{{exam_id}}/admit-cards",
+						"header": [
+							{"key": "Content-Type", "value": "application/json"},
+							{"key": "Authorization", "value": "Bearer {{admin_token}}"}
+						],
+						"body": {"mode": "raw", "raw": "{\n  \"title\": \"JEE Advanced Admit Card\",\n  \"download_url\": \"https://example.com/admit-card.pdf\",\n  \"published_at\": \"2026-05-01T00:00:00Z\"\n}"}
+					}
+				},
+				{
+					"name": "Update Exam Admit Card",
+					"request": {
+						"method": "PUT",
+						"url": "{{base_url}}/admin/entrance-exams/{{exam_id}}/admit-cards/{{doc_id}}",
+						"header": [
+							{"key": "Content-Type", "value": "application/json"},
+							{"key": "Authorization", "value": "Bearer {{admin_token}}"}
+						],
+						"body": {"mode": "raw", "raw": "{\n  \"title\": \"Updated Admit Card\"\n}"}
+					}
+				},
+				{
+					"name": "Delete Exam Admit Card",
+					"request": {
+						"method": "DELETE",
+						"url": "{{base_url}}/admin/entrance-exams/{{exam_id}}/admit-cards/{{doc_id}}",
+						"header": [{"key": "Authorization", "value": "Bearer {{admin_token}}"}]
+					}
+				},
+				{
+					"name": "Create Exam Answer Key",
+					"request": {
+						"method": "POST",
+						"url": "{{base_url}}/admin/entrance-exams/{{exam_id}}/answer-keys",
+						"header": [
+							{"key": "Content-Type", "value": "application/json"},
+							{"key": "Authorization", "value": "Bearer {{admin_token}}"}
+						],
+						"body": {"mode": "raw", "raw": "{\n  \"title\": \"JEE Advanced Answer Key\",\n  \"answer_key_type\": \"provisional\",\n  \"files\": [{\"label\": \"Paper 1\", \"url\": \"https://example.com/key.pdf\"}],\n  \"published_at\": \"2026-05-26T00:00:00Z\"\n}"}
+					}
+				},
+				{
+					"name": "Update Exam Answer Key",
+					"request": {
+						"method": "PUT",
+						"url": "{{base_url}}/admin/entrance-exams/{{exam_id}}/answer-keys/{{doc_id}}",
+						"header": [
+							{"key": "Content-Type", "value": "application/json"},
+							{"key": "Authorization", "value": "Bearer {{admin_token}}"}
+						],
+						"body": {"mode": "raw", "raw": "{\n  \"answer_key_type\": \"final\"\n}"}
+					}
+				},
+				{
+					"name": "Delete Exam Answer Key",
+					"request": {
+						"method": "DELETE",
+						"url": "{{base_url}}/admin/entrance-exams/{{exam_id}}/answer-keys/{{doc_id}}",
+						"header": [{"key": "Authorization", "value": "Bearer {{admin_token}}"}]
+					}
+				},
+				{
+					"name": "Create Exam Result",
+					"request": {
+						"method": "POST",
+						"url": "{{base_url}}/admin/entrance-exams/{{exam_id}}/results",
+						"header": [
+							{"key": "Content-Type", "value": "application/json"},
+							{"key": "Authorization", "value": "Bearer {{admin_token}}"}
+						],
+						"body": {"mode": "raw", "raw": "{\n  \"title\": \"JEE Advanced Result\",\n  \"result_type\": \"final\",\n  \"download_url\": \"https://example.com/result.pdf\",\n  \"published_at\": \"2026-06-15T00:00:00Z\"\n}"}
+					}
+				},
+				{
+					"name": "Update Exam Result",
+					"request": {
+						"method": "PUT",
+						"url": "{{base_url}}/admin/entrance-exams/{{exam_id}}/results/{{doc_id}}",
+						"header": [
+							{"key": "Content-Type", "value": "application/json"},
+							{"key": "Authorization", "value": "Bearer {{admin_token}}"}
+						],
+						"body": {"mode": "raw", "raw": "{\n  \"total_qualified\": 12000\n}"}
+					}
+				},
+				{
+					"name": "Delete Exam Result",
+					"request": {
+						"method": "DELETE",
+						"url": "{{base_url}}/admin/entrance-exams/{{exam_id}}/results/{{doc_id}}",
+						"header": [{"key": "Authorization", "value": "Bearer {{admin_token}}"}]
 					}
 				}
 			]
@@ -1199,6 +1683,433 @@
 							}
 						]
 					}
+				}
+			]
+		},
+		{
+			"name": "Content – Public (Admit Cards, Answer Keys, Results)",
+			"item": [
+				{
+					"name": "List Admit Cards",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/admit-cards?limit=20&offset=0",
+							"host": ["{{base_url}}"],
+							"path": ["admit-cards"],
+							"query": [
+								{"key": "limit", "value": "20"},
+								{"key": "offset", "value": "0"}
+							]
+						},
+						"header": []
+					}
+				},
+				{
+					"name": "Get Admit Card by ID",
+					"request": {
+						"method": "GET",
+						"url": "{{base_url}}/admit-cards/{{card_id}}",
+						"header": []
+					}
+				},
+				{
+					"name": "List Answer Keys",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/answer-keys?limit=20&offset=0",
+							"host": ["{{base_url}}"],
+							"path": ["answer-keys"],
+							"query": [
+								{"key": "limit", "value": "20"},
+								{"key": "offset", "value": "0"}
+							]
+						},
+						"header": []
+					}
+				},
+				{
+					"name": "Get Answer Key by ID",
+					"request": {
+						"method": "GET",
+						"url": "{{base_url}}/answer-keys/{{key_id}}",
+						"header": []
+					}
+				},
+				{
+					"name": "List Results",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/results?limit=20&offset=0",
+							"host": ["{{base_url}}"],
+							"path": ["results"],
+							"query": [
+								{"key": "limit", "value": "20"},
+								{"key": "offset", "value": "0"}
+							]
+						},
+						"header": []
+					}
+				},
+				{
+					"name": "Get Result by ID",
+					"request": {
+						"method": "GET",
+						"url": "{{base_url}}/results/{{result_id}}",
+						"header": []
+					}
+				}
+			]
+		},
+		{
+			"name": "Content – Admin (Admit Cards, Answer Keys, Results)",
+			"item": [
+				{
+					"name": "Admit Cards – Admin",
+					"item": [
+						{
+							"name": "List All Admit Cards (Admin)",
+							"request": {
+								"method": "GET",
+								"url": {
+									"raw": "{{base_url}}/admin/admit-cards?limit=20&offset=0",
+									"host": ["{{base_url}}"],
+									"path": ["admin", "admit-cards"],
+									"query": [
+										{"key": "limit", "value": "20"},
+										{"key": "offset", "value": "0"}
+									]
+								},
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{admin_token}}"
+									}
+								]
+							}
+						},
+						{
+							"name": "Create Admit Card (for Job)",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"var json = pm.response.json();",
+											"if (json.id) {",
+											"    pm.collectionVariables.set('card_id', json.id);",
+											"}"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"url": "{{base_url}}/admin/admit-cards",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{admin_token}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"job_id\": \"{{job_id}}\",\n  \"phase_number\": 1,\n  \"title\": \"SSC CGL Tier-1 Admit Card 2026\",\n  \"download_url\": \"https://ssc.nic.in/admit-card-tier1.pdf\",\n  \"valid_from\": \"2026-04-01\",\n  \"valid_until\": \"2026-04-15\",\n  \"notes\": \"Download and keep 2 printouts\"\n}"
+								}
+							}
+						},
+						{
+							"name": "Create Admit Card (for Exam)",
+							"request": {
+								"method": "POST",
+								"url": "{{base_url}}/admin/admit-cards",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{admin_token}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"exam_id\": \"{{exam_id}}\",\n  \"title\": \"NEET UG 2026 Admit Card\",\n  \"download_url\": \"https://neet.nta.nic.in/admit-card.pdf\",\n  \"valid_from\": \"2026-05-01\",\n  \"valid_until\": \"2026-05-15\"\n}"
+								}
+							}
+						},
+						{
+							"name": "Update Admit Card",
+							"request": {
+								"method": "PUT",
+								"url": "{{base_url}}/admin/admit-cards/{{card_id}}",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{admin_token}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"title\": \"SSC CGL Tier-1 Admit Card 2026 (Revised)\",\n  \"notes\": \"Revised exam dates - check carefully\"\n}"
+								}
+							}
+						},
+						{
+							"name": "Delete Admit Card",
+							"request": {
+								"method": "DELETE",
+								"url": "{{base_url}}/admin/admit-cards/{{card_id}}",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{admin_token}}"
+									}
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Answer Keys – Admin",
+					"item": [
+						{
+							"name": "List All Answer Keys (Admin)",
+							"request": {
+								"method": "GET",
+								"url": {
+									"raw": "{{base_url}}/admin/answer-keys?limit=20&offset=0",
+									"host": ["{{base_url}}"],
+									"path": ["admin", "answer-keys"],
+									"query": [
+										{"key": "limit", "value": "20"},
+										{"key": "offset", "value": "0"}
+									]
+								},
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{admin_token}}"
+									}
+								]
+							}
+						},
+						{
+							"name": "Create Answer Key (for Job)",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"var json = pm.response.json();",
+											"if (json.id) {",
+											"    pm.collectionVariables.set('key_id', json.id);",
+											"}"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"url": "{{base_url}}/admin/answer-keys",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{admin_token}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"job_id\": \"{{job_id}}\",\n  \"phase_number\": 1,\n  \"title\": \"SSC CGL Tier-1 Provisional Answer Key\",\n  \"answer_key_type\": \"provisional\",\n  \"files\": [\n    {\"label\": \"Set A\", \"url\": \"https://ssc.nic.in/answer-key-set-a.pdf\"},\n    {\"label\": \"Set B\", \"url\": \"https://ssc.nic.in/answer-key-set-b.pdf\"}\n  ],\n  \"objection_url\": \"https://ssc.nic.in/objections\",\n  \"objection_deadline\": \"2026-05-01\"\n}"
+								}
+							}
+						},
+						{
+							"name": "Create Answer Key (for Exam)",
+							"request": {
+								"method": "POST",
+								"url": "{{base_url}}/admin/answer-keys",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{admin_token}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"exam_id\": \"{{exam_id}}\",\n  \"title\": \"NEET UG 2026 Final Answer Key\",\n  \"answer_key_type\": \"final\",\n  \"files\": [\n    {\"label\": \"All Sets\", \"url\": \"https://neet.nta.nic.in/final-key.pdf\"}\n  ]\n}"
+								}
+							}
+						},
+						{
+							"name": "Update Answer Key",
+							"request": {
+								"method": "PUT",
+								"url": "{{base_url}}/admin/answer-keys/{{key_id}}",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{admin_token}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"answer_key_type\": \"final\",\n  \"title\": \"SSC CGL Tier-1 Final Answer Key\"\n}"
+								}
+							}
+						},
+						{
+							"name": "Delete Answer Key",
+							"request": {
+								"method": "DELETE",
+								"url": "{{base_url}}/admin/answer-keys/{{key_id}}",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{admin_token}}"
+									}
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Results – Admin",
+					"item": [
+						{
+							"name": "List All Results (Admin)",
+							"request": {
+								"method": "GET",
+								"url": {
+									"raw": "{{base_url}}/admin/results?limit=20&offset=0",
+									"host": ["{{base_url}}"],
+									"path": ["admin", "results"],
+									"query": [
+										{"key": "limit", "value": "20"},
+										{"key": "offset", "value": "0"}
+									]
+								},
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{admin_token}}"
+									}
+								]
+							}
+						},
+						{
+							"name": "Create Result (for Job)",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"var json = pm.response.json();",
+											"if (json.id) {",
+											"    pm.collectionVariables.set('result_id', json.id);",
+											"}"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"url": "{{base_url}}/admin/results",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{admin_token}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"job_id\": \"{{job_id}}\",\n  \"phase_number\": 1,\n  \"title\": \"SSC CGL Tier-1 Result 2026\",\n  \"result_type\": \"shortlist\",\n  \"download_url\": \"https://ssc.nic.in/tier1-result.pdf\",\n  \"cutoff_marks\": {\n    \"general\": 140.5,\n    \"obc\": 135.0,\n    \"sc\": 120.0,\n    \"st\": 115.0,\n    \"ews\": 138.0\n  },\n  \"total_qualified\": 12500,\n  \"notes\": \"Qualified candidates can proceed to Tier-2\"\n}"
+								}
+							}
+						},
+						{
+							"name": "Create Result (for Exam)",
+							"request": {
+								"method": "POST",
+								"url": "{{base_url}}/admin/results",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{admin_token}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"exam_id\": \"{{exam_id}}\",\n  \"title\": \"NEET UG 2026 Final Result\",\n  \"result_type\": \"final\",\n  \"download_url\": \"https://neet.nta.nic.in/result.pdf\",\n  \"cutoff_marks\": {\n    \"general\": 720,\n    \"obc\": 690,\n    \"sc\": 600,\n    \"st\": 600\n  },\n  \"total_qualified\": 850000\n}"
+								}
+							}
+						},
+						{
+							"name": "Update Result",
+							"request": {
+								"method": "PUT",
+								"url": "{{base_url}}/admin/results/{{result_id}}",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{admin_token}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"result_type\": \"final\",\n  \"title\": \"SSC CGL Tier-1 Final Result 2026 (Revised)\"\n}"
+								}
+							}
+						},
+						{
+							"name": "Delete Result",
+							"request": {
+								"method": "DELETE",
+								"url": "{{base_url}}/admin/results/{{result_id}}",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{admin_token}}"
+									}
+								]
+							}
+						}
+					]
 				}
 			]
 		},

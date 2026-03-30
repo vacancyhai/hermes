@@ -16,9 +16,12 @@ from app.logging_config import setup_logging
 from app.rate_limit import limiter
 import app.models  # noqa: F401 — register all models for SQLAlchemy relationships
 from app.routers import auth, health, jobs, notifications, users, admin, applications
-from app.routers.job_documents import public_router as job_docs_public_router, admin_router as job_docs_admin_router
+from app.routers.job_documents import public_router as job_docs_public_router
 from app.routers.entrance_exams import public_router as exams_public_router, admin_router as exams_admin_router
-from app.routers.content import admit_cards_router, answer_keys_router, results_router
+from app.routers.content import (
+    admit_cards_router, answer_keys_router, results_router,
+    admit_cards_admin_router, answer_keys_admin_router, results_admin_router,
+)
 
 
 @asynccontextmanager
@@ -150,6 +153,8 @@ app.include_router(job_docs_public_router)
 app.include_router(applications.router)
 app.include_router(notifications.router)
 app.include_router(admin.router)
-app.include_router(job_docs_admin_router)
+app.include_router(admit_cards_admin_router)
+app.include_router(answer_keys_admin_router)
+app.include_router(results_admin_router)
 app.include_router(exams_public_router)
 app.include_router(exams_admin_router)

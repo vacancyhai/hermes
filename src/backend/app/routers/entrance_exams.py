@@ -12,9 +12,10 @@ Admin CRUD (operator+):
   PUT    /api/v1/admin/entrance-exams/:id
   DELETE /api/v1/admin/entrance-exams/:id
 
-  POST/PUT/DELETE /api/v1/admin/entrance-exams/:id/admit-cards[/:doc_id]
-  POST/PUT/DELETE /api/v1/admin/entrance-exams/:id/answer-keys[/:doc_id]
-  POST/PUT/DELETE /api/v1/admin/entrance-exams/:id/results[/:doc_id]
+Note: Admin document CRUD has been moved to top-level endpoints:
+  /api/v1/admin/admit-cards
+  /api/v1/admin/answer-keys
+  /api/v1/admin/results
 """
 
 import re
@@ -35,9 +36,9 @@ from app.schemas.entrance_exams import (
     EntranceExamListItem, EntranceExamResponse,
 )
 from app.schemas.jobs import (
-    AdmitCardCreateRequest, AdmitCardUpdateRequest, AdmitCardResponse,
-    AnswerKeyCreateRequest, AnswerKeyUpdateRequest, AnswerKeyResponse,
-    ResultCreateRequest, ResultUpdateRequest, ResultResponse,
+    AdmitCardResponse,
+    AnswerKeyResponse,
+    ResultResponse,
 )
 
 public_router = APIRouter(prefix="/api/v1/entrance-exams", tags=["entrance-exams"])
@@ -272,119 +273,3 @@ async def delete_exam(
 ):
     exam = await _require_exam(exam_id, db)
     await db.delete(exam)
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-# ADMIN — per-exam document CRUD (mirrors job_documents admin routes)
-# ══════════════════════════════════════════════════════════════════════════════
-
-
-@admin_router.post("/{exam_id}/admit-cards", status_code=status.HTTP_201_CREATED, response_model=AdmitCardResponse)
-async def create_exam_admit_card(
-    exam_id: uuid.UUID, body: AdmitCardCreateRequest,
-    admin=Depends(require_operator), db: AsyncSession = Depends(get_db),
-):
-    await _require_exam(exam_id, db)
-    doc = AdmitCard(id=uuid.uuid4(), exam_id=exam_id, **body.model_dump())
-    db.add(doc)
-    await db.flush()
-    return AdmitCardResponse.model_validate(doc)
-
-
-@admin_router.put("/{exam_id}/admit-cards/{doc_id}", response_model=AdmitCardResponse)
-async def update_exam_admit_card(
-    exam_id: uuid.UUID, doc_id: uuid.UUID, body: AdmitCardUpdateRequest,
-    admin=Depends(require_operator), db: AsyncSession = Depends(get_db),
-):
-    r = (await db.execute(select(AdmitCard).where(AdmitCard.id == doc_id, AdmitCard.exam_id == exam_id))).scalar_one_or_none()
-    if not r:
-        raise HTTPException(status_code=404, detail="Admit card not found")
-    for f, v in body.model_dump(exclude_unset=True).items():
-        setattr(r, f, v)
-    await db.flush()
-    return AdmitCardResponse.model_validate(r)
-
-
-@admin_router.delete("/{exam_id}/admit-cards/{doc_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_exam_admit_card(
-    exam_id: uuid.UUID, doc_id: uuid.UUID,
-    admin=Depends(require_operator), db: AsyncSession = Depends(get_db),
-):
-    r = (await db.execute(select(AdmitCard).where(AdmitCard.id == doc_id, AdmitCard.exam_id == exam_id))).scalar_one_or_none()
-    if not r:
-        raise HTTPException(status_code=404, detail="Admit card not found")
-    await db.delete(r)
-
-
-@admin_router.post("/{exam_id}/answer-keys", status_code=status.HTTP_201_CREATED, response_model=AnswerKeyResponse)
-async def create_exam_answer_key(
-    exam_id: uuid.UUID, body: AnswerKeyCreateRequest,
-    admin=Depends(require_operator), db: AsyncSession = Depends(get_db),
-):
-    await _require_exam(exam_id, db)
-    doc = AnswerKey(id=uuid.uuid4(), exam_id=exam_id, **body.model_dump())
-    db.add(doc)
-    await db.flush()
-    return AnswerKeyResponse.model_validate(doc)
-
-
-@admin_router.put("/{exam_id}/answer-keys/{doc_id}", response_model=AnswerKeyResponse)
-async def update_exam_answer_key(
-    exam_id: uuid.UUID, doc_id: uuid.UUID, body: AnswerKeyUpdateRequest,
-    admin=Depends(require_operator), db: AsyncSession = Depends(get_db),
-):
-    r = (await db.execute(select(AnswerKey).where(AnswerKey.id == doc_id, AnswerKey.exam_id == exam_id))).scalar_one_or_none()
-    if not r:
-        raise HTTPException(status_code=404, detail="Answer key not found")
-    for f, v in body.model_dump(exclude_unset=True).items():
-        setattr(r, f, v)
-    await db.flush()
-    return AnswerKeyResponse.model_validate(r)
-
-
-@admin_router.delete("/{exam_id}/answer-keys/{doc_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_exam_answer_key(
-    exam_id: uuid.UUID, doc_id: uuid.UUID,
-    admin=Depends(require_operator), db: AsyncSession = Depends(get_db),
-):
-    r = (await db.execute(select(AnswerKey).where(AnswerKey.id == doc_id, AnswerKey.exam_id == exam_id))).scalar_one_or_none()
-    if not r:
-        raise HTTPException(status_code=404, detail="Answer key not found")
-    await db.delete(r)
-
-
-@admin_router.post("/{exam_id}/results", status_code=status.HTTP_201_CREATED, response_model=ResultResponse)
-async def create_exam_result(
-    exam_id: uuid.UUID, body: ResultCreateRequest,
-    admin=Depends(require_operator), db: AsyncSession = Depends(get_db),
-):
-    await _require_exam(exam_id, db)
-    doc = Result(id=uuid.uuid4(), exam_id=exam_id, **body.model_dump())
-    db.add(doc)
-    await db.flush()
-    return ResultResponse.model_validate(doc)
-
-
-@admin_router.put("/{exam_id}/results/{doc_id}", response_model=ResultResponse)
-async def update_exam_result(
-    exam_id: uuid.UUID, doc_id: uuid.UUID, body: ResultUpdateRequest,
-    admin=Depends(require_operator), db: AsyncSession = Depends(get_db),
-):
-    r = (await db.execute(select(Result).where(Result.id == doc_id, Result.exam_id == exam_id))).scalar_one_or_none()
-    if not r:
-        raise HTTPException(status_code=404, detail="Result not found")
-    for f, v in body.model_dump(exclude_unset=True).items():
-        setattr(r, f, v)
-    await db.flush()
-    return ResultResponse.model_validate(r)
-
-
-@admin_router.delete("/{exam_id}/results/{doc_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_exam_result(
-    exam_id: uuid.UUID, doc_id: uuid.UUID,
-    admin=Depends(require_operator), db: AsyncSession = Depends(get_db),
-):
-    r = (await db.execute(select(Result).where(Result.id == doc_id, Result.exam_id == exam_id))).scalar_one_or_none()
-    if not r:
-        raise HTTPException(status_code=404, detail="Result not found")
-    await db.delete(r)

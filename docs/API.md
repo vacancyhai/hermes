@@ -603,29 +603,110 @@ file: <pdf_file>
 
 ---
 
-## Job Documents (Admit Cards, Answer Keys, Results)
+## Admit Cards, Answer Keys, and Results
 
-### Public (read-only, active jobs only)
+These are now top-level resources, independent of jobs and entrance exams. Each document can be linked to either a job OR an entrance exam via polymorphic foreign keys.
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/jobs/{job_id}/admit-cards` | List all admit cards for a job, ordered by phase |
-| GET | `/jobs/{job_id}/answer-keys` | List all answer keys for a job |
-| GET | `/jobs/{job_id}/results` | List all results for a job |
+### Admit Cards
 
-### Admin CRUD (operator+)
+#### Public Endpoints
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/admin/jobs/{job_id}/admit-cards` | Add admit card to a job |
-| PUT | `/admin/jobs/{job_id}/admit-cards/{doc_id}` | Update admit card |
-| DELETE | `/admin/jobs/{job_id}/admit-cards/{doc_id}` | Delete admit card |
-| POST | `/admin/jobs/{job_id}/answer-keys` | Add answer key |
-| PUT | `/admin/jobs/{job_id}/answer-keys/{doc_id}` | Update answer key |
-| DELETE | `/admin/jobs/{job_id}/answer-keys/{doc_id}` | Delete answer key |
-| POST | `/admin/jobs/{job_id}/results` | Add result |
-| PUT | `/admin/jobs/{job_id}/results/{doc_id}` | Update result |
-| DELETE | `/admin/jobs/{job_id}/results/{doc_id}` | Delete result |
+| GET | `/admit-cards` | List all admit cards (paginated) |
+| GET | `/admit-cards/{id}` | Get single admit card by ID (includes job/exam context) |
+| GET | `/jobs/{job_id}/admit-cards` | List admit cards for a specific job |
+| GET | `/entrance-exams/{exam_id}/admit-cards` | List admit cards for a specific exam |
+
+#### Admin Endpoints (operator+)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/admin/admit-cards` | List all admit cards (any status) |
+| POST | `/admin/admit-cards` | Create admit card (must specify job_id OR exam_id) |
+| PUT | `/admin/admit-cards/{id}` | Update admit card |
+| DELETE | `/admin/admit-cards/{id}` | Delete admit card |
+| POST | `/admin/jobs/{job_id}/admit-cards` | Legacy: Add admit card to a job |
+| PUT | `/admin/jobs/{job_id}/admit-cards/{doc_id}` | Legacy: Update admit card |
+| DELETE | `/admin/jobs/{job_id}/admit-cards/{doc_id}` | Legacy: Delete admit card |
+
+### Answer Keys
+
+#### Public Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/answer-keys` | List all answer keys (paginated) |
+| GET | `/answer-keys/{id}` | Get single answer key by ID (includes job/exam context) |
+| GET | `/jobs/{job_id}/answer-keys` | List answer keys for a specific job |
+| GET | `/entrance-exams/{exam_id}/answer-keys` | List answer keys for a specific exam |
+
+#### Admin Endpoints (operator+)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/admin/answer-keys` | List all answer keys (any status) |
+| POST | `/admin/answer-keys` | Create answer key (must specify job_id OR exam_id) |
+| PUT | `/admin/answer-keys/{id}` | Update answer key |
+| DELETE | `/admin/answer-keys/{id}` | Delete answer key |
+| POST | `/admin/jobs/{job_id}/answer-keys` | Legacy: Add answer key to a job |
+| PUT | `/admin/jobs/{job_id}/answer-keys/{doc_id}` | Legacy: Update answer key |
+| DELETE | `/admin/jobs/{job_id}/answer-keys/{doc_id}` | Legacy: Delete answer key |
+
+### Results
+
+#### Public Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/results` | List all results (paginated) |
+| GET | `/results/{id}` | Get single result by ID (includes job/exam context) |
+| GET | `/jobs/{job_id}/results` | List results for a specific job |
+| GET | `/entrance-exams/{exam_id}/results` | List results for a specific exam |
+
+#### Admin Endpoints (operator+)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/admin/results` | List all results (any status) |
+| POST | `/admin/results` | Create result (must specify job_id OR exam_id) |
+| PUT | `/admin/results/{id}` | Update result |
+| DELETE | `/admin/results/{id}` | Delete result |
+| POST | `/admin/jobs/{job_id}/results` | Legacy: Add result to a job |
+| PUT | `/admin/jobs/{job_id}/results/{doc_id}` | Legacy: Update result |
+| DELETE | `/admin/jobs/{job_id}/results/{doc_id}` | Legacy: Delete result |
+
+### Document Creation
+
+When creating a document via the top-level admin endpoints, you must specify **either** `job_id` OR `exam_id` in the request body:
+
+```json
+// Create admit card for a job
+POST /api/v1/admin/admit-cards
+{
+  "job_id": "uuid-here",
+  "title": "SSC CGL Tier-1 Admit Card 2026",
+  "download_url": "https://...",
+  "valid_from": "2026-04-01",
+  "valid_until": "2026-04-15",
+  "phase_number": 1
+}
+
+// Create answer key for an entrance exam
+POST /api/v1/admin/answer-keys
+{
+  "exam_id": "uuid-here",
+  "title": "NEET UG 2026 Provisional Answer Key",
+  "answer_key_type": "provisional",
+  "files": [{"label": "Set A", "url": "https://..."}],
+  "objection_deadline": "2026-05-15"
+}
+```
+
+**Validation rules:**
+- Cannot specify both `job_id` and `exam_id`
+- Must specify at least one
+- Parent job/exam must exist in database
 
 **`phase_number`** (optional integer 1–10) maps to the corresponding entry in the parent job's `selection_process` JSONB array — e.g. phase 1 = "Tier-1 CBT". `NULL` means the document applies to the whole job (e.g. a final merit list).
 

@@ -697,6 +697,7 @@ def create_app():
             return redirect("/login")
         form = request.form.to_dict()
         payload = {
+            "job_id": job_id,
             "title": form.get("title", ""),
             "download_url": form.get("download_url", ""),
             "phase_number": int(form["phase_number"]) if form.get("phase_number") else None,
@@ -704,7 +705,7 @@ def create_app():
             "valid_until": form.get("valid_until") or None,
             "notes": form.get("notes") or None,
         }
-        current_app.api_client.post(f"/admin/jobs/{job_id}/admit-cards", token=token, json=payload)
+        current_app.api_client.post("/admin/admit-cards", token=token, json=payload)
         flash("Admit card added.", "success")
         return redirect(f"/jobs/{job_id}/review#docs")
 
@@ -721,6 +722,7 @@ def create_app():
         except Exception:
             files = []
         payload = {
+            "job_id": job_id,
             "title": form.get("title", ""),
             "answer_key_type": form.get("answer_key_type", "provisional"),
             "phase_number": int(form["phase_number"]) if form.get("phase_number") else None,
@@ -728,7 +730,7 @@ def create_app():
             "objection_url": form.get("objection_url") or None,
             "objection_deadline": form.get("objection_deadline") or None,
         }
-        current_app.api_client.post(f"/admin/jobs/{job_id}/answer-keys", token=token, json=payload)
+        current_app.api_client.post("/admin/answer-keys", token=token, json=payload)
         flash("Answer key added.", "success")
         return redirect(f"/jobs/{job_id}/review#docs")
 
@@ -740,6 +742,7 @@ def create_app():
             return redirect("/login")
         form = request.form.to_dict()
         payload = {
+            "job_id": job_id,
             "title": form.get("title", ""),
             "result_type": form.get("result_type", "merit_list"),
             "phase_number": int(form["phase_number"]) if form.get("phase_number") else None,
@@ -747,7 +750,7 @@ def create_app():
             "total_qualified": int(form["total_qualified"]) if form.get("total_qualified") else None,
             "notes": form.get("notes") or None,
         }
-        current_app.api_client.post(f"/admin/jobs/{job_id}/results", token=token, json=payload)
+        current_app.api_client.post("/admin/results", token=token, json=payload)
         flash("Result added.", "success")
         return redirect(f"/jobs/{job_id}/review#docs")
 
@@ -757,7 +760,7 @@ def create_app():
         token = session.get("token")
         if not token:
             return redirect("/login")
-        current_app.api_client.delete(f"/admin/jobs/{job_id}/{doc_type}/{doc_id}", token=token)
+        current_app.api_client.delete(f"/admin/{doc_type}/{doc_id}", token=token)
         flash("Document deleted.", "success")
         return redirect(f"/jobs/{job_id}/review#docs")
 
@@ -888,6 +891,7 @@ def create_app():
             return redirect("/login")
         form = request.form.to_dict()
         payload = {
+            "exam_id": exam_id,
             "title": form.get("title", ""),
             "download_url": form.get("download_url", ""),
             "phase_number": int(form["phase_number"]) if form.get("phase_number") else None,
@@ -895,7 +899,7 @@ def create_app():
             "valid_until": form.get("valid_until") or None,
             "notes": form.get("notes") or None,
         }
-        current_app.api_client.post(f"/admin/entrance-exams/{exam_id}/admit-cards", token=token, json=payload)
+        current_app.api_client.post("/admin/admit-cards", token=token, json=payload)
         flash("Admit card added.", "success")
         return redirect(f"/entrance-exams/{exam_id}/edit#docs")
 
@@ -910,6 +914,7 @@ def create_app():
         except Exception:
             files = []
         payload = {
+            "exam_id": exam_id,
             "title": form.get("title", ""),
             "answer_key_type": form.get("answer_key_type", "provisional"),
             "phase_number": int(form["phase_number"]) if form.get("phase_number") else None,
@@ -917,7 +922,7 @@ def create_app():
             "objection_url": form.get("objection_url") or None,
             "objection_deadline": form.get("objection_deadline") or None,
         }
-        current_app.api_client.post(f"/admin/entrance-exams/{exam_id}/answer-keys", token=token, json=payload)
+        current_app.api_client.post("/admin/answer-keys", token=token, json=payload)
         flash("Answer key added.", "success")
         return redirect(f"/entrance-exams/{exam_id}/edit#docs")
 
@@ -928,6 +933,7 @@ def create_app():
             return redirect("/login")
         form = request.form.to_dict()
         payload = {
+            "exam_id": exam_id,
             "title": form.get("title", ""),
             "result_type": form.get("result_type", "merit_list"),
             "phase_number": int(form["phase_number"]) if form.get("phase_number") else None,
@@ -935,7 +941,7 @@ def create_app():
             "total_qualified": int(form["total_qualified"]) if form.get("total_qualified") else None,
             "notes": form.get("notes") or None,
         }
-        current_app.api_client.post(f"/admin/entrance-exams/{exam_id}/results", token=token, json=payload)
+        current_app.api_client.post("/admin/results", token=token, json=payload)
         flash("Result added.", "success")
         return redirect(f"/entrance-exams/{exam_id}/edit#docs")
 
@@ -944,7 +950,7 @@ def create_app():
         token = session.get("token")
         if not token:
             return redirect("/login")
-        current_app.api_client.delete(f"/admin/entrance-exams/{exam_id}/{doc_type}/{doc_id}", token=token)
+        current_app.api_client.delete(f"/admin/{doc_type}/{doc_id}", token=token)
         flash("Document deleted.", "success")
         return redirect(f"/entrance-exams/{exam_id}/edit#docs")
 
