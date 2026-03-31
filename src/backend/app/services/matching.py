@@ -262,22 +262,39 @@ async def get_recommended_entrance_exams(
     limit: int = 20,
     offset: int = 0,
 ) -> tuple[list[dict], int]:
-    """Return entrance exams based on user's education and preferences."""
+    """Return entrance exams ranked by profile match score.
+
+    Scoring criteria (descending priority):
+      - User's reservation category is eligible:                +4
+      - State match:                                             +3
+      - Education level qualifies:                               +2
+      - Age within exam's eligibility range:                     +2
+      - Exam posted within last 7 days:                          +1
+
+    Returns (scored_exams, total_count).
+    """
+    # Load profile
     result = await db.execute(
         select(UserProfile).where(UserProfile.user_id == user_id)
     )
     profile = result.scalar_one_or_none()
     
-    # Base query: active exams
+    # Base query: active exams with future (or null) exam dates
     today = date.today()
     base_filter = (
         EntranceExam.status == "active",
         (EntranceExam.exam_date >= today) | (EntranceExam.exam_date.is_(None)),
     )
     
-    has_prefs = profile and (profile.highest_qualification or profile.preferred_states)
+    has_prefs = profile and (
+        profile.preferred_states
+        or profile.highest_qualification
+        or profile.category
+        or profile.date_of_birth
+    )
     
     if not has_prefs:
+        # No preferences — return newest active exams using DB-level pagination
         total = (await db.execute(
             select(func.count(EntranceExam.id)).where(*base_filter)
         )).scalar() or 0
@@ -290,7 +307,8 @@ async def get_recommended_entrance_exams(
         )
         return list(result.scalars().all()), total
     
-    # Fetch candidates
+    # Cap candidate pool at CANDIDATE_LIMIT to avoid loading all exams into memory.
+    # Exams are pre-sorted by recency so the best candidates are always included.
     result = await db.execute(
         select(EntranceExam)
         .where(*base_filter)
@@ -299,26 +317,63 @@ async def get_recommended_entrance_exams(
     )
     exams = result.scalars().all()
     
-    # Score exams
+    # Pre-compute user attributes for scoring
     pref_states = {s.lower() for s in (profile.preferred_states or [])}
+    user_category = profile.category.lower() if profile.category else None
     user_edu_rank = _education_rank(profile.highest_qualification)
+    user_age = _user_age(profile.date_of_birth)
     recency_cutoff = today - timedelta(days=RECENCY_DAYS)
     
     scored: list[tuple[int, date | None, EntranceExam]] = []
     for exam in exams:
         score = 0
         
-        # Education match
-        exam_edu_rank = _education_rank(exam.qualification_required)
+        # Build exam's eligible category set from eligibility dict
+        exam_cats = set()
+        if exam.eligibility and isinstance(exam.eligibility, dict):
+            cat_val = exam.eligibility.get("category")
+            if isinstance(cat_val, list):
+                exam_cats = {c.lower() for c in cat_val}
+            elif isinstance(cat_val, str):
+                exam_cats.add(cat_val.lower())
+        
+        # Category eligibility: user's actual reservation category is in the exam's categories
+        if user_category and (not exam_cats or user_category in exam_cats):
+            score += CATEGORY_ELIGIBILITY_MATCH
+        
+        # State match via eligibility dict
+        exam_states = set()
+        if exam.eligibility and isinstance(exam.eligibility, dict):
+            for key in ("states", "state", "location", "conducting_states"):
+                val = exam.eligibility.get(key)
+                if isinstance(val, list):
+                    exam_states.update(s.lower() for s in val)
+                elif isinstance(val, str):
+                    exam_states.add(val.lower())
+        if pref_states and (not exam_states or pref_states & exam_states):
+            score += STATE_MATCH
+        
+        # Education match: extract qualification from eligibility dict
+        exam_edu_rank = -1
+        if exam.eligibility and isinstance(exam.eligibility, dict):
+            qual = exam.eligibility.get("qualification") or exam.eligibility.get("min_qualification")
+            if qual:
+                exam_edu_rank = _education_rank(qual)
         if user_edu_rank >= 0 and exam_edu_rank >= 0 and user_edu_rank >= exam_edu_rank:
             score += EDUCATION_MATCH
         
-        # State match (exam conducting states)
-        exam_states = set()
-        if exam.conducting_states:
-            exam_states = {s.lower() for s in exam.conducting_states}
-        if pref_states and (not exam_states or pref_states & exam_states):
-            score += STATE_MATCH
+        # Age match: user's age is within the exam's eligibility range
+        if user_age is not None and exam.eligibility and isinstance(exam.eligibility, dict):
+            age_min = exam.eligibility.get("age_min") or exam.eligibility.get("min_age")
+            age_max = exam.eligibility.get("age_max") or exam.eligibility.get("max_age")
+            if age_min is not None or age_max is not None:
+                age_ok = True
+                if age_min is not None:
+                    age_ok = age_ok and user_age >= int(age_min)
+                if age_max is not None:
+                    age_ok = age_ok and user_age <= int(age_max)
+                if age_ok:
+                    score += AGE_MATCH
         
         # Recency bonus
         if exam.created_at and exam.created_at.date() >= recency_cutoff:
@@ -326,6 +381,7 @@ async def get_recommended_entrance_exams(
         
         scored.append((score, exam.exam_date, exam))
     
+    # Sort: score DESC, then exam_date ASC (None exam_dates last)
     far_future = date(9999, 12, 31)
     scored.sort(key=lambda t: (-t[0], t[1] or far_future))
     

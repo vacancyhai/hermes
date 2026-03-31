@@ -5,18 +5,6 @@
 {% block content %}
 <h1 style="font-size:1.35rem;margin-bottom:1rem;">User Management</h1>
 
-<div class="filters">
-    <form method="GET" action="/users" style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;">
-        <input type="text" name="q" placeholder="Search name or email…" value="{{ search_q }}">
-        <select name="status" onchange="this.form.submit()">
-            <option value="">All Statuses</option>
-            <option value="active" {% if current_status == 'active' %}selected{% endif %}>Active</option>
-            <option value="suspended" {% if current_status == 'suspended' %}selected{% endif %}>Suspended</option>
-        </select>
-        <button type="submit" class="btn btn-outline">Search</button>
-    </form>
-</div>
-
 <div class="card" style="padding:0;overflow-x:auto;">
     <table>
         <thead>
@@ -30,7 +18,7 @@
             </tr>
         </thead>
         <tbody id="user-list">
-            {% include "_user_rows.html" %}
+            {% include "users/_user_rows.html" %}
         </tbody>
     </table>
 </div>

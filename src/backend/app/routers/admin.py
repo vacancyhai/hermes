@@ -38,7 +38,6 @@ from app.rate_limit import limiter
 from app.dependencies import get_current_admin, get_db, require_admin, require_operator
 from app.models.admin_log import AdminLog
 from app.models.admin_user import AdminUser
-from app.models.application import Application
 from app.models.job import Job
 from app.models.user import User
 from app.models.user_profile import UserProfile
@@ -146,9 +145,6 @@ async def dashboard_stats(
         select(func.count(User.id)).where(User.created_at >= week_ago)
     )).scalar()
 
-    # Applications
-    apps_total = (await db.execute(select(func.count(Application.id)))).scalar()
-
     return {
         "jobs": {"total": jobs_count, "active": jobs_active, "draft": jobs_draft},
         "admit_cards": {"total": admit_cards_count},
@@ -156,83 +152,8 @@ async def dashboard_stats(
         "results": {"total": results_count},
         "entrance_exams": {"total": entrance_exams_count, "active": entrance_exams_active},
         "users": {"total": users_total, "active": users_active, "new_this_week": users_new_this_week},
-        "applications": {"total": apps_total},
     }
 
-
-@router.get("/analytics")
-async def platform_analytics(
-    admin=Depends(require_admin),
-    db: AsyncSession = Depends(get_db),
-):
-    """Platform analytics: demographics, application trends, popular orgs, notification stats."""
-    from app.models.notification import Notification
-
-    # User demographics — category breakdown
-    profiles = await db.execute(
-        select(UserProfile.category, func.count(UserProfile.id))
-        .where(UserProfile.category.isnot(None))
-        .group_by(UserProfile.category)
-    )
-    category_breakdown = {row[0]: row[1] for row in profiles.all()}
-
-    # User demographics — qualification breakdown
-    quals = await db.execute(
-        select(UserProfile.highest_qualification, func.count(UserProfile.id))
-        .where(UserProfile.highest_qualification.isnot(None))
-        .group_by(UserProfile.highest_qualification)
-    )
-    qualification_breakdown = {row[0]: row[1] for row in quals.all()}
-
-    # Application trends — daily counts for last 30 days
-    thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
-    daily_apps = await db.execute(
-        select(
-            func.date_trunc("day", Application.applied_on).label("day"),
-            func.count(Application.id),
-        )
-        .where(Application.applied_on >= thirty_days_ago)
-        .group_by("day")
-        .order_by("day")
-    )
-    application_trends = [
-        {"date": row[0].isoformat() if row[0] else None, "count": row[1]}
-        for row in daily_apps.all()
-    ]
-
-    # Popular organizations — top 10 by job count
-    popular_orgs = await db.execute(
-        select(Job.organization, func.count(Job.id).label("job_count"))
-        .where(Job.status == "active")
-        .group_by(Job.organization)
-        .order_by(func.count(Job.id).desc())
-        .limit(10)
-    )
-    top_organizations = [{"organization": row[0], "job_count": row[1]} for row in popular_orgs.all()]
-
-    # Application status breakdown
-    status_counts = await db.execute(
-        select(Application.status, func.count(Application.id))
-        .group_by(Application.status)
-    )
-    application_statuses = {row[0]: row[1] for row in status_counts.all()}
-
-    # Notification stats
-    notif_total = (await db.execute(select(func.count(Notification.id)))).scalar()
-    notif_unread = (await db.execute(
-        select(func.count(Notification.id)).where(Notification.is_read.is_(False))
-    )).scalar()
-
-    return {
-        "demographics": {
-            "categories": category_breakdown,
-            "qualifications": qualification_breakdown,
-        },
-        "application_trends": application_trends,
-        "application_statuses": application_statuses,
-        "top_organizations": top_organizations,
-        "notifications": {"total": notif_total, "unread": notif_unread},
-    }
 
 
 # ─── Job Management ─────────────────────────────────────────────────────────
@@ -419,10 +340,10 @@ async def create_job(
     await _log_action(db, admin, "create_job", "job_vacancy", job.id,
                       details=f"Created job: {body.job_title}", request=request)
 
-    # If created as active, notify org followers
+    # If created as active, notify watchers
     if body.status == "active":
-        from app.tasks.notifications import send_new_job_notifications
-        send_new_job_notifications.delay(str(job.id))
+        from app.tasks.notifications import notify_watchers_on_update
+        notify_watchers_on_update.delay("job", str(job.id))
 
     return JobResponse.model_validate(job).model_dump()
 
@@ -530,14 +451,10 @@ async def update_job(
     await _log_action(db, admin, "update_job", "job_vacancy", job.id,
                       changes=changes, request=request)
 
-    # Notify users who marked this job as priority
-    from app.tasks.notifications import notify_priority_subscribers
-    notify_priority_subscribers.delay(str(job.id))
-
-    # If status changed to active, also notify org followers
+    # If status changed to active, also notify watchers
     if "status" in changes and body.status == "active":
-        from app.tasks.notifications import send_new_job_notifications
-        send_new_job_notifications.delay(str(job.id))
+        from app.tasks.notifications import notify_watchers_on_update
+        notify_watchers_on_update.delay("job", str(job.id))
 
     return JobResponse.model_validate(job).model_dump()
 
@@ -565,9 +482,9 @@ async def approve_job(
     await _log_action(db, admin, "approve_job", "job_vacancy", job.id,
                       details=f"Approved: {job.job_title}", request=request)
 
-    # Trigger notification to org followers (async Celery task)
-    from app.tasks.notifications import send_new_job_notifications
-    send_new_job_notifications.delay(str(job.id))
+    # Trigger notification to watchers (async Celery task)
+    from app.tasks.notifications import notify_watchers_on_update
+    notify_watchers_on_update.delay("job", str(job.id))
 
     return JobResponse.model_validate(job).model_dump()
 

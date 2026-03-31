@@ -32,22 +32,21 @@ from sqlalchemy import func, select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
-from app.dependencies import get_admin_user, get_current_user, get_db
+from app.dependencies import get_current_user, get_db, require_operator
 from app.models.admit_card import AdmitCard
 from app.models.answer_key import AnswerKey
 from app.models.job import Job
 from app.models.entrance_exam import EntranceExam
 from app.models.result import Result
 from app.schemas.jobs import (
-    AdmitCardCreate,
+    AdmitCardCreateRequest,
     AdmitCardResponse,
     AdmitCardUpdateRequest,
-    AnswerKeyCreate,
+    AnswerKeyCreateRequest,
     AnswerKeyResponse,
     AnswerKeyUpdateRequest,
-    ResultCreate,
-    ResultResponse,
     ResultCreateRequest,
+    ResultResponse,
     ResultUpdateRequest,
 )
 from app.services.matching import (

@@ -68,7 +68,6 @@ If `refresh_token` is provided, its JTI is also added to the Redis blocklist so 
 | POST | `/users/me/set-password` | User | Set password for Google OAuth users |
 | POST | `/users/me/change-password` | User | Change password (requires current password) |
 | POST | `/users/me/link-email-password` | User | Link email+password to phone-only account |
-| GET | `/users/me/following` | User | List followed organizations |
 
 **Profile preference fields** (used for job matching):
 - `preferred_states` — JSON array of state names, e.g. `["Delhi", "Uttar Pradesh"]`
@@ -82,14 +81,32 @@ If `refresh_token` is provided, its JTI is also added to the Redis blocklist so 
 
 ---
 
-## Organization Follow
+## Watch (Track Jobs & Exams)
+
+Users can watch specific jobs or entrance exams to receive automatic notifications.
 
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
-| POST | `/organizations/{name}/follow` | User | Follow an org (idempotent, max 50) |
-| DELETE | `/organizations/{name}/follow` | User | Unfollow (404 if not following) |
+| POST | `/jobs/{job_id}/watch` | User | Watch a job (idempotent, max 100) |
+| DELETE | `/jobs/{job_id}/watch` | User | Unwatch a job (404 if not watching) |
+| POST | `/entrance-exams/{exam_id}/watch` | User | Watch an entrance exam (idempotent) |
+| DELETE | `/entrance-exams/{exam_id}/watch` | User | Unwatch an entrance exam |
+| GET | `/users/me/watched` | User | List all watched jobs + exams |
 
-When a job from a followed org is approved (draft → active), a `new_job_from_followed_org` notification is created via Celery.
+**Automatic notifications triggered by watching:**
+- `deadline_reminder_7d` — 7 days before `application_end`
+- `deadline_reminder_3d` — 3 days before `application_end`
+- `deadline_reminder_1d` — Last day to apply (high priority)
+- `watched_item_updated` — When admin approves or updates the job/exam
+
+**Response for `GET /users/me/watched`:**
+```json
+{
+  "jobs": [{ "id": "uuid", "job_title": "...", "slug": "...", "organization": "...", "application_end": "2026-05-01", "status": "active" }],
+  "exams": [{ "id": "uuid", "exam_name": "...", "slug": "...", "conducting_body": "...", "application_end": "2026-06-01", "status": "active" }],
+  "total": 2
+}
+```
 
 ---
 
@@ -215,33 +232,6 @@ The first admin account must be seeded directly in the database. All subsequent 
 | GET | `/admin/stats` | Operator+ | Job/user/application counts (includes new_this_week) |
 | GET | `/admin/analytics` | Admin only | Platform analytics (demographics, trends, etc.) |
 | GET | `/admin/logs` | Admin only | Admin audit trail |
-
----
-
-## Application Tracking
-
-All application endpoints require a user JWT.
-
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| GET | `/applications` | User | List own tracked applications (filterable) |
-| GET | `/applications/stats` | User | Application counts by status |
-| POST | `/applications` | User | Track / save a job application |
-| PUT | `/applications/:id` | User | Update (status, notes, priority, app number) |
-| DELETE | `/applications/:id` | User | Remove from tracker (204) |
-
-**Query Parameters for `GET /applications`:**
-
-| Param | Type | Description |
-|-------|------|-------------|
-| `status` | string | Filter by status |
-| `is_priority` | boolean | Filter priority applications |
-| `limit` | int | 1-100, default: 20 |
-| `offset` | int | Default: 0 |
-
-**Valid statuses:** `applied`, `admit_card_released`, `exam_completed`, `result_pending`, `selected`, `rejected`, `waiting_list`
-
-**Deadline Reminders:** A Celery Beat task runs daily at 08:00 UTC and creates in-app notifications at T-7, T-3, and T-1 days before `application_end` for all tracked applications. If the user has email enabled, a deadline reminder email is also sent.
 
 ---
 
@@ -371,47 +361,6 @@ Authorization: Bearer <user_token>
 Scoring: state match (+3), category match (+3), education match (+2), recency <7d (+1).
 Fallback: returns latest active jobs if user has no preferences set.
 
-### Follow Organization
-```
-POST /api/v1/organizations/UPSC/follow
-Authorization: Bearer <user_token>
-→ 200 { "message": "Now following UPSC", "followed_organizations": ["UPSC"] }
-```
-
-### List Following
-```
-GET /api/v1/users/me/following
-Authorization: Bearer <user_token>
-→ 200 { "followed_organizations": ["UPSC", "SSC"], "count": 2 }
-```
-
-### Track Application
-```
-POST /api/v1/applications
-Authorization: Bearer <user_token>
-{
-  "job_id": "82886414-e24b-4bef-97ea-898936ca8333",
-  "notes": "Preparing for this exam",
-  "is_priority": true
-}
-→ 201 { "id": "uuid", "status": "applied", "job": { "job_title": "...", ... } }
-```
-
-### Update Application Status
-```
-PUT /api/v1/applications/<id>
-Authorization: Bearer <user_token>
-{ "status": "admit_card_released", "application_number": "UPSC-2026-12345" }
-→ 200 { "id": "uuid", "status": "admit_card_released", ... }
-```
-
-### Application Stats
-```
-GET /api/v1/applications/stats
-Authorization: Bearer <user_token>
-→ 200 { "applied": 3, "admit_card_released": 1, "total": 4 }
-```
-
 ### List Notifications
 ```
 GET /api/v1/notifications?is_read=false&limit=10
@@ -504,7 +453,6 @@ Authorization: Bearer <admin_token>
   "results": { "total": 2, "active": 2 },
   "entrance_exams": { "total": 5, "active": 4 },
   "users": { "total": 3, "active": 3, "new_this_week": 1 },
-  "applications": { "total": 12 }
 }
 ```
 
@@ -615,8 +563,6 @@ These are now top-level resources, independent of jobs and entrance exams. Each 
 |--------|----------|-------------|
 | GET | `/admit-cards` | List all admit cards (paginated) |
 | GET | `/admit-cards/{id}` | Get single admit card by ID (includes job/exam context) |
-| GET | `/jobs/{job_id}/admit-cards` | List admit cards for a specific job |
-| GET | `/entrance-exams/{exam_id}/admit-cards` | List admit cards for a specific exam |
 
 #### Admin Endpoints (operator+)
 
@@ -638,8 +584,6 @@ These are now top-level resources, independent of jobs and entrance exams. Each 
 |--------|----------|-------------|
 | GET | `/answer-keys` | List all answer keys (paginated) |
 | GET | `/answer-keys/{id}` | Get single answer key by ID (includes job/exam context) |
-| GET | `/jobs/{job_id}/answer-keys` | List answer keys for a specific job |
-| GET | `/entrance-exams/{exam_id}/answer-keys` | List answer keys for a specific exam |
 
 #### Admin Endpoints (operator+)
 
@@ -661,8 +605,6 @@ These are now top-level resources, independent of jobs and entrance exams. Each 
 |--------|----------|-------------|
 | GET | `/results` | List all results (paginated) |
 | GET | `/results/{id}` | Get single result by ID (includes job/exam context) |
-| GET | `/jobs/{job_id}/results` | List results for a specific job |
-| GET | `/entrance-exams/{exam_id}/results` | List results for a specific exam |
 
 #### Admin Endpoints (operator+)
 
@@ -838,7 +780,6 @@ Authorization: Bearer <admin_token>
 | `user_profiles` | Extended user profile (education, category, location) |
 | `job_vacancies` | Job postings with FTS vector (latest_job / admit_card / answer_key / result) |
 | `entrance_exams` | Admission/entrance exams (NEET, JEE, CLAT, CAT, GATE etc.) — separate from jobs |
-| `user_job_applications` | Application tracking |
 | `notifications` | User notifications |
 | `notification_delivery_log` | Per-channel delivery tracking (push/email/whatsapp/telegram) |
 | `user_devices` | Device registry (FCM token, fingerprint de-duplication) |

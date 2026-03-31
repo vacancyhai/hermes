@@ -1,5 +1,5 @@
 {% extends "shared/base.html" %}
-{% block title %}Dashboard — Hermes{% endblock %}
+{% block title %}My Watchlist — Hermes{% endblock %}
 
 {% block head %}
 <style>
@@ -7,103 +7,66 @@
     .stat-card{background:#fff;border:1px solid #e2e8f0;border-radius:.5rem;padding:1rem;text-align:center}
     .stat-card .count{font-size:2rem;font-weight:700;color:#1e3a5f}
     .stat-card .label{font-size:.85rem;color:#64748b;margin-top:.25rem}
-    .filter-tabs{display:flex;gap:.5rem;margin-bottom:1.5rem;flex-wrap:wrap}
-    .filter-tab{padding:.4rem .85rem;border-radius:9999px;font-size:.85rem;border:1px solid #cbd5e1;background:#fff;color:#334155;cursor:pointer;text-decoration:none}
-    .filter-tab:hover{border-color:#94a3b8;text-decoration:none}
-    .filter-tab.active{background:#1e3a5f;color:#fff;border-color:#1e3a5f}
-    .app-card{background:#fff;border:1px solid #e2e8f0;border-radius:.5rem;padding:1rem;margin-bottom:.75rem;display:flex;justify-content:space-between;align-items:flex-start;gap:1rem}
-    .app-card .app-info h3{font-size:1rem;margin-bottom:.25rem}
-    .app-card .app-info .org{color:#64748b;font-size:.85rem}
-    .app-card .app-meta{text-align:right;flex-shrink:0}
-    .app-card .app-meta .deadline{font-size:.8rem;color:#64748b}
-    .status-badge{display:inline-block;padding:.15rem .5rem;border-radius:9999px;font-size:.75rem;font-weight:600}
-    .status-applied{background:#dbeafe;color:#1e40af}
-    .status-under_review{background:#fef3c7;color:#92400e}
-    .status-shortlisted{background:#d1fae5;color:#065f46}
-    .status-rejected{background:#fee2e2;color:#991b1b}
-    .status-selected{background:#d1fae5;color:#065f46}
-    .status-withdrawn{background:#f1f5f9;color:#64748b}
-    .priority-mark{color:#dc2626;font-weight:700;margin-left:.35rem}
+    .section-title{font-size:1.1rem;font-weight:600;color:#1e3a5f;margin:1.5rem 0 .75rem}
+    .watch-card{background:#fff;border:1px solid #e2e8f0;border-radius:.5rem;padding:1rem;margin-bottom:.75rem;display:flex;justify-content:space-between;align-items:flex-start;gap:1rem}
+    .watch-card h3{font-size:1rem;margin-bottom:.25rem}
+    .watch-card .org{color:#64748b;font-size:.85rem}
+    .watch-card .deadline{font-size:.8rem;color:#64748b;margin-top:.25rem}
     .empty-state{text-align:center;padding:3rem 1rem;color:#64748b}
+    .type-pill{display:inline-block;padding:.15rem .5rem;border-radius:9999px;font-size:.75rem;font-weight:600;background:#dbeafe;color:#1e40af}
 </style>
 {% endblock %}
 
 {% block content %}
-<h1 style="margin-bottom:1.5rem">My Applications</h1>
+<h1 style="margin-bottom:1.5rem">My Watchlist</h1>
 
-<!-- Stats -->
 <div class="stats-grid">
     <div class="stat-card">
-        <div class="count">{{ stats.get('total', 0) }}</div>
-        <div class="label">Total</div>
+        <div class="count">{{ total }}</div>
+        <div class="label">Watching</div>
     </div>
     <div class="stat-card">
-        <div class="count">{{ stats.get('applied', 0) }}</div>
-        <div class="label">Applied</div>
+        <div class="count">{{ watched_jobs | length }}</div>
+        <div class="label">Jobs</div>
     </div>
     <div class="stat-card">
-        <div class="count">{{ stats.get('shortlisted', 0) }}</div>
-        <div class="label">Shortlisted</div>
-    </div>
-    <div class="stat-card">
-        <div class="count">{{ stats.get('selected', 0) }}</div>
-        <div class="label">Selected</div>
+        <div class="count">{{ watched_exams | length }}</div>
+        <div class="label">Exams</div>
     </div>
 </div>
 
-<!-- Filter Tabs -->
-<div class="filter-tabs">
-    <a href="/dashboard" class="filter-tab {{ 'active' if not current_status else '' }}">All</a>
-    <a href="/dashboard?status=applied" class="filter-tab {{ 'active' if current_status == 'applied' else '' }}">Applied</a>
-    <a href="/dashboard?status=admit_card_released" class="filter-tab {{ 'active' if current_status == 'admit_card_released' else '' }}">Admit Card</a>
-    <a href="/dashboard?status=exam_completed" class="filter-tab {{ 'active' if current_status == 'exam_completed' else '' }}">Exam Done</a>
-    <a href="/dashboard?status=result_pending" class="filter-tab {{ 'active' if current_status == 'result_pending' else '' }}">Result Pending</a>
-    <a href="/dashboard?status=selected" class="filter-tab {{ 'active' if current_status == 'selected' else '' }}">Selected</a>
-    <a href="/dashboard?status=rejected" class="filter-tab {{ 'active' if current_status == 'rejected' else '' }}">Rejected</a>
+{% if watched_jobs %}
+<div class="section-title">📋 Watched Jobs</div>
+{% for item in watched_jobs %}
+<div class="watch-card">
+    <div>
+        <h3><a href="/jobs/{{ item.slug }}">{{ item.job_title }}</a></h3>
+        <div class="org">{{ item.organization }}</div>
+        {% if item.application_end %}<div class="deadline">Deadline: {{ item.application_end }}</div>{% endif %}
+    </div>
+    <span class="type-pill">Job</span>
 </div>
-
-<!-- Application List -->
-<div id="application-list">
-{% if applications %}
-    {% for app in applications %}
-    <div class="app-card">
-        <div class="app-info">
-            <h3>
-                <a href="/jobs/{{ app.job.slug if app.job else '' }}">{{ app.job.job_title if app.job else 'Unknown Job' }}</a>
-                {% if app.is_priority %}<span class="priority-mark">★</span>{% endif %}
-            </h3>
-            <div class="org">{{ app.job.organization if app.job else '' }}</div>
-            {% if app.application_number %}
-            <div style="font-size:.8rem;color:#475569;margin-top:.25rem">App #{{ app.application_number }}</div>
-            {% endif %}
-            {% if app.notes %}
-            <div style="font-size:.8rem;color:#475569;margin-top:.25rem">{{ app.notes[:100] }}</div>
-            {% endif %}
-        </div>
-        <div class="app-meta">
-            <span class="status-badge status-{{ app.status }}">{{ app.status | replace('_', ' ') | title }}</span>
-            {% if app.job and app.job.application_end %}
-            <div class="deadline">Deadline: {{ app.job.application_end }}</div>
-            {% endif %}
-        </div>
-    </div>
-    {% endfor %}
-
-    {% if pagination.get('has_more') %}
-    <div style="text-align:center;margin:1.5rem 0">
-        <button class="btn btn-outline"
-                hx-get="/dashboard/applications?offset={{ pagination.offset + pagination.limit }}{{ '&status=' + current_status if current_status else '' }}"
-                hx-target="#application-list"
-                hx-swap="beforeend">
-            Load more
-        </button>
-    </div>
-    {% endif %}
-{% else %}
-    <div class="empty-state">
-        <p style="font-size:1.1rem;margin-bottom:.5rem">No applications tracked yet.</p>
-        <p>Browse <a href="/">jobs</a> and start tracking your applications!</p>
-    </div>
+{% endfor %}
 {% endif %}
+
+{% if watched_exams %}
+<div class="section-title">🎓 Watched Exams</div>
+{% for item in watched_exams %}
+<div class="watch-card">
+    <div>
+        <h3><a href="/entrance-exams/{{ item.slug }}">{{ item.exam_name }}</a></h3>
+        <div class="org">{{ item.conducting_body }}</div>
+        {% if item.application_end %}<div class="deadline">Deadline: {{ item.application_end }}</div>{% endif %}
+    </div>
+    <span class="type-pill" style="background:#d1fae5;color:#065f46">Exam</span>
 </div>
+{% endfor %}
+{% endif %}
+
+{% if not watched_jobs and not watched_exams %}
+<div class="empty-state">
+    <p style="font-size:1.1rem;margin-bottom:.5rem">No items watched yet.</p>
+    <p>Browse <a href="/">jobs</a> or <a href="/entrance-exams">entrance exams</a> and watch items to get deadline reminders.</p>
+</div>
+{% endif %}
 {% endblock %}

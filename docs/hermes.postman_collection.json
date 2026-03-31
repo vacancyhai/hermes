@@ -1,2185 +1,1563 @@
 {
-	"info": {
-		"name": "Hermes – Gov Job Portal",
-		"description": "API collection for Hermes Government Job Vacancy Portal.\n\nVariables:\n- `base_url` → http://localhost:8000/api/v1\n- `user_token` → set automatically after user login\n- `admin_token` → set automatically after admin login\n- `refresh_token` / `admin_refresh_token` → set after login\n- `notification_id` → set after listing notifications",
-		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
-	},
-	"variable": [
-		{
-			"key": "base_url",
-			"value": "http://localhost:8000/api/v1"
-		},
-		{
-			"key": "user_token",
-			"value": ""
-		},
-		{
-			"key": "admin_token",
-			"value": ""
-		},
-		{
-			"key": "refresh_token",
-			"value": ""
-		},
-		{
-			"key": "admin_refresh_token",
-			"value": ""
-		},
-		{
-			"key": "job_id",
-			"value": ""
-		},
-		{
-			"key": "job_slug",
-			"value": ""
-		},
-		{
-			"key": "user_id",
-			"value": ""
-		},
-		{
-			"key": "application_id",
-			"value": ""
-		},
-		{
-			"key": "notification_id",
-			"value": ""
-		},
-		{
-			"key": "exam_id",
-			"value": ""
-		},
-		{
-			"key": "exam_slug",
-			"value": ""
-		},
-		{
-			"key": "doc_id",
-			"value": ""
-		},
-		{
-			"key": "card_id",
-			"value": ""
-		},
-		{
-			"key": "key_id",
-			"value": ""
-		},
-		{
-			"key": "result_id",
-			"value": ""
-		}
-	],
-	"item": [
-		{
-			"name": "Health",
-			"item": [
-				{
-					"name": "Health Check",
-					"request": {
-						"method": "GET",
-						"url": "{{base_url}}/health",
-						"header": []
-					}
-				}
-			]
-		},
-		{
-			"name": "Auth – User (Email OTP Registration)",
-			"item": [
-				{
-					"name": "Send Email OTP",
-					"description": "Send OTP to email for registration. OTP expires in 10 minutes.",
-					"request": {
-						"method": "POST",
-						"url": "{{base_url}}/auth/send-email-otp",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"email\": \"newuser@example.com\",\n  \"full_name\": \"New User\"\n}"
-						}
-					}
-				},
-				{
-					"name": "Verify Email OTP",
-					"description": "Verify the 6-digit OTP sent to email. Returns verification token.",
-					"request": {
-						"method": "POST",
-						"url": "{{base_url}}/auth/verify-email-otp",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"email\": \"newuser@example.com\",\n  \"otp\": \"123456\"\n}"
-						}
-					}
-				},
-				{
-					"name": "Complete Registration",
-					"description": "Complete registration with password after OTP verification. Password must have min 8 chars, 1 uppercase, 1 special character.",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"var json = pm.response.json();",
-									"if (json.custom_token) {",
-									"    console.log('Registration complete! Use custom_token with Firebase SDK to sign in.');",
-									"}"
-								]
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"url": "{{base_url}}/auth/complete-registration",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"verification_token\": \"PASTE_VERIFICATION_TOKEN_HERE\",\n  \"password\": \"StrongPass@123\"\n}"
-						}
-					}
-				},
-				{
-					"name": "Check Phone Availability",
-					"description": "Check if a phone number is already registered.",
-					"request": {
-						"method": "POST",
-						"url": "{{base_url}}/auth/check-phone-availability",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"phone\": \"+919876543210\"\n}"
-						}
-					}
-				}
-			]
-		},
-		{
-			"name": "Auth – User (Firebase)",
-			"item": [
-				{
-					"name": "Verify Firebase Token",
-					"description": "Exchange a Firebase ID token (from Firebase JS SDK) for an internal JWT pair. Creates user if new, links existing by firebase_uid or email.",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"var json = pm.response.json();",
-									"if (json.access_token) {",
-									"    pm.collectionVariables.set('user_token', json.access_token);",
-									"    pm.collectionVariables.set('refresh_token', json.refresh_token);",
-									"}"
-								]
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"url": "{{base_url}}/auth/verify-token",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"id_token\": \"PASTE_FIREBASE_ID_TOKEN_HERE\"\n}"
-						}
-					}
-				},
-				{
-					"name": "Logout",
-					"request": {
-						"method": "POST",
-						"url": "{{base_url}}/auth/logout",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{user_token}}"
-							}
-						]
-					}
-				},
-				{
-					"name": "Check User Providers",
-					"description": "Check which authentication providers (Google, email/password) a user has.",
-					"request": {
-						"method": "POST",
-						"url": "{{base_url}}/auth/check-user-providers",
-						"header": [{"key": "Content-Type", "value": "application/json"}],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"email\": \"user@example.com\"\n}"
-						}
-					}
-				},
-				{
-					"name": "Add Password to Google Account",
-					"description": "Add password to a Google OAuth account that doesn't have one yet.",
-					"request": {
-						"method": "POST",
-						"url": "{{base_url}}/auth/add-password",
-						"header": [{"key": "Content-Type", "value": "application/json"}],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"id_token\": \"PASTE_FIREBASE_ID_TOKEN_HERE\",\n  \"password\": \"NewPass@123\"\n}"
-						}
-					}
-				},
-				{
-					"name": "Refresh Token",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"var json = pm.response.json();",
-									"if (json.access_token) {",
-									"    pm.collectionVariables.set('user_token', json.access_token);",
-									"    pm.collectionVariables.set('refresh_token', json.refresh_token);",
-									"}"
-								]
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"url": "{{base_url}}/auth/refresh",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"refresh_token\": \"{{refresh_token}}\"\n}"
-						}
-					}
-				}
-			]
-		},
-		{
-			"name": "Auth – Admin",
-			"item": [
-				{
-					"name": "Admin Login",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"var json = pm.response.json();",
-									"if (json.access_token) {",
-									"    pm.collectionVariables.set('admin_token', json.access_token);",
-									"    pm.collectionVariables.set('admin_refresh_token', json.refresh_token);",
-									"}"
-								]
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"url": "{{base_url}}/auth/admin/login",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"email\": \"admin@test.com\",\n  \"password\": \"Admin1234\"\n}"
-						}
-					}
-				},
-				{
-					"name": "Admin Logout",
-					"request": {
-						"method": "POST",
-						"url": "{{base_url}}/auth/admin/logout",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{admin_token}}"
-							}
-						]
-					}
-				},
-				{
-					"name": "Admin Refresh Token",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"var json = pm.response.json();",
-									"if (json.access_token) {",
-									"    pm.collectionVariables.set('admin_token', json.access_token);",
-									"    pm.collectionVariables.set('admin_refresh_token', json.refresh_token);",
-									"}"
-								]
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"url": "{{base_url}}/auth/admin/refresh",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"refresh_token\": \"{{admin_refresh_token}}\"\n}"
-						}
-					}
-				}
-			]
-		},
-		{
-			"name": "Jobs – Public",
-			"item": [
-				{
-					"name": "List Jobs",
-					"request": {
-						"method": "GET",
-						"url": {
-							"raw": "{{base_url}}/jobs?limit=20&offset=0",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"jobs"
-							],
-							"query": [
-								{
-									"key": "limit",
-									"value": "20"
-								},
-								{
-									"key": "offset",
-									"value": "0"
-								},
-								{
-									"key": "q",
-									"value": "",
-									"disabled": true
-								},
-								{
-									"key": "job_type",
-									"value": "",
-									"disabled": true
-								},
-								{
-									"key": "qualification_level",
-									"value": "",
-									"disabled": true
-								},
-								{
-									"key": "organization",
-									"value": "",
-									"disabled": true
-								},
-								{
-									"key": "department",
-									"value": "",
-									"disabled": true
-								},
-								{
-									"key": "is_featured",
-									"value": "true",
-									"disabled": true
-								},
-								{
-									"key": "is_urgent",
-									"value": "true",
-									"disabled": true
-								}
-							]
-						},
-						"header": []
-					}
-				},
-				{
-					"name": "Search Jobs (FTS)",
-					"request": {
-						"method": "GET",
-						"url": {
-							"raw": "{{base_url}}/jobs?q=SSC+CGL&limit=10",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"jobs"
-							],
-							"query": [
-								{
-									"key": "q",
-									"value": "SSC CGL"
-								},
-								{
-									"key": "limit",
-									"value": "10"
-								}
-							]
-						},
-						"header": []
-					}
-				},
-				{
-					"name": "Job Detail by Slug",
-					"request": {
-						"method": "GET",
-						"url": "{{base_url}}/jobs/{{job_slug}}",
-						"header": []
-					}
-				},
-				{
-					"name": "Recommended Jobs",
-					"request": {
-						"method": "GET",
-						"url": {
-							"raw": "{{base_url}}/jobs/recommended?limit=20&offset=0",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"jobs",
-								"recommended"
-							],
-							"query": [
-								{
-									"key": "limit",
-									"value": "20"
-								},
-								{
-									"key": "offset",
-									"value": "0"
-								}
-							]
-						},
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{user_token}}"
-							}
-						]
-					}
-				}
-			]
-		},
-		{
-			"name": "Entrance Exams – Public",
-			"item": [
-				{
-					"name": "List Entrance Exams",
-					"request": {
-						"method": "GET",
-						"url": {
-							"raw": "{{base_url}}/entrance-exams?limit=20&offset=0",
-							"host": ["{{base_url}}"],
-							"path": ["entrance-exams"],
-							"query": [
-								{"key": "limit", "value": "20"},
-								{"key": "offset", "value": "0"},
-								{"key": "q", "value": "", "disabled": true},
-								{"key": "stream", "value": "", "disabled": true},
-								{"key": "exam_type", "value": "", "disabled": true},
-								{"key": "is_featured", "value": "true", "disabled": true}
-							]
-						},
-						"header": []
-					}
-				},
-				{
-					"name": "Get Exam by Slug",
-					"request": {
-						"method": "GET",
-						"url": "{{base_url}}/entrance-exams/{{exam_slug}}",
-						"header": []
-					}
-				},
-				{
-					"name": "Get Exam by ID",
-					"request": {
-						"method": "GET",
-						"url": "{{base_url}}/entrance-exams/by-id/{{exam_id}}",
-						"header": []
-					}
-				},
-				{
-					"name": "Get Exam Admit Cards",
-					"request": {
-						"method": "GET",
-						"url": "{{base_url}}/entrance-exams/{{exam_id}}/admit-cards",
-						"header": []
-					}
-				},
-				{
-					"name": "Get Exam Answer Keys",
-					"request": {
-						"method": "GET",
-						"url": "{{base_url}}/entrance-exams/{{exam_id}}/answer-keys",
-						"header": []
-					}
-				},
-				{
-					"name": "Get Exam Results",
-					"request": {
-						"method": "GET",
-						"url": "{{base_url}}/entrance-exams/{{exam_id}}/results",
-						"header": []
-					}
-				}
-			]
-		},
-		{
-			"name": "Job Documents – Public",
-			"item": [
-				{
-					"name": "Get Job Admit Cards",
-					"request": {
-						"method": "GET",
-						"url": "{{base_url}}/jobs/{{job_id}}/admit-cards",
-						"header": []
-					}
-				},
-				{
-					"name": "Get Job Answer Keys",
-					"request": {
-						"method": "GET",
-						"url": "{{base_url}}/jobs/{{job_id}}/answer-keys",
-						"header": []
-					}
-				},
-				{
-					"name": "Get Job Results",
-					"request": {
-						"method": "GET",
-						"url": "{{base_url}}/jobs/{{job_id}}/results",
-						"header": []
-					}
-				}
-			]
-		},
-		{
-			"name": "Admin – Jobs",
-			"item": [
-				{
-					"name": "List All Jobs (Admin)",
-					"request": {
-						"method": "GET",
-						"url": {
-							"raw": "{{base_url}}/admin/jobs?limit=20&offset=0",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"admin",
-								"jobs"
-							],
-							"query": [
-								{
-									"key": "limit",
-									"value": "20"
-								},
-								{
-									"key": "offset",
-									"value": "0"
-								},
-								{
-									"key": "status",
-									"value": "",
-									"disabled": true
-								}
-							]
-						},
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{admin_token}}"
-							}
-						]
-					}
-				},
-				{
-					"name": "Create Job",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"var json = pm.response.json();",
-									"if (json.id) {",
-									"    pm.collectionVariables.set('job_id', json.id);",
-									"    pm.collectionVariables.set('job_slug', json.slug);",
-									"}"
-								]
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"url": "{{base_url}}/admin/jobs",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							},
-							{
-								"key": "Authorization",
-								"value": "Bearer {{admin_token}}"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"job_title\": \"SSC CGL 2026\",\n  \"organization\": \"Staff Selection Commission\",\n  \"job_type\": \"latest_job\",\n  \"qualification_level\": \"graduate\",\n  \"total_vacancies\": 8000,\n  \"description\": \"Combined Graduate Level Exam 2026 recruitment.\",\n  \"application_end\": \"2026-07-15\",\n  \"fee_general\": 100,\n  \"fee_obc\": 100,\n  \"fee_sc_st\": 0,\n  \"fee_ews\": 0,\n  \"fee_female\": 0,\n  \"status\": \"draft\"\n}"
-						}
-					}
-				},
-				{
-					"name": "Get Job Detail (Admin)",
-					"request": {
-						"method": "GET",
-						"url": "{{base_url}}/admin/jobs/{{job_id}}",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{admin_token}}"
-							}
-						]
-					}
-				},
-				{
-					"name": "Update Job",
-					"request": {
-						"method": "PUT",
-						"url": "{{base_url}}/admin/jobs/{{job_id}}",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							},
-							{
-								"key": "Authorization",
-								"value": "Bearer {{admin_token}}"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"total_vacancies\": 9000,\n  \"is_featured\": true\n}"
-						}
-					}
-				},
-				{
-					"name": "Approve Job (draft → active)",
-					"request": {
-						"method": "PUT",
-						"url": "{{base_url}}/admin/jobs/{{job_id}}/approve",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{admin_token}}"
-							}
-						]
-					}
-				},
-				{
-					"name": "Delete Job (Admin only)",
-					"request": {
-						"method": "DELETE",
-						"url": "{{base_url}}/admin/jobs/{{job_id}}",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{admin_token}}"
-							}
-						]
-					}
-				},
-				{
-					"name": "Extract PDF Data (Form Auto-Fill)",
-					"request": {
-						"method": "POST",
-						"url": "{{base_url}}/admin/jobs/extract-pdf",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{admin_token}}"
-							}
-						],
-						"body": {
-							"mode": "formdata",
-							"formdata": [
-								{
-									"key": "file",
-									"type": "file",
-									"src": "",
-									"description": "PDF notification file (max 10MB) - returns JSON immediately"
-								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "List Admit Cards (Admin)",
-					"request": {
-						"method": "GET",
-						"url": {
-							"raw": "{{base_url}}/admin/admit-cards?limit=20&offset=0",
-							"host": ["{{base_url}}"],
-							"path": ["admin", "admit-cards"],
-							"query": [
-								{"key": "limit", "value": "20"},
-								{"key": "offset", "value": "0"}
-							]
-						},
-						"header": [
-							{"key": "Authorization", "value": "Bearer {{admin_token}}"}
-						]
-					}
-				},
-				{
-					"name": "List Answer Keys (Admin)",
-					"request": {
-						"method": "GET",
-						"url": {
-							"raw": "{{base_url}}/admin/answer-keys?limit=20&offset=0",
-							"host": ["{{base_url}}"],
-							"path": ["admin", "answer-keys"],
-							"query": [
-								{"key": "limit", "value": "20"},
-								{"key": "offset", "value": "0"}
-							]
-						},
-						"header": [
-							{"key": "Authorization", "value": "Bearer {{admin_token}}"}
-						]
-					}
-				},
-				{
-					"name": "List Results (Admin)",
-					"request": {
-						"method": "GET",
-						"url": {
-							"raw": "{{base_url}}/admin/results?limit=20&offset=0",
-							"host": ["{{base_url}}"],
-							"path": ["admin", "results"],
-							"query": [
-								{"key": "limit", "value": "20"},
-								{"key": "offset", "value": "0"}
-							]
-						},
-						"header": [
-							{"key": "Authorization", "value": "Bearer {{admin_token}}"}
-						]
-					}
-				}
-			]
-		},
-		{
-			"name": "Admin – Users",
-			"item": [
-				{
-					"name": "List Users",
-					"request": {
-						"method": "GET",
-						"url": {
-							"raw": "{{base_url}}/admin/users?limit=20&offset=0",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"admin",
-								"users"
-							],
-							"query": [
-								{
-									"key": "limit",
-									"value": "20"
-								},
-								{
-									"key": "offset",
-									"value": "0"
-								},
-								{
-									"key": "q",
-									"value": "",
-									"disabled": true
-								},
-								{
-									"key": "status",
-									"value": "",
-									"disabled": true
-								}
-							]
-						},
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{admin_token}}"
-							}
-						]
-					}
-				},
-				{
-					"name": "User Detail",
-					"request": {
-						"method": "GET",
-						"url": "{{base_url}}/admin/users/{{user_id}}",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{admin_token}}"
-							}
-						]
-					}
-				},
-				{
-					"name": "Suspend / Activate User",
-					"request": {
-						"method": "PUT",
-						"url": "{{base_url}}/admin/users/{{user_id}}/status",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							},
-							{
-								"key": "Authorization",
-								"value": "Bearer {{admin_token}}"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"status\": \"suspended\"\n}"
-						}
-					}
-				},
-				{
-					"name": "Change User Role (Admin only)",
-					"request": {
-						"method": "PUT",
-						"url": "{{base_url}}/admin/users/{{user_id}}/role",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							},
-							{
-								"key": "Authorization",
-								"value": "Bearer {{admin_token}}"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"role\": \"operator\"\n}"
-						}
-					}
-				},
-				{
-					"name": "Create Admin User (Admin only)",
-					"description": "Create a new admin or operator account. Only admins can create new admin users.",
-					"request": {
-						"method": "POST",
-						"url": "{{base_url}}/admin/admin-users",
-						"header": [
-							{"key": "Content-Type", "value": "application/json"},
-							{"key": "Authorization", "value": "Bearer {{admin_token}}"}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"email\": \"operator@example.com\",\n  \"password\": \"Operator@123\",\n  \"full_name\": \"New Operator\",\n  \"role\": \"operator\",\n  \"phone\": null,\n  \"department\": null\n}"
-						}
-					}
-				}
-			]
-		},
-		{
-			"name": "Admin – Entrance Exams",
-			"item": [
-				{
-					"name": "List Entrance Exams (Admin)",
-					"request": {
-						"method": "GET",
-						"url": {
-							"raw": "{{base_url}}/admin/entrance-exams?limit=20&offset=0",
-							"host": ["{{base_url}}"],
-							"path": ["admin", "entrance-exams"],
-							"query": [
-								{"key": "limit", "value": "20"},
-								{"key": "offset", "value": "0"},
-								{"key": "stream", "value": "", "disabled": true},
-								{"key": "exam_type", "value": "", "disabled": true},
-								{"key": "status", "value": "", "disabled": true}
-							]
-						},
-						"header": [{"key": "Authorization", "value": "Bearer {{admin_token}}"}]
-					}
-				},
-				{
-					"name": "Get Entrance Exam (Admin)",
-					"request": {
-						"method": "GET",
-						"url": "{{base_url}}/admin/entrance-exams/{{exam_id}}",
-						"header": [{"key": "Authorization", "value": "Bearer {{admin_token}}"}]
-					}
-				},
-				{
-					"name": "Create Entrance Exam",
-					"event": [{"listen": "test", "script": {"exec": ["var json = pm.response.json();", "if (json.id) {", "    pm.collectionVariables.set('exam_id', json.id);", "    pm.collectionVariables.set('exam_slug', json.slug);", "}"]}}],
-					"request": {
-						"method": "POST",
-						"url": "{{base_url}}/admin/entrance-exams",
-						"header": [
-							{"key": "Content-Type", "value": "application/json"},
-							{"key": "Authorization", "value": "Bearer {{admin_token}}"}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"exam_name\": \"JEE Advanced 2026\",\n  \"conducting_body\": \"IIT Bombay\",\n  \"stream\": \"engineering\",\n  \"exam_type\": \"ug\",\n  \"exam_date\": \"2026-05-25\",\n  \"fee_general\": 3200,\n  \"status\": \"active\"\n}"
-						}
-					}
-				},
-				{
-					"name": "Update Entrance Exam",
-					"request": {
-						"method": "PUT",
-						"url": "{{base_url}}/admin/entrance-exams/{{exam_id}}",
-						"header": [
-							{"key": "Content-Type", "value": "application/json"},
-							{"key": "Authorization", "value": "Bearer {{admin_token}}"}
-						],
-						"body": {"mode": "raw", "raw": "{\n  \"is_featured\": true\n}"}
-					}
-				},
-				{
-					"name": "Delete Entrance Exam",
-					"request": {
-						"method": "DELETE",
-						"url": "{{base_url}}/admin/entrance-exams/{{exam_id}}",
-						"header": [{"key": "Authorization", "value": "Bearer {{admin_token}}"}]
-					}
-				}
-			]
-		},
-		{
-			"name": "Admin – Job Documents",
-			"item": [
-				{
-					"name": "Create Job Admit Card",
-					"request": {
-						"method": "POST",
-						"url": "{{base_url}}/admin/jobs/{{job_id}}/admit-cards",
-						"header": [
-							{"key": "Content-Type", "value": "application/json"},
-							{"key": "Authorization", "value": "Bearer {{admin_token}}"}
-						],
-						"body": {"mode": "raw", "raw": "{\n  \"title\": \"Tier-1 Admit Card\",\n  \"phase_number\": 1,\n  \"download_url\": \"https://example.com/admit-card.pdf\",\n  \"published_at\": \"2026-01-15T00:00:00Z\"\n}"}
-					}
-				},
-				{
-					"name": "Update Job Admit Card",
-					"request": {
-						"method": "PUT",
-						"url": "{{base_url}}/admin/jobs/{{job_id}}/admit-cards/{{doc_id}}",
-						"header": [
-							{"key": "Content-Type", "value": "application/json"},
-							{"key": "Authorization", "value": "Bearer {{admin_token}}"}
-						],
-						"body": {"mode": "raw", "raw": "{\n  \"title\": \"Updated Admit Card\"\n}"}
-					}
-				},
-				{
-					"name": "Delete Job Admit Card",
-					"request": {
-						"method": "DELETE",
-						"url": "{{base_url}}/admin/jobs/{{job_id}}/admit-cards/{{doc_id}}",
-						"header": [{"key": "Authorization", "value": "Bearer {{admin_token}}"}]
-					}
-				},
-				{
-					"name": "Create Job Answer Key",
-					"request": {
-						"method": "POST",
-						"url": "{{base_url}}/admin/jobs/{{job_id}}/answer-keys",
-						"header": [
-							{"key": "Content-Type", "value": "application/json"},
-							{"key": "Authorization", "value": "Bearer {{admin_token}}"}
-						],
-						"body": {"mode": "raw", "raw": "{\n  \"title\": \"Tier-1 Answer Key\",\n  \"phase_number\": 1,\n  \"answer_key_type\": \"provisional\",\n  \"files\": [{\"label\": \"Set A\", \"url\": \"https://example.com/key-a.pdf\"}],\n  \"published_at\": \"2026-02-01T00:00:00Z\"\n}"}
-					}
-				},
-				{
-					"name": "Update Job Answer Key",
-					"request": {
-						"method": "PUT",
-						"url": "{{base_url}}/admin/jobs/{{job_id}}/answer-keys/{{doc_id}}",
-						"header": [
-							{"key": "Content-Type", "value": "application/json"},
-							{"key": "Authorization", "value": "Bearer {{admin_token}}"}
-						],
-						"body": {"mode": "raw", "raw": "{\n  \"answer_key_type\": \"final\"\n}"}
-					}
-				},
-				{
-					"name": "Delete Job Answer Key",
-					"request": {
-						"method": "DELETE",
-						"url": "{{base_url}}/admin/jobs/{{job_id}}/answer-keys/{{doc_id}}",
-						"header": [{"key": "Authorization", "value": "Bearer {{admin_token}}"}]
-					}
-				},
-				{
-					"name": "Create Job Result",
-					"request": {
-						"method": "POST",
-						"url": "{{base_url}}/admin/jobs/{{job_id}}/results",
-						"header": [
-							{"key": "Content-Type", "value": "application/json"},
-							{"key": "Authorization", "value": "Bearer {{admin_token}}"}
-						],
-						"body": {"mode": "raw", "raw": "{\n  \"title\": \"Tier-1 Result\",\n  \"phase_number\": 1,\n  \"result_type\": \"shortlist\",\n  \"download_url\": \"https://example.com/result.pdf\",\n  \"published_at\": \"2026-03-01T00:00:00Z\"\n}"}
-					}
-				},
-				{
-					"name": "Update Job Result",
-					"request": {
-						"method": "PUT",
-						"url": "{{base_url}}/admin/jobs/{{job_id}}/results/{{doc_id}}",
-						"header": [
-							{"key": "Content-Type", "value": "application/json"},
-							{"key": "Authorization", "value": "Bearer {{admin_token}}"}
-						],
-						"body": {"mode": "raw", "raw": "{\n  \"result_type\": \"final\"\n}"}
-					}
-				},
-				{
-					"name": "Delete Job Result",
-					"request": {
-						"method": "DELETE",
-						"url": "{{base_url}}/admin/jobs/{{job_id}}/results/{{doc_id}}",
-						"header": [{"key": "Authorization", "value": "Bearer {{admin_token}}"}]
-					}
-				}
-			]
-		},
-		{
-			"name": "Admin – Exam Documents",
-			"item": [
-				{
-					"name": "Create Exam Admit Card",
-					"request": {
-						"method": "POST",
-						"url": "{{base_url}}/admin/entrance-exams/{{exam_id}}/admit-cards",
-						"header": [
-							{"key": "Content-Type", "value": "application/json"},
-							{"key": "Authorization", "value": "Bearer {{admin_token}}"}
-						],
-						"body": {"mode": "raw", "raw": "{\n  \"title\": \"JEE Advanced Admit Card\",\n  \"download_url\": \"https://example.com/admit-card.pdf\",\n  \"published_at\": \"2026-05-01T00:00:00Z\"\n}"}
-					}
-				},
-				{
-					"name": "Update Exam Admit Card",
-					"request": {
-						"method": "PUT",
-						"url": "{{base_url}}/admin/entrance-exams/{{exam_id}}/admit-cards/{{doc_id}}",
-						"header": [
-							{"key": "Content-Type", "value": "application/json"},
-							{"key": "Authorization", "value": "Bearer {{admin_token}}"}
-						],
-						"body": {"mode": "raw", "raw": "{\n  \"title\": \"Updated Admit Card\"\n}"}
-					}
-				},
-				{
-					"name": "Delete Exam Admit Card",
-					"request": {
-						"method": "DELETE",
-						"url": "{{base_url}}/admin/entrance-exams/{{exam_id}}/admit-cards/{{doc_id}}",
-						"header": [{"key": "Authorization", "value": "Bearer {{admin_token}}"}]
-					}
-				},
-				{
-					"name": "Create Exam Answer Key",
-					"request": {
-						"method": "POST",
-						"url": "{{base_url}}/admin/entrance-exams/{{exam_id}}/answer-keys",
-						"header": [
-							{"key": "Content-Type", "value": "application/json"},
-							{"key": "Authorization", "value": "Bearer {{admin_token}}"}
-						],
-						"body": {"mode": "raw", "raw": "{\n  \"title\": \"JEE Advanced Answer Key\",\n  \"answer_key_type\": \"provisional\",\n  \"files\": [{\"label\": \"Paper 1\", \"url\": \"https://example.com/key.pdf\"}],\n  \"published_at\": \"2026-05-26T00:00:00Z\"\n}"}
-					}
-				},
-				{
-					"name": "Update Exam Answer Key",
-					"request": {
-						"method": "PUT",
-						"url": "{{base_url}}/admin/entrance-exams/{{exam_id}}/answer-keys/{{doc_id}}",
-						"header": [
-							{"key": "Content-Type", "value": "application/json"},
-							{"key": "Authorization", "value": "Bearer {{admin_token}}"}
-						],
-						"body": {"mode": "raw", "raw": "{\n  \"answer_key_type\": \"final\"\n}"}
-					}
-				},
-				{
-					"name": "Delete Exam Answer Key",
-					"request": {
-						"method": "DELETE",
-						"url": "{{base_url}}/admin/entrance-exams/{{exam_id}}/answer-keys/{{doc_id}}",
-						"header": [{"key": "Authorization", "value": "Bearer {{admin_token}}"}]
-					}
-				},
-				{
-					"name": "Create Exam Result",
-					"request": {
-						"method": "POST",
-						"url": "{{base_url}}/admin/entrance-exams/{{exam_id}}/results",
-						"header": [
-							{"key": "Content-Type", "value": "application/json"},
-							{"key": "Authorization", "value": "Bearer {{admin_token}}"}
-						],
-						"body": {"mode": "raw", "raw": "{\n  \"title\": \"JEE Advanced Result\",\n  \"result_type\": \"final\",\n  \"download_url\": \"https://example.com/result.pdf\",\n  \"published_at\": \"2026-06-15T00:00:00Z\"\n}"}
-					}
-				},
-				{
-					"name": "Update Exam Result",
-					"request": {
-						"method": "PUT",
-						"url": "{{base_url}}/admin/entrance-exams/{{exam_id}}/results/{{doc_id}}",
-						"header": [
-							{"key": "Content-Type", "value": "application/json"},
-							{"key": "Authorization", "value": "Bearer {{admin_token}}"}
-						],
-						"body": {"mode": "raw", "raw": "{\n  \"total_qualified\": 12000\n}"}
-					}
-				},
-				{
-					"name": "Delete Exam Result",
-					"request": {
-						"method": "DELETE",
-						"url": "{{base_url}}/admin/entrance-exams/{{exam_id}}/results/{{doc_id}}",
-						"header": [{"key": "Authorization", "value": "Bearer {{admin_token}}"}]
-					}
-				}
-			]
-		},
-		{
-			"name": "Admin – Dashboard",
-			"item": [
-				{
-					"name": "Dashboard Stats",
-					"request": {
-						"method": "GET",
-						"url": "{{base_url}}/admin/stats",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{admin_token}}"
-							}
-						]
-					}
-				},
-				{
-					"name": "Platform Analytics",
-					"request": {
-						"method": "GET",
-						"url": "{{base_url}}/admin/analytics",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{admin_token}}"
-							}
-						],
-						"description": "Demographics, application trends, popular orgs, notification stats. Admin only."
-					}
-				},
-				{
-					"name": "Admin Logs",
-					"request": {
-						"method": "GET",
-						"url": {
-							"raw": "{{base_url}}/admin/logs?limit=50&offset=0",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"admin",
-								"logs"
-							],
-							"query": [
-								{
-									"key": "limit",
-									"value": "50"
-								},
-								{
-									"key": "offset",
-									"value": "0"
-								}
-							]
-						},
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{admin_token}}"
-							}
-						]
-					}
-				}
-			]
-		},
-		{
-			"name": "User – Profile",
-			"item": [
-				{
-					"name": "Get Profile",
-					"request": {
-						"method": "GET",
-						"url": "{{base_url}}/users/profile",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{user_token}}"
-							}
-						]
-					}
-				},
-				{
-					"name": "Update Profile",
-					"request": {
-						"method": "PUT",
-						"url": "{{base_url}}/users/profile",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							},
-							{
-								"key": "Authorization",
-								"value": "Bearer {{user_token}}"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"state\": \"Delhi\",\n  \"city\": \"New Delhi\",\n  \"highest_qualification\": \"graduate\",\n  \"category\": \"general\",\n  \"preferred_states\": [\"Delhi\", \"Uttar Pradesh\"],\n  \"preferred_categories\": [\"general\", \"obc\"]\n}"
-						}
-					}
-				},
-				{
-					"name": "Update Phone",
-					"description": "Update phone number (marks as unverified until OTP verification).",
-					"request": {
-						"method": "PUT",
-						"url": "{{base_url}}/users/profile/phone",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							},
-							{
-								"key": "Authorization",
-								"value": "Bearer {{user_token}}"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"phone\": \"+919876543210\"\n}"
-						}
-					}
-				},
-				{
-					"name": "Verify Phone OTP",
-					"description": "Verify phone number with OTP sent via Firebase.",
-					"request": {
-						"method": "POST",
-						"url": "{{base_url}}/users/me/verify-phone-otp",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							},
-							{
-								"key": "Authorization",
-								"value": "Bearer {{user_token}}"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"otp\": \"123456\"\n}"
-						}
-					}
-				},
-				{
-					"name": "Set Password (Google Users)",
-					"description": "Set password for Google OAuth users who don't have a password yet. Password must have min 8 chars, 1 uppercase, 1 special character.",
-					"request": {
-						"method": "POST",
-						"url": "{{base_url}}/users/me/set-password",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							},
-							{
-								"key": "Authorization",
-								"value": "Bearer {{user_token}}"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"new_password\": \"NewPass@123\"\n}"
-						}
-					}
-				},
-				{
-					"name": "Change Password",
-					"description": "Change password (requires current password). New password must have min 8 chars, 1 uppercase, 1 special character.",
-					"request": {
-						"method": "POST",
-						"url": "{{base_url}}/users/me/change-password",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							},
-							{
-								"key": "Authorization",
-								"value": "Bearer {{user_token}}"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"current_password\": \"OldPass@123\",\n  \"new_password\": \"NewPass@456\"\n}"
-						}
-					}
-				},
-				{
-					"name": "Link Email+Password to Phone Account",
-					"description": "Link email and password credentials to a phone-only account. Password must have min 8 chars, 1 uppercase, 1 special character.",
-					"request": {
-						"method": "POST",
-						"url": "{{base_url}}/users/me/link-email-password",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							},
-							{
-								"key": "Authorization",
-								"value": "Bearer {{user_token}}"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"email\": \"myemail@example.com\",\n  \"password\": \"MyPass@123\"\n}"
-						}
-					}
-				}
-			]
-		},
-		{
-			"name": "Organizations",
-			"item": [
-				{
-					"name": "Follow Organization",
-					"request": {
-						"method": "POST",
-						"url": "{{base_url}}/organizations/UPSC/follow",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{user_token}}"
-							}
-						]
-					}
-				},
-				{
-					"name": "Unfollow Organization",
-					"request": {
-						"method": "DELETE",
-						"url": "{{base_url}}/organizations/UPSC/follow",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{user_token}}"
-							}
-						]
-					}
-				},
-				{
-					"name": "List Following",
-					"request": {
-						"method": "GET",
-						"url": "{{base_url}}/users/me/following",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{user_token}}"
-							}
-						]
-					}
-				}
-			]
-		},
-		{
-			"name": "Applications",
-			"item": [
-				{
-					"name": "Track Application",
-					"request": {
-						"method": "POST",
-						"url": "{{base_url}}/applications",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{user_token}}"
-							},
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"job_id\": \"{{job_id}}\",\n  \"notes\": \"Preparing for this exam\",\n  \"is_priority\": true\n}"
-						}
-					},
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"if (pm.response.code === 201) {",
-									"    var data = pm.response.json();",
-									"    pm.collectionVariables.set('application_id', data.id);",
-									"}"
-								]
-							}
-						}
-					]
-				},
-				{
-					"name": "List Applications",
-					"request": {
-						"method": "GET",
-						"url": {
-							"raw": "{{base_url}}/applications?limit=20&offset=0",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"applications"
-							],
-							"query": [
-								{
-									"key": "limit",
-									"value": "20"
-								},
-								{
-									"key": "offset",
-									"value": "0"
-								},
-								{
-									"key": "status",
-									"value": "",
-									"disabled": true
-								},
-								{
-									"key": "is_priority",
-									"value": "true",
-									"disabled": true
-								}
-							]
-						},
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{user_token}}"
-							}
-						]
-					}
-				},
-				{
-					"name": "Application Stats",
-					"request": {
-						"method": "GET",
-						"url": "{{base_url}}/applications/stats",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{user_token}}"
-							}
-						]
-					}
-				},
-				{
-					"name": "Update Application",
-					"request": {
-						"method": "PUT",
-						"url": "{{base_url}}/applications/{{application_id}}",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{user_token}}"
-							},
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"status\": \"admit_card_released\",\n  \"application_number\": \"UPSC-2026-12345\"\n}"
-						}
-					}
-				},
-				{
-					"name": "Delete Application",
-					"request": {
-						"method": "DELETE",
-						"url": "{{base_url}}/applications/{{application_id}}",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{user_token}}"
-							}
-						]
-					}
-				}
-			]
-		},
-		{
-			"name": "Notifications",
-			"item": [
-				{
-					"name": "List Notifications",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"var json = pm.response.json();",
-									"if (json.data && json.data.length > 0) {",
-									"    pm.collectionVariables.set('notification_id', json.data[0].id);",
-									"}"
-								]
-							}
-						}
-					],
-					"request": {
-						"method": "GET",
-						"url": {
-							"raw": "{{base_url}}/notifications?limit=20&offset=0",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"notifications"
-							],
-							"query": [
-								{
-									"key": "limit",
-									"value": "20"
-								},
-								{
-									"key": "offset",
-									"value": "0"
-								},
-								{
-									"key": "type",
-									"value": "",
-									"disabled": true
-								},
-								{
-									"key": "is_read",
-									"value": "false",
-									"disabled": true
-								}
-							]
-						},
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{user_token}}"
-							}
-						]
-					}
-				},
-				{
-					"name": "Unread Count",
-					"request": {
-						"method": "GET",
-						"url": "{{base_url}}/notifications/count",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{user_token}}"
-							}
-						]
-					}
-				},
-				{
-					"name": "Mark Notification as Read",
-					"request": {
-						"method": "PUT",
-						"url": "{{base_url}}/notifications/{{notification_id}}/read",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{user_token}}"
-							}
-						]
-					}
-				},
-				{
-					"name": "Mark All as Read",
-					"request": {
-						"method": "PUT",
-						"url": "{{base_url}}/notifications/read-all",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{user_token}}"
-							}
-						]
-					}
-				},
-				{
-					"name": "Delete Notification",
-					"request": {
-						"method": "DELETE",
-						"url": "{{base_url}}/notifications/{{notification_id}}",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{user_token}}"
-							}
-						]
-					}
-				}
-			]
-		},
-		{
-			"name": "Content – Public (Admit Cards, Answer Keys, Results)",
-			"item": [
-				{
-					"name": "List Admit Cards",
-					"request": {
-						"method": "GET",
-						"url": {
-							"raw": "{{base_url}}/admit-cards?limit=20&offset=0",
-							"host": ["{{base_url}}"],
-							"path": ["admit-cards"],
-							"query": [
-								{"key": "limit", "value": "20"},
-								{"key": "offset", "value": "0"}
-							]
-						},
-						"header": []
-					}
-				},
-				{
-					"name": "Get Admit Card by ID",
-					"request": {
-						"method": "GET",
-						"url": "{{base_url}}/admit-cards/{{card_id}}",
-						"header": []
-					}
-				},
-				{
-					"name": "List Answer Keys",
-					"request": {
-						"method": "GET",
-						"url": {
-							"raw": "{{base_url}}/answer-keys?limit=20&offset=0",
-							"host": ["{{base_url}}"],
-							"path": ["answer-keys"],
-							"query": [
-								{"key": "limit", "value": "20"},
-								{"key": "offset", "value": "0"}
-							]
-						},
-						"header": []
-					}
-				},
-				{
-					"name": "Get Answer Key by ID",
-					"request": {
-						"method": "GET",
-						"url": "{{base_url}}/answer-keys/{{key_id}}",
-						"header": []
-					}
-				},
-				{
-					"name": "List Results",
-					"request": {
-						"method": "GET",
-						"url": {
-							"raw": "{{base_url}}/results?limit=20&offset=0",
-							"host": ["{{base_url}}"],
-							"path": ["results"],
-							"query": [
-								{"key": "limit", "value": "20"},
-								{"key": "offset", "value": "0"}
-							]
-						},
-						"header": []
-					}
-				},
-				{
-					"name": "Get Result by ID",
-					"request": {
-						"method": "GET",
-						"url": "{{base_url}}/results/{{result_id}}",
-						"header": []
-					}
-				}
-			]
-		},
-		{
-			"name": "Content – Admin (Admit Cards, Answer Keys, Results)",
-			"item": [
-				{
-					"name": "Admit Cards – Admin",
-					"item": [
-						{
-							"name": "List All Admit Cards (Admin)",
-							"request": {
-								"method": "GET",
-								"url": {
-									"raw": "{{base_url}}/admin/admit-cards?limit=20&offset=0",
-									"host": ["{{base_url}}"],
-									"path": ["admin", "admit-cards"],
-									"query": [
-										{"key": "limit", "value": "20"},
-										{"key": "offset", "value": "0"}
-									]
-								},
-								"header": [
-									{
-										"key": "Authorization",
-										"value": "Bearer {{admin_token}}"
-									}
-								]
-							}
-						},
-						{
-							"name": "Create Admit Card (for Job)",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"var json = pm.response.json();",
-											"if (json.id) {",
-											"    pm.collectionVariables.set('card_id', json.id);",
-											"}"
-										]
-									}
-								}
-							],
-							"request": {
-								"method": "POST",
-								"url": "{{base_url}}/admin/admit-cards",
-								"header": [
-									{
-										"key": "Authorization",
-										"value": "Bearer {{admin_token}}"
-									},
-									{
-										"key": "Content-Type",
-										"value": "application/json"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": "{\n  \"job_id\": \"{{job_id}}\",\n  \"phase_number\": 1,\n  \"title\": \"SSC CGL Tier-1 Admit Card 2026\",\n  \"download_url\": \"https://ssc.nic.in/admit-card-tier1.pdf\",\n  \"valid_from\": \"2026-04-01\",\n  \"valid_until\": \"2026-04-15\",\n  \"notes\": \"Download and keep 2 printouts\"\n}"
-								}
-							}
-						},
-						{
-							"name": "Create Admit Card (for Exam)",
-							"request": {
-								"method": "POST",
-								"url": "{{base_url}}/admin/admit-cards",
-								"header": [
-									{
-										"key": "Authorization",
-										"value": "Bearer {{admin_token}}"
-									},
-									{
-										"key": "Content-Type",
-										"value": "application/json"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": "{\n  \"exam_id\": \"{{exam_id}}\",\n  \"title\": \"NEET UG 2026 Admit Card\",\n  \"download_url\": \"https://neet.nta.nic.in/admit-card.pdf\",\n  \"valid_from\": \"2026-05-01\",\n  \"valid_until\": \"2026-05-15\"\n}"
-								}
-							}
-						},
-						{
-							"name": "Update Admit Card",
-							"request": {
-								"method": "PUT",
-								"url": "{{base_url}}/admin/admit-cards/{{card_id}}",
-								"header": [
-									{
-										"key": "Authorization",
-										"value": "Bearer {{admin_token}}"
-									},
-									{
-										"key": "Content-Type",
-										"value": "application/json"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": "{\n  \"title\": \"SSC CGL Tier-1 Admit Card 2026 (Revised)\",\n  \"notes\": \"Revised exam dates - check carefully\"\n}"
-								}
-							}
-						},
-						{
-							"name": "Delete Admit Card",
-							"request": {
-								"method": "DELETE",
-								"url": "{{base_url}}/admin/admit-cards/{{card_id}}",
-								"header": [
-									{
-										"key": "Authorization",
-										"value": "Bearer {{admin_token}}"
-									}
-								]
-							}
-						}
-					]
-				},
-				{
-					"name": "Answer Keys – Admin",
-					"item": [
-						{
-							"name": "List All Answer Keys (Admin)",
-							"request": {
-								"method": "GET",
-								"url": {
-									"raw": "{{base_url}}/admin/answer-keys?limit=20&offset=0",
-									"host": ["{{base_url}}"],
-									"path": ["admin", "answer-keys"],
-									"query": [
-										{"key": "limit", "value": "20"},
-										{"key": "offset", "value": "0"}
-									]
-								},
-								"header": [
-									{
-										"key": "Authorization",
-										"value": "Bearer {{admin_token}}"
-									}
-								]
-							}
-						},
-						{
-							"name": "Create Answer Key (for Job)",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"var json = pm.response.json();",
-											"if (json.id) {",
-											"    pm.collectionVariables.set('key_id', json.id);",
-											"}"
-										]
-									}
-								}
-							],
-							"request": {
-								"method": "POST",
-								"url": "{{base_url}}/admin/answer-keys",
-								"header": [
-									{
-										"key": "Authorization",
-										"value": "Bearer {{admin_token}}"
-									},
-									{
-										"key": "Content-Type",
-										"value": "application/json"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": "{\n  \"job_id\": \"{{job_id}}\",\n  \"phase_number\": 1,\n  \"title\": \"SSC CGL Tier-1 Provisional Answer Key\",\n  \"answer_key_type\": \"provisional\",\n  \"files\": [\n    {\"label\": \"Set A\", \"url\": \"https://ssc.nic.in/answer-key-set-a.pdf\"},\n    {\"label\": \"Set B\", \"url\": \"https://ssc.nic.in/answer-key-set-b.pdf\"}\n  ],\n  \"objection_url\": \"https://ssc.nic.in/objections\",\n  \"objection_deadline\": \"2026-05-01\"\n}"
-								}
-							}
-						},
-						{
-							"name": "Create Answer Key (for Exam)",
-							"request": {
-								"method": "POST",
-								"url": "{{base_url}}/admin/answer-keys",
-								"header": [
-									{
-										"key": "Authorization",
-										"value": "Bearer {{admin_token}}"
-									},
-									{
-										"key": "Content-Type",
-										"value": "application/json"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": "{\n  \"exam_id\": \"{{exam_id}}\",\n  \"title\": \"NEET UG 2026 Final Answer Key\",\n  \"answer_key_type\": \"final\",\n  \"files\": [\n    {\"label\": \"All Sets\", \"url\": \"https://neet.nta.nic.in/final-key.pdf\"}\n  ]\n}"
-								}
-							}
-						},
-						{
-							"name": "Update Answer Key",
-							"request": {
-								"method": "PUT",
-								"url": "{{base_url}}/admin/answer-keys/{{key_id}}",
-								"header": [
-									{
-										"key": "Authorization",
-										"value": "Bearer {{admin_token}}"
-									},
-									{
-										"key": "Content-Type",
-										"value": "application/json"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": "{\n  \"answer_key_type\": \"final\",\n  \"title\": \"SSC CGL Tier-1 Final Answer Key\"\n}"
-								}
-							}
-						},
-						{
-							"name": "Delete Answer Key",
-							"request": {
-								"method": "DELETE",
-								"url": "{{base_url}}/admin/answer-keys/{{key_id}}",
-								"header": [
-									{
-										"key": "Authorization",
-										"value": "Bearer {{admin_token}}"
-									}
-								]
-							}
-						}
-					]
-				},
-				{
-					"name": "Results – Admin",
-					"item": [
-						{
-							"name": "List All Results (Admin)",
-							"request": {
-								"method": "GET",
-								"url": {
-									"raw": "{{base_url}}/admin/results?limit=20&offset=0",
-									"host": ["{{base_url}}"],
-									"path": ["admin", "results"],
-									"query": [
-										{"key": "limit", "value": "20"},
-										{"key": "offset", "value": "0"}
-									]
-								},
-								"header": [
-									{
-										"key": "Authorization",
-										"value": "Bearer {{admin_token}}"
-									}
-								]
-							}
-						},
-						{
-							"name": "Create Result (for Job)",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"var json = pm.response.json();",
-											"if (json.id) {",
-											"    pm.collectionVariables.set('result_id', json.id);",
-											"}"
-										]
-									}
-								}
-							],
-							"request": {
-								"method": "POST",
-								"url": "{{base_url}}/admin/results",
-								"header": [
-									{
-										"key": "Authorization",
-										"value": "Bearer {{admin_token}}"
-									},
-									{
-										"key": "Content-Type",
-										"value": "application/json"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": "{\n  \"job_id\": \"{{job_id}}\",\n  \"phase_number\": 1,\n  \"title\": \"SSC CGL Tier-1 Result 2026\",\n  \"result_type\": \"shortlist\",\n  \"download_url\": \"https://ssc.nic.in/tier1-result.pdf\",\n  \"cutoff_marks\": {\n    \"general\": 140.5,\n    \"obc\": 135.0,\n    \"sc\": 120.0,\n    \"st\": 115.0,\n    \"ews\": 138.0\n  },\n  \"total_qualified\": 12500,\n  \"notes\": \"Qualified candidates can proceed to Tier-2\"\n}"
-								}
-							}
-						},
-						{
-							"name": "Create Result (for Exam)",
-							"request": {
-								"method": "POST",
-								"url": "{{base_url}}/admin/results",
-								"header": [
-									{
-										"key": "Authorization",
-										"value": "Bearer {{admin_token}}"
-									},
-									{
-										"key": "Content-Type",
-										"value": "application/json"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": "{\n  \"exam_id\": \"{{exam_id}}\",\n  \"title\": \"NEET UG 2026 Final Result\",\n  \"result_type\": \"final\",\n  \"download_url\": \"https://neet.nta.nic.in/result.pdf\",\n  \"cutoff_marks\": {\n    \"general\": 720,\n    \"obc\": 690,\n    \"sc\": 600,\n    \"st\": 600\n  },\n  \"total_qualified\": 850000\n}"
-								}
-							}
-						},
-						{
-							"name": "Update Result",
-							"request": {
-								"method": "PUT",
-								"url": "{{base_url}}/admin/results/{{result_id}}",
-								"header": [
-									{
-										"key": "Authorization",
-										"value": "Bearer {{admin_token}}"
-									},
-									{
-										"key": "Content-Type",
-										"value": "application/json"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": "{\n  \"result_type\": \"final\",\n  \"title\": \"SSC CGL Tier-1 Final Result 2026 (Revised)\"\n}"
-								}
-							}
-						},
-						{
-							"name": "Delete Result",
-							"request": {
-								"method": "DELETE",
-								"url": "{{base_url}}/admin/results/{{result_id}}",
-								"header": [
-									{
-										"key": "Authorization",
-										"value": "Bearer {{admin_token}}"
-									}
-								]
-							}
-						}
-					]
-				}
-			]
-		},
-		{
-			"name": "FCM & Notification Preferences",
-			"item": [
-				{
-					"name": "Register FCM Token",
-					"request": {
-						"method": "POST",
-						"url": "{{base_url}}/users/me/fcm-token",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							},
-							{
-								"key": "Authorization",
-								"value": "Bearer {{user_token}}"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"token\": \"YOUR_FCM_DEVICE_TOKEN_HERE\",\n  \"device_name\": \"Chrome Desktop\"\n}"
-						}
-					}
-				},
-				{
-					"name": "Unregister FCM Token",
-					"request": {
-						"method": "DELETE",
-						"url": "{{base_url}}/users/me/fcm-token",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							},
-							{
-								"key": "Authorization",
-								"value": "Bearer {{user_token}}"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"token\": \"YOUR_FCM_DEVICE_TOKEN_HERE\"\n}"
-						}
-					}
-				},
-				{
-					"name": "Update Notification Preferences",
-					"request": {
-						"method": "PUT",
-						"url": "{{base_url}}/users/me/notification-preferences",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							},
-							{
-								"key": "Authorization",
-								"value": "Bearer {{user_token}}"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"email\": true,\n  \"push\": true,\n  \"in_app\": true\n}"
-						}
-					}
-				}
-			]
-		}
-	]
+  "info": {
+    "_postman_id": "hermes-api-collection-v1",
+    "name": "Hermes API",
+    "description": "Government Job Vacancy Portal — Backend API\n\nBase URL: http://localhost:8000/api/v1\n\nAll list endpoints return: { \"data\": [...], \"pagination\": { \"limit\", \"offset\", \"total\", \"has_more\" } }\n\nAuth:\n- User endpoints use {{user_token}} (Firebase → JWT via /auth/verify-token)\n- Admin endpoints use {{admin_token}} (local bcrypt via /auth/admin/login)\n\nVariables pre-set:\n- base_url: http://localhost:8000/api/v1\n- admin_email: admin@hermes.com\n- admin_password: Admin@1234\n\nSet after calling the relevant login/create endpoints:\n- user_token, admin_token, job_id, exam_id, user_id, notification_id, admit_card_id, answer_key_id, result_id",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8000/api/v1", "type": "string" },
+    { "key": "admin_email", "value": "admin@hermes.com", "type": "string" },
+    { "key": "admin_password", "value": "Admin@1234", "type": "string" },
+    { "key": "user_token", "value": "", "type": "string" },
+    { "key": "admin_token", "value": "", "type": "string" },
+    { "key": "job_id", "value": "74dface5-074d-45a9-b481-405be4c4ae9a", "type": "string" },
+    { "key": "exam_id", "value": "89f46be5-2c61-412b-9884-ea0b5ffda7fa", "type": "string" },
+    { "key": "notification_id", "value": "", "type": "string" },
+    { "key": "admit_card_id", "value": "6fe55fd9-76ad-44a6-9cf1-24b46f099d39", "type": "string" },
+    { "key": "answer_key_id", "value": "155e287c-3a5f-418e-ad27-28ca12cb9c84", "type": "string" },
+    { "key": "result_id", "value": "4bf76f8d-1eaa-4119-95f3-2a9b74def81b", "type": "string" },
+    { "key": "user_id", "value": "7fde23ed-cec3-449f-8305-7f1f868f2c02", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/health",
+              "host": ["{{base_url}}"],
+              "path": ["health"]
+            },
+            "description": "No auth required. Used by Docker healthcheck and monitoring."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Auth — User (Firebase)",
+      "item": [
+        {
+          "name": "Verify Firebase Token (Login / Register)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json.access_token) {",
+                  "    pm.collectionVariables.set('user_token', json.access_token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id_token\": \"<firebase-id-token>\",\n  \"full_name\": \"Test User\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/verify-token",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "verify-token"]
+            },
+            "description": "Verify Firebase ID token → upsert user → return internal JWT pair.\n\nLookup order: firebase_uid → email → create new user.\nSets {{user_token}} collection variable on success.\n\nRate limited: 10/minute."
+          },
+          "response": []
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{user_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"<optional-refresh-token>\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/logout",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "logout"]
+            },
+            "description": "Blocklists the access token JTI in Redis. Optionally also blocklists the refresh token. Returns 204 No Content."
+          },
+          "response": []
+        },
+        {
+          "name": "Refresh Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json.access_token) {",
+                  "    pm.collectionVariables.set('user_token', json.access_token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"<refresh-jwt>\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/refresh",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "refresh"]
+            },
+            "description": "Rotate user JWT token pair. Old refresh token is blocklisted. Returns new access + refresh tokens."
+          },
+          "response": []
+        },
+        {
+          "name": "Check User Providers",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/check-user-providers",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "check-user-providers"]
+            },
+            "description": "Check which Firebase authentication providers (google, password) a user has set up. Returns whether user can add a password."
+          },
+          "response": []
+        },
+        {
+          "name": "Check Phone Availability",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+919876543210\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/check-phone-availability",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "check-phone-availability"]
+            },
+            "description": "Check if a phone number is already registered and verified. Returns available/registered status."
+          },
+          "response": []
+        },
+        {
+          "name": "Send Email OTP",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"full_name\": \"Test User\",\n  \"phone\": \"+919876543210\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/send-email-otp",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "send-email-otp"]
+            },
+            "description": "Generate a 6-digit OTP, store in Redis with full_name (5 min TTL), and email it. Requires MAIL_ENABLED=true.\n\nRate limited: 3/minute."
+          },
+          "response": []
+        },
+        {
+          "name": "Verify Email OTP",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"otp\": \"123456\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/verify-email-otp",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "verify-email-otp"]
+            },
+            "description": "Verify the 6-digit OTP. Returns a short-lived verification_token (JWT, 5 min TTL) for use in /complete-registration.\n\nRate limited: 5/minute."
+          },
+          "response": []
+        },
+        {
+          "name": "Complete Registration",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"SecurePass1!\",\n  \"verification_token\": \"<token-from-verify-email-otp>\",\n  \"phone\": \"+919876543210\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/complete-registration",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "complete-registration"]
+            },
+            "description": "Create Firebase user server-side after email OTP verification. Returns a Firebase custom token for client-side sign-in.\n\nPassword requirements: min 8 chars, 1 uppercase, 1 special char.\n\nRate limited: 5/minute."
+          },
+          "response": []
+        },
+        {
+          "name": "Add Password (to social-auth account)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"NewPass1!\",\n  \"verification_token\": \"<token-from-verify-email-otp>\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/add-password",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "add-password"]
+            },
+            "description": "Add a password to an existing Google OAuth account. Requires an email OTP verification_token. Returns Firebase custom token."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Auth — Admin",
+      "item": [
+        {
+          "name": "Admin Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json.access_token) {",
+                  "    pm.collectionVariables.set('admin_token', json.access_token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{admin_email}}\",\n  \"password\": \"{{admin_password}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/admin/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "admin", "login"]
+            },
+            "description": "Authenticate admin/operator with local bcrypt credentials. Sets {{admin_token}} collection variable on success.\n\nRate limited: 5/minute."
+          },
+          "response": []
+        },
+        {
+          "name": "Admin Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"<optional-refresh-token>\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/admin/logout",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "admin", "logout"]
+            },
+            "description": "Blocklist admin access token JTI in Redis. Optionally also blocklist the refresh token. Logs to admin_logs table."
+          },
+          "response": []
+        },
+        {
+          "name": "Admin Refresh Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json.access_token) {",
+                  "    pm.collectionVariables.set('admin_token', json.access_token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"<admin-refresh-jwt>\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/admin/refresh",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "admin", "refresh"]
+            },
+            "description": "Rotate admin JWT token pair. Old refresh token is blocklisted. Logs to admin_logs table."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Get Profile",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{user_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/users/profile",
+              "host": ["{{base_url}}"],
+              "path": ["users", "profile"]
+            },
+            "description": "Get own user profile including profile preferences. Does not include fcm_tokens."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{user_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"full_name\": \"Sumant Kumar\",\n  \"gender\": \"Male\",\n  \"date_of_birth\": \"1998-05-15\",\n  \"category\": \"General\",\n  \"state\": \"Delhi\",\n  \"city\": \"New Delhi\",\n  \"pincode\": \"110001\",\n  \"highest_qualification\": \"graduate\",\n  \"preferred_states\": [\"Delhi\", \"Uttar Pradesh\"],\n  \"preferred_categories\": [\"General\", \"OBC\"]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/users/profile",
+              "host": ["{{base_url}}"],
+              "path": ["users", "profile"]
+            },
+            "description": "Update user profile fields. All fields are optional (partial update).\n\nqualification levels: 10th, 12th, diploma, graduate, postgraduate, phd\ncategory: General, OBC, SC, ST, EWS, EBC\ngender: Male, Female, Other"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Phone Number",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{user_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"9876543210\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/users/profile/phone",
+              "host": ["{{base_url}}"],
+              "path": ["users", "profile", "phone"]
+            },
+            "description": "Update phone number. Marks phone as unverified. Sends confirmation email if MAIL_ENABLED=true."
+          },
+          "response": []
+        },
+        {
+          "name": "Verify Phone OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{user_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"otp\": \"123456\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/users/me/verify-phone-otp",
+              "host": ["{{base_url}}"],
+              "path": ["users", "me", "verify-phone-otp"]
+            },
+            "description": "Verify phone number with OTP. Sets is_phone_verified=true on success. Sends confirmation email."
+          },
+          "response": []
+        },
+        {
+          "name": "Set Password (Google OAuth user)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{user_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"password\": \"NewPass1!\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/users/me/set-password",
+              "host": ["{{base_url}}"],
+              "path": ["users", "me", "set-password"]
+            },
+            "description": "Set password for a Google OAuth user who hasn't set one. Sends password_set confirmation email."
+          },
+          "response": []
+        },
+        {
+          "name": "Change Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{user_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"current_password\": \"OldPass1!\",\n  \"new_password\": \"NewPass2!\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/users/me/change-password",
+              "host": ["{{base_url}}"],
+              "path": ["users", "me", "change-password"]
+            },
+            "description": "Change password. Requires current password verification. Sends password_changed confirmation email.\n\nRate limited: 5/minute."
+          },
+          "response": []
+        },
+        {
+          "name": "Link Email+Password (phone-only account)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{user_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"Pass1!\",\n  \"verification_token\": \"<token-from-verify-email-otp>\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/users/me/link-email-password",
+              "host": ["{{base_url}}"],
+              "path": ["users", "me", "link-email-password"]
+            },
+            "description": "Link email+password to a phone-only Firebase account. Requires email OTP verification first. Sends email_linked confirmation."
+          },
+          "response": []
+        },
+        {
+          "name": "Register FCM Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{user_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"<fcm-device-token>\",\n  \"device_name\": \"Chrome on Windows\",\n  \"device_fingerprint\": \"<optional-fingerprint>\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/users/me/fcm-token",
+              "host": ["{{base_url}}"],
+              "path": ["users", "me", "fcm-token"]
+            },
+            "description": "Register a device FCM token for push notifications. Max 10 tokens per user. Uses device_fingerprint to deduplicate push delivery across multiple logins on the same device."
+          },
+          "response": []
+        },
+        {
+          "name": "Unregister FCM Token",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{user_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"<fcm-device-token>\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/users/me/fcm-token",
+              "host": ["{{base_url}}"],
+              "path": ["users", "me", "fcm-token"]
+            },
+            "description": "Unregister a device FCM token. Call on logout."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Notification Preferences",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{user_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": true,\n  \"push\": true,\n  \"in_app\": true,\n  \"whatsapp\": false,\n  \"telegram_chat_id\": \"123456789\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/users/me/notification-preferences",
+              "host": ["{{base_url}}"],
+              "path": ["users", "me", "notification-preferences"]
+            },
+            "description": "Update notification channel preferences. All fields optional.\n\nTo enable Telegram: set telegram_chat_id (user must have started the bot first).\nWhatsApp: placeholder, not yet active."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Watch (Deadline Reminders)",
+      "description": "Watch/unwatch specific jobs or entrance exams to receive automatic deadline reminders (T-7, T-3, T-1 days) and update notifications — WITHOUT formally applying. No application record is created. Max 100 watched items per user.",
+      "item": [
+        {
+          "name": "Watch Job",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{user_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/jobs/{{job_id}}/watch",
+              "host": ["{{base_url}}"],
+              "path": ["jobs", "{{job_id}}", "watch"]
+            },
+            "description": "Watch a job to receive deadline reminders (T-7, T-3, T-1) and update notifications. Idempotent — returns 200 if already watching. Max 100 watched items per user."
+          },
+          "response": []
+        },
+        {
+          "name": "Unwatch Job",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{user_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/jobs/{{job_id}}/watch",
+              "host": ["{{base_url}}"],
+              "path": ["jobs", "{{job_id}}", "watch"]
+            },
+            "description": "Stop watching a job. Returns 404 if not currently watching."
+          },
+          "response": []
+        },
+        {
+          "name": "Watch Entrance Exam",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{user_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/entrance-exams/{{exam_id}}/watch",
+              "host": ["{{base_url}}"],
+              "path": ["entrance-exams", "{{exam_id}}", "watch"]
+            },
+            "description": "Watch an entrance exam to receive deadline reminders and update notifications. Idempotent."
+          },
+          "response": []
+        },
+        {
+          "name": "Unwatch Entrance Exam",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{user_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/entrance-exams/{{exam_id}}/watch",
+              "host": ["{{base_url}}"],
+              "path": ["entrance-exams", "{{exam_id}}", "watch"]
+            },
+            "description": "Stop watching an entrance exam. Returns 404 if not currently watching."
+          },
+          "response": []
+        },
+        {
+          "name": "List Watched Jobs & Exams",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{user_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/users/me/watched",
+              "host": ["{{base_url}}"],
+              "path": ["users", "me", "watched"]
+            },
+            "description": "List all watched jobs and entrance exams. Returns { jobs: [...], exams: [...], total: n }."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Jobs (Public)",
+      "item": [
+        {
+          "name": "List Jobs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/jobs?limit=20&offset=0",
+              "host": ["{{base_url}}"],
+              "path": ["jobs"],
+              "query": [
+                { "key": "q", "value": "SSC CGL", "disabled": true, "description": "Full-text search" },
+                { "key": "job_type", "value": "latest_job", "disabled": true, "description": "latest_job | admit_card | answer_key | result" },
+                { "key": "qualification_level", "value": "graduate", "disabled": true, "description": "10th | 12th | diploma | graduate | postgraduate | phd" },
+                { "key": "organization", "value": "SSC", "disabled": true, "description": "Partial match (ILIKE)" },
+                { "key": "department", "value": "", "disabled": true },
+                { "key": "is_featured", "value": "true", "disabled": true },
+                { "key": "is_urgent", "value": "true", "disabled": true },
+                { "key": "limit", "value": "20" },
+                { "key": "offset", "value": "0" }
+              ]
+            },
+            "description": "List active jobs. Supports full-text search (PostgreSQL tsvector) and multiple filters. Default status=active."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Recommended Jobs",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{user_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/jobs/recommended?limit=20&offset=0",
+              "host": ["{{base_url}}"],
+              "path": ["jobs", "recommended"],
+              "query": [
+                { "key": "limit", "value": "20" },
+                { "key": "offset", "value": "0" }
+              ]
+            },
+            "description": "Personalized job recommendations scored by user profile.\n\nScoring: category eligibility (+4), state match (+3), preferred categories (+2), education (+2), age range (+2), recency <7d (+1).\n\nFallback: newest-first if user has no preferences."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Job by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/jobs/{{job_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["jobs", "{{job_id}}"]
+            },
+            "description": "Get job detail by UUID. Increments view count on each call. Includes related admit cards, answer keys, and results."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Content (Public)",
+      "item": [
+        {
+          "name": "List Admit Cards",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/admit-cards?limit=20&offset=0",
+              "host": ["{{base_url}}"],
+              "path": ["admit-cards"],
+              "query": [
+                { "key": "limit", "value": "20" },
+                { "key": "offset", "value": "0" }
+              ]
+            },
+            "description": "List all admit cards across jobs and entrance exams."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Admit Card by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/admit-cards/{{admit_card_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["admit-cards", "{{admit_card_id}}"]
+            },
+            "description": "Get a single admit card by UUID."
+          },
+          "response": []
+        },
+        {
+          "name": "List Answer Keys",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/answer-keys?limit=20&offset=0",
+              "host": ["{{base_url}}"],
+              "path": ["answer-keys"],
+              "query": [
+                { "key": "limit", "value": "20" },
+                { "key": "offset", "value": "0" }
+              ]
+            },
+            "description": "List all answer keys across jobs and entrance exams."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Answer Key by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/answer-keys/{{answer_key_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["answer-keys", "{{answer_key_id}}"]
+            },
+            "description": "Get a single answer key by UUID."
+          },
+          "response": []
+        },
+        {
+          "name": "List Results",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/results?limit=20&offset=0",
+              "host": ["{{base_url}}"],
+              "path": ["results"],
+              "query": [
+                { "key": "limit", "value": "20" },
+                { "key": "offset", "value": "0" }
+              ]
+            },
+            "description": "List all results across jobs and entrance exams."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Result by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/results/{{result_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["results", "{{result_id}}"]
+            },
+            "description": "Get a single result by UUID."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Entrance Exams (Public)",
+      "item": [
+        {
+          "name": "List Entrance Exams",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/entrance-exams?limit=20&offset=0",
+              "host": ["{{base_url}}"],
+              "path": ["entrance-exams"],
+              "query": [
+                { "key": "q", "value": "JEE", "disabled": true, "description": "Full-text search" },
+                { "key": "stream", "value": "engineering", "disabled": true, "description": "Filter by stream" },
+                { "key": "status", "value": "active", "disabled": true },
+                { "key": "is_featured", "value": "true", "disabled": true },
+                { "key": "limit", "value": "20" },
+                { "key": "offset", "value": "0" }
+              ]
+            },
+            "description": "List active entrance exams with optional filters."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Recommended Entrance Exams",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{user_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/entrance-exams/recommended?limit=20&offset=0",
+              "host": ["{{base_url}}"],
+              "path": ["entrance-exams", "recommended"],
+              "query": [
+                { "key": "limit", "value": "20" },
+                { "key": "offset", "value": "0" }
+              ]
+            },
+            "description": "Personalized entrance exam recommendations scored by user profile (category, state, education, age, recency)."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Entrance Exam by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/entrance-exams/{{exam_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["entrance-exams", "{{exam_id}}"]
+            },
+            "description": "Get entrance exam detail by UUID. Increments view count."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Notifications",
+      "item": [
+        {
+          "name": "List Notifications",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{user_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/notifications?limit=20&offset=0",
+              "host": ["{{base_url}}"],
+              "path": ["notifications"],
+              "query": [
+                { "key": "type", "value": "deadline_reminder_3d", "disabled": true, "description": "deadline_reminder_7d | deadline_reminder_3d | deadline_reminder_1d | new_job_from_followed_org | priority_job_update | welcome" },
+                { "key": "is_read", "value": "false", "disabled": true },
+                { "key": "limit", "value": "20" },
+                { "key": "offset", "value": "0" }
+              ]
+            },
+            "description": "List user's notifications. Filterable by type and read status."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Unread Count",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{user_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/notifications/count",
+              "host": ["{{base_url}}"],
+              "path": ["notifications", "count"]
+            },
+            "description": "Get count of unread notifications. Returns { \"count\": N }."
+          },
+          "response": []
+        },
+        {
+          "name": "Mark Notification as Read",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Authorization", "value": "Bearer {{user_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/notifications/{{notification_id}}/read",
+              "host": ["{{base_url}}"],
+              "path": ["notifications", "{{notification_id}}", "read"]
+            },
+            "description": "Mark a single notification as read. Sets is_read=true and read_at=now."
+          },
+          "response": []
+        },
+        {
+          "name": "Mark All Notifications as Read",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Authorization", "value": "Bearer {{user_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/notifications/read-all",
+              "host": ["{{base_url}}"],
+              "path": ["notifications", "read-all"]
+            },
+            "description": "Mark all unread notifications as read for the current user."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Notification",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{user_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/notifications/{{notification_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["notifications", "{{notification_id}}"]
+            },
+            "description": "Delete a notification. Returns 204 No Content."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Admin — Jobs",
+      "item": [
+        {
+          "name": "List Jobs (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{admin_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/admin/jobs?limit=20&offset=0",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "jobs"],
+              "query": [
+                { "key": "status", "value": "draft", "disabled": true, "description": "active | draft | cancelled | expired" },
+                { "key": "limit", "value": "20" },
+                { "key": "offset", "value": "0" }
+              ]
+            },
+            "description": "List job vacancies (latest_job type). Requires Operator+ role."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Job",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json.id) {",
+                  "    pm.collectionVariables.set('job_id', json.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"job_title\": \"SSC CGL 2026\",\n  \"organization\": \"Staff Selection Commission\",\n  \"job_type\": \"latest_job\",\n  \"qualification_level\": \"graduate\",\n  \"total_vacancies\": 8000,\n  \"description\": \"Combined Graduate Level Examination 2026. Applications invited for various Group B and C posts.\",\n  \"short_description\": \"SSC CGL 2026 — 8000 posts across multiple departments.\",\n  \"department\": \"Multiple Departments\",\n  \"application_start\": \"2026-04-01\",\n  \"application_end\": \"2026-05-31\",\n  \"exam_start\": \"2026-08-01\",\n  \"result_date\": \"2026-12-01\",\n  \"fee_general\": 100,\n  \"fee_obc\": 100,\n  \"fee_sc_st\": 0,\n  \"fee_ews\": 0,\n  \"fee_female\": 0,\n  \"salary_min\": 25500,\n  \"salary_max\": 151100,\n  \"eligibility\": {\n    \"age_min\": 18,\n    \"age_max\": 32,\n    \"states\": [\"All India\"]\n  },\n  \"vacancy_breakdown\": {\n    \"General\": 3200,\n    \"OBC\": 2160,\n    \"SC\": 1200,\n    \"ST\": 600,\n    \"EWS\": 840\n  },\n  \"is_featured\": true,\n  \"is_urgent\": false,\n  \"status\": \"draft\",\n  \"source_url\": \"https://ssc.nic.in\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/jobs",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "jobs"]
+            },
+            "description": "Create a new job vacancy. Sets {{job_id}} on success. Returns 201.\n\nRequires Operator+ role. If status=active, triggers new_job_notifications Celery task for org followers."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Job (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{admin_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/admin/jobs/{{job_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "jobs", "{{job_id}}"]
+            },
+            "description": "Get a single job by ID (any status). Requires Operator+ role."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Job",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"job_title\": \"SSC CGL 2026 (Updated)\",\n  \"total_vacancies\": 8500,\n  \"application_end\": \"2026-06-15\",\n  \"is_featured\": true\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/jobs/{{job_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "jobs", "{{job_id}}"]
+            },
+            "description": "Update a job. Logs changes to admin_logs. Triggers notify_priority_subscribers if job is active.\n\nOperator restrictions: can only modify status, description, short_description, notification_date, application_start/end, exam_start/end, result_date. Admins can modify all fields."
+          },
+          "response": []
+        },
+        {
+          "name": "Approve Job (Draft → Active)",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Authorization", "value": "Bearer {{admin_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/admin/jobs/{{job_id}}/approve",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "jobs", "{{job_id}}", "approve"]
+            },
+            "description": "Approve a draft job → status becomes active. Triggers send_new_job_notifications for org followers. Logs to admin_logs. Requires Operator+ role."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Job (Soft)",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{admin_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/admin/jobs/{{job_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "jobs", "{{job_id}}"]
+            },
+            "description": "Soft-delete a job (status → cancelled). Hard-deleted by Celery purge task after 90 days. Requires Admin role only."
+          },
+          "response": []
+        },
+        {
+          "name": "Extract PDF (AI Job Data)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{admin_token}}" }],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "",
+                  "description": "PDF file (max 10MB)"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/jobs/extract-pdf",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "jobs", "extract-pdf"]
+            },
+            "description": "Upload a government job notification PDF. Uses pdfplumber to extract text, then Anthropic Claude to extract structured JSON (job_title, organization, dates, vacancies, salary, fees, eligibility, source_url). No DB write — returns JSON for form auto-fill.\n\nRequires Operator+ role. Max 10MB PDF."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Admin — Content Docs",
+      "item": [
+        {
+          "name": "List Admit Cards (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{admin_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/admin/admit-cards?limit=20&offset=0",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "admit-cards"],
+              "query": [
+                { "key": "limit", "value": "20" },
+                { "key": "offset", "value": "0" }
+              ]
+            },
+            "description": "List all admit cards. Requires Operator+ role."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Admit Card",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json.id) {",
+                  "    pm.collectionVariables.set('admit_card_id', json.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"job_id\": \"{{job_id}}\",\n  \"title\": \"SSC CGL 2026 Tier-I Admit Card\",\n  \"download_url\": \"https://ssc.nic.in/admit-card/2026\",\n  \"phase_number\": 1,\n  \"valid_from\": \"2026-07-25\",\n  \"valid_until\": \"2026-08-10\",\n  \"notes\": \"Download from SSC official website\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/admit-cards",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "admit-cards"]
+            },
+            "description": "Create an admit card linked to a job or entrance exam. Exactly one of job_id or exam_id must be provided (enforced by DB CHECK constraint). Sets {{admit_card_id}} on success."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Admit Card",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{admin_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/admin/admit-cards/{{admit_card_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "admit-cards", "{{admit_card_id}}"]
+            },
+            "description": "Delete an admit card. Requires Admin role."
+          },
+          "response": []
+        },
+        {
+          "name": "List Answer Keys (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{admin_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/admin/answer-keys?limit=20&offset=0",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "answer-keys"],
+              "query": [
+                { "key": "limit", "value": "20" },
+                { "key": "offset", "value": "0" }
+              ]
+            },
+            "description": "List all answer keys. Requires Operator+ role."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Answer Key",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json.id) {",
+                  "    pm.collectionVariables.set('answer_key_id', json.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"job_id\": \"{{job_id}}\",\n  \"title\": \"SSC CGL 2026 Tier-I Provisional Answer Key\",\n  \"answer_key_type\": \"provisional\",\n  \"phase_number\": 1,\n  \"files\": [\n    { \"set\": \"Set A\", \"url\": \"https://ssc.nic.in/answer-key/set-a.pdf\" },\n    { \"set\": \"Set B\", \"url\": \"https://ssc.nic.in/answer-key/set-b.pdf\" }\n  ],\n  \"objection_url\": \"https://ssc.nic.in/objection\",\n  \"objection_deadline\": \"2026-09-15\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/answer-keys",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "answer-keys"]
+            },
+            "description": "Create an answer key. answer_key_type: provisional | final. Sets {{answer_key_id}} on success."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Answer Key",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{admin_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/admin/answer-keys/{{answer_key_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "answer-keys", "{{answer_key_id}}"]
+            },
+            "description": "Delete an answer key. Requires Admin role."
+          },
+          "response": []
+        },
+        {
+          "name": "List Results (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{admin_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/admin/results?limit=20&offset=0",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "results"],
+              "query": [
+                { "key": "limit", "value": "20" },
+                { "key": "offset", "value": "0" }
+              ]
+            },
+            "description": "List all results. Requires Operator+ role."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Result",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json.id) {",
+                  "    pm.collectionVariables.set('result_id', json.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"job_id\": \"{{job_id}}\",\n  \"title\": \"SSC CGL 2026 Tier-I Result\",\n  \"result_type\": \"merit_list\",\n  \"phase_number\": 1,\n  \"download_url\": \"https://ssc.nic.in/result/2026\",\n  \"total_qualified\": 85000,\n  \"notes\": \"Candidates qualified for Tier-II\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/results",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "results"]
+            },
+            "description": "Create a result. result_type: merit_list | scorecard | final_selection | cut_off. Sets {{result_id}} on success."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Result",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{admin_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/admin/results/{{result_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "results", "{{result_id}}"]
+            },
+            "description": "Delete a result. Requires Admin role."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Admin — Entrance Exams",
+      "item": [
+        {
+          "name": "List Entrance Exams (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{admin_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/admin/entrance-exams?limit=20&offset=0",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "entrance-exams"],
+              "query": [
+                { "key": "stream", "value": "engineering", "disabled": true },
+                { "key": "limit", "value": "20" },
+                { "key": "offset", "value": "0" }
+              ]
+            },
+            "description": "List all entrance exams (all statuses). Requires Operator+ role."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Entrance Exam",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json.id) {",
+                  "    pm.collectionVariables.set('exam_id', json.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"exam_name\": \"JEE Main 2026\",\n  \"conducting_body\": \"National Testing Agency\",\n  \"counselling_body\": \"JoSAA\",\n  \"exam_type\": \"national\",\n  \"stream\": \"engineering\",\n  \"description\": \"Joint Entrance Examination (Main) for admission to NITs, IIITs, and CFTIs.\",\n  \"short_description\": \"JEE Main 2026 — Engineering entrance for NITs and IIITs.\",\n  \"application_start\": \"2025-11-01\",\n  \"application_end\": \"2025-11-30\",\n  \"exam_date\": \"2026-01-22\",\n  \"result_date\": \"2026-02-12\",\n  \"counselling_start\": \"2026-06-01\",\n  \"fee_general\": 1000,\n  \"fee_obc\": 1000,\n  \"fee_sc_st\": 500,\n  \"fee_ews\": 1000,\n  \"fee_female\": 800,\n  \"eligibility\": {\n    \"age_min\": 17,\n    \"qualification\": \"12th\"\n  },\n  \"is_featured\": true,\n  \"status\": \"active\",\n  \"source_url\": \"https://jeemain.nta.nic.in\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/entrance-exams",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "entrance-exams"]
+            },
+            "description": "Create a new entrance exam. Sets {{exam_id}} on success. Requires Operator+ role."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Entrance Exam (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{admin_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/admin/entrance-exams/{{exam_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "entrance-exams", "{{exam_id}}"]
+            },
+            "description": "Get entrance exam detail by ID (all statuses). Requires Operator+ role."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Entrance Exam",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"exam_date\": \"2026-01-28\",\n  \"total_seats\": 1100000,\n  \"is_featured\": true,\n  \"status\": \"active\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/entrance-exams/{{exam_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "entrance-exams", "{{exam_id}}"]
+            },
+            "description": "Update an entrance exam. Requires Operator+ role."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Entrance Exam",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{admin_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/admin/entrance-exams/{{exam_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "entrance-exams", "{{exam_id}}"]
+            },
+            "description": "Delete an entrance exam. Requires Admin role."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Admin — Users",
+      "item": [
+        {
+          "name": "List Users",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{admin_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/admin/users?limit=20&offset=0",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "users"],
+              "query": [
+                { "key": "q", "value": "sumant", "disabled": true, "description": "Search by name or email" },
+                { "key": "status", "value": "active", "disabled": true, "description": "active | suspended | deleted" },
+                { "key": "limit", "value": "20" },
+                { "key": "offset", "value": "0" }
+              ]
+            },
+            "description": "List users. Supports search by name/email. Requires Operator+ role."
+          },
+          "response": []
+        },
+        {
+          "name": "Get User Detail",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{admin_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/admin/users/{{user_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "users", "{{user_id}}"]
+            },
+            "description": "Get a single user with profile detail. Requires Operator+ role."
+          },
+          "response": []
+        },
+        {
+          "name": "Update User Status (Suspend/Activate)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"suspended\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/users/{{user_id}}/status",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "users", "{{user_id}}", "status"]
+            },
+            "description": "Suspend or activate a user. status: active | suspended. Requires Admin role. Logs to admin_logs."
+          },
+          "response": []
+        },
+        {
+          "name": "Change User Role",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"operator\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/users/{{user_id}}/role",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "users", "{{user_id}}", "role"]
+            },
+            "description": "Change an admin user's role. role: admin | operator. Requires Admin role. Logs to admin_logs."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete User (Permanent)",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{admin_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/admin/users/{{user_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "users", "{{user_id}}"]
+            },
+            "description": "Permanently delete a user from PostgreSQL and Firebase. Requires Admin role."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Admin/Operator Account",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"operator@example.com\",\n  \"password\": \"Operator@123\",\n  \"full_name\": \"New Operator\",\n  \"role\": \"operator\",\n  \"phone\": null,\n  \"department\": \"Content Team\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/admin-users",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "admin-users"]
+            },
+            "description": "Create a new admin or operator account. Requires Admin role.\n\nThe first admin must be seeded directly in the DB. All subsequent accounts use this endpoint.\n\nPassword requirements: min 8 chars, 1 uppercase, 1 special char."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Admin — Dashboard",
+      "item": [
+        {
+          "name": "Dashboard Stats",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{admin_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/admin/stats",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "stats"]
+            },
+            "description": "Get dashboard counts: jobs (total/active/draft/expired/cancelled), admit_cards, answer_keys, results, entrance_exams, users (total/active/new_this_week), applications.\n\nRequires Operator+ role."
+          },
+          "response": []
+        },
+        {
+          "name": "Admin Audit Logs",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{admin_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/admin/logs?limit=20&offset=0",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "logs"],
+              "query": [
+                { "key": "limit", "value": "20" },
+                { "key": "offset", "value": "0" }
+              ]
+            },
+            "description": "Get admin audit trail. Logs expire after 30 days. Actions include: admin_login, admin_logout, create_job, update_job, approve_job, delete_job, extract_pdf, update_user_status, update_user_role.\n\nRequires Admin role only."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
 }

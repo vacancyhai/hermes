@@ -10,34 +10,20 @@
     </div>
 </div>
 
-<div class="filters">
-    <form method="GET" action="/answer-keys" style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;">
-        <select name="status" onchange="this.form.submit()">
-            <option value="">All Statuses</option>
-            <option value="active" {% if current_status == 'active' %}selected{% endif %}>Active</option>
-            <option value="draft" {% if current_status == 'draft' %}selected{% endif %}>Draft</option>
-            <option value="cancelled" {% if current_status == 'cancelled' %}selected{% endif %}>Cancelled</option>
-        </select>
-    </form>
-</div>
-
 <div class="card" style="padding:0;overflow-x:auto;">
     <table>
         <thead>
             <tr>
-                <th>Answer Key Title</th>
-                <th>Organization</th>
-                <th>Exam Name</th>
+                <th>Title</th>
+                <th>Phase</th>
                 <th>Type</th>
-                <th>Status</th>
-                <th>Release Date</th>
-                <th>Objection End</th>
-                <th>Views</th>
+                <th>Linked To</th>
+                <th>Objection Deadline</th>
                 <th>Actions</th>
             </tr>
         </thead>
-        <tbody id="job-list">
-            {% include "_answerkey_rows.html" %}
+        <tbody id="answer-key-list">
+            {% include "answer_keys/_answerkey_rows.html" %}
         </tbody>
     </table>
 </div>

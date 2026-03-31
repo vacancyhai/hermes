@@ -1,11 +1,10 @@
 """Notification-related Celery tasks.
 
 smart_notify                — Unified entry: routes to in-app + FCM + email + WhatsApp + Telegram via NotificationService
-send_deadline_reminders     — Daily Beat task: T-7, T-3, T-1 deadline reminders → delegates to smart_notify
-send_new_job_notifications  — Event: notify org followers on job approve → delegates to smart_notify
+send_deadline_reminders     — Daily Beat task: T-7, T-3, T-1 deadline reminders for watched jobs + exams
+notify_watchers_on_update   — Event: notify watchers when a job/exam is approved or updated
 send_email_notification     — Sync email via SMTP (retries 3x)
 deliver_delayed_telegram    — Delayed Telegram delivery for staggered mode (T+15min)
-notify_priority_subscribers — Event: notify priority trackers on job update → delegates to smart_notify
 """
 
 import json
@@ -195,9 +194,22 @@ def deliver_delayed_telegram(notification_id: str, user_id: str, title: str, mes
 # ─── Deadline Reminders (Beat schedule) ──────────────────────────────────────
 
 
+def _build_reminder_text(days_before: int, job_title: str, org: str) -> tuple[str, str, str]:
+    """Return (title, message, priority) for a deadline reminder."""
+    if days_before == 1:
+        return f"Last day to apply: {job_title}", f"Application deadline for {job_title} ({org}) is tomorrow!", "high"
+    if days_before == 3:
+        return f"3 days left: {job_title}", f"Application deadline for {job_title} ({org}) is in 3 days.", "high"
+    return f"1 week left: {job_title}", f"Application deadline for {job_title} ({org}) is in 7 days.", "medium"
+
+
 @celery.task(name="app.tasks.notifications.send_deadline_reminders")
 def send_deadline_reminders():
     """Create notifications at T-7, T-3, T-1 days before application_end.
+
+    Covers two groups:
+      1. Users watching a job via user_watches
+      2. Users watching an entrance exam via user_watches
 
     Runs daily at 08:00 UTC via Beat schedule.
     Delegates to smart_notify for multi-channel delivery.
@@ -208,164 +220,136 @@ def send_deadline_reminders():
         for days_before in REMINDER_DAYS:
             target_date = today + timedelta(days=days_before)
 
-            rows = session.execute(
+            # ── 1. Watch-based job reminders ──────────────────────────────────
+            watch_job_rows = session.execute(
                 text("""
-                    SELECT uja.id, uja.user_id, uja.job_id, jv.job_title, jv.slug, jv.organization, jv.application_end
-                    FROM user_job_applications uja
-                    JOIN job_vacancies jv ON jv.id = uja.job_id
-                    WHERE jv.application_end = :target_date
+                    SELECT uw.user_id, jv.id, jv.job_title, jv.slug, jv.organization, jv.application_end
+                    FROM user_watches uw
+                    JOIN jobs jv ON jv.id = uw.entity_id
+                    WHERE uw.entity_type = 'job'
+                      AND jv.application_end = :target_date
                       AND jv.status = 'active'
-                      AND uja.status NOT IN ('rejected', 'selected', 'waiting_list')
                 """),
                 {"target_date": target_date},
             ).fetchall()
 
-            for row in rows:
-                app_id, user_id, job_id, job_title, slug, org, app_end = row
-
-                # Skip if reminder already sent
+            for user_id, job_id, job_title, slug, org, app_end in watch_job_rows:
+                ntype = f"deadline_reminder_{days_before}d"
                 existing = session.execute(
-                    text("""
-                        SELECT 1 FROM notifications
-                        WHERE user_id = :uid AND entity_id = :jid AND type = :ntype
-                        LIMIT 1
-                    """),
-                    {"uid": str(user_id), "jid": str(job_id), "ntype": f"deadline_reminder_{days_before}d"},
+                    text("SELECT 1 FROM notifications WHERE user_id=:uid AND entity_id=:eid AND type=:t LIMIT 1"),
+                    {"uid": str(user_id), "eid": str(job_id), "t": ntype},
                 ).fetchone()
                 if existing:
                     continue
 
-                if days_before == 1:
-                    title = f"Last day to apply: {job_title}"
-                    msg = f"Application deadline for {job_title} ({org}) is tomorrow!"
-                    priority = "high"
-                elif days_before == 3:
-                    title = f"3 days left: {job_title}"
-                    msg = f"Application deadline for {job_title} ({org}) is in 3 days."
-                    priority = "high"
-                else:
-                    title = f"1 week left: {job_title}"
-                    msg = f"Application deadline for {job_title} ({org}) is in 7 days."
-                    priority = "medium"
-
+                title, msg, priority = _build_reminder_text(days_before, job_title, org)
                 smart_notify.delay(
                     user_id=str(user_id),
                     title=title,
                     message=msg,
-                    notification_type=f"deadline_reminder_{days_before}d",
+                    notification_type=ntype,
                     priority=priority,
                     entity_type="job",
                     entity_id=str(job_id),
                     action_url=f"/jobs/{slug}",
                     email_template="deadline_reminder.html",
-                    email_context={
-                        "title": title,
-                        "message": msg,
-                        "job_title": job_title,
-                        "organization": org,
-                        "slug": slug,
-                        "deadline": str(app_end),
-                    },
+                    email_context={"title": title, "message": msg, "job_title": job_title,
+                                   "organization": org, "slug": slug, "deadline": str(app_end)},
+                )
+
+            # ── 2. Watch-based exam reminders ─────────────────────────────────
+            watch_exam_rows = session.execute(
+                text("""
+                    SELECT uw.user_id, ee.id, ee.exam_name, ee.slug, ee.conducting_body, ee.application_end
+                    FROM user_watches uw
+                    JOIN entrance_exams ee ON ee.id = uw.entity_id
+                    WHERE uw.entity_type = 'exam'
+                      AND ee.application_end = :target_date
+                      AND ee.status != 'cancelled'
+                """),
+                {"target_date": target_date},
+            ).fetchall()
+
+            for user_id, exam_id, exam_name, slug, conducting_body, app_end in watch_exam_rows:
+                ntype = f"deadline_reminder_{days_before}d"
+                existing = session.execute(
+                    text("SELECT 1 FROM notifications WHERE user_id=:uid AND entity_id=:eid AND type=:t LIMIT 1"),
+                    {"uid": str(user_id), "eid": str(exam_id), "t": ntype},
+                ).fetchone()
+                if existing:
+                    continue
+
+                title, msg, priority = _build_reminder_text(days_before, exam_name, conducting_body)
+                smart_notify.delay(
+                    user_id=str(user_id),
+                    title=title,
+                    message=msg,
+                    notification_type=ntype,
+                    priority=priority,
+                    entity_type="exam",
+                    entity_id=str(exam_id),
+                    action_url=f"/entrance-exams/{slug}",
+                    email_template="deadline_reminder.html",
+                    email_context={"title": title, "message": msg, "job_title": exam_name,
+                                   "organization": conducting_body, "slug": slug, "deadline": str(app_end)},
                 )
 
 
-# ─── New Job Notifications (event-triggered) ─────────────────────────────────
+# ─── Watcher Notifications (event-triggered) ─────────────────────────────────
 
 
-@celery.task(name="app.tasks.notifications.send_new_job_notifications")
-def send_new_job_notifications(job_id: str):
-    """Notify org followers when a job is approved (draft → active).
+@celery.task(name="app.tasks.notifications.notify_watchers_on_update")
+def notify_watchers_on_update(entity_type: str, entity_id: str):
+    """Notify all users watching a job or exam when it is approved or updated.
 
+    entity_type: 'job' | 'exam'
     Delegates to smart_notify for multi-channel delivery.
     """
     with Session(sync_engine) as session:
-        row = session.execute(
-            text("SELECT id, job_title, slug, organization, application_end FROM job_vacancies WHERE id = :jid"),
-            {"jid": job_id},
-        ).fetchone()
-        if not row:
-            return
+        if entity_type == "job":
+            row = session.execute(
+                text("SELECT job_title, slug, organization, application_end FROM jobs WHERE id = :eid"),
+                {"eid": entity_id},
+            ).fetchone()
+            if not row:
+                return
+            name, slug, org, app_end = row
+            action_url = f"/jobs/{slug}"
+            title = f"Update: {name}"
+            msg = f"{name} by {org} has been updated."
+        else:
+            row = session.execute(
+                text("SELECT exam_name, slug, conducting_body, application_end FROM entrance_exams WHERE id = :eid"),
+                {"eid": entity_id},
+            ).fetchone()
+            if not row:
+                return
+            name, slug, org, app_end = row
+            action_url = f"/entrance-exams/{slug}"
+            title = f"Update: {name}"
+            msg = f"{name} by {org} has been updated."
 
-        job_title, job_slug, org, app_end = row[1], row[2], row[3], row[4]
-
-        profiles = session.execute(
-            text("""
-                SELECT up.user_id FROM user_profiles up
-                WHERE EXISTS (
-                    SELECT 1 FROM jsonb_array_elements_text(up.followed_organizations) AS elem
-                    WHERE lower(elem) = lower(:org)
-                )
-            """),
-            {"org": org},
+        watchers = session.execute(
+            text("SELECT user_id FROM user_watches WHERE entity_type = :et AND entity_id = :eid"),
+            {"et": entity_type, "eid": entity_id},
         ).fetchall()
 
-        if not profiles:
+        if not watchers:
             return
 
-        for (user_id,) in profiles:
+        for (user_id,) in watchers:
             smart_notify.delay(
                 user_id=str(user_id),
-                title=f"New job from {org}",
-                message=f"{job_title} has been posted by {org}.",
-                notification_type="new_job_from_followed_org",
+                title=title,
+                message=msg,
+                notification_type="watched_item_updated",
                 priority="medium",
-                entity_type="job",
-                entity_id=job_id,
-                action_url=f"/jobs/{job_slug}",
-                email_template="new_job_alert.html",
-                email_context={
-                    "job_title": job_title,
-                    "organization": org,
-                    "slug": job_slug,
-                    "deadline": str(app_end) if app_end else None,
-                },
+                entity_type=entity_type,
+                entity_id=entity_id,
+                action_url=action_url,
             )
 
-
-# ─── Priority Subscribers (event-triggered) ───────────────────────────────────
-
-
-@celery.task(name="app.tasks.notifications.notify_priority_subscribers")
-def notify_priority_subscribers(job_id: str):
-    """Notify users who marked a job as priority when it's updated.
-
-    Delegates to smart_notify for multi-channel delivery.
-    """
-    with Session(sync_engine) as session:
-        job_row = session.execute(
-            text("SELECT id, job_title, slug, organization FROM job_vacancies WHERE id = :jid"),
-            {"jid": job_id},
-        ).fetchone()
-        if not job_row:
-            return
-
-        job_title, job_slug, org = job_row[1], job_row[2], job_row[3]
-
-        apps = session.execute(
-            text("""
-                SELECT user_id FROM user_job_applications
-                WHERE job_id = :jid AND is_priority = true
-                  AND status NOT IN ('rejected', 'selected', 'waiting_list')
-            """),
-            {"jid": job_id},
-        ).fetchall()
-
-        if not apps:
-            return
-
-        for (user_id,) in apps:
-            smart_notify.delay(
-                user_id=str(user_id),
-                title=f"Update: {job_title}",
-                message=f"A priority job you're tracking ({job_title} by {org}) has been updated.",
-                notification_type="priority_job_update",
-                priority="high",
-                entity_type="job",
-                entity_id=job_id,
-                action_url=f"/jobs/{job_slug}",
-            )
-
-        logger.info("priority_notifications_queued", job_id=job_id, count=len(apps))
+        logger.info("watchers_notified", entity_type=entity_type, entity_id=entity_id, count=len(watchers))
 
 
 # ─── Legacy helper (kept for any direct callers) ─────────────────────────────

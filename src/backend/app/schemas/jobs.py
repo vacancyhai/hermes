@@ -135,7 +135,6 @@ class JobResponse(BaseModel):
     is_featured: bool
     is_urgent: bool
     views: int
-    applications_count: int
     source: str
     source_pdf_path: str | None = None
     published_at: datetime | None
@@ -156,6 +155,10 @@ class JobListItem(BaseModel):
     total_vacancies: int | None
     short_description: str | None
     application_end: date | None
+    notification_date: date | None = None
+    exam_start: date | None = None
+    result_date: date | None = None
+    job_type: str | None = None
     fee_general: int | None = None
     fee_obc: int | None = None
     fee_sc_st: int | None = None
@@ -165,7 +168,6 @@ class JobListItem(BaseModel):
     is_featured: bool
     is_urgent: bool
     views: int
-    applications_count: int
     created_at: datetime
 
     model_config = {"from_attributes": True}

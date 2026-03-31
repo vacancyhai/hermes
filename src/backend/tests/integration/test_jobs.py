@@ -44,25 +44,26 @@ async def test_list_jobs_filter_by_org(client: AsyncClient, active_job):
     assert resp.json()["pagination"]["total"] >= 1
 
 
-async def test_get_job_by_slug(client: AsyncClient, active_job):
-    slug = active_job["slug"]
-    resp = await client.get(f"/api/v1/jobs/{slug}")
+async def test_get_job_by_id(client: AsyncClient, active_job):
+    job_id = active_job["id"]
+    resp = await client.get(f"/api/v1/jobs/{job_id}")
     assert resp.status_code == 200
     data = resp.json()
-    assert data["slug"] == slug
+    assert data["id"] == job_id
     assert data["job_title"] == active_job["job_title"]
 
 
 async def test_get_job_increments_views(client: AsyncClient, active_job):
-    slug = active_job["slug"]
+    job_id = active_job["id"]
     initial = active_job["views"]
-    await client.get(f"/api/v1/jobs/{slug}")
-    resp = await client.get(f"/api/v1/jobs/{slug}")
+    await client.get(f"/api/v1/jobs/{job_id}")
+    resp = await client.get(f"/api/v1/jobs/{job_id}")
     assert resp.json()["views"] >= initial + 1
 
 
 async def test_get_job_not_found(client: AsyncClient):
-    resp = await client.get("/api/v1/jobs/nonexistent-slug-12345")
+    fake_id = str(uuid.uuid4())
+    resp = await client.get(f"/api/v1/jobs/{fake_id}")
     assert resp.status_code == 404
 
 

@@ -54,6 +54,8 @@ def create_app():
             resp = api_fn(token)
         return resp, True
 
+    _api_with_auth = _try_with_refresh
+
     @app.context_processor
     def inject_csrf():
         return {"csrf_token": _get_csrf_token()}
@@ -191,35 +193,6 @@ def create_app():
         job = resp.json()
         return render_template("jobs/job_detail.html", job=job)
 
-    @app.route("/partials/jobs/<job_id>/admit-cards")
-    def partials_admit_cards(job_id):
-        """HTMX partial — per-phase admit cards panel for job_detail."""
-        resp = current_app.api_client.get(f"/jobs/{job_id}/admit-cards")
-        docs = resp.json() if resp.ok else []
-        return render_template("admit_cards/_admit_cards_panel.html", docs=docs)
-
-    @app.route("/partials/jobs/<job_id>/answer-keys")
-    def partials_answer_keys(job_id):
-        """HTMX partial — per-phase answer keys panel for job_detail."""
-        resp = current_app.api_client.get(f"/jobs/{job_id}/answer-keys")
-        docs = resp.json() if resp.ok else []
-        return render_template("answer_keys/_answer_keys_panel.html", docs=docs)
-
-    @app.route("/partials/jobs/<job_id>/results")
-    def partials_results(job_id):
-        """HTMX partial — per-phase results panel for job_detail."""
-        resp = current_app.api_client.get(f"/jobs/{job_id}/results")
-        docs = resp.json() if resp.ok else []
-        return render_template("results/_results_panel.html", docs=docs)
-
-    @app.route("/partials/jobs/<job_id>/details")
-    def partials_job_details(job_id):
-        """HTMX partial — job details for document pages."""
-        resp = current_app.api_client.get(f"/jobs/by-id/{job_id}")
-        if not resp.ok:
-            return "<p style='color:#ef4444'>Job not found</p>", 404
-        job = resp.json()
-        return render_template("jobs/_job_details_partial.html", job=job)
 
     @app.route("/entrance-exams")
     def entrance_exams():
@@ -264,134 +237,26 @@ def create_app():
         exam = resp.json()
         return render_template("entrance_exams/entrance_exam_detail.html", exam=exam)
 
-    @app.route("/partials/exams/<exam_id>/admit-cards")
-    def partials_exam_admit_cards(exam_id):
-        """HTMX partial — per-phase admit cards for admission_detail."""
-        resp = current_app.api_client.get(f"/entrance-exams/{exam_id}/admit-cards")
-        docs = resp.json() if resp.ok else []
-        return render_template("admit_cards/_admit_cards_panel.html", docs=docs)
 
-    @app.route("/partials/exams/<exam_id>/answer-keys")
-    def partials_exam_answer_keys(exam_id):
-        """HTMX partial — per-phase answer keys for admission_detail."""
-        resp = current_app.api_client.get(f"/entrance-exams/{exam_id}/answer-keys")
-        docs = resp.json() if resp.ok else []
-        return render_template("answer_keys/_answer_keys_panel.html", docs=docs)
-
-    @app.route("/partials/exams/<exam_id>/results")
-    def partials_exam_results(exam_id):
-        """HTMX partial — per-phase results for admission_detail."""
-        resp = current_app.api_client.get(f"/entrance-exams/{exam_id}/results")
-        docs = resp.json() if resp.ok else []
-        return render_template("results/_results_panel.html", docs=docs)
-
-    @app.route("/partials/exams/<exam_id>/details")
-    def partials_exam_details(exam_id):
-        """HTMX partial — exam details for document pages."""
-        resp = current_app.api_client.get(f"/entrance-exams/by-id/{exam_id}")
-        if not resp.ok:
-            return "<p style='color:#ef4444'>Exam not found</p>", 404
-        exam = resp.json()
-        return render_template("entrance_exams/_exam_details_partial.html", exam=exam)
-
-    # --- Application Dashboard ---
+    # --- Watched Items Dashboard ---
 
     @app.route("/dashboard")
     def dashboard():
-        """Application tracking dashboard — requires login."""
+        """Watched items dashboard — shows jobs and exams the user is watching."""
         token = session.get("token")
         if not token:
             return render_template("auth/login.html", next="/dashboard")
 
-        # Fetch stats (refresh token on 401)
-        stats_resp = current_app.api_client.get("/applications/stats", token=token)
-        if stats_resp.status_code == 401:
-            token = _try_refresh()
-            if not token:
-                return redirect("/login")
-            stats_resp = current_app.api_client.get("/applications/stats", token=token)
-        stats = stats_resp.json() if stats_resp.ok else {"total": 0}
-
-        # Fetch applications
-        params = {"limit": 20, "offset": 0}
-        status_filter = request.args.get("status")
-        if status_filter:
-            params["status"] = status_filter
-
-        apps_resp = current_app.api_client.get("/applications", token=token, params=params)
-        apps_data = apps_resp.json() if apps_resp.ok else {"data": [], "pagination": {}}
+        resp, authed = _try_with_refresh(lambda t: current_app.api_client.get("/users/me/watched", token=t))
+        if not authed:
+            return redirect("/login")
+        watched = resp.json() if resp.ok else {"jobs": [], "exams": [], "total": 0}
 
         return render_template(
             "dashboard/dashboard.html",
-            stats=stats,
-            applications=apps_data["data"],
-            pagination=apps_data.get("pagination", {}),
-            current_status=status_filter,
-        )
-
-    @app.route("/dashboard/track", methods=["POST"])
-    def track_application():
-        """Track a job application."""
-        job_id = request.form.get("job_id", "")
-        notes = request.form.get("notes", "").strip()
-        is_priority = request.form.get("is_priority") == "on"
-        payload = {"job_id": job_id, "notes": notes or None, "is_priority": is_priority}
-        resp, authed = _try_with_refresh(lambda t: current_app.api_client.post("/applications", token=t, json=payload))
-        if not authed:
-            return redirect("/login")
-        if resp.ok:
-            flash("Job added to your tracker!", "success")
-        elif resp.status_code == 409:
-            flash("Already tracking this job.", "info")
-        else:
-            flash("Could not track this job. Please try again.", "error")
-        return redirect(request.form.get("next", "/dashboard"))
-
-    @app.route("/dashboard/applications/<app_id>/update", methods=["POST"])
-    def update_application(app_id):
-        """Update application status, notes, priority, app number."""
-        update = {}
-        status_val = request.form.get("status", "").strip()
-        if status_val:
-            update["status"] = status_val
-        notes_val = request.form.get("notes", "").strip()
-        update["notes"] = notes_val or None
-        app_num = request.form.get("application_number", "").strip()
-        update["application_number"] = app_num or None
-        update["is_priority"] = request.form.get("is_priority") == "on"
-        _, authed = _try_with_refresh(lambda t: current_app.api_client.put(f"/applications/{app_id}", token=t, json=update))
-        if not authed:
-            return redirect("/login")
-        return redirect("/dashboard")
-
-    @app.route("/dashboard/applications/<app_id>/delete", methods=["POST"])
-    def delete_application(app_id):
-        """Remove an application from the tracker."""
-        _, authed = _try_with_refresh(lambda t: current_app.api_client.delete(f"/applications/{app_id}", token=t))
-        if not authed:
-            return redirect("/login")
-        return redirect("/dashboard")
-
-    @app.route("/dashboard/applications")
-    def dashboard_applications_partial():
-        """HTMX partial — returns application rows for the dashboard."""
-        token = session.get("token")
-        if not token:
-            return "", 401
-
-        params = {"limit": 20, "offset": _int_arg("offset", 0)}
-        status_filter = request.args.get("status")
-        if status_filter:
-            params["status"] = status_filter
-
-        apps_resp = current_app.api_client.get("/applications", token=token, params=params)
-        apps_data = apps_resp.json() if apps_resp.ok else {"data": [], "pagination": {}}
-
-        return render_template(
-            "dashboard/_application_rows.html",
-            applications=apps_data["data"],
-            pagination=apps_data.get("pagination", {}),
-            current_status=status_filter,
+            watched_jobs=watched.get("jobs", []),
+            watched_exams=watched.get("exams", []),
+            total=watched.get("total", 0),
         )
 
     # --- Notifications ---
@@ -537,36 +402,13 @@ def create_app():
             resp = current_app.api_client.get("/users/profile", token=token)
 
         user_data = resp.json() if resp.ok else {}
-        following_resp = current_app.api_client.get("/users/me/following", token=token)
-        following = following_resp.json().get("followed_organizations", []) if following_resp.ok else []
-        return render_template("auth/profile.html", 
-            user=user_data, 
-            profile=user_data.get("profile", {}), 
-            following=following,
+        return render_template("auth/profile.html",
+            user=user_data,
+            profile=user_data.get("profile", {}),
             firebase_api_key=os.environ.get("FIREBASE_WEB_API_KEY", ""),
             firebase_auth_domain=os.environ.get("FIREBASE_AUTH_DOMAIN", ""),
             firebase_project_id=os.environ.get("FIREBASE_PROJECT_ID", "")
         )
-
-    @app.route("/profile/follow", methods=["POST"])
-    def follow_org():
-        """Follow an organization."""
-        org_name = request.form.get("org_name", "").strip()
-        if org_name:
-            _, authed = _try_with_refresh(lambda t: current_app.api_client.post(f"/organizations/{org_name}/follow", token=t))
-            if not authed:
-                return redirect("/login")
-        return redirect(request.form.get("next", "/profile"))
-
-    @app.route("/profile/unfollow", methods=["POST"])
-    def unfollow_org():
-        """Unfollow an organization."""
-        org_name = request.form.get("org_name", "").strip()
-        if org_name:
-            _, authed = _try_with_refresh(lambda t: current_app.api_client.delete(f"/organizations/{org_name}/follow", token=t))
-            if not authed:
-                return redirect("/login")
-        return redirect(request.form.get("next", "/profile"))
 
     # --- Auth Flows (Firebase) ---
 
@@ -807,7 +649,7 @@ def create_app():
     def login():
         """Render Firebase-powered login page."""
         return render_template("auth/login.html",
-            next=request.args.get("next", "/dashboard"),
+            next=request.args.get("next", "/"),
             firebase_api_key=os.environ.get("FIREBASE_WEB_API_KEY", ""),
             firebase_auth_domain=os.environ.get("FIREBASE_AUTH_DOMAIN", ""),
             firebase_project_id=os.environ.get("FIREBASE_PROJECT_ID", ""),

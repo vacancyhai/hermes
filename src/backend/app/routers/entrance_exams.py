@@ -2,10 +2,7 @@
 
 Public (read-only):
   GET  /api/v1/entrance-exams              — list with stream/status/search filters
-  GET  /api/v1/entrance-exams/:slug        — detail by slug
-  GET  /api/v1/entrance-exams/:id/admit-cards   — per-phase admit cards
-  GET  /api/v1/entrance-exams/:id/answer-keys   — per-phase answer keys
-  GET  /api/v1/entrance-exams/:id/results       — per-phase results
+  GET  /api/v1/entrance-exams/:id          — detail by ID
 
 Admin CRUD (operator+):
   POST   /api/v1/admin/entrance-exams
@@ -26,7 +23,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.dependencies import get_admin_user, get_current_user, get_db, require_operator
+from app.dependencies import get_current_user, get_db, require_operator
 from app.services.matching import get_recommended_entrance_exams
 from app.models.entrance_exam import EntranceExam
 from app.models.admit_card import AdmitCard
@@ -129,21 +126,11 @@ async def recommended_exams(
     }
 
 
-@public_router.get("/by-id/{exam_id}")
-async def get_exam_by_id(exam_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
-    """Get entrance exam detail by ID (for partials, no view increment)."""
-    result = await db.execute(select(EntranceExam).where(EntranceExam.id == exam_id))
-    exam = result.scalar_one_or_none()
-    if not exam:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Exam not found")
-    return EntranceExamResponse.model_validate(exam).model_dump()
-
-
-@public_router.get("/{slug}")
-async def get_exam_by_slug(slug: str, db: AsyncSession = Depends(get_db)):
-    """Get entrance exam detail by slug."""
+@public_router.get("/{exam_id}")
+async def get_exam(exam_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    """Get entrance exam detail by ID. Increments view count. Includes all related documents."""
     result = await db.execute(
-        select(EntranceExam).where(EntranceExam.slug == slug)
+        select(EntranceExam).where(EntranceExam.id == exam_id)
     )
     exam = result.scalar_one_or_none()
     if not exam:
@@ -153,55 +140,36 @@ async def get_exam_by_slug(slug: str, db: AsyncSession = Depends(get_db)):
         update(EntranceExam).where(EntranceExam.id == exam.id).values(views=EntranceExam.views + 1)
     )
     await db.commit()
-    return EntranceExamResponse.model_validate(exam).model_dump()
-
-
-@public_router.get("/{exam_id}/admit-cards", response_model=list[AdmitCardResponse])
-async def list_exam_admit_cards(exam_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
-    """Per-phase admit cards for an exam."""
-    result = await db.execute(
-        select(EntranceExam).where(EntranceExam.id == exam_id)
-    )
-    if not result.scalar_one_or_none():
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Exam not found")
-    rows = await db.execute(
+    
+    # Fetch related documents
+    admit_cards_result = await db.execute(
         select(AdmitCard)
         .where(AdmitCard.exam_id == exam_id)
         .order_by(AdmitCard.phase_number.nulls_last(), AdmitCard.published_at.desc())
     )
-    return [AdmitCardResponse.model_validate(r) for r in rows.scalars().all()]
+    admit_cards = [AdmitCardResponse.model_validate(card).model_dump() for card in admit_cards_result.scalars().all()]
 
-
-@public_router.get("/{exam_id}/answer-keys", response_model=list[AnswerKeyResponse])
-async def list_exam_answer_keys(exam_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
-    """Per-phase answer keys for an exam."""
-    result = await db.execute(
-        select(EntranceExam).where(EntranceExam.id == exam_id)
-    )
-    if not result.scalar_one_or_none():
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Exam not found")
-    rows = await db.execute(
+    answer_keys_result = await db.execute(
         select(AnswerKey)
         .where(AnswerKey.exam_id == exam_id)
         .order_by(AnswerKey.phase_number.nulls_last(), AnswerKey.answer_key_type, AnswerKey.published_at.desc())
     )
-    return [AnswerKeyResponse.model_validate(r) for r in rows.scalars().all()]
+    answer_keys = [AnswerKeyResponse.model_validate(key).model_dump() for key in answer_keys_result.scalars().all()]
 
-
-@public_router.get("/{exam_id}/results", response_model=list[ResultResponse])
-async def list_exam_results(exam_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
-    """Per-phase results for an exam."""
-    result = await db.execute(
-        select(EntranceExam).where(EntranceExam.id == exam_id)
-    )
-    if not result.scalar_one_or_none():
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Exam not found")
-    rows = await db.execute(
+    results_result = await db.execute(
         select(Result)
         .where(Result.exam_id == exam_id)
         .order_by(Result.phase_number.nulls_last(), Result.published_at.desc())
     )
-    return [ResultResponse.model_validate(r) for r in rows.scalars().all()]
+    results = [ResultResponse.model_validate(res).model_dump() for res in results_result.scalars().all()]
+    
+    # Build response with nested documents
+    exam_data = EntranceExamResponse.model_validate(exam).model_dump()
+    exam_data["admit_cards"] = admit_cards
+    exam_data["answer_keys"] = answer_keys
+    exam_data["results"] = results
+    
+    return exam_data
 
 
 # ══════════════════════════════════════════════════════════════════════════════

@@ -37,7 +37,7 @@
 <tr>
     <td colspan="6" style="text-align:center;padding:1rem;">
         <button class="btn btn-outline"
-                hx-get="/users/list?offset={{ pagination.get('offset', 0) + pagination.get('limit', 20) }}{% if search_q %}&q={{ search_q }}{% endif %}{% if current_status %}&status={{ current_status }}{% endif %}"
+                hx-get="/users/list?offset={{ pagination.get('offset', 0) + pagination.get('limit', 20) }}"
                 hx-target="#user-list"
                 hx-swap="beforeend">
             Load more

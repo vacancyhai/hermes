@@ -14,15 +14,9 @@
     </td>
     <td>{{ job.total_vacancies or '—' }}</td>
     <td>{{ job.views }}</td>
-    <td>{{ job.applications_count }}</td>
     <td>{{ job.application_end or '—' }}</td>
     <td>
-        {% if job.status == 'draft' %}
-        <a href="/jobs/{{ job.id }}/review" class="btn btn-primary btn-sm">Review</a>
-        <form method="POST" action="/jobs/{{ job.id }}/approve" style="display:inline;">
-            <button type="submit" class="btn btn-success btn-sm">Approve</button>
-        </form>
-        {% endif %}
+        <a href="/jobs/{{ job.id }}/edit" class="btn btn-outline btn-sm">Edit</a>
         {% if session.get('admin_role') == 'admin' and job.status != 'cancelled' %}
         <form method="POST" action="/jobs/{{ job.id }}/delete" style="display:inline;" onsubmit="return confirm('Delete this job?')">
             <button type="submit" class="btn btn-sm" style="color:#dc2626;border-color:#fca5a5;background:#fff;">Delete</button>
@@ -33,14 +27,14 @@
 {% endfor %}
 
 {% if not jobs %}
-<tr><td colspan="8" style="text-align:center;color:#64748b;padding:2rem;">No jobs found.</td></tr>
+<tr><td colspan="7" style="text-align:center;color:#64748b;padding:2rem;">No jobs found.</td></tr>
 {% endif %}
 
 {% if pagination.get('has_more') %}
 <tr>
-    <td colspan="8" style="text-align:center;padding:1rem;">
+    <td colspan="7" style="text-align:center;padding:1rem;">
         <button class="btn btn-outline"
-                hx-get="/jobs/list?offset={{ pagination.get('offset', 0) + pagination.get('limit', 20) }}{% if current_status %}&status={{ current_status }}{% endif %}"
+                hx-get="/jobs/list?offset={{ pagination.get('offset', 0) + pagination.get('limit', 20) }}"
                 hx-target="#job-list"
                 hx-swap="beforeend">
             Load more

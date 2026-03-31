@@ -48,7 +48,6 @@ class Job(Base):
     is_featured: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     is_urgent: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     views: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    applications_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     created_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("admin_users.id"))
     source: Mapped[str] = mapped_column(String(20), nullable=False, default="manual")
     source_pdf_path: Mapped[str | None] = mapped_column(Text)
@@ -57,7 +56,6 @@ class Job(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
 
     # Relationships
-    applications = relationship("Application", back_populates="job")
     admit_cards = relationship("AdmitCard", back_populates="job", cascade="all, delete-orphan", order_by="AdmitCard.phase_number")
     answer_keys = relationship("AnswerKey", back_populates="job", cascade="all, delete-orphan", order_by="AnswerKey.phase_number")
     results = relationship("Result", back_populates="job", cascade="all, delete-orphan", order_by="Result.phase_number")

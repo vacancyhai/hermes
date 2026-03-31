@@ -83,12 +83,11 @@ async def test_admin_job_lifecycle(client: AsyncClient, admin_token: str):
     }, headers=headers)
     assert resp.status_code == 201
     job_id = resp.json()["id"]
-    slug = resp.json()["slug"]
 
     # Draft should NOT appear in public listing (default active)
     resp = await client.get("/api/v1/jobs")
-    slugs = [j["slug"] for j in resp.json()["data"]]
-    assert slug not in slugs
+    job_ids = [j["id"] for j in resp.json()["data"]]
+    assert job_id not in job_ids
 
     # Update draft
     resp = await client.put(f"/api/v1/admin/jobs/{job_id}", json={
@@ -106,7 +105,7 @@ async def test_admin_job_lifecycle(client: AsyncClient, admin_token: str):
     assert resp.json()["published_at"] is not None
 
     # Now visible in public listing
-    resp = await client.get(f"/api/v1/jobs/{slug}")
+    resp = await client.get(f"/api/v1/jobs/{job_id}")
     assert resp.status_code == 200
     assert resp.json()["total_vacancies"] == 75
 
@@ -114,8 +113,8 @@ async def test_admin_job_lifecycle(client: AsyncClient, admin_token: str):
     resp = await client.delete(f"/api/v1/admin/jobs/{job_id}", headers=headers)
     assert resp.status_code == 204
 
-    # Slug still resolves but status is cancelled
-    resp = await client.get(f"/api/v1/jobs/{slug}")
+    # ID still resolves but status is cancelled
+    resp = await client.get(f"/api/v1/jobs/{job_id}")
     assert resp.status_code == 200
     assert resp.json()["status"] == "cancelled"
 

@@ -6,21 +6,7 @@
     <a href="/entrance-exams/new" class="btn btn-primary">+ New Exam</a>
 </div>
 
-<div class="filters-bar">
-    <form method="get" action="/entrance-exams" style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center">
-        <select name="stream" onchange="this.form.submit()" style="padding:.35rem .6rem;border:1px solid #d1d5db;border-radius:.375rem;font-size:.875rem">
-            <option value="">All Streams</option>
-            {% for val, label in [('medical','Medical'),('engineering','Engineering'),('law','Law'),('management','Management'),('arts_science','Arts & Science'),('general','General')] %}
-            <option value="{{ val }}" {{ 'selected' if current_stream == val }}>{{ label }}</option>
-            {% endfor %}
-        </select>
-        {% if current_stream %}
-        <a href="/entrance-exams" style="font-size:.85rem;color:#dc2626">✕ Clear</a>
-        {% endif %}
-    </form>
-</div>
-
 <div id="exam-table">
-    {% include "_exam_rows.html" %}
+    {% include "entrance_exams/_exam_rows.html" %}
 </div>
 {% endblock %}

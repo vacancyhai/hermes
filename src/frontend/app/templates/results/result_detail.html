@@ -198,25 +198,15 @@
 
 {% if result.job %}
 <div class="detail-section" style="margin-top:1.5rem">
-    <h2>💼 Related Job Details</h2>
-    <div x-data="{expanded:true}" x-init="$nextTick(() => { document.getElementById('job-details-{{ result.job.id }}').dispatchEvent(new Event('load')) })">
-        <div id="job-details-{{ result.job.id }}"
-             hx-get="/partials/jobs/{{ result.job.id }}/details"
-             hx-trigger="load once" hx-swap="innerHTML">
-            <p class="doc-empty">Loading job details…</p>
-        </div>
-    </div>
+    <h2>💼 Related Job</h2>
+    <p><a href="/jobs/{{ result.job.slug }}">{{ result.job.job_title }}</a></p>
+    <p style="color:#64748b;font-size:.9rem">{{ result.job.organization }}</p>
 </div>
 {% elif result.exam %}
 <div class="detail-section" style="margin-top:1.5rem">
-    <h2>🎓 Related Exam Details</h2>
-    <div x-data="{expanded:true}" x-init="$nextTick(() => { document.getElementById('exam-details-{{ result.exam.id }}').dispatchEvent(new Event('load')) })">
-        <div id="exam-details-{{ result.exam.id }}"
-             hx-get="/partials/exams/{{ result.exam.id }}/details"
-             hx-trigger="load once" hx-swap="innerHTML">
-            <p class="doc-empty">Loading exam details…</p>
-        </div>
-    </div>
+    <h2>🎓 Related Exam</h2>
+    <p><a href="/entrance-exams/{{ result.exam.slug }}">{{ result.exam.exam_name }}</a></p>
+    <p style="color:#64748b;font-size:.9rem">{{ result.exam.conducting_body }}</p>
 </div>
 {% endif %}
 {% endblock %}

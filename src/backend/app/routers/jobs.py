@@ -2,7 +2,7 @@
 
 GET    /api/v1/jobs              — List (filterable, paginated, full-text search)
 GET    /api/v1/jobs/recommended  — Personalized recommendations based on profile
-GET    /api/v1/jobs/:slug        — Detail by slug
+GET    /api/v1/jobs/:id          — Detail by ID
 """
 
 import uuid
@@ -13,7 +13,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import get_current_user, get_db
 from app.models.job import Job
-from app.schemas.jobs import JobListItem, JobResponse
+from app.models.admit_card import AdmitCard
+from app.models.answer_key import AnswerKey
+from app.models.result import Result
+from app.schemas.jobs import JobListItem, JobResponse, AdmitCardResponse, AnswerKeyResponse, ResultResponse
 from app.services.matching import get_recommended_jobs
 
 router = APIRouter(prefix="/api/v1/jobs", tags=["jobs"])
@@ -112,20 +115,10 @@ async def recommended_jobs(
     }
 
 
-@router.get("/by-id/{job_id}")
-async def get_job_by_id(job_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
-    """Get job detail by ID (for partials, no view increment)."""
+@router.get("/{job_id}")
+async def get_job(job_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    """Get job detail by ID. Increments view count. Includes all related documents."""
     result = await db.execute(select(Job).where(Job.id == job_id))
-    job = result.scalar_one_or_none()
-    if not job:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
-    return JobResponse.model_validate(job).model_dump()
-
-
-@router.get("/{slug}")
-async def get_job(slug: str, db: AsyncSession = Depends(get_db)):
-    """Get job detail by slug. Increments view count."""
-    result = await db.execute(select(Job).where(Job.slug == slug))
     job = result.scalar_one_or_none()
     if not job:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
@@ -135,4 +128,32 @@ async def get_job(slug: str, db: AsyncSession = Depends(get_db)):
         update(Job).where(Job.id == job.id).values(views=Job.views + 1)
     )
 
-    return JobResponse.model_validate(job).model_dump()
+    # Fetch related documents
+    admit_cards_result = await db.execute(
+        select(AdmitCard)
+        .where(AdmitCard.job_id == job_id)
+        .order_by(AdmitCard.phase_number.nulls_last(), AdmitCard.published_at.desc())
+    )
+    admit_cards = [AdmitCardResponse.model_validate(card).model_dump() for card in admit_cards_result.scalars().all()]
+
+    answer_keys_result = await db.execute(
+        select(AnswerKey)
+        .where(AnswerKey.job_id == job_id)
+        .order_by(AnswerKey.phase_number.nulls_last(), AnswerKey.answer_key_type, AnswerKey.published_at.desc())
+    )
+    answer_keys = [AnswerKeyResponse.model_validate(key).model_dump() for key in answer_keys_result.scalars().all()]
+
+    results_result = await db.execute(
+        select(Result)
+        .where(Result.job_id == job_id)
+        .order_by(Result.phase_number.nulls_last(), Result.published_at.desc())
+    )
+    results = [ResultResponse.model_validate(res).model_dump() for res in results_result.scalars().all()]
+
+    # Build response with nested documents
+    job_data = JobResponse.model_validate(job).model_dump()
+    job_data["admit_cards"] = admit_cards
+    job_data["answer_keys"] = answer_keys
+    job_data["results"] = results
+
+    return job_data
