@@ -14,7 +14,7 @@ notifications, and an admin panel.
 > PWA (manifest, service worker, offline fallback), comprehensive test suite, security audit.
 >
 > **Latest additions:** Separate `entrance_exams` table for admission/entrance exams (NEET, JEE, CLAT, CAT, GATE, CUET etc.)
-> decoupled from `job_vacancies`; polymorphic document tables (`job_admit_cards`, `job_answer_keys`, `job_results`) now
+> decoupled from `jobs`; polymorphic document tables (`admit_cards`, `answer_keys`, `results`) now
 > support both jobs and entrance exams via `job_id`/`exam_id` FK; 5-section frontend navigation
 > (Jobs / Admit Cards / Answer Keys / Results / Entrance Exams); type-aware gradient detail pages with shared
 > CSS design system; single Web Share API button replacing WhatsApp/Telegram share links; 9 entrance exam seed
@@ -93,7 +93,7 @@ PostgreSQL and Redis are isolated inside Docker networks — never exposed to th
 - **Entrance Exam Admissions** — Separate `entrance_exams` table for NEET, JEE, CLAT, CAT, CUET, GATE etc.;
   distinct from government job vacancies with exam-specific fields: `stream`, `exam_type`, `counselling_body`,
   `seats_info`, eligibility, exam pattern — 9 exams seeded with full metadata
-- **Polymorphic Document Tables** — `job_admit_cards`, `job_answer_keys`, `job_results` link to
+- **Polymorphic Document Tables** — `admit_cards`, `answer_keys`, `results` link to
   either a job (`job_id`) or entrance exam (`exam_id`) via DB CHECK constraint; 32 phase docs seeded
 - **5-Section Navigation** — Jobs, Admit Cards, Answer Keys, Results, Entrance Exams — each with its own
   section page, search, and type-matching gradient hero color
@@ -111,7 +111,7 @@ PostgreSQL and Redis are isolated inside Docker networks — never exposed to th
 | Document | Description |
 | -------- | ----------- |
 | [docs/DESIGN.md](docs/DESIGN.md) | System design: architecture, auth, Celery tasks, SEO, notifications, security, deployment |
-| [docs/DATABASE.md](docs/DATABASE.md) | Full database schema: ERD, all 14 tables, column definitions, indexes, CHECK constraints |
+| [docs/DATABASE.md](docs/DATABASE.md) | Full database schema: ERD, all 13 tables, column definitions, indexes, CHECK constraints |
 | [docs/API.md](docs/API.md) | Complete API endpoint reference with request/response examples |
 | [docs/DIAGRAMS.md](docs/DIAGRAMS.md) | ASCII workflow diagrams for all major user and system flows |
 | [docs/TESTING.md](docs/TESTING.md) | Test coverage report for all three services |
@@ -131,10 +131,9 @@ cp config/development/.env.frontend-admin.development src/frontend-admin/.env
 # 2. Start backend (PostgreSQL, Redis, PgBouncer, FastAPI, Celery)
 cd src/backend && docker compose up -d --build
 
-# 3. Run database migrations (creates all 14 tables)
+# 3. Run database migrations (creates all 13 tables)
 docker exec -w /app -e PYTHONPATH=/app hermes_backend alembic upgrade head
-# Migrations: 0001 (initial schema), 0002 (telegram channel), 0003 (job document tables),
-#             0004 (entrance_exams + polymorphic doc FK)
+# Migrations: 0001 (initial schema), 0002 (add followed_organizations)
 
 # 4. Create the first admin account (required — no self-registration for admins)
 docker compose exec backend python -c "
@@ -189,15 +188,15 @@ hermes/
 │   │   │   ├── dependencies.py   # get_db, get_redis, get_current_user, get_current_admin
 │   │   │   ├── routers/          # 9 router modules (see API.md for all endpoints)
 │   │   │   │   ├── auth.py           # /api/v1/auth/*
-│   │   │   │   ├── users.py          # /api/v1/users/* + /api/v1/organizations/*
+│   │   │   │   ├── users.py          # /api/v1/users/*
 │   │   │   │   ├── jobs.py           # /api/v1/jobs/*
-│   │   │   │   ├── applications.py   # /api/v1/applications/*
+│   │   │   │   ├── watches.py        # /api/v1/jobs/{id}/watch, /api/v1/entrance-exams/{id}/watch
 │   │   │   │   ├── notifications.py  # /api/v1/notifications/*
 │   │   │   │   ├── admin.py          # /api/v1/admin/*
-│   │   │   │   ├── job_documents.py  # /api/v1/jobs/{id}/admit-cards|answer-keys|results
+│   │   │   │   ├── content.py        # /api/v1/admit-cards, /answer-keys, /results
 │   │   │   │   ├── entrance_exams.py # /api/v1/entrance-exams/* + /api/v1/admin/entrance-exams/*
 │   │   │   │   └── health.py         # /api/v1/health
-│   │   │   ├── models/           # SQLAlchemy 2.0 Mapped models (14 tables, see DATABASE.md)
+│   │   │   ├── models/           # SQLAlchemy 2.0 Mapped models (13 tables, see DATABASE.md)
 │   │   │   ├── schemas/          # Pydantic v2 request/response models
 │   │   │   ├── services/
 │   │   │   │   ├── matching.py       # Job scoring engine (category +4, state +3, education +2…)

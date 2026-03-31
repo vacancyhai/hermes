@@ -14,7 +14,6 @@ def _make_job(**kwargs):
     j.slug = kwargs.get("slug", "test-job")
     j.organization = kwargs.get("organization", "Test Org")
     j.status = kwargs.get("status", "active")
-    j.job_type = kwargs.get("job_type", "latest_job")
     j.qualification_level = kwargs.get("qualification_level", None)
     j.department = kwargs.get("department", None)
     j.is_featured = kwargs.get("is_featured", False)
@@ -43,7 +42,7 @@ async def test_list_jobs_with_qualification_filter():
     db.execute.side_effect = [count_result, data_result]
 
     output = await list_jobs(
-        q=None, job_type=None, qualification_level="graduate",
+        q=None, qualification_level="graduate",
         organization=None, department=None,
         is_featured=None, is_urgent=None,
         limit=20, offset=0, db=db,
@@ -62,7 +61,7 @@ async def test_list_jobs_with_department_filter():
     db.execute.side_effect = [count_result, data_result]
 
     output = await list_jobs(
-        q=None, job_type=None, qualification_level=None,
+        q=None, qualification_level=None,
         organization=None, department="Engineering",
         is_featured=None, is_urgent=None,
         limit=20, offset=0, db=db,
@@ -81,7 +80,7 @@ async def test_list_jobs_with_featured_filter():
     db.execute.side_effect = [count_result, data_result]
 
     output = await list_jobs(
-        q=None, job_type=None, qualification_level=None,
+        q=None, qualification_level=None,
         organization=None, department=None,
         is_featured=True, is_urgent=None,
         limit=20, offset=0, db=db,
@@ -100,7 +99,7 @@ async def test_list_jobs_with_urgent_filter():
     db.execute.side_effect = [count_result, data_result]
 
     output = await list_jobs(
-        q=None, job_type=None, qualification_level=None,
+        q=None, qualification_level=None,
         organization=None, department=None,
         is_featured=None, is_urgent=True,
         limit=20, offset=0, db=db,

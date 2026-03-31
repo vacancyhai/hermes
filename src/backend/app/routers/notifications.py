@@ -12,10 +12,10 @@ import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-
-logger = logging.getLogger(__name__)
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
+
+logger = logging.getLogger(__name__)
 
 from app.dependencies import get_current_user, get_db
 from app.models.notification import Notification

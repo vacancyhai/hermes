@@ -75,7 +75,6 @@ async def test_admin_job_lifecycle(client: AsyncClient, admin_token: str):
     resp = await client.post("/api/v1/admin/jobs", json={
         "job_title": title,
         "organization": "Lifecycle Org",
-        "job_type": "latest_job",
         "qualification_level": "graduate",
         "total_vacancies": 50,
         "description": "Integration test job.",
@@ -181,7 +180,6 @@ async def test_rbac_admin_vs_operator(client: AsyncClient, admin_token: str, ope
     resp = await client.post("/api/v1/admin/jobs", json={
         "job_title": "Operator Job",
         "organization": "Operator Org",
-        "job_type": "latest_job",
         "description": "op test",
         "status": "draft",
     }, headers=auth_header(operator_token))

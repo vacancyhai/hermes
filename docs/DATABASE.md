@@ -2,21 +2,19 @@
 
 This document outlines the PostgreSQL database schema for the Hermes project, using SQLAlchemy models.
 
-## Migration
+## Migrations
 
-Schema is managed through a single consolidated SQL migration:
+Schema is managed with Alembic:
 
-| Migration | Description |
-|-----------|-------------|
-| `0001_initial.sql` | Complete database schema with all 13 tables (users, admin_users, user_profiles, jobs, applications, notifications, admin_logs, user_devices, notification_delivery_log, entrance_exams, admit_cards, answer_keys, results) |
+| File | Description |
+|------|-------------|
+| `migrations/versions/0001_initial.py` | Complete initial schema — all 13 tables |
+| `migrations/versions/0002_add_followed_organizations.py` | Adds `followed_organizations JSONB NOT NULL DEFAULT '[]'` to `user_profiles` |
 
-**Fresh install:**
+**Apply migrations:**
 ```bash
-# Run the consolidated migration directly
-docker exec -i hermes_postgresql psql -U hermes_user -d hermes_db < migrations/0001_initial.sql
+docker exec -w /app hermes_backend alembic upgrade head
 ```
-
-**Note:** This consolidated migration represents the final state of the database after all previous incremental migrations (0001-0005 Alembic + 007-010 SQL migrations). Existing databases should already be at this state.
 
 ---
 
@@ -25,18 +23,19 @@ docker exec -i hermes_postgresql psql -U hermes_user -d hermes_db < migrations/0
 ```mermaid
 erDiagram
     USERS ||--o| USER_PROFILES : has
-    USERS ||--o{ APPLICATIONS : tracks
+    USERS ||--o{ USER_WATCHES : tracks
     USERS ||--o{ NOTIFICATIONS : receives
     USERS ||--o{ USER_DEVICES : registers
 
     ADMIN_USERS ||--o{ JOBS : creates
     ADMIN_USERS ||--o{ ADMIN_LOGS : performs
 
-    JOBS ||--o{ APPLICATIONS : "is tracked by"
+    JOBS ||--o{ USER_WATCHES : "is tracked by"
     JOBS ||--o{ ADMIT_CARDS : "has (job_id)"
     JOBS ||--o{ ANSWER_KEYS : "has (job_id)"
     JOBS ||--o{ RESULTS : "has (job_id)"
 
+    ENTRANCE_EXAMS ||--o{ USER_WATCHES : "is tracked by"
     ENTRANCE_EXAMS ||--o{ ADMIT_CARDS : "has (exam_id)"
     ENTRANCE_EXAMS ||--o{ ANSWER_KEYS : "has (exam_id)"
     ENTRANCE_EXAMS ||--o{ RESULTS : "has (exam_id)"
@@ -52,7 +51,7 @@ erDiagram
 
 ---
 
-## Tables (14 total)
+## Tables (13 total)
 
 ### 1. `users`
 Core user account table. Integrated with Firebase Auth.
@@ -111,15 +110,7 @@ Internal staff accounts (Admin/Operator).
 | `status` | String(20) | `active`, `suspended` |
 
 ### 4. `jobs`
-Government job postings and employment opportunities.
-
-**Note:** This table now exclusively stores job vacancies (`job_type='latest_job'`). 
-Document announcements (admit cards, answer keys, results) are managed through:
-- Table 10: `admit_cards` - Per-phase admit card download links
-- Table 11: `answer_keys` - Per-phase answer key files  
-- Table 12: `results` - Per-phase result downloads
-
-These document tables can link to either a job (via `job_id`) or an entrance exam (via `exam_id`).
+Government job vacancies and employment opportunities. Document releases (admit cards, answer keys, results) are stored in their own tables (`admit_cards`, `answer_keys`, `results`) which link back via `job_id`.
 
 | Column | Type | Description |
 |--------|------|-------------|
@@ -128,8 +119,7 @@ These document tables can link to either a job (via `job_id`) or an entrance exa
 | `slug` | String(500) | URL slug (unique) |
 | `organization` | String(255) | Hiring authority (SSC, UPSC, etc.) |
 | `department` | String(255) | Specific department |
-| `job_type` | String(50) | Content type: `latest_job` (only value allowed) |
-| `employment_type` | String(50) | `permanent`, `contract`, etc. (for latest_job only) |
+| `employment_type` | String(50) | `permanent`, `contract`, etc. |
 | `qualification_level`| String(50) | `10th`, `graduate`, etc. |
 | `total_vacancies` | Integer | Total seat count |
 | `vacancy_breakdown` | JSONB | Seat distribution by category/state |
@@ -147,19 +137,17 @@ These document tables can link to either a job (via `job_id`) or an entrance exa
 | `is_urgent` | Boolean | Close to deadline |
 | `created_by` | UUID (FK) | Reference to `admin_users.id` |
 
-### 5. `applications`
-Tracks which user is interested in which job.
+### 5. `user_watches`
+Tracks which jobs or exams a user is watching for notification delivery.
 
 | Column | Type | Description |
 |--------|------|-------------|
 | `id` | UUID (PK) | Unique identifier |
 | `user_id` | UUID (FK) | Reference to `users.id` |
-| `job_id` | UUID (FK) | Reference to `jobs.id` |
-| `application_number`| String(100) | User's actual reg number from gov site |
-| `is_priority` | Boolean | User-marked priority |
-| `status` | String(50) | `applied`, `shortlisted`, `rejected`, etc. |
-| `notes` | Text | User's private notes |
-| `applied_on` | DateTime | Tracking creation date |
+| `entity_type` | String(10) | `job` or `exam` |
+| `entity_id` | UUID | ID of the watched job or entrance exam |
+
+> UNIQUE constraint on `(user_id, entity_type, entity_id)`. Max 100 watches per user.
 
 ### 6. `notifications`
 Master records for all system notifications.
@@ -197,7 +185,7 @@ Audit logs for staff actions.
 | `id` | UUID (PK) | Unique identifier |
 | `admin_id` | UUID (FK) | Admin who took the action |
 | `action` | String(100) | `create_job`, `suspend_user`, etc. |
-| `resource_type` | String(100) | `job_vacancies`, `users` |
+| `resource_type` | String(100) | `job`, `user`, `entrance_exam`, etc. |
 | `resource_id` | UUID | Affected resource ID |
 | `details` | Text | Human-readable summary |
 | `changes` | JSONB | Before/After snapshot |
@@ -210,8 +198,8 @@ Channel-level delivery tracking.
 |--------|------|-------------|
 | `id` | UUID (PK) | Unique identifier |
 | `notification_id` | UUID (FK) | Parent notification |
-| `channel` | String(20) | `ck_delivery_channel`: in_app, push, email, whatsapp, telegram |
-| `status` | String(20) | `ck_delivery_status`: pending, sent, delivered, failed, skipped |
+| `channel` | String(20) | `ck_delivery_channel`: `in_app`, `push`, `email`, `whatsapp`, `telegram` |
+| `status` | String(20) | `ck_delivery_status`: `pending`, `queued`, `sent`, `delivered`, `failed`, `skipped`. Email is set to `queued` when the Celery task is dispatched. |
 | `device_id` | UUID (FK) | Targeted device (for push) |
 | `error_message` | Text | Failure reason (from OCI/FCM) |
 | `delivered_at` | DateTime | Verified delivery time |
@@ -316,10 +304,10 @@ These are educational admissions, not government job recruitments.
 - `idx_entrance_exams_slug` — UNIQUE index on `slug`
 - `idx_entrance_exams_stream_status` — Composite index on `(stream, status, created_at)` for filtered listings
 
-**Key design difference from `job_vacancies`:**
+**Key design difference from `jobs`:**
 
-| Dimension | `job_vacancies` | `entrance_exams` |
-|-----------|-----------------|------------------|
+| Dimension | `jobs` | `entrance_exams` |
+|-----------|--------|------------------|
 | Outcome | Employment (govt job) | Education (college/IIT/NLU seat) |
 | Vacancies | `total_vacancies` + `vacancy_breakdown` | `seats_info` (seats by institution) |
 | Salary | `salary_initial`, `salary_max` | — (not applicable) |
@@ -328,5 +316,5 @@ These are educational admissions, not government job recruitments.
 
 ---
 
-### 14. `alembic_version`
+### 13. `alembic_version`
 Alembic migration state tracker. Single row with the current revision ID.

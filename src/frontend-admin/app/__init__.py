@@ -140,7 +140,7 @@ def create_app():
 
     @app.route("/jobs")
     def jobs():
-        """Manage job vacancies (latest_job type only)."""
+        """Manage job vacancies."""
         token = session.get("token")
         if not token:
             return redirect("/login")
@@ -265,7 +265,7 @@ def create_app():
         file = request.files["file"]
         
         # Forward to backend API
-        resp = current_app.api_client.post(
+        resp = current_app.api_client.post_file(
             "/admin/jobs/extract-pdf",
             token=token,
             files={"file": (file.filename, file.stream, file.content_type)}
@@ -279,7 +279,7 @@ def create_app():
 
     @app.route("/jobs/new", methods=["GET", "POST"])
     def new_job():
-        """Create a job vacancy (latest_job type)."""
+        """Create a job vacancy."""
         token = session.get("token")
         if not token:
             return redirect("/login")
@@ -287,7 +287,7 @@ def create_app():
         if request.method == "POST":
             form = request.form.to_dict()
             payload = {}
-            for f in ["job_title", "organization", "department", "job_type", "qualification_level",
+            for f in ["job_title", "organization", "department", "qualification_level",
                       "employment_type", "description", "short_description", "source_url"]:
                 if f in form:
                     payload[f] = form[f] or None

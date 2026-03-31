@@ -34,7 +34,6 @@ def _make_job(**kwargs):
     j.slug = kwargs.get("slug", "test-job")
     j.organization = kwargs.get("organization", "SSC")
     j.status = kwargs.get("status", "draft")
-    j.job_type = kwargs.get("job_type", "latest_job")
     j.qualification_level = None
     j.department = None
     j.is_featured = False

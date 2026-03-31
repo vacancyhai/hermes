@@ -158,7 +158,6 @@ class JobListItem(BaseModel):
     notification_date: date | None = None
     exam_start: date | None = None
     result_date: date | None = None
-    job_type: str | None = None
     fee_general: int | None = None
     fee_obc: int | None = None
     fee_sc_st: int | None = None

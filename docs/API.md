@@ -66,7 +66,7 @@ If `refresh_token` is provided, its JTI is also added to the Redis blocklist so 
 | PUT | `/users/profile/phone` | User | Update phone number (marks as unverified) |
 | POST | `/users/me/verify-phone-otp` | User | Verify phone number with OTP |
 | POST | `/users/me/set-password` | User | Set password for Google OAuth users |
-| POST | `/users/me/change-password` | User | Change password (requires current password) |
+| POST | `/users/me/change-password` | User | Change password (requires re-authentication client-side before calling) |
 | POST | `/users/me/link-email-password` | User | Link email+password to phone-only account |
 
 **Profile preference fields** (used for job matching):
@@ -123,7 +123,6 @@ Users can watch specific jobs or entrance exams to receive automatic notificatio
 | Param | Type | Description |
 |-------|------|-------------|
 | `q` | string | Full-text search (uses PostgreSQL tsvector) |
-| `job_type` | string | `latest_job`, `result`, `admit_card`, etc. |
 | `qualification_level` | string | `graduate`, `postgraduate`, etc. |
 | `organization` | string | Partial match (ILIKE) |
 | `department` | string | Partial match (ILIKE) |
@@ -141,46 +140,38 @@ All admin endpoints require an admin JWT token (`user_type: "admin"`).
 
 ### Content Management
 
-The admin panel manages different content types stored in `job_vacancies` table with different `job_type` values:
-- `latest_job` - Job vacancies and employment opportunities
-- `admit_card` - Exam admit card releases
-- `answer_key` - Answer key publications (provisional/final)
-- `result` - Exam results and merit lists
+Content is stored across four dedicated tables: `jobs`, `admit_cards`, `answer_keys`, `results`.
 
-Each content type has its own dedicated endpoints for listing and management.
-
-#### Job Vacancies (latest_job)
+#### Job Vacancies
 
 | Method | Endpoint | Role | Description |
 |--------|----------|------|-------------|
-| GET | `/admin/jobs` | Operator+ | List job vacancies (latest_job type only) |
-| POST | `/admin/jobs` | Operator+ | Create job vacancy (job_type: latest_job) |
+| GET | `/admin/jobs` | Operator+ | List all job vacancies |
+| POST | `/admin/jobs` | Operator+ | Create job vacancy |
 | POST | `/admin/jobs/extract-pdf` | Operator+ | Extract PDF data → return JSON (for form auto-fill) |
 
-#### Admit Cards (admit_card)
+#### Admit Cards
 
 | Method | Endpoint | Role | Description |
 |--------|----------|------|-------------|
-| GET | `/admin/admit-cards` | Operator+ | List admit cards (admit_card type only) |
-| POST | `/admin/jobs` | Operator+ | Create admit card (job_type: admit_card) |
+| GET | `/admin/admit-cards` | Operator+ | List all admit cards |
+| POST | `/admin/admit-cards` | Operator+ | Create admit card (must specify `job_id` OR `exam_id`) |
 
-#### Answer Keys (answer_key)
-
-| Method | Endpoint | Role | Description |
-|--------|----------|------|-------------|
-| GET | `/admin/answer-keys` | Operator+ | List answer keys (answer_key type only) |
-| POST | `/admin/jobs` | Operator+ | Create answer key (job_type: answer_key) |
-
-#### Results (result)
+#### Answer Keys
 
 | Method | Endpoint | Role | Description |
 |--------|----------|------|-------------|
-| GET | `/admin/results` | Operator+ | List results (result type only) |
-| POST | `/admin/jobs` | Operator+ | Create result (job_type: result) |
+| GET | `/admin/answer-keys` | Operator+ | List all answer keys |
+| POST | `/admin/answer-keys` | Operator+ | Create answer key (must specify `job_id` OR `exam_id`) |
 
-#### Common Content Operations
+#### Results
 
-These operations work for all content types (jobs, admit cards, answer keys, results):
+| Method | Endpoint | Role | Description |
+|--------|----------|------|-------------|
+| GET | `/admin/results` | Operator+ | List all results |
+| POST | `/admin/results` | Operator+ | Create result (must specify `job_id` OR `exam_id`) |
+
+#### Common Job Operations
 
 | Method | Endpoint | Role | Description |
 |--------|----------|------|-------------|
@@ -314,7 +305,7 @@ All channels always deliver — staggered just adds a time gap so the user isn't
 | WhatsApp | If user has `notification_preferences.whatsapp` not set to `false` | Placeholder until `WHATSAPP_API_TOKEN` is configured |
 | Telegram | If user has chat_id set in `notification_preferences.telegram.chat_id` and `notification_preferences.telegram.enabled` not `false` | Requires `TELEGRAM_BOT_TOKEN`; uses Bot API `sendMessage` with Markdown |}
 
-Every delivery attempt is logged in `notification_delivery_log` with status (pending/sent/delivered/failed/skipped).
+Every delivery attempt is logged in `notification_delivery_log` with status (`pending`, `queued`, `sent`, `delivered`, `failed`, `skipped`). Email is logged as `queued` when the Celery task is dispatched (not when actually sent).
 
 ---
 
@@ -336,7 +327,6 @@ Authorization: Bearer <admin_token>
 {
   "job_title": "SSC CGL 2026",
   "organization": "Staff Selection Commission",
-  "job_type": "latest_job",
   "qualification_level": "graduate",
   "total_vacancies": 8000,
   "description": "Combined Graduate Level recruitment...",
@@ -358,7 +348,7 @@ GET /api/v1/jobs/recommended?limit=20&offset=0
 Authorization: Bearer <user_token>
 → 200 { "data": [...], "pagination": { "total": 5, ... } }
 ```
-Scoring: state match (+3), category match (+3), education match (+2), recency <7d (+1).
+Scoring: category match (+4), state match (+3), preferred categories (+2), education match (+2), age range match (+2), recency <7d (+1).
 Fallback: returns latest active jobs if user has no preferences set.
 
 ### List Notifications
@@ -457,13 +447,11 @@ Authorization: Bearer <admin_token>
 ```
 
 **Content Type Breakdown:**
-- `jobs` - Job vacancies (job_type: latest_job)
-- `admit_cards` - Admit card releases (job_type: admit_card)
-- `answer_keys` - Answer key publications (job_type: answer_key)
-- `results` - Exam results (job_type: result)
-- `entrance_exams` - Entrance exam information (separate table)
-
-All content types stored in `job_vacancies` table are differentiated by their `job_type` field.
+- `jobs` — Job vacancies (`jobs` table)
+- `admit_cards` — Admit card releases (`admit_cards` table)
+- `answer_keys` — Answer key publications (`answer_keys` table)
+- `results` — Exam results (`results` table)
+- `entrance_exams` — Entrance exam information (`entrance_exams` table)
 
 ---
 
@@ -681,7 +669,7 @@ The user frontend supports Progressive Web App features:
 
 ## Entrance Exams
 
-Entrance / admission exams (NEET, JEE, CLAT, CAT, GATE, CUET etc.) are stored separately from `job_vacancies`.
+Entrance / admission exams (NEET, JEE, CLAT, CAT, GATE etc.) are stored in the `entrance_exams` table, separate from `jobs`.
 They have exam-specific fields: `stream`, `exam_type`, `counselling_body`, `seats_info`, exam pattern.
 
 ### Public (read-only, active exams only)
@@ -775,15 +763,16 @@ Authorization: Bearer <admin_token>
 
 | Table | Description |
 |-------|-------------|
-| `users` | Regular user accounts (no role column) |
+| `users` | Regular user accounts |
 | `admin_users` | Admin/operator accounts (role, department, permissions) |
-| `user_profiles` | Extended user profile (education, category, location) |
-| `job_vacancies` | Job postings with FTS vector (latest_job / admit_card / answer_key / result) |
-| `entrance_exams` | Admission/entrance exams (NEET, JEE, CLAT, CAT, GATE etc.) — separate from jobs |
+| `user_profiles` | Extended user profile (education, category, location, followed_organizations) |
+| `jobs` | Job vacancy postings with FTS vector |
+| `entrance_exams` | Admission/entrance exams (NEET, JEE, CLAT, CAT, GATE etc.) |
 | `notifications` | User notifications |
 | `notification_delivery_log` | Per-channel delivery tracking (push/email/whatsapp/telegram) |
 | `user_devices` | Device registry (FCM token, fingerprint de-duplication) |
 | `admin_logs` | Admin audit trail |
-| `job_admit_cards` | Per-phase admit cards (linked to job OR exam via polymorphic FK) |
-| `job_answer_keys` | Per-phase answer keys — provisional/final, multi-paper files JSONB |
-| `job_results` | Per-phase results — shortlist/cutoff/merit_list/final, cutoff_marks JSONB |
+| `user_watches` | Jobs and exams a user is tracking (for notifications) |
+| `admit_cards` | Per-phase admit cards (linked to job OR exam via polymorphic FK) |
+| `answer_keys` | Per-phase answer keys — provisional/final, multi-paper files JSONB |
+| `results` | Per-phase results — shortlist/cutoff/merit_list/final, cutoff_marks JSONB |

@@ -27,10 +27,14 @@ limiter.enabled = False
 _TRUNCATE_TABLES = [
     "notification_delivery_log",
     "notifications",
-    "user_job_applications",
+    "user_watches",
     "user_devices",
     "admin_logs",
-    "job_vacancies",
+    "admit_cards",
+    "answer_keys",
+    "results",
+    "jobs",
+    "entrance_exams",
     "user_profiles",
     "users",
     "admin_users",
@@ -225,7 +229,6 @@ async def active_job(client: AsyncClient, admin_token: str):
         json={
             "job_title": f"Test Job {uuid.uuid4().hex[:6]}",
             "organization": "Test Organization",
-            "job_type": "latest_job",
             "qualification_level": "graduate",
             "total_vacancies": 100,
             "description": "A test job vacancy for automated testing.",
@@ -245,7 +248,6 @@ async def draft_job(client: AsyncClient, admin_token: str):
         json={
             "job_title": f"Draft Job {uuid.uuid4().hex[:6]}",
             "organization": "Draft Organization",
-            "job_type": "latest_job",
             "description": "A draft test job.",
             "status": "draft",
         },

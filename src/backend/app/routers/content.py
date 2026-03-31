@@ -72,7 +72,7 @@ async def list_admit_cards(
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
 ):
-    """List all admit cards from job_admit_cards table, ordered by published_at."""
+    """List all admit cards from admit_cards table, ordered by published_at."""
     query = select(AdmitCard).order_by(AdmitCard.published_at.desc().nulls_last(), AdmitCard.created_at.desc())
     count_query = select(func.count(AdmitCard.id))
 
@@ -248,7 +248,7 @@ async def list_results(
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
 ):
-    """List all results from job_results table, ordered by published_at."""
+    """List all results from results table, ordered by published_at."""
     query = select(Result).order_by(Result.published_at.desc().nulls_last(), Result.created_at.desc())
     count_query = select(func.count(Result.id))
 

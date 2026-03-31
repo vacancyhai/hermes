@@ -15,10 +15,10 @@ import secrets
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-
-logger = logging.getLogger(__name__)
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
+logger = logging.getLogger(__name__)
 
 from app.config import settings
 from app.dependencies import get_current_user, get_db, get_redis
@@ -105,7 +105,6 @@ async def update_phone(
     # Send email notification if user has email
     if user.email:
         from app.tasks.notifications import send_email_notification
-        from datetime import datetime
         send_email_notification.delay(
             user.email,
             "Phone Number Added to Your Account",
@@ -114,7 +113,7 @@ async def update_phone(
                 "name": user.full_name or user.email,
                 "email": user.email,
                 "phone": body.phone,
-                "timestamp": datetime.utcnow().strftime("%B %d, %Y at %H:%M UTC"),
+                "timestamp": datetime.now(timezone.utc).strftime("%B %d, %Y at %H:%M UTC"),
                 "base_url": settings.FRONTEND_URL or "http://localhost:5000"
             }
         )
@@ -204,7 +203,6 @@ async def verify_phone_otp(
     # Send email notification if user has email
     if user.email:
         from app.tasks.notifications import send_email_notification
-        from datetime import datetime
         send_email_notification.delay(
             user.email,
             "Phone Number Verified Successfully",
@@ -212,7 +210,7 @@ async def verify_phone_otp(
             {
                 "name": user.full_name or user.email,
                 "phone": user.phone,
-                "timestamp": datetime.utcnow().strftime("%B %d, %Y at %H:%M UTC"),
+                "timestamp": datetime.now(timezone.utc).strftime("%B %d, %Y at %H:%M UTC"),
                 "base_url": settings.FRONTEND_URL or "http://localhost:5000"
             }
         )
@@ -267,7 +265,6 @@ async def set_password(
         # Send email notification
         if user.email:
             from app.tasks.notifications import send_email_notification
-            from datetime import datetime
             send_email_notification.delay(
                 user.email,
                 "Password Added to Your Account",
@@ -275,7 +272,7 @@ async def set_password(
                 {
                     "name": user.full_name or user.email,
                     "email": user.email,
-                    "timestamp": datetime.utcnow().strftime("%B %d, %Y at %H:%M UTC"),
+                    "timestamp": datetime.now(timezone.utc).strftime("%B %d, %Y at %H:%M UTC"),
                     "original_method": "Google" if "google.com" in [p.provider_id for p in user_record.provider_data] else "Phone",
                     "base_url": settings.FRONTEND_URL or "http://localhost:5000"
                 }
@@ -305,7 +302,7 @@ async def change_password(
     body: ChangePasswordRequest,
     current_user=Depends(get_current_user),
 ):
-    """Change password for users who already have one (requires current password)."""
+    """Change password for users who already have one. Re-authenticate client-side before calling."""
     user, _ = current_user
     
     if not user.firebase_uid or not user.email:
@@ -325,8 +322,6 @@ async def change_password(
     from firebase_admin import auth as fb_auth
     
     try:
-        # Verify current password by attempting to get user token
-        # This is done client-side with re-authentication, but we still update here
         user_record = fb_auth.get_user(user.firebase_uid)
         providers = [p.provider_id for p in user_record.provider_data]
         
@@ -343,7 +338,6 @@ async def change_password(
         # Send email notification
         if user.email:
             from app.tasks.notifications import send_email_notification
-            from datetime import datetime
             send_email_notification.delay(
                 user.email,
                 "Password Changed Successfully",
@@ -351,7 +345,7 @@ async def change_password(
                 {
                     "name": user.full_name or user.email,
                     "email": user.email,
-                    "timestamp": datetime.utcnow().strftime("%B %d, %Y at %H:%M UTC"),
+                    "timestamp": datetime.now(timezone.utc).strftime("%B %d, %Y at %H:%M UTC"),
                     "base_url": settings.FRONTEND_URL or "http://localhost:5000"
                 }
             )
@@ -451,7 +445,6 @@ async def link_email_password(
         
         # Send email notification to newly linked email
         from app.tasks.notifications import send_email_notification
-        from datetime import datetime
         send_email_notification.delay(
             email_lower,
             "Email Address Linked to Your Account",
@@ -460,7 +453,7 @@ async def link_email_password(
                 "name": user.full_name or "User",
                 "email": email_lower,
                 "phone": user.phone,
-                "timestamp": datetime.utcnow().strftime("%B %d, %Y at %H:%M UTC"),
+                "timestamp": datetime.now(timezone.utc).strftime("%B %d, %Y at %H:%M UTC"),
                 "base_url": settings.FRONTEND_URL or "http://localhost:5000"
             }
         )

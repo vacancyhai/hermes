@@ -209,16 +209,15 @@ async def test_set_password_with_weak_password_fails(client: AsyncClient, db):
     assert resp.status_code == 422
 
 
-async def test_change_password_requires_current_password(client: AsyncClient, user_token: str):
-    """Changing password requires current password."""
+async def test_change_password_requires_auth(client: AsyncClient, user_token: str):
+    """Changing password requires a valid JWT."""
     resp = await client.post("/api/v1/users/me/change-password",
         headers=auth_header(user_token),
         json={
-            "current_password": "OldPass123!",
             "new_password": "NewPass456!"
         }
     )
-    # Without proper Firebase mocking, endpoint will fail
+    # Without proper Firebase mocking, endpoint will fail at the Firebase step
     assert resp.status_code in [200, 400, 404, 500, 503]
 
 
@@ -227,7 +226,6 @@ async def test_change_password_with_weak_new_password_fails(client: AsyncClient,
     resp = await client.post("/api/v1/users/me/change-password",
         headers=auth_header(user_token),
         json={
-            "current_password": "OldPass123!",
             "new_password": "weak"
         }
     )

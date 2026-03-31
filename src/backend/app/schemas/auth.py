@@ -144,7 +144,6 @@ class SetPasswordRequest(BaseModel):
 
 
 class ChangePasswordRequest(BaseModel):
-    current_password: str
     new_password: str = Field(min_length=8)
     
     @field_validator("new_password")

@@ -429,13 +429,12 @@ def create_app():
     def change_password():
         """Proxy: change password for users with existing password."""
         data = request.get_json(silent=True) or {}
-        current_password = data.get("current_password", "")
         new_password = data.get("new_password", "")
-        if not current_password or not new_password:
-            return {"error": "Both current and new passwords required"}, 400
+        if not new_password:
+            return {"error": "New password required"}, 400
         if len(new_password) < 8:
             return {"error": "New password must be at least 8 characters"}, 400
-        resp, ok = _api_with_auth(lambda token: current_app.api_client.post("/users/me/change-password", token=token, json={"current_password": current_password, "new_password": new_password}))
+        resp, ok = _api_with_auth(lambda token: current_app.api_client.post("/users/me/change-password", token=token, json={"new_password": new_password}))
         if not ok:
             return {"error": "Authentication required"}, 401
         if not resp.ok:

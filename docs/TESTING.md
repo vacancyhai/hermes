@@ -36,12 +36,12 @@ For email/password and Google login, create a new account via the `/login` page 
 One test (`test_send_push_notification_no_firebase_config`) was removed alongside the deleted `send_push_notification` legacy task.
 
 | Module | Coverage | Notes |
-|--------|----------|-------|
+|--------|----------|---------|
 | `routers/notifications.py` | 100% | |
-| `routers/applications.py` | 97% | IntegrityError rollback path |
+| `routers/watches.py` | 97% | IntegrityError rollback path |
 | `routers/jobs.py` | 100% | |
 | `routers/users.py` | 98% | |
-| `routers/admin.py` | ~93% | PDF file-write + Celery dispatch path; new `create_admin_user` endpoint needs tests |
+| `routers/admin.py` | ~93% | PDF file-write + Celery dispatch path; `create_admin_user` endpoint needs integration tests |
 | `routers/auth.py` | ~92% | Firebase `verify_id_token` uncovered paths; optional refresh_token logout branch |
 | `firebase.py` | 69% | Real Firebase token verify path requires live credentials |
 | `services/notifications.py` | ~88% | Firebase FCM send requires credentials; new `_send_fcm_with_status` happy path |
@@ -59,7 +59,6 @@ One test (`test_send_push_notification_no_firebase_config`) was removed alongsid
 | File | Tests | Covers |
 |------|-------|--------|
 | `unit/test_route_admin.py` | 34 | Dashboard stats, jobs CRUD, user mgmt, audit logs |
-| `unit/test_route_applications.py` | 17 | Track/list/update/remove applications |
 | `unit/test_route_notifications.py` | 15 | List, mark read/all, delete, has_more pagination |
 | `unit/test_route_users.py` | 18 | Profile, phone, follow orgs, FCM tokens |
 | `unit/test_route_jobs.py` | 7 | Listing filters, recommended, detail |
@@ -97,22 +96,6 @@ Firebase tests mock `app.firebase.verify_id_token` via `unittest.mock.patch` so 
 - **`services/notifications.py`** — FCM `_send_fcm_with_status` happy path and invalid-token cleanup require Firebase credentials; no-credentials path is covered.
 - **`services/matching.py`** — age scoring branch (`age_min`/`age_max` present in eligibility) needs targeted unit tests with fixture jobs that include these fields.
 
-### Phase 12 Test Coverage Gaps
-
-The following Phase 12 features currently have **zero test coverage**:
-
-| Feature | Missing Tests | Priority |
-|---------|---------------|----------|
-| `entrance_exams.py` router | Public exam listing, exam detail by slug, exam document endpoints | High |
-| `job_documents.py` router | Public document endpoints, admin CRUD for admit cards/answer keys/results | High |
-| Frontend route `/entrance-exams` | Entrance exams section page, exam filters, exam cards | Medium |
-| Frontend route `/entrance-exams/<slug>` | Exam detail page, document tabs, exam-specific UI | Medium |
-| Frontend partials | `_exam_cards.html`, HTMX exam document loading | Medium |
-| Admin exam management | Exam CRUD, per-exam document management in admin UI | Medium |
-| Polymorphic document queries | Tests covering both `job_id` and `exam_id` paths | High |
-
-**Total missing test files:** ~8-10 test files with ~150-200 tests needed to achieve 90%+ coverage for Phase 12 features.
-
 ---
 
 ## User Frontend — 91% (80 tests)
@@ -135,7 +118,7 @@ Flask `test_client()` with `app.api_client` replaced by a `MagicMock`. No real b
 
 All POST form tests must include `csrf_token` in the form data (or set it in `session` before the request). The `/auth/firebase-callback` endpoint is exempt from CSRF validation (it receives a JSON body authenticated by the Firebase ID token).
 
-The `conftest.py` now includes a session-scoped `truncate_all_tables` autouse fixture that truncates all tables before the test session starts, preventing stale data from prior runs from causing test failures.
+The `conftest.py` includes a session-scoped `truncate_all_tables` autouse fixture that truncates all tables before the test session starts, preventing stale data from prior runs from causing test failures. The truncation list covers all 13 tables: `notification_delivery_log`, `notifications`, `user_watches`, `user_devices`, `admin_logs`, `admit_cards`, `answer_keys`, `results`, `jobs`, `entrance_exams`, `user_profiles`, `users`, `admin_users`.
 
 ---
 

@@ -164,7 +164,6 @@ async def test_xss_in_job_title(client: AsyncClient, admin_token: str):
         json={
             "job_title": '<script>alert("xss")</script>',
             "organization": "XSS Test",
-            "job_type": "latest_job",
             "description": "test",
             "status": "draft",
         },

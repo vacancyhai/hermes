@@ -31,13 +31,6 @@ async def test_list_jobs_pagination(client: AsyncClient, active_job):
     assert "has_more" in data["pagination"]
 
 
-async def test_list_jobs_filter_by_type(client: AsyncClient, active_job):
-    resp = await client.get("/api/v1/jobs?job_type=latest_job")
-    assert resp.status_code == 200
-    for job in resp.json()["data"]:
-        assert job["job_type"] == "latest_job"
-
-
 async def test_list_jobs_filter_by_org(client: AsyncClient, active_job):
     resp = await client.get(f"/api/v1/jobs?organization={active_job['organization']}")
     assert resp.status_code == 200
@@ -80,7 +73,6 @@ async def test_admin_create_job(client: AsyncClient, admin_token: str):
         json={
             "job_title": f"Admin Created Job {uuid.uuid4().hex[:6]}",
             "organization": "Admin Test Org",
-            "job_type": "latest_job",
             "description": "Admin test job.",
             "status": "draft",
         },
@@ -161,12 +153,12 @@ async def test_slug_uniqueness(client: AsyncClient, admin_token: str):
     title = f"Unique Slug Test {uuid.uuid4().hex[:4]}"
     resp1 = await client.post(
         "/api/v1/admin/jobs",
-        json={"job_title": title, "organization": "Test", "job_type": "latest_job", "description": "d", "status": "draft"},
+        json={"job_title": title, "organization": "Test", "description": "d", "status": "draft"},
         headers=auth_header(admin_token),
     )
     resp2 = await client.post(
         "/api/v1/admin/jobs",
-        json={"job_title": title, "organization": "Test", "job_type": "latest_job", "description": "d", "status": "draft"},
+        json={"job_title": title, "organization": "Test", "description": "d", "status": "draft"},
         headers=auth_header(admin_token),
     )
     assert resp1.status_code == 201

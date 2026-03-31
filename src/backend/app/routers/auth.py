@@ -248,7 +248,8 @@ async def refresh(body: RefreshRequest, db: AsyncSession = Depends(get_db), redi
 
 
 @router.post("/check-user-providers")
-async def check_user_providers(body: CheckUserProvidersRequest):
+@limiter.limit("10/minute")
+async def check_user_providers(request: Request, body: CheckUserProvidersRequest):
     """Check which authentication providers (Google, email/password) a user has."""
     from app.firebase import init_firebase
     if not init_firebase():
@@ -316,8 +317,8 @@ async def add_password(
     """Add password to an existing social-auth account (requires OTP verification)."""
     # Verify the verification token (same as complete-registration)
     try:
-        payload = jwt.decode(body.verification_token, settings.SECRET_KEY, algorithms=["HS256"])
-        if payload.get("type") != "email_verification" or payload.get("email") != body.email:
+        payload = jwt.decode(body.verification_token, settings.JWT_SECRET_KEY, algorithms=["HS256"])
+        if payload.get("purpose") != "email_verified" or payload.get("email") != body.email:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid verification token")
     except JWTError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired verification token")

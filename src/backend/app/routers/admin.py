@@ -119,15 +119,15 @@ async def dashboard_stats(
         )
     )).scalar()
     
-    # Admit Cards (from job_admit_cards table)
+    # Admit Cards
     from app.models.admit_card import AdmitCard
     admit_cards_count = (await db.execute(select(func.count(AdmitCard.id)))).scalar()
     
-    # Answer Keys (from job_answer_keys table)
+    # Answer Keys
     from app.models.answer_key import AnswerKey
     answer_keys_count = (await db.execute(select(func.count(AnswerKey.id)))).scalar()
     
-    # Results (from job_results table)
+    # Results
     from app.models.result import Result
     results_count = (await db.execute(select(func.count(Result.id)))).scalar()
     
@@ -194,7 +194,7 @@ async def list_admit_cards(
     admin=Depends(require_operator),
     db: AsyncSession = Depends(get_db),
 ):
-    """List all admit cards from job_admit_cards table."""
+    """List all admit cards."""
     from app.models.admit_card import AdmitCard
     from app.schemas.jobs import AdmitCardResponse
     
@@ -218,7 +218,7 @@ async def list_answer_keys(
     admin=Depends(require_operator),
     db: AsyncSession = Depends(get_db),
 ):
-    """List all answer keys from job_answer_keys table."""
+    """List all answer keys."""
     from app.models.answer_key import AnswerKey
     from app.schemas.jobs import AnswerKeyResponse
     
@@ -242,7 +242,7 @@ async def list_results(
     admin=Depends(require_operator),
     db: AsyncSession = Depends(get_db),
 ):
-    """List all results from job_results table."""
+    """List all results."""
     from app.models.result import Result
     from app.schemas.jobs import ResultResponse
     
@@ -300,7 +300,6 @@ async def create_job(
         slug=slug,
         organization=body.organization,
         department=body.department,
-        job_type=body.job_type,
         employment_type=body.employment_type,
         qualification_level=body.qualification_level,
         total_vacancies=body.total_vacancies,

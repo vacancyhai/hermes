@@ -11,6 +11,7 @@ User preferences (notification_preferences JSONB) respected per channel.
 Every delivery attempt logged in notification_delivery_log.
 """
 
+import json
 import uuid
 from datetime import datetime, timezone
 
@@ -182,7 +183,7 @@ class NotificationService:
             cleaned = [t for t in (row[0] or []) if isinstance(t, dict) and t.get("token") not in invalid_tokens]
             self.session.execute(
                 text("UPDATE user_profiles SET fcm_tokens = :tokens::jsonb WHERE user_id = :uid"),
-                {"tokens": __import__("json").dumps(cleaned), "uid": user_id},
+                {"tokens": json.dumps(cleaned), "uid": user_id},
             )
             logger.info("fcm_tokens_cleaned", user_id=user_id, removed=len(invalid_tokens))
 
@@ -236,7 +237,7 @@ class NotificationService:
         from app.tasks.notifications import send_email_notification
         send_email_notification.delay(email, subject, template_name, context)
 
-        self._log_delivery(notification_id, user_id, "email", "sent", now)
+        self._log_delivery(notification_id, user_id, "email", "queued", now)
         self._append_sent_via(notification_id, "email")
         self._increment_email_count()
 
