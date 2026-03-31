@@ -102,6 +102,12 @@ async def get_recommended_jobs(
         )
         return list(result.scalars().all()), total
 
+    # True DB count with same base filter — run before candidate fetch so total
+    # reflects all eligible jobs, not just the CANDIDATE_LIMIT scoring window.
+    total = (await db.execute(
+        select(func.count(Job.id)).where(*base_filter)
+    )).scalar() or 0
+
     # Cap candidate pool at CANDIDATE_LIMIT to avoid loading all jobs into memory.
     # Jobs are pre-sorted by recency so the best candidates are always included.
     result = await db.execute(
@@ -183,7 +189,6 @@ async def get_recommended_jobs(
     far_future = date(9999, 12, 31)
     scored.sort(key=lambda t: (-t[0], t[1] or far_future))
 
-    total = len(scored)
     page = scored[offset : offset + limit]
     return [t[2] for t in page], total
 
@@ -330,6 +335,11 @@ async def get_recommended_entrance_exams(
         )
         return list(result.scalars().all()), total
     
+    # True DB count with same base filter — run before candidate fetch.
+    total = (await db.execute(
+        select(func.count(EntranceExam.id)).where(*base_filter)
+    )).scalar() or 0
+
     # Cap candidate pool at CANDIDATE_LIMIT to avoid loading all exams into memory.
     # Exams are pre-sorted by recency so the best candidates are always included.
     result = await db.execute(
@@ -408,6 +418,5 @@ async def get_recommended_entrance_exams(
     far_future = date(9999, 12, 31)
     scored.sort(key=lambda t: (-t[0], t[1] or far_future))
     
-    total = len(scored)
     page = scored[offset : offset + limit]
     return [t[2] for t in page], total
