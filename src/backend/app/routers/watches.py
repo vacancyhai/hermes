@@ -167,11 +167,12 @@ async def list_watched(
     job_ids = [w.entity_id for w in watches if w.entity_type == "job"]
     exam_ids = [w.entity_id for w in watches if w.entity_type == "exam"]
 
-    jobs = []
+    # Fetch into lookup dicts to allow re-ordering by watch.created_at
+    jobs_by_id: dict = {}
     if job_ids:
         result = await db.execute(select(Job).where(Job.id.in_(job_ids)))
-        jobs = [
-            {
+        jobs_by_id = {
+            j.id: {
                 "id": str(j.id),
                 "job_title": j.job_title,
                 "slug": j.slug,
@@ -180,13 +181,13 @@ async def list_watched(
                 "status": j.status,
             }
             for j in result.scalars().all()
-        ]
+        }
 
-    exams = []
+    exams_by_id: dict = {}
     if exam_ids:
         result = await db.execute(select(EntranceExam).where(EntranceExam.id.in_(exam_ids)))
-        exams = [
-            {
+        exams_by_id = {
+            e.id: {
                 "id": str(e.id),
                 "exam_name": e.exam_name,
                 "slug": e.slug,
@@ -195,6 +196,10 @@ async def list_watched(
                 "status": e.status,
             }
             for e in result.scalars().all()
-        ]
+        }
+
+    # Re-assemble in watch created_at order (watches already sorted desc)
+    jobs = [jobs_by_id[w.entity_id] for w in watches if w.entity_type == "job" and w.entity_id in jobs_by_id]
+    exams = [exams_by_id[w.entity_id] for w in watches if w.entity_type == "exam" and w.entity_id in exams_by_id]
 
     return {"jobs": jobs, "exams": exams, "total": len(jobs) + len(exams)}
