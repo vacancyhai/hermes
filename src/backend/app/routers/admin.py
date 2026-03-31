@@ -17,10 +17,11 @@ Admin Account Management (admin role only):
   POST   /api/v1/admin/admin-users       — Create new admin/operator account
 
 Dashboard:
-  GET    /api/v1/admin/stats             — Dashboard counts (jobs, users, applications, new users this week)
+  GET    /api/v1/admin/stats             — Dashboard counts (jobs, users, new users this week)
   GET    /api/v1/admin/logs              — Admin activity logs
 """
 
+import logging
 import os
 import re
 import uuid
@@ -35,13 +36,28 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.rate_limit import limiter
-from app.dependencies import get_current_admin, get_db, require_admin, require_operator
+from app.dependencies import get_db, require_admin, require_operator
 from app.models.admin_log import AdminLog
 from app.models.admin_user import AdminUser
+from app.models.admit_card import AdmitCard
+from app.models.answer_key import AnswerKey
+from app.models.entrance_exam import EntranceExam
 from app.models.job import Job
+from app.models.result import Result
 from app.models.user import User
 from app.models.user_profile import UserProfile
-from app.schemas.jobs import JobCreateRequest, JobListItem, JobResponse, JobUpdateRequest
+from app.schemas.auth import AdminUserResponse, UserResponse
+from app.schemas.jobs import (
+    AdmitCardResponse,
+    AnswerKeyResponse,
+    JobCreateRequest,
+    JobListItem,
+    JobResponse,
+    JobUpdateRequest,
+    ResultResponse,
+)
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
 
@@ -104,8 +120,6 @@ async def dashboard_stats(
     db: AsyncSession = Depends(get_db),
 ):
     """Dashboard stats: separate counts for jobs, admit cards, answer keys, results, entrance exams."""
-    from app.models.entrance_exam import EntranceExam
-    
     # Jobs
     jobs_count = (await db.execute(select(func.count(Job.id)))).scalar()
     jobs_active = (await db.execute(
@@ -120,15 +134,12 @@ async def dashboard_stats(
     )).scalar()
     
     # Admit Cards
-    from app.models.admit_card import AdmitCard
     admit_cards_count = (await db.execute(select(func.count(AdmitCard.id)))).scalar()
     
     # Answer Keys
-    from app.models.answer_key import AnswerKey
     answer_keys_count = (await db.execute(select(func.count(AnswerKey.id)))).scalar()
     
     # Results
-    from app.models.result import Result
     results_count = (await db.execute(select(func.count(Result.id)))).scalar()
     
     # Entrance Exams
@@ -195,9 +206,6 @@ async def list_admit_cards(
     db: AsyncSession = Depends(get_db),
 ):
     """List all admit cards."""
-    from app.models.admit_card import AdmitCard
-    from app.schemas.jobs import AdmitCardResponse
-    
     query = select(AdmitCard).order_by(AdmitCard.created_at.desc())
     count_query = select(func.count(AdmitCard.id))
 
@@ -219,9 +227,6 @@ async def list_answer_keys(
     db: AsyncSession = Depends(get_db),
 ):
     """List all answer keys."""
-    from app.models.answer_key import AnswerKey
-    from app.schemas.jobs import AnswerKeyResponse
-    
     query = select(AnswerKey).order_by(AnswerKey.created_at.desc())
     count_query = select(func.count(AnswerKey.id))
 
@@ -243,9 +248,6 @@ async def list_results(
     db: AsyncSession = Depends(get_db),
 ):
     """List all results."""
-    from app.models.result import Result
-    from app.schemas.jobs import ResultResponse
-    
     query = select(Result).order_by(Result.created_at.desc())
     count_query = select(func.count(Result.id))
 
@@ -538,7 +540,6 @@ async def list_users(
     result = await db.execute(query.offset(offset).limit(limit))
     users = result.scalars().all()
 
-    from app.schemas.auth import UserResponse
     return {
         "data": [UserResponse.model_validate(u).model_dump() for u in users],
         "pagination": {"limit": limit, "offset": offset, "total": total, "has_more": (offset + limit) < total},
@@ -560,7 +561,6 @@ async def get_user(
     profile_result = await db.execute(select(UserProfile).where(UserProfile.user_id == user_id))
     profile = profile_result.scalar_one_or_none()
 
-    from app.schemas.auth import UserResponse
     user_data = UserResponse.model_validate(user).model_dump()
     if profile:
         user_data["profile"] = {
@@ -706,7 +706,6 @@ async def create_admin_user(
         details=f"Created {body.role} account: {body.email}", request=request,
     )
 
-    from app.schemas.auth import AdminUserResponse
     return AdminUserResponse.model_validate(new_admin).model_dump()
 
 

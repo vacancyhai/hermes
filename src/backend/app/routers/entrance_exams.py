@@ -135,7 +135,7 @@ async def get_exam(exam_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     exam = result.scalar_one_or_none()
     if not exam:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Exam not found")
-    # Increment view count
+    # Increment view count (inline, committed with the response)
     await db.execute(
         update(EntranceExam).where(EntranceExam.id == exam.id).values(views=EntranceExam.views + 1)
     )

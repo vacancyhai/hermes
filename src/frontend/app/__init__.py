@@ -54,8 +54,6 @@ def create_app():
             resp = api_fn(token)
         return resp, True
 
-    _api_with_auth = _try_with_refresh
-
     @app.context_processor
     def inject_csrf():
         return {"csrf_token": _get_csrf_token()}
@@ -354,7 +352,7 @@ def create_app():
     @app.route("/users/me/profile", methods=["GET"])
     def get_user_profile():
         """Proxy: get user profile with phone verification status."""
-        resp, ok = _api_with_auth(lambda token: current_app.api_client.get("/users/profile", token=token))
+        resp, ok = _try_with_refresh(lambda token: current_app.api_client.get("/users/profile", token=token))
         if not ok:
             return redirect("/login")
         if not resp.ok:
@@ -368,7 +366,7 @@ def create_app():
         phone = data.get("phone", "")
         if not phone:
             return {"error": "Phone number required"}, 400
-        resp, ok = _api_with_auth(lambda token: current_app.api_client.put("/users/profile/phone", token=token, json={"phone": phone}))
+        resp, ok = _try_with_refresh(lambda token: current_app.api_client.put("/users/profile/phone", token=token, json={"phone": phone}))
         if not ok:
             return {"error": "Authentication required"}, 401
         if not resp.ok:
@@ -381,7 +379,7 @@ def create_app():
     @app.route("/users/me/send-phone-otp", methods=["POST"])
     def send_phone_otp():
         """Proxy: trigger phone OTP send."""
-        resp, ok = _api_with_auth(lambda token: current_app.api_client.post("/users/me/send-phone-otp", token=token))
+        resp, ok = _try_with_refresh(lambda token: current_app.api_client.post("/users/me/send-phone-otp", token=token))
         if not ok:
             return {"error": "Authentication required"}, 401
         if not resp.ok:
@@ -398,7 +396,7 @@ def create_app():
         otp = data.get("otp", "")
         if not otp:
             return {"error": "OTP required"}, 400
-        resp, ok = _api_with_auth(lambda token: current_app.api_client.post("/users/me/verify-phone-otp", token=token, json={"otp": otp}))
+        resp, ok = _try_with_refresh(lambda token: current_app.api_client.post("/users/me/verify-phone-otp", token=token, json={"otp": otp}))
         if not ok:
             return {"error": "Authentication required"}, 401
         if not resp.ok:
@@ -415,7 +413,7 @@ def create_app():
         new_password = data.get("new_password", "")
         if not new_password or len(new_password) < 8:
             return {"error": "Password must be at least 8 characters"}, 400
-        resp, ok = _api_with_auth(lambda token: current_app.api_client.post("/users/me/set-password", token=token, json={"new_password": new_password}))
+        resp, ok = _try_with_refresh(lambda token: current_app.api_client.post("/users/me/set-password", token=token, json={"new_password": new_password}))
         if not ok:
             return {"error": "Authentication required"}, 401
         if not resp.ok:
@@ -434,7 +432,7 @@ def create_app():
             return {"error": "New password required"}, 400
         if len(new_password) < 8:
             return {"error": "New password must be at least 8 characters"}, 400
-        resp, ok = _api_with_auth(lambda token: current_app.api_client.post("/users/me/change-password", token=token, json={"new_password": new_password}))
+        resp, ok = _try_with_refresh(lambda token: current_app.api_client.post("/users/me/change-password", token=token, json={"new_password": new_password}))
         if not ok:
             return {"error": "Authentication required"}, 401
         if not resp.ok:
@@ -454,7 +452,7 @@ def create_app():
             return {"error": "Email and password required"}, 400
         if len(password) < 8:
             return {"error": "Password must be at least 8 characters"}, 400
-        resp, ok = _api_with_auth(lambda token: current_app.api_client.post("/users/me/link-email-password", token=token, json={"email": email, "password": password}))
+        resp, ok = _try_with_refresh(lambda token: current_app.api_client.post("/users/me/link-email-password", token=token, json={"email": email, "password": password}))
         if not ok:
             return {"error": "Authentication required"}, 401
         if not resp.ok:

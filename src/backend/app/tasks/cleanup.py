@@ -36,7 +36,7 @@ def purge_expired_admin_logs():
 def purge_soft_deleted_jobs():
     """Hard-delete jobs soft-deleted > 90 days ago. Daily 02:00 UTC."""
     count = _execute_cleanup(
-        "DELETE FROM job_vacancies WHERE status = 'cancelled' "
+        "DELETE FROM jobs WHERE status = 'cancelled' "
         "AND updated_at < NOW() - INTERVAL '90 days'"
     )
     return {"purged_jobs": count}

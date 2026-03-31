@@ -23,7 +23,7 @@ def generate_sitemap():
     """Regenerate /sitemap.xml with all active job + admission exam URLs. Daily 04:00 UTC."""
     with Session(sync_engine) as session:
         jobs = session.execute(
-            text("SELECT slug, updated_at FROM job_vacancies WHERE status = 'active' ORDER BY updated_at DESC")
+            text("SELECT slug, updated_at FROM jobs WHERE status = 'active' ORDER BY updated_at DESC")
         ).fetchall()
         exams = session.execute(
             text("SELECT slug, updated_at FROM entrance_exams WHERE status IN ('active','upcoming') ORDER BY updated_at DESC")
@@ -38,7 +38,7 @@ def generate_sitemap():
         ("/admit-cards", "daily", "0.9"),
         ("/answer-keys", "daily", "0.9"),
         ("/results", "daily", "0.9"),
-        ("/admissions", "daily", "0.9"),
+        ("/entrance-exams", "daily", "0.9"),
     ]:
         url_el = SubElement(urlset, "url")
         SubElement(url_el, "loc").text = f"{SITE_URL}{path}"
@@ -57,7 +57,7 @@ def generate_sitemap():
     # Admission exam detail pages
     for slug, updated_at in exams:
         url_el = SubElement(urlset, "url")
-        SubElement(url_el, "loc").text = f"{SITE_URL}/admissions/{slug}"
+        SubElement(url_el, "loc").text = f"{SITE_URL}/entrance-exams/{slug}"
         if updated_at:
             SubElement(url_el, "lastmod").text = updated_at.strftime("%Y-%m-%d")
         SubElement(url_el, "changefreq").text = "weekly"

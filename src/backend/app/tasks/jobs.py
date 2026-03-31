@@ -27,7 +27,7 @@ def close_expired_job_listings(self):
         with Session(sync_engine) as session:
             result = session.execute(
                 text("""
-                    UPDATE job_vacancies
+                    UPDATE jobs
                     SET status = 'expired', updated_at = NOW()
                     WHERE status = 'active'
                       AND application_end IS NOT NULL
