@@ -311,9 +311,9 @@ def create_app():
                 return redirect(f"/jobs/{job_id}/edit")
             detail = resp.json().get("detail", "Failed to create job") if resp.headers.get("content-type", "").startswith("application/json") else "Failed to create job"
             flash(detail, "error")
-            return render_template("jobs/job_edit.html", job=None, mode="new")
+            return render_template("jobs/job_create.html")
 
-        return render_template("jobs/job_edit.html", job=None, mode="new")
+        return render_template("jobs/job_create.html")
 
     @app.route("/admit-cards/new", methods=["GET", "POST"])
     def new_admit_card():
@@ -341,9 +341,9 @@ def create_app():
                 return redirect("/admit-cards")
             detail = resp.json().get("detail", "Failed to create admit card") if resp.headers.get("content-type", "").startswith("application/json") else "Failed to create admit card"
             flash(detail, "error")
-            return render_template("admit_cards/admitcard_edit.html")
+            return render_template("admit_cards/admitcard_create.html")
 
-        return render_template("admit_cards/admitcard_edit.html")
+        return render_template("admit_cards/admitcard_create.html")
 
     @app.route("/answer-keys/new", methods=["GET", "POST"])
     def new_answer_key():
@@ -373,9 +373,9 @@ def create_app():
                 return redirect("/answer-keys")
             detail = resp.json().get("detail", "Failed to create answer key") if resp.headers.get("content-type", "").startswith("application/json") else "Failed to create answer key"
             flash(detail, "error")
-            return render_template("answer_keys/answerkey_edit.html")
+            return render_template("answer_keys/answerkey_create.html")
 
-        return render_template("answer_keys/answerkey_edit.html")
+        return render_template("answer_keys/answerkey_create.html")
 
     @app.route("/results/new", methods=["GET", "POST"])
     def new_result():
@@ -405,9 +405,85 @@ def create_app():
                 return redirect("/results")
             detail = resp.json().get("detail", "Failed to create result") if resp.headers.get("content-type", "").startswith("application/json") else "Failed to create result"
             flash(detail, "error")
-            return render_template("results/result_edit.html")
+            return render_template("results/result_create.html")
 
-        return render_template("results/result_edit.html")
+        return render_template("results/result_create.html")
+
+    @app.route("/admit-cards/<card_id>/edit", methods=["GET", "POST"])
+    def edit_admit_card(card_id):
+        """Edit an existing admit card."""
+        token = session.get("token")
+        if not token:
+            return redirect("/login")
+        if request.method == "POST":
+            form = request.form.to_dict()
+            payload = {}
+            for f in ["title", "download_url", "notes"]:
+                if f in form:
+                    payload[f] = form[f] or None
+            for f in ["valid_from", "valid_until"]:
+                val = form.get(f, "").strip()
+                payload[f] = val if val else None
+            phase = form.get("phase_number", "").strip()
+            payload["phase_number"] = int(phase) if phase else None
+            current_app.api_client.put(f"/admin/admit-cards/{card_id}", token=token, json=payload)
+            flash("Admit card updated.", "success")
+            return redirect(f"/admit-cards/{card_id}/edit")
+        resp = current_app.api_client.get(f"/admit-cards/{card_id}")
+        if not resp.ok:
+            flash("Admit card not found.", "error")
+            return redirect("/admit-cards")
+        return render_template("admit_cards/admitcard_edit.html", item=resp.json())
+
+    @app.route("/answer-keys/<key_id>/edit", methods=["GET", "POST"])
+    def edit_answer_key(key_id):
+        """Edit an existing answer key."""
+        token = session.get("token")
+        if not token:
+            return redirect("/login")
+        if request.method == "POST":
+            form = request.form.to_dict()
+            payload = {}
+            for f in ["title", "answer_key_type", "objection_url"]:
+                if f in form:
+                    payload[f] = form[f] or None
+            objection_deadline = form.get("objection_deadline", "").strip()
+            payload["objection_deadline"] = objection_deadline if objection_deadline else None
+            phase = form.get("phase_number", "").strip()
+            payload["phase_number"] = int(phase) if phase else None
+            current_app.api_client.put(f"/admin/answer-keys/{key_id}", token=token, json=payload)
+            flash("Answer key updated.", "success")
+            return redirect(f"/answer-keys/{key_id}/edit")
+        resp = current_app.api_client.get(f"/answer-keys/{key_id}")
+        if not resp.ok:
+            flash("Answer key not found.", "error")
+            return redirect("/answer-keys")
+        return render_template("answer_keys/answerkey_edit.html", item=resp.json())
+
+    @app.route("/results/<result_id>/edit", methods=["GET", "POST"])
+    def edit_result(result_id):
+        """Edit an existing result."""
+        token = session.get("token")
+        if not token:
+            return redirect("/login")
+        if request.method == "POST":
+            form = request.form.to_dict()
+            payload = {}
+            for f in ["title", "result_type", "download_url", "notes"]:
+                if f in form:
+                    payload[f] = form[f] or None
+            phase = form.get("phase_number", "").strip()
+            payload["phase_number"] = int(phase) if phase else None
+            total_q = form.get("total_qualified", "").strip()
+            payload["total_qualified"] = int(total_q) if total_q else None
+            current_app.api_client.put(f"/admin/results/{result_id}", token=token, json=payload)
+            flash("Result updated.", "success")
+            return redirect(f"/results/{result_id}/edit")
+        resp = current_app.api_client.get(f"/results/{result_id}")
+        if not resp.ok:
+            flash("Result not found.", "error")
+            return redirect("/results")
+        return render_template("results/result_edit.html", item=resp.json())
 
     @app.route("/admit-cards/<card_id>/delete", methods=["POST"])
     def delete_admit_card(card_id):
@@ -495,7 +571,6 @@ def create_app():
 
         return render_template(
             "jobs/job_edit.html",
-            mode="edit",
             job=job,
             admit_cards=pub_data.get("admit_cards", []),
             answer_keys=pub_data.get("answer_keys", []),
@@ -696,7 +771,7 @@ def create_app():
                 return redirect(f"/entrance-exams/{exam_id}/edit")
             detail = resp.json().get("detail", "Failed to create exam") if resp.headers.get("content-type", "").startswith("application/json") else "Failed to create exam"
             flash(detail, "error")
-        return render_template("entrance_exams/exam_edit.html", exam=None, mode="new")
+        return render_template("entrance_exams/exam_create.html")
 
     @app.route("/entrance-exams/<exam_id>/edit", methods=["GET", "POST"])
     def edit_entrance_exam(exam_id):
@@ -738,7 +813,7 @@ def create_app():
         answer_keys = exam_with_docs.get("answer_keys", [])
         results = exam_with_docs.get("results", [])
 
-        return render_template("entrance_exams/exam_edit.html", exam=resp_detail, mode="edit",
+        return render_template("entrance_exams/exam_edit.html", exam=resp_detail,
                                admit_cards=admit_cards, answer_keys=answer_keys, results=results)
 
     @app.route("/entrance-exams/<exam_id>/delete", methods=["POST"])

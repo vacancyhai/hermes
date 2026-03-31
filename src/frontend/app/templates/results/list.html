@@ -1,0 +1,67 @@
+{% extends "shared/base.html" %}
+{% block title %}Results 2025 — Hermes{% endblock %}
+
+{% block head %}
+<style>
+    .page-hero{background:linear-gradient(135deg,#14532d 0%,#16a34a 100%);color:#fff;padding:1.5rem 1.25rem 1.25rem;border-radius:.75rem;margin-bottom:1.25rem}
+    .page-hero h1{font-size:1.35rem;font-weight:700;margin-bottom:.25rem}
+    .page-hero p{font-size:.875rem;opacity:.85}
+    .results-meta{font-size:.85rem;color:#64748b;margin-bottom:.75rem}
+    .load-more-wrap{text-align:center;padding:1.25rem 0}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-hero">
+    <h1>Results</h1>
+    <p>Official results for government job recruitments and entrance exams</p>
+</div>
+
+<div x-data="{tab: 'all'}">
+
+{% if recommended_results %}
+<div style="display:flex;gap:0;border-bottom:2px solid #e2e8f0;margin-bottom:1.1rem">
+    <button @click="tab='all'" :class="tab==='all' ? 'list-tab list-tab-active' : 'list-tab'" style="border-bottom-width:2px;margin-bottom:-2px">All Results</button>
+    <button @click="tab='foryou'" :class="tab==='foryou' ? 'list-tab list-tab-active' : 'list-tab'" style="border-bottom-width:2px;margin-bottom:-2px">
+        ✨ For You
+        <span style="background:#16a34a;color:#fff;border-radius:9999px;font-size:.7rem;font-weight:700;padding:.1rem .45rem;margin-left:.3rem">{{ recommended_results|length }}</span>
+    </button>
+</div>
+{% endif %}
+
+{% if recommended_results %}
+<div x-show="tab==='foryou'" x-cloak>
+    <p style="font-size:.85rem;color:#64748b;margin-bottom:.9rem">
+        Results for jobs and exams you are watching.
+        <a href="/dashboard" style="color:#16a34a">View watchlist →</a>
+    </p>
+    {% for res in recommended_results %}
+    <div class="doc-card doc-card-result" style="border-radius:.5rem;margin-bottom:.75rem">
+        <div class="doc-card-body">
+            <div style="display:flex;gap:.35rem;flex-wrap:wrap;margin-bottom:.3rem">
+                {% if res.phase_number %}<span class="doc-phase-pill phase-green">Phase {{ res.phase_number }}</span>{% endif %}
+                <span class="card-type-tag" style="background:#dcfce7;color:#166534">Result</span>
+            </div>
+            <div class="doc-title">{{ res.title }}</div>
+            {% if res.notes %}<div class="doc-note">{{ res.notes }}</div>{% endif %}
+            {% if res.published_at %}<div class="doc-meta">Published: {{ res.published_at[:10] }}</div>{% endif %}
+        </div>
+        <div class="doc-card-actions">
+            <a href="/results/{{ res.id }}" class="doc-btn doc-btn-green">View Details →</a>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div x-show="tab==='all'">
+<div class="results-meta">
+    {% if pagination.total is defined %}{{ pagination.total }} result{{ 's' if pagination.total != 1 else '' }} available{% endif %}
+</div>
+<div id="results-list">
+    {% include "results/_cards.html" %}
+</div>
+</div>
+
+</div>
+{% endblock %}

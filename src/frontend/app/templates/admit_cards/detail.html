@@ -1,0 +1,82 @@
+{% extends "shared/base.html" %}
+{% block title %}{{ card.title }} — Admit Card — Hermes{% endblock %}
+
+{% block content %}
+<a href="/admit-cards" class="back-link">← Back to Admit Cards</a>
+
+<div class="detail-hero hero-admit">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.75rem;flex-wrap:wrap">
+        <div style="flex:1;min-width:0">
+            <div style="margin-bottom:.5rem">
+                {% if card.phase_number %}
+                <span style="background:rgba(255,255,255,.2);color:#fff;padding:.15rem .55rem;border-radius:9999px;font-size:.75rem;font-weight:600">Phase {{ card.phase_number }}</span>
+                {% endif %}
+                <span style="background:rgba(255,255,255,.2);color:#fff;padding:.15rem .55rem;border-radius:9999px;font-size:.75rem;font-weight:600;margin-left:.25rem">Admit Card</span>
+            </div>
+            <h1>{{ card.title }}</h1>
+            {% if card.get('job') %}
+            <div class="org">🏛 {{ card.job.organization }} · {{ card.job.job_title }}</div>
+            {% elif card.get('exam') %}
+            <div class="org">🏛 {{ card.exam.conducting_body }} · {{ card.exam.exam_name }}</div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Action bar -->
+<div class="action-bar">
+    <a href="{{ card.download_url }}" target="_blank" rel="noopener" class="btn btn-primary" style="display:inline-flex;align-items:center;gap:.3rem">
+        ⬇ Download Admit Card
+    </a>
+    {% if card.get('job') %}
+    <a href="/jobs/{{ card.job.id }}" class="share-btn">View Job Details →</a>
+    {% elif card.get('exam') %}
+    <a href="/entrance-exams/{{ card.exam.id }}" class="share-btn">View Exam Details →</a>
+    {% endif %}
+    <button type="button" class="share-btn" onclick="if(navigator.share){navigator.share({title:document.title,url:window.location.href})}else{navigator.clipboard.writeText(window.location.href);alert('Link copied!')}">⬆ Share</button>
+</div>
+
+<!-- Details grid -->
+<div class="detail-grid">
+    {% if card.valid_from %}
+    <div class="detail-item">
+        <div class="label">Valid From</div>
+        <div class="value">{{ card.valid_from }}</div>
+    </div>
+    {% endif %}
+    {% if card.valid_until %}
+    <div class="detail-item">
+        <div class="label">Valid Until</div>
+        <div class="value">{{ card.valid_until }}</div>
+    </div>
+    {% endif %}
+    {% if card.published_at %}
+    <div class="detail-item">
+        <div class="label">Published</div>
+        <div class="value">{{ card.published_at[:10] }}</div>
+    </div>
+    {% endif %}
+    {% if card.phase_number %}
+    <div class="detail-item">
+        <div class="label">Phase</div>
+        <div class="value">Phase {{ card.phase_number }}</div>
+    </div>
+    {% endif %}
+</div>
+
+{% if card.notes %}
+<div class="detail-section">
+    <h2>📋 Important Notes</h2>
+    <p>{{ card.notes }}</p>
+</div>
+{% endif %}
+
+<!-- Download CTA -->
+<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:.5rem;padding:1.25rem;text-align:center;margin-top:1.5rem">
+    <p style="color:#1e40af;font-weight:500;margin-bottom:.75rem">Ready to download your admit card?</p>
+    <a href="{{ card.download_url }}" target="_blank" rel="noopener" class="btn btn-primary" style="font-size:.95rem;padding:.6rem 1.5rem">
+        ⬇ Download Admit Card
+    </a>
+    <p style="font-size:.78rem;color:#64748b;margin-top:.5rem">Opens official source in a new tab</p>
+</div>
+{% endblock %}

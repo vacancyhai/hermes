@@ -188,28 +188,43 @@ async def get_recommended_jobs(
     return [t[2] for t in page], total
 
 
+async def _get_watched_ids(user_id, db: AsyncSession) -> tuple[list, list]:
+    """Return (watched_job_ids, watched_exam_ids) for a user."""
+    from app.models.user_watch import UserWatch
+    result = await db.execute(
+        select(UserWatch.entity_type, UserWatch.entity_id)
+        .where(UserWatch.user_id == user_id)
+    )
+    rows = result.all()
+    job_ids = [r.entity_id for r in rows if r.entity_type == "job"]
+    exam_ids = [r.entity_id for r in rows if r.entity_type == "exam"]
+    return job_ids, exam_ids
+
+
 async def get_recommended_admit_cards(
     user_id,
     db: AsyncSession,
     limit: int = 20,
     offset: int = 0,
-) -> tuple[list[dict], int]:
-    """Return admit cards from recommended jobs/exams."""
-    # Get recommended jobs first
-    jobs, _ = await get_recommended_jobs(user_id, db, limit=100, offset=0)
-    job_ids = [j.id for j in jobs]
-    
-    # Get admit cards for those jobs
+) -> tuple[list, int]:
+    """Return admit cards for jobs/exams the user is watching."""
+    job_ids, exam_ids = await _get_watched_ids(user_id, db)
+    if not job_ids and not exam_ids:
+        return [], 0
+    from sqlalchemy import or_
     result = await db.execute(
         select(AdmitCard)
-        .where(AdmitCard.job_id.in_(job_ids))
+        .where(
+            or_(
+                AdmitCard.job_id.in_(job_ids) if job_ids else False,
+                AdmitCard.exam_id.in_(exam_ids) if exam_ids else False,
+            )
+        )
         .order_by(AdmitCard.published_at.desc())
     )
     cards = list(result.scalars().all())
-    
     total = len(cards)
-    page = cards[offset : offset + limit]
-    return page, total
+    return cards[offset : offset + limit], total
 
 
 async def get_recommended_answer_keys(
@@ -217,21 +232,25 @@ async def get_recommended_answer_keys(
     db: AsyncSession,
     limit: int = 20,
     offset: int = 0,
-) -> tuple[list[dict], int]:
-    """Return answer keys from recommended jobs/exams."""
-    jobs, _ = await get_recommended_jobs(user_id, db, limit=100, offset=0)
-    job_ids = [j.id for j in jobs]
-    
+) -> tuple[list, int]:
+    """Return answer keys for jobs/exams the user is watching."""
+    job_ids, exam_ids = await _get_watched_ids(user_id, db)
+    if not job_ids and not exam_ids:
+        return [], 0
+    from sqlalchemy import or_
     result = await db.execute(
         select(AnswerKey)
-        .where(AnswerKey.job_id.in_(job_ids))
+        .where(
+            or_(
+                AnswerKey.job_id.in_(job_ids) if job_ids else False,
+                AnswerKey.exam_id.in_(exam_ids) if exam_ids else False,
+            )
+        )
         .order_by(AnswerKey.published_at.desc())
     )
     keys = list(result.scalars().all())
-    
     total = len(keys)
-    page = keys[offset : offset + limit]
-    return page, total
+    return keys[offset : offset + limit], total
 
 
 async def get_recommended_results(
@@ -239,21 +258,25 @@ async def get_recommended_results(
     db: AsyncSession,
     limit: int = 20,
     offset: int = 0,
-) -> tuple[list[dict], int]:
-    """Return results from recommended jobs/exams."""
-    jobs, _ = await get_recommended_jobs(user_id, db, limit=100, offset=0)
-    job_ids = [j.id for j in jobs]
-    
+) -> tuple[list, int]:
+    """Return results for jobs/exams the user is watching."""
+    job_ids, exam_ids = await _get_watched_ids(user_id, db)
+    if not job_ids and not exam_ids:
+        return [], 0
+    from sqlalchemy import or_
     result = await db.execute(
         select(Result)
-        .where(Result.job_id.in_(job_ids))
+        .where(
+            or_(
+                Result.job_id.in_(job_ids) if job_ids else False,
+                Result.exam_id.in_(exam_ids) if exam_ids else False,
+            )
+        )
         .order_by(Result.published_at.desc())
     )
     results_list = list(result.scalars().all())
-    
     total = len(results_list)
-    page = results_list[offset : offset + limit]
-    return page, total
+    return results_list[offset : offset + limit], total
 
 
 async def get_recommended_entrance_exams(

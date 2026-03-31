@@ -1,0 +1,61 @@
+{% for job in jobs %}
+<div class="job-card">
+    <div class="job-card-header">
+        <h3><a href="/jobs/{{ job.id }}">{{ job.job_title }}</a></h3>
+        <div style="display:flex;gap:.35rem;flex-shrink:0">
+            {% if job.is_featured %}<span class="badge badge-featured">Featured</span>{% endif %}
+            {% if job.is_urgent %}<span class="badge badge-urgent">Urgent</span>{% endif %}
+        </div>
+    </div>
+    <div class="job-card-meta">
+        <span>🏛 {{ job.organization }}</span>
+        {% if job.department and job.department != job.organization %}<span>· {{ job.department }}</span>{% endif %}
+        {% if job.qualification_level %}<span class="meta-pill pill-blue">{{ job.qualification_level|title }}</span>{% endif %}
+        {% if job.total_vacancies %}<span class="meta-pill pill-purple">{{ "{:,}".format(job.total_vacancies) }} vacancies</span>{% endif %}
+    </div>
+    {% if job.short_description %}
+    <div class="job-card-desc">{{ job.short_description }}</div>
+    {% endif %}
+    <div class="job-card-footer">
+        <div>
+            {% if job.application_end %}
+            <span class="deadline">Deadline: {{ job.application_end }}</span>
+            {% endif %}
+            {% if job.fee_general is not none %}
+            <span class="meta-pill pill-amber" style="margin-left:.4rem">
+                Fee: {% if job.fee_general == 0 %}Free{% else %}₹{{ job.fee_general }}{% endif %}
+            </span>
+            {% endif %}
+        </div>
+        <div style="display:flex;gap:.4rem;align-items:center">
+            {% if watched_job_ids is defined %}
+            {% set is_watching = job.id|string in watched_job_ids %}
+            <form method="post" action="/jobs/{{ job.id }}/{{ 'unwatch' if is_watching else 'watch' }}" style="display:inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <button type="submit" class="{{ 'btn-watching' if is_watching else 'btn btn-outline' }}" style="font-size:.8rem;padding:.3rem .7rem">
+                    {{ '★ Watching' if is_watching else '☆ Watch' }}
+                </button>
+            </form>
+            {% endif %}
+            <a href="/jobs/{{ job.id }}" class="btn btn-outline" style="font-size:.8rem;padding:.3rem .7rem">View Details →</a>
+        </div>
+    </div>
+</div>
+{% else %}
+<div style="text-align:center;padding:3rem 1rem;color:#64748b">
+    <p style="font-size:1.1rem;margin-bottom:.5rem">No jobs found.</p>
+    <p>Try a different search term or remove filters.</p>
+</div>
+{% endfor %}
+
+{% if has_more %}
+<div class="load-more-wrap" id="load-more-wrap">
+    <button class="btn btn-outline"
+            hx-get="/partials/jobs?offset={{ next_offset }}{% if q %}&q={{ q }}{% endif %}{% if qualification_level %}&qualification_level={{ qualification_level }}{% endif %}{% if organization %}&organization={{ organization }}{% endif %}"
+            hx-target="#job-list"
+            hx-swap="beforeend"
+            hx-on::after-request="document.getElementById('load-more-wrap')?.remove()">
+        Load More Jobs
+    </button>
+</div>
+{% endif %}

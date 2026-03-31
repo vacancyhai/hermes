@@ -1,13 +1,11 @@
 {% extends "shared/base.html" %}
-{% block title %}{{ 'Edit' if mode == 'edit' else 'New' }} Entrance Exam — Hermes Admin{% endblock %}
+{% block title %}Edit Entrance Exam — Hermes Admin{% endblock %}
 {% block content %}
 <div style="margin-bottom:1rem">
     <a href="/entrance-exams" style="font-size:.875rem;color:#6b7280">← Back to Entrance Exams</a>
 </div>
 
-<h1 style="font-size:1.35rem;margin-bottom:1.25rem">
-    {{ '🎓 Edit: ' ~ exam.exam_name if mode == 'edit' else '🎓 New Entrance Exam' }}
-</h1>
+<h1 style="font-size:1.35rem;margin-bottom:1.25rem">🎓 Edit: {{ exam.exam_name }}</h1>
 
 {% with messages = get_flashed_messages(with_categories=true) %}
     {% for category, message in messages %}
@@ -16,32 +14,31 @@
 {% endwith %}
 
 <!-- ── Exam Details Form ─────────────────────────────────────────────── -->
-<form method="POST" action="{{ '/entrance-exams/' ~ exam.id ~ '/edit' if mode == 'edit' else '/entrance-exams/new' }}"
-      style="margin-bottom:2rem">
+<form method="POST" action="/entrance-exams/{{ exam.id }}/edit" style="margin-bottom:2rem">
     <div class="form-grid">
         <div class="form-group form-full">
             <label>Exam Name *</label>
             <input type="text" name="exam_name" required
-                   value="{{ exam.exam_name if exam else '' }}"
+                   value="{{ exam.exam_name }}"
                    placeholder="e.g. NTA NEET PG 2026 — Medical PG Entrance Examination">
         </div>
         <div class="form-group">
             <label>Conducting Body *</label>
             <input type="text" name="conducting_body" required
-                   value="{{ exam.conducting_body if exam else '' }}"
+                   value="{{ exam.conducting_body }}"
                    placeholder="e.g. National Testing Agency">
         </div>
         <div class="form-group">
             <label>Counselling Body</label>
             <input type="text" name="counselling_body"
-                   value="{{ exam.counselling_body or '' if exam else '' }}"
+                   value="{{ exam.counselling_body or '' }}"
                    placeholder="e.g. MCC, JoSAA, CLAT Consortium">
         </div>
         <div class="form-group">
             <label>Exam Type *</label>
             <select name="exam_type" required>
                 {% for val, label in [('ug','UG — Undergraduate'),('pg','PG — Postgraduate'),('doctoral','Doctoral'),('lateral','Lateral Entry')] %}
-                <option value="{{ val }}" {{ 'selected' if exam and exam.exam_type == val }}>{{ label }}</option>
+                <option value="{{ val }}" {{ 'selected' if exam.exam_type == val }}>{{ label }}</option>
                 {% endfor %}
             </select>
         </div>
@@ -49,7 +46,7 @@
             <label>Stream *</label>
             <select name="stream" required>
                 {% for val, label in [('medical','Medical'),('engineering','Engineering'),('law','Law'),('management','Management'),('arts_science','Arts & Science'),('general','General')] %}
-                <option value="{{ val }}" {{ 'selected' if exam and exam.stream == val }}>{{ label }}</option>
+                <option value="{{ val }}" {{ 'selected' if exam.stream == val }}>{{ label }}</option>
                 {% endfor %}
             </select>
         </div>
@@ -57,38 +54,38 @@
             <label>Status</label>
             <select name="status">
                 {% for val in ['upcoming','active','completed','cancelled'] %}
-                <option value="{{ val }}" {{ 'selected' if exam and exam.status == val }}>{{ val | title }}</option>
+                <option value="{{ val }}" {{ 'selected' if exam.status == val }}>{{ val | title }}</option>
                 {% endfor %}
             </select>
         </div>
         <div class="form-group">
             <label>Application Start</label>
             <input type="date" name="application_start"
-                   value="{{ exam.application_start or '' if exam else '' }}">
+                   value="{{ exam.application_start or '' }}">
         </div>
         <div class="form-group">
             <label>Application End (Deadline)</label>
             <input type="date" name="application_end"
-                   value="{{ exam.application_end or '' if exam else '' }}">
+                   value="{{ exam.application_end or '' }}">
         </div>
         <div class="form-group">
             <label>Exam Date</label>
             <input type="date" name="exam_date"
-                   value="{{ exam.exam_date or '' if exam else '' }}">
+                   value="{{ exam.exam_date or '' }}">
         </div>
         <div class="form-group">
             <label>Result Date</label>
             <input type="date" name="result_date"
-                   value="{{ exam.result_date or '' if exam else '' }}">
+                   value="{{ exam.result_date or '' }}">
         </div>
         <div class="form-group">
             <label>Counselling Start</label>
             <input type="date" name="counselling_start"
-                   value="{{ exam.counselling_start or '' if exam else '' }}">
+                   value="{{ exam.counselling_start or '' }}">
         </div>
         <div class="form-group" style="display:flex;align-items:center;gap:.5rem;padding-top:1.5rem">
             <input type="checkbox" name="is_featured" id="is_featured"
-                   {{ 'checked' if exam and exam.is_featured }}>
+                   {{ 'checked' if exam.is_featured }}>
             <label for="is_featured" style="margin:0">Featured</label>
         </div>
     </div>
@@ -99,7 +96,7 @@
         <div class="form-group">
             <label>{{ flabel }}</label>
             <input type="number" name="{{ fname }}" min="0"
-                   value="{{ (exam[fname] if exam[fname] is not none else '') if exam else '' }}"
+                   value="{{ exam[fname] if exam[fname] is not none else '' }}"
                    placeholder="Leave blank if N/A">
         </div>
         {% endfor %}
@@ -108,27 +105,25 @@
     <div class="form-group form-full" style="margin-top:1rem">
         <label>Short Description (one-liner for cards)</label>
         <input type="text" name="short_description" maxlength="300"
-               value="{{ exam.short_description or '' if exam else '' }}"
+               value="{{ exam.short_description or '' }}"
                placeholder="E.g. NEET PG 2026: National entrance for MD/MS/PG Diploma. MBBS eligible.">
     </div>
     <div class="form-group form-full">
         <label>Description (HTML)</label>
         <textarea name="description" rows="5"
-                  placeholder="Full HTML description…">{{ exam.description or '' if exam else '' }}</textarea>
+                  placeholder="Full HTML description…">{{ exam.description or '' }}</textarea>
     </div>
     <div class="form-group form-full">
         <label>Official Website URL</label>
         <input type="url" name="source_url"
-               value="{{ exam.source_url or '' if exam else '' }}"
+               value="{{ exam.source_url or '' }}"
                placeholder="https://nta.ac.in/neet-pg">
     </div>
 
     <div style="margin-top:1.25rem;display:flex;gap:.5rem">
-        <button type="submit" class="btn btn-primary">
-            {{ 'Save Changes' if mode == 'edit' else 'Create Exam' }}
-        </button>
+        <button type="submit" class="btn btn-primary">Save Changes</button>
         <a href="/entrance-exams" class="btn btn-outline">Cancel</a>
-        {% if mode == 'edit' and session.get('admin_role') == 'admin' %}
+        {% if session.get('admin_role') == 'admin' %}
         <form method="POST" action="/entrance-exams/{{ exam.id }}/delete" style="margin-left:auto"
               onsubmit="return confirm('Permanently delete this exam and all its phase documents?')">
             <button type="submit" class="btn btn-danger">Delete Exam</button>
@@ -138,7 +133,6 @@
 </form>
 
 <!-- ── Phase Documents ───────────────────────────────────────────────── -->
-{% if mode == 'edit' %}
 <div id="docs" style="border-top:2px solid #e5e7eb;padding-top:1.5rem">
     <h2 style="font-size:1.1rem;margin-bottom:1rem">📋 Phase Documents</h2>
 
@@ -278,7 +272,6 @@
         </details>
     </div>
 </div>
-{% endif %}
 
 <style>
 .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}

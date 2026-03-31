@@ -1,0 +1,35 @@
+{% for res in results %}
+<div class="doc-card doc-card-result" style="border-radius:.5rem;margin-bottom:.75rem">
+    <div class="doc-card-body">
+        <div style="display:flex;gap:.35rem;flex-wrap:wrap;margin-bottom:.3rem">
+            {% if res.phase_number %}<span class="doc-phase-pill phase-green">Phase {{ res.phase_number }}</span>{% endif %}
+            <span class="card-type-tag" style="background:#dcfce7;color:#166534">Result</span>
+        </div>
+        <div class="doc-title">{{ res.title }}</div>
+        {% if res.notes %}<div class="doc-note">{{ res.notes }}</div>{% endif %}
+        {% if res.published_at %}
+        <div class="doc-meta">Published: {{ res.published_at[:10] }}</div>
+        {% endif %}
+    </div>
+    <div class="doc-card-actions">
+        <a href="/results/{{ res.id }}" class="doc-btn doc-btn-green">View Details →</a>
+    </div>
+</div>
+{% else %}
+<div style="text-align:center;padding:3rem 1rem;color:#64748b">
+    <p style="font-size:1.1rem;margin-bottom:.5rem">No results available yet.</p>
+    <p>Results will appear here once declared.</p>
+</div>
+{% endfor %}
+
+{% if has_more %}
+<div class="load-more-wrap" id="load-more-results">
+    <button class="btn btn-outline"
+            hx-get="/partials/results?offset={{ next_offset }}"
+            hx-target="#results-list"
+            hx-swap="beforeend"
+            hx-on::after-request="document.getElementById('load-more-results')?.remove()">
+        Load More
+    </button>
+</div>
+{% endif %}

@@ -1,11 +1,11 @@
 {% extends "shared/base.html" %}
-{% block title %}Edit Answer Key — Hermes Admin{% endblock %}
+{% block title %}New Answer Key — Hermes Admin{% endblock %}
 {% block content %}
 <div style="margin-bottom:1rem">
     <a href="/answer-keys" style="font-size:.875rem;color:#6b7280">← Back to Answer Keys</a>
 </div>
 
-<h1 style="font-size:1.35rem;margin-bottom:1.25rem">Edit: {{ item.title }}</h1>
+<h1 style="font-size:1.35rem;margin-bottom:1.25rem">New Answer Key</h1>
 
 {% with messages = get_flashed_messages(with_categories=true) %}
     {% for category, message in messages %}
@@ -13,48 +13,47 @@
     {% endfor %}
 {% endwith %}
 
-<form method="POST" action="/answer-keys/{{ item.id }}/edit" style="margin-bottom:2rem">
+<form method="POST" action="/answer-keys/new" style="margin-bottom:2rem">
     <div class="form-grid">
         <div class="form-group form-full">
             <label>Title *</label>
             <input type="text" name="title" required
-                   value="{{ item.title if item else '' }}"
                    placeholder="e.g. SSC CGL 2026 Tier-I Provisional Answer Key">
+        </div>
+        <div class="form-group">
+            <label>Job ID</label>
+            <input type="text" name="job_id" placeholder="UUID of the linked job">
+            <span style="font-size:.75rem;color:#9ca3af">Provide either Job ID or Exam ID (not both).</span>
+        </div>
+        <div class="form-group">
+            <label>Exam ID</label>
+            <input type="text" name="exam_id" placeholder="UUID of the linked entrance exam">
         </div>
         <div class="form-group">
             <label>Answer Key Type *</label>
             <select name="answer_key_type" required>
-                <option value="provisional" {{ 'selected' if not item or item.answer_key_type == 'provisional' }}>Provisional</option>
-                <option value="final" {{ 'selected' if item and item.answer_key_type == 'final' }}>Final</option>
+                <option value="provisional" selected>Provisional</option>
+                <option value="final">Final</option>
             </select>
         </div>
         <div class="form-group">
             <label>Phase Number</label>
-            <input type="number" name="phase_number" min="1" max="10"
-                   value="{{ item.phase_number or '' if item else '' }}" placeholder="e.g. 1">
+            <input type="number" name="phase_number" min="1" max="10" placeholder="e.g. 1">
         </div>
         <div class="form-group">
             <label>Objection Portal URL</label>
             <input type="url" name="objection_url"
-                   value="{{ item.objection_url or '' if item else '' }}"
                    placeholder="https://official-site.gov.in/raise-objection">
         </div>
         <div class="form-group">
             <label>Objection Deadline</label>
-            <input type="date" name="objection_deadline"
-                   value="{{ item.objection_deadline or '' if item else '' }}">
+            <input type="date" name="objection_deadline">
         </div>
     </div>
 
     <div style="margin-top:1.25rem;display:flex;gap:.5rem">
-        <button type="submit" class="btn btn-primary">Save Changes</button>
+        <button type="submit" class="btn btn-primary">Create Answer Key</button>
         <a href="/answer-keys" class="btn btn-outline">Cancel</a>
-        {% if session.get('admin_role') == 'admin' %}
-        <form method="POST" action="/answer-keys/{{ item.id }}/delete" style="margin-left:auto"
-              onsubmit="return confirm('Delete this answer key?')">
-            <button type="submit" class="btn btn-danger">Delete</button>
-        </form>
-        {% endif %}
     </div>
 </form>
 

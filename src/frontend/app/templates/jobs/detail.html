@@ -1,0 +1,330 @@
+{% extends "shared/base.html" %}
+{% block title %}{{ job.job_title }} — Hermes{% endblock %}
+{% block meta %}
+<meta name="description" content="{{ job.short_description or job.job_title }}">
+{% endblock %}
+
+{% block content %}
+<a href="/jobs" class="back-link">← Back to Jobs</a>
+
+<!-- Hero -->
+<div class="detail-hero hero-job">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.75rem;flex-wrap:wrap">
+        <div style="flex:1;min-width:0">
+            <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.5rem">
+                {% if job.is_featured %}<span class="badge badge-featured">Featured</span>{% endif %}
+                {% if job.is_urgent %}<span class="badge badge-urgent">Urgent</span>{% endif %}
+                {% if job.qualification_level %}<span style="background:rgba(255,255,255,.2);color:#fff;padding:.15rem .55rem;border-radius:9999px;font-size:.75rem;font-weight:600">{{ job.qualification_level|title }}</span>{% endif %}
+            </div>
+            <h1>{{ job.job_title }}</h1>
+            <div class="org">🏛 {{ job.organization }}{% if job.department and job.department != job.organization %} · {{ job.department }}{% endif %}</div>
+            {% if job.total_vacancies %}
+            <div style="margin-top:.4rem;font-size:.875rem;opacity:.9">{{ "{:,}".format(job.total_vacancies) }} vacancies</div>
+            {% endif %}
+        </div>
+        <div style="flex-shrink:0;text-align:right">
+            {% if job.status == 'active' %}
+            <span style="background:#22c55e;color:#fff;padding:.25rem .65rem;border-radius:9999px;font-size:.78rem;font-weight:600">Active</span>
+            {% elif job.status == 'expired' %}
+            <span style="background:#ef4444;color:#fff;padding:.25rem .65rem;border-radius:9999px;font-size:.78rem;font-weight:600">Expired</span>
+            {% else %}
+            <span style="background:rgba(255,255,255,.3);color:#fff;padding:.25rem .65rem;border-radius:9999px;font-size:.78rem;font-weight:600">{{ job.status|title }}</span>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Action bar -->
+<div class="action-bar">
+    {% if session.get('token') %}
+        {% if watching %}
+        <form method="post" action="/jobs/{{ job.id }}/unwatch" style="display:inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button type="submit" class="share-btn" style="background:#fef3c7;color:#92400e;border-color:#fde68a">
+                ★ Watching — Remove
+            </button>
+        </form>
+        {% else %}
+        <form method="post" action="/jobs/{{ job.id }}/watch" style="display:inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button type="submit" class="share-btn" style="background:#dbeafe;color:#1e40af;border-color:#bfdbfe">
+                ☆ Watch for Reminders
+            </button>
+        </form>
+        {% endif %}
+    {% else %}
+    <a href="/login?next=/jobs/{{ job.id }}" class="share-btn" style="background:#dbeafe;color:#1e40af;border-color:#bfdbfe">☆ Watch for Reminders</a>
+    {% endif %}
+    {% if job.source_url %}
+    <a href="{{ job.source_url }}" target="_blank" rel="noopener" class="share-btn">🔗 Official Website</a>
+    {% endif %}
+    {% if job.application_details and job.application_details.application_link %}
+    <a href="{{ job.application_details.application_link }}" target="_blank" rel="noopener" class="share-btn" style="background:#2563eb;color:#fff;border-color:#2563eb">Apply Online →</a>
+    {% endif %}
+    <button type="button" class="share-btn" onclick="shareJob()">⬆ Share</button>
+</div>
+
+<!-- Key Dates -->
+<div class="detail-grid">
+    {% if job.notification_date %}
+    <div class="detail-item">
+        <div class="label">Notification Date</div>
+        <div class="value">{{ job.notification_date }}</div>
+    </div>
+    {% endif %}
+    {% if job.application_start %}
+    <div class="detail-item">
+        <div class="label">Apply From</div>
+        <div class="value">{{ job.application_start }}</div>
+    </div>
+    {% endif %}
+    {% if job.application_end %}
+    <div class="detail-item">
+        <div class="label">Last Date to Apply</div>
+        <div class="value {{ 'urgent' if job.status == 'active' else '' }}">{{ job.application_end }}</div>
+    </div>
+    {% endif %}
+    {% if job.exam_start %}
+    <div class="detail-item">
+        <div class="label">Exam Date</div>
+        <div class="value">{{ job.exam_start }}</div>
+    </div>
+    {% endif %}
+    {% if job.result_date %}
+    <div class="detail-item">
+        <div class="label">Result Date</div>
+        <div class="value">{{ job.result_date }}</div>
+    </div>
+    {% endif %}
+    {% if job.salary_initial %}
+    <div class="detail-item">
+        <div class="label">Pay Scale</div>
+        <div class="value">₹{{ "{:,}".format(job.salary_initial) }}{% if job.salary_max %} – ₹{{ "{:,}".format(job.salary_max) }}{% endif %}</div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Description -->
+{% if job.description %}
+<div class="detail-section">
+    <h2>📋 About This Recruitment</h2>
+    <div>{{ job.description|safe }}</div>
+</div>
+{% endif %}
+
+<!-- Eligibility -->
+{% if job.eligibility %}
+<div class="detail-section">
+    <h2>✅ Eligibility Criteria</h2>
+    {% set elig = job.eligibility %}
+    {% if elig.get('min_qualification') %}
+    <p><strong>Minimum Qualification:</strong> {{ elig.min_qualification }}</p>
+    {% endif %}
+    {% if elig.get('age_limit') %}
+    {% set age = elig.age_limit %}
+    <p style="margin-top:.4rem"><strong>Age Limit:</strong>
+        {% if age.get('min') and age.get('max') %}{{ age.min }} – {{ age.max }} years{% endif %}
+        {% if age.get('cutoff_date') %} (as on {{ age.cutoff_date }}){% endif %}
+    </p>
+    {% if age.get('relaxation') %}
+    <p style="margin-top:.25rem;font-size:.85rem;color:#64748b">Relaxation: {{ age.relaxation | tojson | replace('"', '') | replace('{', '') | replace('}', '') }}</p>
+    {% endif %}
+    {% endif %}
+    {% if elig.get('qualification_details') %}
+    <p style="margin-top:.4rem">{{ elig.qualification_details }}</p>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- Vacancy Breakdown -->
+{% if job.vacancy_breakdown %}
+<div class="detail-section">
+    <h2>👥 Vacancy Breakdown</h2>
+    {% set vb = job.vacancy_breakdown %}
+    {% if vb.get('by_category') %}
+    <table class="fee-table" style="margin-bottom:.75rem">
+        <thead><tr><th>Category</th><th>Vacancies</th></tr></thead>
+        <tbody>
+        {% for cat, cnt in vb.by_category.items() %}
+        <tr><td>{{ cat }}</td><td>{{ cnt }}</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+    {% if vb.get('by_post') %}
+    <table class="fee-table">
+        <thead><tr><th>Post</th><th>Vacancies</th><th>Age Limit</th><th>Qualification</th></tr></thead>
+        <tbody>
+        {% for post in vb.by_post %}
+        <tr>
+            <td>{{ post.get('post_name', '—') }}</td>
+            <td>{{ post.get('total', '—') }}</td>
+            <td>{{ post.get('age_limit', '—') }}</td>
+            <td>{{ post.get('qualification', '—') }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- Selection Process -->
+{% if job.selection_process %}
+<div class="detail-section">
+    <h2>🎯 Selection Process</h2>
+    <ol>
+        {% for step in job.selection_process %}
+        <li>{{ step.get('name', step) if step is mapping else step }}{% if step is mapping and step.get('qualifying') %} <span class="meta-pill pill-green" style="font-size:.72rem">Qualifying</span>{% endif %}</li>
+        {% endfor %}
+    </ol>
+</div>
+{% endif %}
+
+<!-- Exam Pattern -->
+{% if job.exam_details and job.exam_details.get('exam_pattern') %}
+<div class="detail-section">
+    <h2>📝 Exam Pattern</h2>
+    {% for phase in job.exam_details.exam_pattern %}
+    <div style="margin-bottom:.75rem">
+        <strong>Phase {{ loop.index }}: {{ phase.get('phase', '') }}</strong>
+        {% if phase.get('exam_mode') %} · {{ phase.exam_mode }}{% endif %}
+        {% if phase.get('total_marks') %} · {{ phase.total_marks }} marks{% endif %}
+        {% if phase.get('duration_minutes') %} · {{ phase.duration_minutes }} mins{% endif %}
+        {% if phase.get('negative_marking') %} · Negative: {{ phase.negative_marking }}{% endif %}
+        {% if phase.get('qualifying') %} <span class="meta-pill pill-green" style="font-size:.72rem">Qualifying</span>{% endif %}
+        {% if phase.get('subjects') %}
+        <table class="fee-table" style="margin-top:.4rem">
+            <thead><tr><th>Subject</th><th>Questions</th><th>Marks</th></tr></thead>
+            <tbody>
+            {% for sub in phase.subjects %}
+            <tr><td>{{ sub.name }}</td><td>{{ sub.get('questions', '—') }}</td><td>{{ sub.get('marks', '—') }}</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- Application Fee -->
+{% if job.fee_general is not none %}
+<div class="detail-section">
+    <h2>💳 Application Fee</h2>
+    <table class="fee-table">
+        <thead><tr><th>Category</th><th>Fee</th></tr></thead>
+        <tbody>
+            {% if job.fee_general is not none %}<tr><td>General / OBC / EWS</td><td>{% if job.fee_general == 0 %}Free{% else %}₹{{ job.fee_general }}{% endif %}</td></tr>{% endif %}
+            {% if job.fee_sc_st is not none %}<tr><td>SC / ST</td><td>{% if job.fee_sc_st == 0 %}Free{% else %}₹{{ job.fee_sc_st }}{% endif %}</td></tr>{% endif %}
+            {% if job.fee_female is not none %}<tr><td>Female (all categories)</td><td>{% if job.fee_female == 0 %}Free{% else %}₹{{ job.fee_female }}{% endif %}</td></tr>{% endif %}
+        </tbody>
+    </table>
+    {% if job.application_details and job.application_details.get('fee_payment_mode') %}
+    <p style="font-size:.82rem;color:#64748b;margin-top:.4rem">Payment mode: {{ job.application_details.fee_payment_mode }}</p>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- Important Links -->
+{% if job.application_details and job.application_details.get('important_links') %}
+<div class="detail-section">
+    <h2>🔗 Important Links</h2>
+    <div style="display:flex;flex-wrap:wrap;gap:.5rem">
+        {% for link in job.application_details.important_links %}
+        <a href="{{ link.url }}" target="_blank" rel="noopener" class="btn btn-outline" style="font-size:.82rem">{{ link.text }}</a>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Required Documents -->
+{% if job.documents %}
+<div class="detail-section">
+    <h2>📄 Required Documents</h2>
+    <ul>
+        {% for doc in job.documents %}
+        <li>{{ doc.get('name', doc) if doc is mapping else doc }}{% if doc is mapping %}{% if doc.get('mandatory') %} <span class="meta-pill pill-red" style="font-size:.72rem">Mandatory</span>{% endif %}{% if doc.get('format') %} · {{ doc.format }}{% endif %}{% if doc.get('max_size_kb') %} · max {{ doc.max_size_kb }}KB{% endif %}{% endif %}</li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
+
+<!-- Phase Documents (Admit Cards, Answer Keys, Results) -->
+{% if job.admit_cards or job.answer_keys or job.results %}
+<div class="detail-section">
+    <h2>📂 Phase Documents</h2>
+    <div x-data="{tab: '{{ 'admit' if job.admit_cards else ('answer' if job.answer_keys else 'result') }}'}">
+        <div class="doc-tabs-bar">
+            {% if job.admit_cards %}<button class="doc-tab-btn" :class="{active:tab==='admit'}" @click="tab='admit'">Admit Cards ({{ job.admit_cards|length }})</button>{% endif %}
+            {% if job.answer_keys %}<button class="doc-tab-btn" :class="{active:tab==='answer'}" @click="tab='answer'">Answer Keys ({{ job.answer_keys|length }})</button>{% endif %}
+            {% if job.results %}<button class="doc-tab-btn" :class="{active:tab==='result'}" @click="tab='result'">Results ({{ job.results|length }})</button>{% endif %}
+        </div>
+        {% if job.admit_cards %}
+        <div class="doc-panel" x-show="tab==='admit'">
+            {% for card in job.admit_cards %}
+            <div class="doc-card doc-card-admit">
+                <div class="doc-card-body">
+                    {% if card.phase_number %}<span class="doc-phase-pill phase-blue">Phase {{ card.phase_number }}</span>{% endif %}
+                    <div class="doc-title">{{ card.title }}</div>
+                    {% if card.valid_from or card.valid_until %}<div class="doc-deadline">Valid: {{ card.valid_from or '?' }} – {{ card.valid_until or '?' }}</div>{% endif %}
+                    {% if card.notes %}<div class="doc-note">{{ card.notes }}</div>{% endif %}
+                </div>
+                <div class="doc-card-actions">
+                    <a href="{{ card.download_url }}" target="_blank" rel="noopener" class="doc-btn doc-btn-blue">⬇ Download</a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% if job.answer_keys %}
+        <div class="doc-panel" x-show="tab==='answer'">
+            {% for key in job.answer_keys %}
+            <div class="doc-card doc-card-answer">
+                <div class="doc-card-body">
+                    {% if key.phase_number %}<span class="doc-phase-pill phase-amber">Phase {{ key.phase_number }}</span>{% endif %}
+                    {% if key.answer_key_type %}<span class="doc-phase-pill {{ 'type-final' if key.answer_key_type == 'final' else 'type-prov' }}">{{ key.answer_key_type|title }}</span>{% endif %}
+                    <div class="doc-title">{{ key.title }}</div>
+                    {% if key.notes %}<div class="doc-note">{{ key.notes }}</div>{% endif %}
+                </div>
+                <div class="doc-card-actions">
+                    <a href="{{ key.download_url }}" target="_blank" rel="noopener" class="doc-btn doc-btn-amber">⬇ Download</a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% if job.results %}
+        <div class="doc-panel" x-show="tab==='result'">
+            {% for res in job.results %}
+            <div class="doc-card doc-card-result">
+                <div class="doc-card-body">
+                    {% if res.phase_number %}<span class="doc-phase-pill phase-green">Phase {{ res.phase_number }}</span>{% endif %}
+                    <div class="doc-title">{{ res.title }}</div>
+                    {% if res.notes %}<div class="doc-note">{{ res.notes }}</div>{% endif %}
+                </div>
+                <div class="doc-card-actions">
+                    <a href="{{ res.download_url }}" target="_blank" rel="noopener" class="doc-btn doc-btn-green">⬇ Download</a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+<script>
+function shareJob() {
+    var title = "{{ job.job_title|replace('"', '\\"') }}";
+    var text = "{{ (job.short_description or '')|replace('"', '\\"') }}";
+    if (navigator.share) {
+        navigator.share({ title: title, text: text, url: window.location.href });
+    } else {
+        navigator.clipboard.writeText(window.location.href).then(function() {
+            alert("Link copied to clipboard!");
+        });
+    }
+}
+</script>
+{% endblock %}

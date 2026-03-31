@@ -39,12 +39,20 @@
 <div class="section-title">📋 Watched Jobs</div>
 {% for item in watched_jobs %}
 <div class="watch-card">
-    <div>
-        <h3><a href="/jobs/{{ item.slug }}">{{ item.job_title }}</a></h3>
+    <div style="flex:1;min-width:0">
+        <h3><a href="/jobs/{{ item.id }}" style="color:#1e293b">{{ item.job_title }}</a></h3>
         <div class="org">{{ item.organization }}</div>
         {% if item.application_end %}<div class="deadline">Deadline: {{ item.application_end }}</div>{% endif %}
     </div>
-    <span class="type-pill">Job</span>
+    <div style="display:flex;gap:.5rem;align-items:center;flex-shrink:0">
+        <span class="type-pill">Job</span>
+        <a href="/jobs/{{ item.id }}" class="btn btn-outline" style="font-size:.78rem;padding:.25rem .6rem">View →</a>
+        <form method="post" action="/jobs/{{ item.id }}/unwatch" style="display:inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="next" value="/dashboard">
+            <button type="submit" class="btn-watching" style="font-size:.78rem;padding:.25rem .6rem">★ Unwatch</button>
+        </form>
+    </div>
 </div>
 {% endfor %}
 {% endif %}
@@ -53,12 +61,20 @@
 <div class="section-title">🎓 Watched Exams</div>
 {% for item in watched_exams %}
 <div class="watch-card">
-    <div>
-        <h3><a href="/entrance-exams/{{ item.slug }}">{{ item.exam_name }}</a></h3>
+    <div style="flex:1;min-width:0">
+        <h3><a href="/entrance-exams/{{ item.id }}" style="color:#1e293b">{{ item.exam_name }}</a></h3>
         <div class="org">{{ item.conducting_body }}</div>
-        {% if item.application_end %}<div class="deadline">Deadline: {{ item.application_end }}</div>{% endif %}
+        {% if item.application_end %}<div class="deadline">Apply by: {{ item.application_end }}</div>{% endif %}
     </div>
-    <span class="type-pill" style="background:#d1fae5;color:#065f46">Exam</span>
+    <div style="display:flex;gap:.5rem;align-items:center;flex-shrink:0">
+        <span class="type-pill" style="background:#d1fae5;color:#065f46">Exam</span>
+        <a href="/entrance-exams/{{ item.id }}" class="btn btn-outline" style="font-size:.78rem;padding:.25rem .6rem">View →</a>
+        <form method="post" action="/entrance-exams/{{ item.id }}/unwatch" style="display:inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="next" value="/dashboard">
+            <button type="submit" class="btn-watching" style="font-size:.78rem;padding:.25rem .6rem">★ Unwatch</button>
+        </form>
+    </div>
 </div>
 {% endfor %}
 {% endif %}
@@ -66,7 +82,11 @@
 {% if not watched_jobs and not watched_exams %}
 <div class="empty-state">
     <p style="font-size:1.1rem;margin-bottom:.5rem">No items watched yet.</p>
-    <p>Browse <a href="/">jobs</a> or <a href="/entrance-exams">entrance exams</a> and watch items to get deadline reminders.</p>
+    <p style="margin-bottom:1rem">Watch jobs and entrance exams to get deadline reminders.</p>
+    <div style="display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap">
+        <a href="/jobs" class="btn btn-primary">Browse Jobs</a>
+        <a href="/entrance-exams" class="btn btn-outline">Browse Exams</a>
+    </div>
 </div>
 {% endif %}
 {% endblock %}

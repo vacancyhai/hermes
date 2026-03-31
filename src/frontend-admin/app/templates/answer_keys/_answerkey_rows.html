@@ -16,7 +16,7 @@
     </td>
     <td>{{ item.objection_deadline or '—' }}</td>
     <td>
-        {% if item.objection_url %}<a href="{{ item.objection_url }}" target="_blank" class="btn btn-outline btn-sm">Objection ↗</a>{% endif %}
+        <a href="/answer-keys/{{ item.id }}/edit" class="btn btn-outline btn-sm">Edit</a>
         {% if session.get('admin_role') == 'admin' %}
         <form method="POST" action="/answer-keys/{{ item.id }}/delete" style="display:inline;" onsubmit="return confirm('Delete this answer key?')">
             <button type="submit" class="btn btn-sm" style="color:#dc2626;border-color:#fca5a5;background:#fff;">Delete</button>

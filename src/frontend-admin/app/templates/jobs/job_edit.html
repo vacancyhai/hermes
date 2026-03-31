@@ -1,13 +1,11 @@
 {% extends "shared/base.html" %}
-{% block title %}{{ 'Edit Job' if mode == 'edit' else 'New Job' }} — Hermes Admin{% endblock %}
+{% block title %}Edit Job — Hermes Admin{% endblock %}
 {% block content %}
 <div style="margin-bottom:1rem">
     <a href="/jobs" style="font-size:.875rem;color:#6b7280">← Back to Jobs</a>
 </div>
 
-<h1 style="font-size:1.35rem;margin-bottom:1.25rem">
-    {{ 'Edit: ' ~ job.job_title if mode == 'edit' else 'New Job' }}
-</h1>
+<h1 style="font-size:1.35rem;margin-bottom:1.25rem">Edit: {{ job.job_title }}</h1>
 
 {% with messages = get_flashed_messages(with_categories=true) %}
     {% for category, message in messages %}
@@ -16,31 +14,31 @@
 {% endwith %}
 
 <!-- ── Job Details Form ───────────────────────────────────────────────── -->
-<form method="POST" action="{{ '/jobs/' ~ job.id ~ '/edit' if mode == 'edit' else '/jobs/new' }}" style="margin-bottom:2rem">
+<form method="POST" action="/jobs/{{ job.id }}/edit" style="margin-bottom:2rem">
     <div class="form-grid">
         <div class="form-group form-full">
             <label>Job Title *</label>
             <input type="text" name="job_title" required
-                   value="{{ job.job_title or '' if job else '' }}"
+                   value="{{ job.job_title or '' }}"
                    placeholder="e.g. SSC CGL 2026 Combined Graduate Level Examination">
         </div>
         <div class="form-group">
             <label>Organization *</label>
             <input type="text" name="organization" required
-                   value="{{ job.organization or '' if job else '' }}"
+                   value="{{ job.organization or '' }}"
                    placeholder="e.g. Staff Selection Commission">
         </div>
         <div class="form-group">
             <label>Department</label>
             <input type="text" name="department"
-                   value="{{ job.department or '' if job else '' }}"
+                   value="{{ job.department or '' }}"
                    placeholder="e.g. Ministry of Personnel">
         </div>
         <div class="form-group">
             <label>Qualification Level</label>
             <select name="qualification_level">
                 {% for val in ['10th','12th','diploma','graduate','postgraduate','phd'] %}
-                <option value="{{ val }}" {{ 'selected' if job and job.qualification_level == val }}>{{ val | title }}</option>
+                <option value="{{ val }}" {{ 'selected' if job.qualification_level == val }}>{{ val | title }}</option>
                 {% endfor %}
             </select>
         </div>
@@ -48,23 +46,23 @@
             <label>Status</label>
             <select name="status">
                 {% for val in ['draft','active','cancelled'] %}
-                <option value="{{ val }}" {{ 'selected' if job and job.status == val else ('selected' if val == 'draft' and not job) }}>{{ val | title }}</option>
+                <option value="{{ val }}" {{ 'selected' if job.status == val }}>{{ val | title }}</option>
                 {% endfor %}
             </select>
         </div>
         <div class="form-group">
             <label>Total Vacancies</label>
             <input type="number" name="total_vacancies" min="0"
-                   value="{{ job.total_vacancies or '' if job else '' }}" placeholder="e.g. 5000">
+                   value="{{ job.total_vacancies or '' }}" placeholder="e.g. 5000">
         </div>
         <div class="form-group" style="display:flex;align-items:center;gap:.5rem;padding-top:1.5rem">
             <input type="checkbox" name="is_featured" id="is_featured"
-                   {{ 'checked' if job and job.is_featured }}>
+                   {{ 'checked' if job.is_featured }}>
             <label for="is_featured" style="margin:0">Featured</label>
         </div>
         <div class="form-group" style="display:flex;align-items:center;gap:.5rem;padding-top:1.5rem">
             <input type="checkbox" name="is_urgent" id="is_urgent"
-                   {{ 'checked' if job and job.is_urgent }}>
+                   {{ 'checked' if job.is_urgent }}>
             <label for="is_urgent" style="margin:0">Urgent</label>
         </div>
     </div>
@@ -73,19 +71,19 @@
     <div class="form-grid">
         <div class="form-group">
             <label>Notification Date</label>
-            <input type="date" name="notification_date" value="{{ job.notification_date or '' if job else '' }}">
+            <input type="date" name="notification_date" value="{{ job.notification_date or '' }}">
         </div>
         <div class="form-group">
             <label>Application Start</label>
-            <input type="date" name="application_start" value="{{ job.application_start or '' if job else '' }}">
+            <input type="date" name="application_start" value="{{ job.application_start or '' }}">
         </div>
         <div class="form-group">
             <label>Application End (Deadline)</label>
-            <input type="date" name="application_end" value="{{ job.application_end or '' if job else '' }}">
+            <input type="date" name="application_end" value="{{ job.application_end or '' }}">
         </div>
         <div class="form-group">
             <label>Exam Start</label>
-            <input type="date" name="exam_start" value="{{ job.exam_start or '' if job else '' }}">
+            <input type="date" name="exam_start" value="{{ job.exam_start or '' }}">
         </div>
     </div>
 
@@ -95,7 +93,7 @@
         <div class="form-group">
             <label>{{ flabel }}</label>
             <input type="number" name="{{ fname }}" min="0"
-                   value="{{ (job[fname] if job[fname] is not none else '') if job else ''"}}
+                   value="{{ job[fname] if job[fname] is not none else '' }}"
                    placeholder="Leave blank if N/A">
         </div>
         {% endfor %}
@@ -106,37 +104,37 @@
         <div class="form-group">
             <label>Salary Min</label>
             <input type="number" name="salary_initial" min="0"
-                   value="{{ job.salary_initial or '' if job else '' }}" placeholder="e.g. 25500">
+                   value="{{ job.salary_initial or '' }}" placeholder="e.g. 25500">
         </div>
         <div class="form-group">
             <label>Salary Max</label>
             <input type="number" name="salary_max" min="0"
-                   value="{{ job.salary_max or '' if job else '' }}" placeholder="e.g. 81100">
+                   value="{{ job.salary_max or '' }}" placeholder="e.g. 81100">
         </div>
     </div>
 
     <div class="form-group form-full" style="margin-top:1rem">
         <label>Short Description</label>
         <input type="text" name="short_description" maxlength="300"
-               value="{{ job.short_description or '' if job else '' }}"
+               value="{{ job.short_description or '' }}"
                placeholder="One-line summary for cards">
     </div>
     <div class="form-group form-full">
         <label>Description</label>
         <textarea name="description" rows="5"
-                  placeholder="Full description…">{{ job.description or '' if job else '' }}</textarea>
+                  placeholder="Full description…">{{ job.description or '' }}</textarea>
     </div>
     <div class="form-group form-full">
         <label>Source URL</label>
         <input type="url" name="source_url"
-               value="{{ job.source_url or '' if job else '' }}"
+               value="{{ job.source_url or '' }}"
                placeholder="https://ssc.nic.in/...">
     </div>
 
     <div style="margin-top:1.25rem;display:flex;gap:.5rem">
-        <button type="submit" class="btn btn-primary">{{ 'Save Changes' if mode == 'edit' else 'Create Job' }}</button>
+        <button type="submit" class="btn btn-primary">Save Changes</button>
         <a href="/jobs" class="btn btn-outline">Cancel</a>
-        {% if mode == 'edit' and session.get('admin_role') == 'admin' %}
+        {% if session.get('admin_role') == 'admin' %}
         <form method="POST" action="/jobs/{{ job.id }}/delete" style="margin-left:auto"
               onsubmit="return confirm('Permanently delete this job?')">
             <button type="submit" class="btn btn-danger">Delete Job</button>
@@ -146,7 +144,6 @@
 </form>
 
 <!-- ── Phase Documents ───────────────────────────────────────────────── -->
-{% if mode == 'edit' %}
 <div id="docs" style="border-top:2px solid #e5e7eb;padding-top:1.5rem">
     <h2 style="font-size:1.1rem;margin-bottom:1rem">📋 Phase Documents</h2>
 
@@ -286,7 +283,6 @@
         </details>
     </div>
 </div>
-{% endif %}
 
 <style>
 .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}

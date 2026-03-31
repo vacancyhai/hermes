@@ -36,6 +36,11 @@
         .sec-nav a{padding:.5rem 1.1rem;font-size:.85rem;white-space:nowrap;color:#93afc5;border-bottom:2px solid transparent;font-weight:400;text-decoration:none;display:inline-block}
         .sec-nav a:hover{color:#cbd5e1;text-decoration:none}
         .sec-nav a.active{color:#fff;border-bottom-color:#60a5fa;font-weight:600}
+        .list-tab{padding:.55rem 1.1rem;font-size:.875rem;font-weight:500;color:#64748b;background:none;border:none;border-bottom:2px solid transparent;cursor:pointer;transition:color .15s,border-color .15s}
+        .list-tab:hover{color:#1e293b}
+        .list-tab-active{color:#2563eb!important;border-bottom-color:#2563eb!important;font-weight:600}
+        .btn-watching{background:#fef3c7;color:#92400e;border:1px solid #fde68a;border-radius:.375rem;cursor:pointer;font-weight:500}
+        .btn-watching:hover{background:#fde68a}
         .card-latest{border-left:3px solid #7c3aed!important;background:#faf5ff!important}
         .card-latest .card-type-tag{background:#ede9fe;color:#5b21b6}
         .card-admit{border-left:3px solid #2563eb!important;background:#eff6ff!important}
@@ -157,16 +162,13 @@
             {% endif %}
         </nav>
     </header>
-    <div style="background:#162d4a;border-top:1px solid #2d4f7f">
-        <nav class="sec-nav" style="max-width:960px;margin:0 auto;padding:0 1rem;display:flex;overflow-x:auto;scrollbar-width:none">
-            {% set _path = request.path %}
-            {% for href, label, icon in [('/', 'Jobs', '💼'), ('/admit-cards', 'Admit Cards', '📄'), ('/answer-keys', 'Answer Keys', '✏️'), ('/results', 'Results', '🏆'), ('/entrance-exams', 'Entrance Exams', '🎓')] %}
-            {% set is_active = (_path == '/' or _path.startswith('/jobs/')) if href == '/' else (_path == href or _path.startswith(href + '/')) %}
-            <a href="{{ href }}" class="{{ 'active' if is_active }}">{{ icon }} {{ label }}</a>
-            {% endfor %}
-        </nav>
-    </div>
-
+    <nav class="sec-nav" style="background:#162d4a;border-bottom:1px solid #1e3a5f;overflow-x:auto;white-space:nowrap;display:flex">
+        <a href="/jobs" class="{{ 'active' if request.path.startswith('/jobs') else '' }}">Jobs</a>
+        <a href="/admit-cards" class="{{ 'active' if request.path.startswith('/admit-cards') else '' }}">Admit Cards</a>
+        <a href="/answer-keys" class="{{ 'active' if request.path.startswith('/answer-keys') else '' }}">Answer Keys</a>
+        <a href="/results" class="{{ 'active' if request.path.startswith('/results') else '' }}">Results</a>
+        <a href="/entrance-exams" class="{{ 'active' if request.path.startswith('/entrance-exams') else '' }}">Entrance Exams</a>
+    </nav>
     <main>
         {% block content %}{% endblock %}
     </main>

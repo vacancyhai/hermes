@@ -79,164 +79,7 @@ def create_app():
 
     @app.route("/")
     def index():
-        """Landing page — job vacancies only."""
-        params = _job_params()
-        token = session.get("token")
-        if params.get("recommended") and token:
-            resp = current_app.api_client.get("/jobs/recommended", token=token, params={"limit": params.get("limit", 20), "offset": params.get("offset", 0)})
-        else:
-            params.pop("recommended", None)
-            resp = current_app.api_client.get("/jobs", params=params)
-        data = resp.json() if resp.ok else {"data": [], "pagination": {}}
-        return render_template("jobs/index.html", jobs=data["data"], pagination=data.get("pagination", {}), params=params, card_type="latest_job")
-
-    @app.route("/jobs")
-    def job_list_partial():
-        """HTMX partial — returns job card rows + load-more button."""
-        params = _job_params()
-        token = session.get("token")
-        if params.get("recommended") and token:
-            resp = current_app.api_client.get("/jobs/recommended", token=token, params={"limit": params.get("limit", 20), "offset": params.get("offset", 0)})
-        else:
-            params.pop("recommended", None)
-            resp = current_app.api_client.get("/jobs", params=params)
-        data = resp.json() if resp.ok else {"data": [], "pagination": {}}
-        return render_template("jobs/_job_cards.html", jobs=data["data"], pagination=data.get("pagination", {}), params=params, card_type="latest_job")
-
-    @app.route("/admit-cards")
-    def admit_cards():
-        """Browse admit cards."""
-        token = session.get("token")
-        params = {"limit": 20, "offset": request.args.get("offset", 0, type=int)}
-        if request.args.get("q"):
-            params["q"] = request.args.get("q")
-        if request.args.get("organization"):
-            params["organization"] = request.args.get("organization")
-        
-        if request.args.get("recommended") and token:
-            resp = current_app.api_client.get("/admit-cards/recommended", token=token, params={"limit": params.get("limit", 20), "offset": params.get("offset", 0)})
-        else:
-            resp = current_app.api_client.get("/admit-cards", params=params)
-        
-        data = resp.json() if resp.ok else {"data": [], "pagination": {}}
-        return render_template("admit_cards/admit_cards.html", cards=data["data"], pagination=data.get("pagination", {}), params=request.args)
-
-    @app.route("/answer-keys")
-    def answer_keys():
-        """Answer keys section page."""
-        token = session.get("token")
-        params = {"limit": 20, "offset": request.args.get("offset", 0, type=int)}
-        if request.args.get("q"):
-            params["q"] = request.args.get("q")
-        if request.args.get("organization"):
-            params["organization"] = request.args.get("organization")
-        
-        if request.args.get("recommended") and token:
-            resp = current_app.api_client.get("/answer-keys/recommended", token=token, params={"limit": params.get("limit", 20), "offset": params.get("offset", 0)})
-        else:
-            resp = current_app.api_client.get("/answer-keys", params=params)
-        
-        data = resp.json() if resp.ok else {"data": [], "pagination": {}}
-        return render_template("answer_keys/answer_keys.html", keys=data["data"], pagination=data.get("pagination", {}), params=request.args)
-
-    @app.route("/results")
-    def results():
-        """Results section page."""
-        token = session.get("token")
-        params = {"limit": 20, "offset": request.args.get("offset", 0, type=int)}
-        if request.args.get("q"):
-            params["q"] = request.args.get("q")
-        if request.args.get("organization"):
-            params["organization"] = request.args.get("organization")
-        
-        if request.args.get("recommended") and token:
-            resp = current_app.api_client.get("/results/recommended", token=token, params={"limit": params.get("limit", 20), "offset": params.get("offset", 0)})
-        else:
-            resp = current_app.api_client.get("/results", params=params)
-        
-        data = resp.json() if resp.ok else {"data": [], "pagination": {}}
-        return render_template("results/results.html", results=data["data"], pagination=data.get("pagination", {}), params=request.args)
-
-    @app.route("/admit-cards/<card_id>")
-    def admit_card_detail(card_id):
-        """Admit card detail page."""
-        resp = current_app.api_client.get(f"/admit-cards/{card_id}")
-        if not resp.ok:
-            return render_template("shared/404.html"), 404
-        card = resp.json()
-        return render_template("admit_cards/admit_card_detail.html", card=card)
-
-    @app.route("/answer-keys/<key_id>")
-    def answer_key_detail(key_id):
-        """Answer key detail page."""
-        resp = current_app.api_client.get(f"/answer-keys/{key_id}")
-        if not resp.ok:
-            return render_template("shared/404.html"), 404
-        key = resp.json()
-        return render_template("answer_keys/answer_key_detail.html", key=key)
-
-    @app.route("/results/<result_id>")
-    def result_detail(result_id):
-        """Result detail page."""
-        resp = current_app.api_client.get(f"/results/{result_id}")
-        if not resp.ok:
-            return render_template("shared/404.html"), 404
-        result = resp.json()
-        return render_template("results/result_detail.html", result=result)
-
-    @app.route("/jobs/<slug>")
-    def job_detail(slug):
-        """Job detail page."""
-        resp = current_app.api_client.get(f"/jobs/{slug}")
-        if not resp.ok:
-            return render_template("shared/404.html"), 404
-        job = resp.json()
-        return render_template("jobs/job_detail.html", job=job)
-
-
-    @app.route("/entrance-exams")
-    def entrance_exams():
-        """Entrance exams section page."""
-        token = session.get("token")
-        params = {}
-        for key in ("q", "stream", "exam_type"):
-            val = request.args.get(key)
-            if val:
-                params[key] = val
-        params["limit"] = min(_int_arg("limit", 20), 100)
-        params["offset"] = _int_arg("offset", 0)
-        
-        if request.args.get("recommended") and token:
-            resp = current_app.api_client.get("/entrance-exams/recommended", token=token, params={"limit": params.get("limit", 20), "offset": params.get("offset", 0)})
-        else:
-            resp = current_app.api_client.get("/entrance-exams", params=params)
-        
-        data = resp.json() if resp.ok else {"data": [], "pagination": {}}
-        return render_template("entrance_exams/entrance_exams.html", exams=data["data"], pagination=data.get("pagination", {}), params=request.args)
-
-    @app.route("/entrance-exams/partial")
-    def entrance_exams_partial():
-        """HTMX partial for entrance exams load-more — returns card rows only."""
-        params = {}
-        for key in ("q", "stream", "exam_type"):
-            val = request.args.get(key)
-            if val:
-                params[key] = val
-        params["limit"] = 20
-        params["offset"] = _int_arg("offset", 0)
-        resp = current_app.api_client.get("/entrance-exams", params=params)
-        data = resp.json() if resp.ok else {"data": [], "pagination": {}}
-        return render_template("entrance_exams/_exam_cards.html", exams=data["data"], pagination=data.get("pagination", {}), params=params)
-
-    @app.route("/entrance-exams/<slug>")
-    def entrance_exam_detail(slug):
-        """Entrance exam detail page."""
-        resp = current_app.api_client.get(f"/entrance-exams/{slug}")
-        if not resp.ok:
-            return render_template("shared/404.html"), 404
-        exam = resp.json()
-        return render_template("entrance_exams/entrance_exam_detail.html", exam=exam)
-
+        return redirect("/dashboard")
 
     # --- Watched Items Dashboard ---
 
@@ -699,6 +542,315 @@ def create_app():
     def handle_unexpected_error(exc):
         app.logger.error("Unhandled exception: %s", exc, exc_info=True)
         return render_template("shared/404.html"), 500
+
+    # ─── Jobs Section ────────────────────────────────────────────────────────
+
+    @app.route("/jobs")
+    def jobs():
+        params = {}
+        for key in ("q", "qualification_level", "organization"):
+            val = request.args.get(key)
+            if val:
+                params[key] = val
+        params["limit"] = min(_int_arg("limit", 20), 100)
+        params["offset"] = _int_arg("offset", 0)
+        token = session.get("token")
+        resp = current_app.api_client.get("/jobs", token=token, params=params)
+        data = resp.json() if resp.ok else {"data": [], "pagination": {}}
+        recommended_jobs = []
+        watched_job_ids = set()
+        if token:
+            rec_resp, authed = _try_with_refresh(
+                lambda t: current_app.api_client.get("/jobs/recommended", token=t, params={"limit": 20, "offset": 0})
+            )
+            if authed and rec_resp and rec_resp.ok:
+                recommended_jobs = rec_resp.json().get("data", [])
+            w_resp = current_app.api_client.get("/users/me/watched", token=session.get("token"))
+            if w_resp.ok:
+                watched_job_ids = {str(j["id"]) for j in w_resp.json().get("jobs", [])}
+        return render_template(
+            "jobs/list.html",
+            jobs=data.get("data", []),
+            pagination=data.get("pagination", {}),
+            recommended_jobs=recommended_jobs,
+            watched_job_ids=watched_job_ids,
+            q=request.args.get("q", ""),
+            qualification_level=request.args.get("qualification_level", ""),
+            organization=request.args.get("organization", ""),
+        )
+
+    @app.route("/partials/jobs")
+    def jobs_partial():
+        params = {}
+        for key in ("q", "qualification_level", "organization"):
+            val = request.args.get(key)
+            if val:
+                params[key] = val
+        params["limit"] = min(_int_arg("limit", 20), 100)
+        params["offset"] = _int_arg("offset", 0)
+        token = session.get("token")
+        resp = current_app.api_client.get("/jobs", token=token, params=params)
+        data = resp.json() if resp.ok else {"data": [], "pagination": {}}
+        pagination = data.get("pagination", {})
+        has_more = pagination.get("has_more", False)
+        next_offset = params["offset"] + params["limit"] if has_more else 0
+        return render_template(
+            "jobs/_cards.html",
+            jobs=data.get("data", []),
+            has_more=has_more,
+            next_offset=next_offset,
+            q=request.args.get("q", ""),
+            qualification_level=request.args.get("qualification_level", ""),
+            organization=request.args.get("organization", ""),
+        )
+
+    @app.route("/jobs/<job_id>")
+    def job_detail(job_id):
+        resp = current_app.api_client.get(f"/jobs/{job_id}")
+        if not resp.ok:
+            return render_template("shared/404.html"), 404
+        job = resp.json()
+        watching = False
+        token = session.get("token")
+        if token:
+            w_resp = current_app.api_client.get("/users/me/watched", token=token)
+            if w_resp.ok:
+                watching = any(str(j["id"]) == job_id for j in w_resp.json().get("jobs", []))
+        return render_template("jobs/detail.html", job=job, watching=watching)
+
+    @app.route("/jobs/<job_id>/watch", methods=["POST"])
+    def watch_job(job_id):
+        _, authed = _try_with_refresh(lambda t: current_app.api_client.post(f"/jobs/{job_id}/watch", token=t))
+        if not authed:
+            return redirect(f"/login?next=/jobs/{job_id}")
+        return redirect(request.form.get("next") or request.referrer or f"/jobs/{job_id}")
+
+    @app.route("/jobs/<job_id>/unwatch", methods=["POST"])
+    def unwatch_job(job_id):
+        _, authed = _try_with_refresh(lambda t: current_app.api_client.delete(f"/jobs/{job_id}/watch", token=t))
+        if not authed:
+            return redirect(f"/login?next=/jobs/{job_id}")
+        return redirect(request.form.get("next") or request.referrer or f"/jobs/{job_id}")
+
+    # ─── Admit Cards Section ─────────────────────────────────────────────────
+
+    @app.route("/admit-cards")
+    def admit_cards():
+        params = {"limit": min(_int_arg("limit", 20), 100), "offset": _int_arg("offset", 0)}
+        token = session.get("token")
+        resp = current_app.api_client.get("/admit-cards", params=params)
+        data = resp.json() if resp.ok else {"data": [], "pagination": {}}
+        recommended_cards = []
+        if token:
+            rec_resp, authed = _try_with_refresh(
+                lambda t: current_app.api_client.get("/admit-cards/recommended", token=t, params={"limit": 20, "offset": 0})
+            )
+            if authed and rec_resp and rec_resp.ok:
+                recommended_cards = rec_resp.json().get("data", [])
+        return render_template(
+            "admit_cards/list.html",
+            cards=data.get("data", []),
+            pagination=data.get("pagination", {}),
+            recommended_cards=recommended_cards,
+        )
+
+    @app.route("/partials/admit-cards")
+    def admit_cards_partial():
+        params = {"limit": min(_int_arg("limit", 20), 100), "offset": _int_arg("offset", 0)}
+        resp = current_app.api_client.get("/admit-cards", params=params)
+        data = resp.json() if resp.ok else {"data": [], "pagination": {}}
+        pagination = data.get("pagination", {})
+        has_more = pagination.get("has_more", False)
+        next_offset = params["offset"] + params["limit"] if has_more else 0
+        return render_template(
+            "admit_cards/_cards.html",
+            cards=data.get("data", []),
+            has_more=has_more,
+            next_offset=next_offset,
+        )
+
+    @app.route("/admit-cards/<card_id>")
+    def admit_card_detail(card_id):
+        resp = current_app.api_client.get(f"/admit-cards/{card_id}")
+        if not resp.ok:
+            return render_template("shared/404.html"), 404
+        return render_template("admit_cards/detail.html", card=resp.json())
+
+    # ─── Answer Keys Section ─────────────────────────────────────────────────
+
+    @app.route("/answer-keys")
+    def answer_keys():
+        params = {"limit": min(_int_arg("limit", 20), 100), "offset": _int_arg("offset", 0)}
+        token = session.get("token")
+        resp = current_app.api_client.get("/answer-keys", params=params)
+        data = resp.json() if resp.ok else {"data": [], "pagination": {}}
+        recommended_keys = []
+        if token:
+            rec_resp, authed = _try_with_refresh(
+                lambda t: current_app.api_client.get("/answer-keys/recommended", token=t, params={"limit": 20, "offset": 0})
+            )
+            if authed and rec_resp and rec_resp.ok:
+                recommended_keys = rec_resp.json().get("data", [])
+        return render_template(
+            "answer_keys/list.html",
+            keys=data.get("data", []),
+            pagination=data.get("pagination", {}),
+            recommended_keys=recommended_keys,
+        )
+
+    @app.route("/partials/answer-keys")
+    def answer_keys_partial():
+        params = {"limit": min(_int_arg("limit", 20), 100), "offset": _int_arg("offset", 0)}
+        resp = current_app.api_client.get("/answer-keys", params=params)
+        data = resp.json() if resp.ok else {"data": [], "pagination": {}}
+        pagination = data.get("pagination", {})
+        has_more = pagination.get("has_more", False)
+        next_offset = params["offset"] + params["limit"] if has_more else 0
+        return render_template(
+            "answer_keys/_cards.html",
+            keys=data.get("data", []),
+            has_more=has_more,
+            next_offset=next_offset,
+        )
+
+    @app.route("/answer-keys/<key_id>")
+    def answer_key_detail(key_id):
+        resp = current_app.api_client.get(f"/answer-keys/{key_id}")
+        if not resp.ok:
+            return render_template("shared/404.html"), 404
+        return render_template("answer_keys/detail.html", key=resp.json())
+
+    # ─── Results Section ─────────────────────────────────────────────────────
+
+    @app.route("/results")
+    def results():
+        params = {"limit": min(_int_arg("limit", 20), 100), "offset": _int_arg("offset", 0)}
+        token = session.get("token")
+        resp = current_app.api_client.get("/results", params=params)
+        data = resp.json() if resp.ok else {"data": [], "pagination": {}}
+        recommended_results = []
+        if token:
+            rec_resp, authed = _try_with_refresh(
+                lambda t: current_app.api_client.get("/results/recommended", token=t, params={"limit": 20, "offset": 0})
+            )
+            if authed and rec_resp and rec_resp.ok:
+                recommended_results = rec_resp.json().get("data", [])
+        return render_template(
+            "results/list.html",
+            results=data.get("data", []),
+            pagination=data.get("pagination", {}),
+            recommended_results=recommended_results,
+        )
+
+    @app.route("/partials/results")
+    def results_partial():
+        params = {"limit": min(_int_arg("limit", 20), 100), "offset": _int_arg("offset", 0)}
+        resp = current_app.api_client.get("/results", params=params)
+        data = resp.json() if resp.ok else {"data": [], "pagination": {}}
+        pagination = data.get("pagination", {})
+        has_more = pagination.get("has_more", False)
+        next_offset = params["offset"] + params["limit"] if has_more else 0
+        return render_template(
+            "results/_cards.html",
+            results=data.get("data", []),
+            has_more=has_more,
+            next_offset=next_offset,
+        )
+
+    @app.route("/results/<result_id>")
+    def result_detail(result_id):
+        resp = current_app.api_client.get(f"/results/{result_id}")
+        if not resp.ok:
+            return render_template("shared/404.html"), 404
+        return render_template("results/detail.html", result=resp.json())
+
+    # ─── Entrance Exams Section ──────────────────────────────────────────────
+
+    @app.route("/entrance-exams")
+    def entrance_exams():
+        params = {}
+        for key in ("q", "stream", "exam_type"):
+            val = request.args.get(key)
+            if val:
+                params[key] = val
+        params["limit"] = min(_int_arg("limit", 20), 100)
+        params["offset"] = _int_arg("offset", 0)
+        token = session.get("token")
+        resp = current_app.api_client.get("/entrance-exams", token=token, params=params)
+        data = resp.json() if resp.ok else {"data": [], "pagination": {}}
+        recommended_exams = []
+        watched_exam_ids = set()
+        if token:
+            rec_resp, authed = _try_with_refresh(
+                lambda t: current_app.api_client.get("/entrance-exams/recommended", token=t, params={"limit": 20, "offset": 0})
+            )
+            if authed and rec_resp and rec_resp.ok:
+                recommended_exams = rec_resp.json().get("data", [])
+            w_resp = current_app.api_client.get("/users/me/watched", token=session.get("token"))
+            if w_resp.ok:
+                watched_exam_ids = {str(e["id"]) for e in w_resp.json().get("exams", [])}
+        return render_template(
+            "entrance_exams/list.html",
+            exams=data.get("data", []),
+            pagination=data.get("pagination", {}),
+            recommended_exams=recommended_exams,
+            watched_exam_ids=watched_exam_ids,
+            q=request.args.get("q", ""),
+            stream=request.args.get("stream", ""),
+            exam_type=request.args.get("exam_type", ""),
+        )
+
+    @app.route("/partials/entrance-exams")
+    def entrance_exams_partial():
+        params = {}
+        for key in ("q", "stream", "exam_type"):
+            val = request.args.get(key)
+            if val:
+                params[key] = val
+        params["limit"] = min(_int_arg("limit", 20), 100)
+        params["offset"] = _int_arg("offset", 0)
+        resp = current_app.api_client.get("/entrance-exams", params=params)
+        data = resp.json() if resp.ok else {"data": [], "pagination": {}}
+        pagination = data.get("pagination", {})
+        has_more = pagination.get("has_more", False)
+        next_offset = params["offset"] + params["limit"] if has_more else 0
+        return render_template(
+            "entrance_exams/_cards.html",
+            exams=data.get("data", []),
+            has_more=has_more,
+            next_offset=next_offset,
+            q=request.args.get("q", ""),
+            stream=request.args.get("stream", ""),
+            exam_type=request.args.get("exam_type", ""),
+        )
+
+    @app.route("/entrance-exams/<exam_id>")
+    def entrance_exam_detail(exam_id):
+        resp = current_app.api_client.get(f"/entrance-exams/{exam_id}")
+        if not resp.ok:
+            return render_template("shared/404.html"), 404
+        exam = resp.json()
+        watching = False
+        token = session.get("token")
+        if token:
+            w_resp = current_app.api_client.get("/users/me/watched", token=token)
+            if w_resp.ok:
+                watching = any(str(e["id"]) == exam_id for e in w_resp.json().get("exams", []))
+        return render_template("entrance_exams/detail.html", exam=exam, watching=watching)
+
+    @app.route("/entrance-exams/<exam_id>/watch", methods=["POST"])
+    def watch_exam(exam_id):
+        _, authed = _try_with_refresh(lambda t: current_app.api_client.post(f"/entrance-exams/{exam_id}/watch", token=t))
+        if not authed:
+            return redirect(f"/login?next=/entrance-exams/{exam_id}")
+        return redirect(request.form.get("next") or request.referrer or f"/entrance-exams/{exam_id}")
+
+    @app.route("/entrance-exams/<exam_id>/unwatch", methods=["POST"])
+    def unwatch_exam(exam_id):
+        _, authed = _try_with_refresh(lambda t: current_app.api_client.delete(f"/entrance-exams/{exam_id}/watch", token=t))
+        if not authed:
+            return redirect(f"/login?next=/entrance-exams/{exam_id}")
+        return redirect(request.form.get("next") or request.referrer or f"/entrance-exams/{exam_id}")
 
     return app
 

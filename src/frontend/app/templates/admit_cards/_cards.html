@@ -1,0 +1,38 @@
+{% for card in cards %}
+<div class="doc-card doc-card-admit" style="border-radius:.5rem;margin-bottom:.75rem">
+    <div class="doc-card-body">
+        <div style="display:flex;gap:.35rem;flex-wrap:wrap;margin-bottom:.3rem">
+            {% if card.phase_number %}<span class="doc-phase-pill phase-blue">Phase {{ card.phase_number }}</span>{% endif %}
+            <span class="card-type-tag" style="background:#dbeafe;color:#1e40af">Admit Card</span>
+        </div>
+        <div class="doc-title">{{ card.title }}</div>
+        {% if card.valid_from or card.valid_until %}
+        <div class="doc-deadline">Valid: {{ card.valid_from or '?' }} – {{ card.valid_until or 'ongoing' }}</div>
+        {% endif %}
+        {% if card.notes %}<div class="doc-note">{{ card.notes }}</div>{% endif %}
+        {% if card.published_at %}
+        <div class="doc-meta">Published: {{ card.published_at[:10] }}</div>
+        {% endif %}
+    </div>
+    <div class="doc-card-actions">
+        <a href="/admit-cards/{{ card.id }}" class="doc-btn doc-btn-blue">View Details →</a>
+    </div>
+</div>
+{% else %}
+<div style="text-align:center;padding:3rem 1rem;color:#64748b">
+    <p style="font-size:1.1rem;margin-bottom:.5rem">No admit cards available yet.</p>
+    <p>Check back closer to exam dates.</p>
+</div>
+{% endfor %}
+
+{% if has_more %}
+<div class="load-more-wrap" id="load-more-cards">
+    <button class="btn btn-outline"
+            hx-get="/partials/admit-cards?offset={{ next_offset }}"
+            hx-target="#cards-list"
+            hx-swap="beforeend"
+            hx-on::after-request="document.getElementById('load-more-cards')?.remove()">
+        Load More
+    </button>
+</div>
+{% endif %}

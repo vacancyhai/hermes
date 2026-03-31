@@ -1,0 +1,70 @@
+{% extends "shared/base.html" %}
+{% block title %}{{ result.title }} — Result — Hermes{% endblock %}
+
+{% block content %}
+<a href="/results" class="back-link">← Back to Results</a>
+
+<div class="detail-hero hero-result">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.75rem;flex-wrap:wrap">
+        <div style="flex:1;min-width:0">
+            <div style="margin-bottom:.5rem;display:flex;gap:.35rem;flex-wrap:wrap">
+                {% if result.phase_number %}
+                <span style="background:rgba(255,255,255,.2);color:#fff;padding:.15rem .55rem;border-radius:9999px;font-size:.75rem;font-weight:600">Phase {{ result.phase_number }}</span>
+                {% endif %}
+                <span style="background:rgba(255,255,255,.2);color:#fff;padding:.15rem .55rem;border-radius:9999px;font-size:.75rem;font-weight:600">Result</span>
+            </div>
+            <h1>{{ result.title }}</h1>
+            {% if result.get('job') %}
+            <div class="org">🏛 {{ result.job.organization }} · {{ result.job.job_title }}</div>
+            {% elif result.get('exam') %}
+            <div class="org">🏛 {{ result.exam.conducting_body }} · {{ result.exam.exam_name }}</div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Action bar -->
+<div class="action-bar">
+    <a href="{{ result.download_url }}" target="_blank" rel="noopener" class="btn btn-primary" style="background:#16a34a;border-color:#16a34a;display:inline-flex;align-items:center;gap:.3rem">
+        ⬇ Download Result
+    </a>
+    {% if result.get('job') %}
+    <a href="/jobs/{{ result.job.id }}" class="share-btn">View Job Details →</a>
+    {% elif result.get('exam') %}
+    <a href="/entrance-exams/{{ result.exam.id }}" class="share-btn">View Exam Details →</a>
+    {% endif %}
+    <button type="button" class="share-btn" onclick="if(navigator.share){navigator.share({title:document.title,url:window.location.href})}else{navigator.clipboard.writeText(window.location.href);alert('Link copied!')}">⬆ Share</button>
+</div>
+
+<!-- Details grid -->
+<div class="detail-grid">
+    {% if result.phase_number %}
+    <div class="detail-item">
+        <div class="label">Phase</div>
+        <div class="value">Phase {{ result.phase_number }}</div>
+    </div>
+    {% endif %}
+    {% if result.published_at %}
+    <div class="detail-item">
+        <div class="label">Published</div>
+        <div class="value">{{ result.published_at[:10] }}</div>
+    </div>
+    {% endif %}
+</div>
+
+{% if result.notes %}
+<div class="detail-section">
+    <h2>📋 Important Notes</h2>
+    <p>{{ result.notes }}</p>
+</div>
+{% endif %}
+
+<!-- Download CTA -->
+<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:.5rem;padding:1.25rem;text-align:center;margin-top:1.5rem">
+    <p style="color:#166534;font-weight:500;margin-bottom:.75rem">Check your result on the official portal.</p>
+    <a href="{{ result.download_url }}" target="_blank" rel="noopener" class="btn btn-primary" style="background:#16a34a;border-color:#16a34a;font-size:.95rem;padding:.6rem 1.5rem">
+        ⬇ Download Result
+    </a>
+    <p style="font-size:.78rem;color:#64748b;margin-top:.5rem">Opens official source in a new tab</p>
+</div>
+{% endblock %}

@@ -18,7 +18,7 @@
     </td>
     <td>{{ item.total_qualified if item.total_qualified is not none else '—' }}</td>
     <td>
-        {% if item.download_url %}<a href="{{ item.download_url }}" target="_blank" class="btn btn-outline btn-sm">Download ↗</a>{% endif %}
+        <a href="/results/{{ item.id }}/edit" class="btn btn-outline btn-sm">Edit</a>
         {% if session.get('admin_role') == 'admin' %}
         <form method="POST" action="/results/{{ item.id }}/delete" style="display:inline;" onsubmit="return confirm('Delete this result?')">
             <button type="submit" class="btn btn-sm" style="color:#dc2626;border-color:#fca5a5;background:#fff;">Delete</button>

@@ -1,0 +1,123 @@
+{% extends "shared/base.html" %}
+{% block title %}New Entrance Exam — Hermes Admin{% endblock %}
+{% block content %}
+<div style="margin-bottom:1rem">
+    <a href="/entrance-exams" style="font-size:.875rem;color:#6b7280">← Back to Entrance Exams</a>
+</div>
+
+<h1 style="font-size:1.35rem;margin-bottom:1.25rem">🎓 New Entrance Exam</h1>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, message in messages %}
+        <div class="alert alert-{{ category }}">{{ message }}</div>
+    {% endfor %}
+{% endwith %}
+
+<form method="POST" action="/entrance-exams/new" style="margin-bottom:2rem">
+    <div class="form-grid">
+        <div class="form-group form-full">
+            <label>Exam Name *</label>
+            <input type="text" name="exam_name" required
+                   placeholder="e.g. NTA NEET PG 2026 — Medical PG Entrance Examination">
+        </div>
+        <div class="form-group">
+            <label>Conducting Body *</label>
+            <input type="text" name="conducting_body" required
+                   placeholder="e.g. National Testing Agency">
+        </div>
+        <div class="form-group">
+            <label>Counselling Body</label>
+            <input type="text" name="counselling_body"
+                   placeholder="e.g. MCC, JoSAA, CLAT Consortium">
+        </div>
+        <div class="form-group">
+            <label>Exam Type *</label>
+            <select name="exam_type" required>
+                {% for val, label in [('ug','UG — Undergraduate'),('pg','PG — Postgraduate'),('doctoral','Doctoral'),('lateral','Lateral Entry')] %}
+                <option value="{{ val }}">{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Stream *</label>
+            <select name="stream" required>
+                {% for val, label in [('medical','Medical'),('engineering','Engineering'),('law','Law'),('management','Management'),('arts_science','Arts & Science'),('general','General')] %}
+                <option value="{{ val }}">{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Status</label>
+            <select name="status">
+                {% for val in ['upcoming','active','completed','cancelled'] %}
+                <option value="{{ val }}" {{ 'selected' if val == 'upcoming' }}>{{ val | title }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Application Start</label>
+            <input type="date" name="application_start">
+        </div>
+        <div class="form-group">
+            <label>Application End (Deadline)</label>
+            <input type="date" name="application_end">
+        </div>
+        <div class="form-group">
+            <label>Exam Date</label>
+            <input type="date" name="exam_date">
+        </div>
+        <div class="form-group">
+            <label>Result Date</label>
+            <input type="date" name="result_date">
+        </div>
+        <div class="form-group">
+            <label>Counselling Start</label>
+            <input type="date" name="counselling_start">
+        </div>
+        <div class="form-group" style="display:flex;align-items:center;gap:.5rem;padding-top:1.5rem">
+            <input type="checkbox" name="is_featured" id="is_featured">
+            <label for="is_featured" style="margin:0">Featured</label>
+        </div>
+    </div>
+
+    <div class="form-section-title" style="margin-top:1rem">Application Fee (INR)</div>
+    <div class="form-grid">
+        {% for fname, flabel in [('fee_general','General / UR'),('fee_obc','OBC-NCL'),('fee_sc_st','SC / ST'),('fee_ews','EWS'),('fee_female','Female / PwBD')] %}
+        <div class="form-group">
+            <label>{{ flabel }}</label>
+            <input type="number" name="{{ fname }}" min="0" placeholder="Leave blank if N/A">
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="form-group form-full" style="margin-top:1rem">
+        <label>Short Description (one-liner for cards)</label>
+        <input type="text" name="short_description" maxlength="300"
+               placeholder="E.g. NEET PG 2026: National entrance for MD/MS/PG Diploma. MBBS eligible.">
+    </div>
+    <div class="form-group form-full">
+        <label>Description (HTML)</label>
+        <textarea name="description" rows="5" placeholder="Full HTML description…"></textarea>
+    </div>
+    <div class="form-group form-full">
+        <label>Official Website URL</label>
+        <input type="url" name="source_url" placeholder="https://nta.ac.in/neet-pg">
+    </div>
+
+    <div style="margin-top:1.25rem;display:flex;gap:.5rem">
+        <button type="submit" class="btn btn-primary">Create Exam</button>
+        <a href="/entrance-exams" class="btn btn-outline">Cancel</a>
+    </div>
+</form>
+
+<style>
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}
+.form-full{grid-column:1/-1}
+.form-group{display:flex;flex-direction:column;gap:.25rem}
+.form-group label{font-size:.8rem;font-weight:600;color:#374151}
+.form-group input,.form-group select,.form-group textarea{padding:.4rem .6rem;border:1px solid #d1d5db;border-radius:.375rem;font-size:.875rem;font-family:inherit}
+.form-group textarea{resize:vertical}
+.form-section-title{font-size:.85rem;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.05em;margin:.75rem 0 .35rem}
+@media(max-width:640px){.form-grid{grid-template-columns:1fr}}
+</style>
+{% endblock %}
