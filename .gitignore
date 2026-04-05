@@ -45,8 +45,19 @@ firebase-credentials.json
 
 # Coverage
 .coverage
+coverage.xml
 htmlcov/
 .pytest_cache/
+
+# Type checking
+.mypy_cache/
+
+# Pre-commit
+.pre-commit-cache/
+
+# Generated files
+sitemap.xml
+uploads/
 
 # Alembic
 migrations/versions/*.pyc
