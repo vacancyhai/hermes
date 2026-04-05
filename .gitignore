@@ -62,3 +62,12 @@ uploads/
 # Alembic
 migrations/versions/*.pyc
 secrets/
+
+# Mobile app (React Native — Phase 9, not yet implemented)
+node_modules/
+.expo/
+dist/
+npm-debug.log*
+yarn-error.log*
+*.jks
+*.keystore

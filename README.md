@@ -120,17 +120,19 @@ PostgreSQL and Redis are isolated inside Docker networks — never exposed to th
 ## Development Quick Start
 
 ```bash
-# 1. Copy the backend env template and fill in secrets
-cp src/backend/.env.example src/backend/.env
+# 1. Copy env templates for all three services and fill in secrets
+cp src/backend/.env.example        src/backend/.env
+cp src/frontend/.env.example       src/frontend/.env
+cp src/frontend-admin/.env.example src/frontend-admin/.env
 # Edit src/backend/.env — required: POSTGRES_PASSWORD, JWT_SECRET_KEY,
 # FIREBASE_WEB_API_KEY, FIREBASE_AUTH_DOMAIN, FIREBASE_PROJECT_ID,
 # FIREBASE_CREDENTIALS_PATH for your Firebase project.
 # Optional: ANTHROPIC_API_KEY (enables AI PDF extraction).
 #
-# Or use a pre-filled environment template:
-# cp config/development/.env.backend.development src/backend/.env
-cp config/development/.env.frontend.development      src/frontend/.env
-cp config/development/.env.frontend-admin.development src/frontend-admin/.env
+# Alternatively, use the pre-filled environment templates:
+# cp config/development/.env.backend.development       src/backend/.env
+# cp config/development/.env.frontend.development      src/frontend/.env
+# cp config/development/.env.frontend-admin.development src/frontend-admin/.env
 
 # 2. Start backend (PostgreSQL, Redis, PgBouncer, FastAPI, Celery)
 cd src/backend && docker compose up -d --build
