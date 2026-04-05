@@ -12,11 +12,11 @@ docker exec hermes_backend python -m pytest tests/ -q
 # Backend — integration tests only
 docker exec hermes_backend python -m pytest tests/integration/ -q
 
-# User frontend
-docker exec -w /app hermes_frontend python -m pytest tests/ --cov=app --cov-report=term-missing -q
+# User frontend (container must be running)
+docker exec hermes_frontend python -m pytest tests/ --cov=app --cov-report=term-missing -q
 
-# Admin frontend
-docker exec -w /app hermes_frontend_admin python -m pytest tests/ --cov=app --cov-report=term-missing -q
+# Admin frontend (container must be running)
+docker exec hermes_frontend_admin python -m pytest tests/ --cov=app --cov-report=term-missing -q
 ```
 
 > **Coverage is automatic:** `src/backend/pytest.ini` sets `addopts = --cov=app --cov-report=xml:/app/coverage.xml --cov-report=term-missing`.
@@ -25,16 +25,26 @@ docker exec -w /app hermes_frontend_admin python -m pytest tests/ --cov=app --co
 ## CI Pipeline (GitHub Actions)
 
 The workflow at `.github/workflows/build.yml` runs on every push to `main` and every pull request.
+All three test jobs run **in parallel**; SonarCloud waits for all three.
 
 ```
 push / PR
-  └─► job: test          — builds Docker stack, runs pytest --cov, uploads coverage.xml
-        └─► job: sonarcloud  — downloads coverage.xml, runs SonarCloud scan
+  ├─► job: test                — compose up (PG + Redis + backend) → pytest --cov → coverage artifact
+  ├─► job: test-frontend       — docker build → docker run pytest --cov → coverage artifact
+  └─► job: test-frontend-admin — docker build → docker run pytest --cov → coverage artifact
+              └─► job: sonarcloud  — downloads all 3 coverage XMLs → single SonarCloud scan
 ```
 
-- **Tests must pass** before SonarCloud runs (`needs: test`).
-- **Branch protection** on `main` requires both jobs to pass before a PR can merge.
-- The CI `.env` is written inline in the workflow — no production secrets in CI.
+| Job | Service | Infra needed | Coverage artifact |
+|-----|---------|-------------|-------------------|
+| `test` | Backend (FastAPI) | PostgreSQL + Redis + PgBouncer via compose | `coverage/backend/coverage.xml` |
+| `test-frontend` | User frontend (Flask) | None — Flask test client + MagicMock | `coverage/frontend/coverage.xml` |
+| `test-frontend-admin` | Admin frontend (Flask) | None — Flask test client + MagicMock | `coverage/frontend-admin/coverage.xml` |
+| `sonarcloud` | — | Needs all 3 jobs | Merges all 3 XMLs |
+
+- **All 3 test jobs must pass** before SonarCloud runs (`needs: [test, test-frontend, test-frontend-admin]`).
+- **Branch protection** on `main` requires all 4 jobs to pass before a PR can merge.
+- CI `.env` files are written inline in the workflow — no production secrets in CI.
 
 ## Pre-commit Hooks
 
@@ -47,9 +57,8 @@ Hooks run automatically before every `git commit` (installed via `pre-commit ins
 | `check-merge-conflict`, `debug-statements` | Common accidents |
 | `black` | Auto-format Python in `src/backend/` |
 | `isort` (`--profile=black`) | Sort imports |
-| `flake8` + bugbear | Lint (100-char line limit) |
-| `mypy` | Type checking (`--ignore-missing-imports`) |
-| `detect-secrets` | Block credential leaks |
+| `flake8` + bugbear | Lint `src/backend/app/` only (120-char limit) |
+| `detect-secrets` | Block credential leaks (baseline: `.secrets.baseline`) |
 
 ```bash
 # Run all hooks manually across the full repo:

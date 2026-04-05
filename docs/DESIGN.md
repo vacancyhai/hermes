@@ -867,25 +867,40 @@ All containers run via Docker Compose on this single VM.
 
 ### GitHub Actions Workflow (`.github/workflows/build.yml`)
 
-The pipeline has two sequential jobs and runs on every push to `main` and every pull request:
+Three test jobs run **in parallel**; SonarCloud waits for all three to pass:
 
 ```
 push to main / any PR
-  └─► job: test  (ubuntu-latest)
-  │     1. Checkout repo (full history for SonarCloud blame)
-  │     2. Write CI .env  → src/backend/.env  (safe defaults, no real secrets)
-  │     3. docker compose up -d --build --wait  (PostgreSQL + Redis + backend)
-  │     4. docker exec hermes_backend python -m pytest tests/unit/ --cov=app \
-  │              --cov-report=xml:/app/coverage.xml -q
-  │     5. docker cp hermes_backend:/app/coverage.xml ./coverage.xml
-  │     6. Upload coverage.xml as workflow artifact
-  │     7. docker compose down -v  (always, even on failure)
+  ├─► job: test  (ubuntu-latest)
+  │     1. Write CI .env → src/backend/.env
+  │     2. docker compose up -d --build --wait  (PostgreSQL + Redis + PgBouncer + backend)
+  │     3. docker exec hermes_backend python -m pytest tests/unit/ --cov=app -q
+  │     4. docker cp coverage.xml out → upload artifact: coverage/backend/coverage.xml
+  │     5. docker compose down -v  (always)
   │
-  └─► job: sonarcloud  (needs: test)
-        1. Checkout repo
-        2. Download coverage.xml artifact
-        3. SonarCloud scan with -Dsonar.python.coverage.reportPaths=coverage.xml
+  ├─► job: test-frontend  (ubuntu-latest)
+  │     1. Write CI .env → src/frontend/.env
+  │     2. docker build -t hermes_frontend_ci .
+  │     3. docker run pytest --cov=app → upload artifact: coverage/frontend/coverage.xml
+  │     (no live services — Flask test client + MagicMock)
+  │
+  ├─► job: test-frontend-admin  (ubuntu-latest)
+  │     1. Write CI .env → src/frontend-admin/.env
+  │     2. docker build -t hermes_frontend_admin_ci .
+  │     3. docker run pytest --cov=app → upload artifact: coverage/frontend-admin/coverage.xml
+  │     (no live services — Flask test client + MagicMock)
+  │
+  └─► job: sonarcloud  (needs: [test, test-frontend, test-frontend-admin])
+        1. Download all 3 coverage artifacts
+        2. SonarCloud scan with all 3 XMLs in sonar.python.coverage.reportPaths
 ```
+
+| Job | Service | Infra | Artifact |
+|-----|---------|-------|----------|
+| `test` | Backend (FastAPI) | PostgreSQL + Redis + PgBouncer | `coverage/backend/coverage.xml` |
+| `test-frontend` | User frontend (Flask) | None | `coverage/frontend/coverage.xml` |
+| `test-frontend-admin` | Admin frontend (Flask) | None | `coverage/frontend-admin/coverage.xml` |
+| `sonarcloud` | — | Needs all 3 | Merges all 3 reports |
 
 ### Branch Strategy
 
@@ -898,7 +913,7 @@ push to main / any PR
 
 **Branch protection rules (set in GitHub repo Settings → Branches):**
 - Require pull request before merging
-- Require status checks: **Unit Tests (pytest + coverage)** + **SonarCloud Scan**
+- Require status checks: **Unit Tests (pytest + coverage)**, **User Frontend Tests**, **Admin Frontend Tests**, **SonarCloud Scan**
 - Require branches to be up to date before merging
 - No bypassing rules (including admins)
 
@@ -918,8 +933,7 @@ pre-commit install   # registers .git/hooks/pre-commit
 | `check-added-large-files` (500 KB) | No accidental binary commits |
 | **black** | Auto-format Python (`src/backend/`) |
 | **isort** `--profile=black` | Import sort order |
-| **flake8** + bugbear, comprehensions, simplify | Lint (100-char limit) |
-| **mypy** `--ignore-missing-imports` | Type checking |
+| **flake8** + bugbear, comprehensions, simplify | Lint `src/backend/app/` only (120-char limit) |
 | **detect-secrets** | Block credential leaks (baseline: `.secrets.baseline`) |
 
 ---
