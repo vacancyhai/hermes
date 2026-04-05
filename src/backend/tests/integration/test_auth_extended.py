@@ -249,12 +249,12 @@ async def test_update_phone_marks_as_unverified(client: AsyncClient, user_token:
 
 
 async def test_verify_phone_otp_with_invalid_otp(client: AsyncClient, user_token: str):
-    """Invalid phone OTP fails verification."""
+    """Invalid Firebase ID token fails phone verification."""
     resp = await client.post("/api/v1/users/me/verify-phone-otp",
         headers=auth_header(user_token),
-        json={"otp": "999999"}
+        json={"firebase_id_token": "invalid-firebase-token"}
     )
-    assert resp.status_code in [400, 401]  # Can be 400 (bad request) or 401
+    assert resp.status_code in [400, 401]  # 400 if no phone set, 401 if bad token
 
 
 async def test_verify_phone_otp_without_phone_fails(client: AsyncClient, db):
@@ -279,7 +279,7 @@ async def test_verify_phone_otp_without_phone_fails(client: AsyncClient, db):
     
     resp = await client.post("/api/v1/users/me/verify-phone-otp",
         headers=auth_header(token),
-        json={"otp": "123456"}
+        json={"firebase_id_token": "any-token"}
     )
     assert resp.status_code == 400
 

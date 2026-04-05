@@ -2,7 +2,7 @@
 
 from datetime import date, timedelta
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.admit_card import AdmitCard
@@ -102,14 +102,6 @@ async def get_recommended_jobs(
         )
         return list(result.scalars().all()), total
 
-    # True DB count with same base filter — run before candidate fetch so total
-    # reflects all eligible jobs, not just the CANDIDATE_LIMIT scoring window.
-    total = (await db.execute(
-        select(func.count(Job.id)).where(*base_filter)
-    )).scalar() or 0
-
-    # Cap candidate pool at CANDIDATE_LIMIT to avoid loading all jobs into memory.
-    # Jobs are pre-sorted by recency so the best candidates are always included.
     result = await db.execute(
         select(Job)
         .where(*base_filter)
@@ -189,6 +181,7 @@ async def get_recommended_jobs(
     far_future = date(9999, 12, 31)
     scored.sort(key=lambda t: (-t[0], t[1] or far_future))
 
+    total = len(scored)
     page = scored[offset : offset + limit]
     return [t[2] for t in page], total
 
@@ -216,20 +209,19 @@ async def get_recommended_admit_cards(
     job_ids, exam_ids = await _get_watched_ids(user_id, db)
     if not job_ids and not exam_ids:
         return [], 0
-    from sqlalchemy import or_
+    predicate = or_(
+        AdmitCard.job_id.in_(job_ids) if job_ids else False,
+        AdmitCard.exam_id.in_(exam_ids) if exam_ids else False,
+    )
+    total = (await db.execute(select(func.count(AdmitCard.id)).where(predicate))).scalar() or 0
     result = await db.execute(
         select(AdmitCard)
-        .where(
-            or_(
-                AdmitCard.job_id.in_(job_ids) if job_ids else False,
-                AdmitCard.exam_id.in_(exam_ids) if exam_ids else False,
-            )
-        )
+        .where(predicate)
         .order_by(AdmitCard.published_at.desc())
+        .offset(offset)
+        .limit(limit)
     )
-    cards = list(result.scalars().all())
-    total = len(cards)
-    return cards[offset : offset + limit], total
+    return list(result.scalars().all()), total
 
 
 async def get_recommended_answer_keys(
@@ -242,20 +234,19 @@ async def get_recommended_answer_keys(
     job_ids, exam_ids = await _get_watched_ids(user_id, db)
     if not job_ids and not exam_ids:
         return [], 0
-    from sqlalchemy import or_
+    predicate = or_(
+        AnswerKey.job_id.in_(job_ids) if job_ids else False,
+        AnswerKey.exam_id.in_(exam_ids) if exam_ids else False,
+    )
+    total = (await db.execute(select(func.count(AnswerKey.id)).where(predicate))).scalar() or 0
     result = await db.execute(
         select(AnswerKey)
-        .where(
-            or_(
-                AnswerKey.job_id.in_(job_ids) if job_ids else False,
-                AnswerKey.exam_id.in_(exam_ids) if exam_ids else False,
-            )
-        )
+        .where(predicate)
         .order_by(AnswerKey.published_at.desc())
+        .offset(offset)
+        .limit(limit)
     )
-    keys = list(result.scalars().all())
-    total = len(keys)
-    return keys[offset : offset + limit], total
+    return list(result.scalars().all()), total
 
 
 async def get_recommended_results(
@@ -268,20 +259,19 @@ async def get_recommended_results(
     job_ids, exam_ids = await _get_watched_ids(user_id, db)
     if not job_ids and not exam_ids:
         return [], 0
-    from sqlalchemy import or_
+    predicate = or_(
+        Result.job_id.in_(job_ids) if job_ids else False,
+        Result.exam_id.in_(exam_ids) if exam_ids else False,
+    )
+    total = (await db.execute(select(func.count(Result.id)).where(predicate))).scalar() or 0
     result = await db.execute(
         select(Result)
-        .where(
-            or_(
-                Result.job_id.in_(job_ids) if job_ids else False,
-                Result.exam_id.in_(exam_ids) if exam_ids else False,
-            )
-        )
+        .where(predicate)
         .order_by(Result.published_at.desc())
+        .offset(offset)
+        .limit(limit)
     )
-    results_list = list(result.scalars().all())
-    total = len(results_list)
-    return results_list[offset : offset + limit], total
+    return list(result.scalars().all()), total
 
 
 async def get_recommended_entrance_exams(
@@ -335,13 +325,6 @@ async def get_recommended_entrance_exams(
         )
         return list(result.scalars().all()), total
     
-    # True DB count with same base filter — run before candidate fetch.
-    total = (await db.execute(
-        select(func.count(EntranceExam.id)).where(*base_filter)
-    )).scalar() or 0
-
-    # Cap candidate pool at CANDIDATE_LIMIT to avoid loading all exams into memory.
-    # Exams are pre-sorted by recency so the best candidates are always included.
     result = await db.execute(
         select(EntranceExam)
         .where(*base_filter)
@@ -417,6 +400,7 @@ async def get_recommended_entrance_exams(
     # Sort: score DESC, then exam_date ASC (None exam_dates last)
     far_future = date(9999, 12, 31)
     scored.sort(key=lambda t: (-t[0], t[1] or far_future))
-    
+
+    total = len(scored)
     page = scored[offset : offset + limit]
     return [t[2] for t in page], total

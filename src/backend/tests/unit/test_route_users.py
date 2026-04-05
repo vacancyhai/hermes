@@ -112,142 +112,14 @@ async def test_update_profile_not_found():
 @pytest.mark.asyncio
 async def test_update_phone():
     from app.routers.users import update_phone
-    from app.schemas.users import PhoneUpdateRequest
+    from app.schemas.auth import UpdatePhoneRequest
     user, _ = _make_current_user()
     db = AsyncMock()
 
-    body = PhoneUpdateRequest(phone="9876543210")
+    body = UpdatePhoneRequest(phone="+919876543210")
     output = await update_phone(body=body, current_user=(user, {}), db=db)
-    assert output["phone"] == "9876543210"
-    assert user.phone == "9876543210"
-
-
-# ─── list_following ───────────────────────────────────────────────────────────
-
-@pytest.mark.asyncio
-async def test_list_following_with_profile():
-    from app.routers.users import list_following
-    profile = _make_profile()
-    profile.followed_organizations = ["UPSC", "SSC"]
-
-    db = AsyncMock()
-    result = MagicMock()
-    result.scalar_one_or_none.return_value = profile
-    db.execute.return_value = result
-
-    output = await list_following(current_user=_make_current_user(), db=db)
-    assert output["count"] == 2
-    assert "UPSC" in output["followed_organizations"]
-
-
-@pytest.mark.asyncio
-async def test_list_following_no_profile():
-    from app.routers.users import list_following
-    db = AsyncMock()
-    result = MagicMock()
-    result.scalar_one_or_none.return_value = None
-    db.execute.return_value = result
-
-    output = await list_following(current_user=_make_current_user(), db=db)
-    assert output["count"] == 0
-    assert output["followed_organizations"] == []
-
-
-# ─── follow_organization ──────────────────────────────────────────────────────
-
-@pytest.mark.asyncio
-async def test_follow_organization_success():
-    from app.routers.users import follow_organization
-    profile = _make_profile()
-    profile.followed_organizations = []
-
-    db = AsyncMock()
-    result = MagicMock()
-    result.scalar_one_or_none.return_value = profile
-    db.execute.return_value = result
-
-    output = await follow_organization(name="IBPS", current_user=_make_current_user(), db=db)
-    assert "IBPS" in output["followed_organizations"]
-
-
-@pytest.mark.asyncio
-async def test_follow_organization_idempotent():
-    from app.routers.users import follow_organization
-    profile = _make_profile()
-    profile.followed_organizations = ["UPSC"]
-
-    db = AsyncMock()
-    result = MagicMock()
-    result.scalar_one_or_none.return_value = profile
-    db.execute.return_value = result
-
-    output = await follow_organization(name="UPSC", current_user=_make_current_user(), db=db)
-    assert "Already following" in output["message"]
-
-
-@pytest.mark.asyncio
-async def test_follow_organization_not_found_profile():
-    from fastapi import HTTPException
-    from app.routers.users import follow_organization
-    db = AsyncMock()
-    result = MagicMock()
-    result.scalar_one_or_none.return_value = None
-    db.execute.return_value = result
-
-    with pytest.raises(HTTPException) as exc_info:
-        await follow_organization(name="UPSC", current_user=_make_current_user(), db=db)
-    assert exc_info.value.status_code == 404
-
-
-@pytest.mark.asyncio
-async def test_follow_organization_max_limit():
-    from fastapi import HTTPException
-    from app.routers.users import follow_organization, MAX_FOLLOWED_ORGS
-    profile = _make_profile()
-    profile.followed_organizations = [f"org_{i}" for i in range(MAX_FOLLOWED_ORGS)]
-
-    db = AsyncMock()
-    result = MagicMock()
-    result.scalar_one_or_none.return_value = profile
-    db.execute.return_value = result
-
-    with pytest.raises(HTTPException) as exc_info:
-        await follow_organization(name="NewOrg", current_user=_make_current_user(), db=db)
-    assert exc_info.value.status_code == 400
-
-
-# ─── unfollow_organization ────────────────────────────────────────────────────
-
-@pytest.mark.asyncio
-async def test_unfollow_organization_success():
-    from app.routers.users import unfollow_organization
-    profile = _make_profile()
-    profile.followed_organizations = ["UPSC", "SSC"]
-
-    db = AsyncMock()
-    result = MagicMock()
-    result.scalar_one_or_none.return_value = profile
-    db.execute.return_value = result
-
-    output = await unfollow_organization(name="SSC", current_user=_make_current_user(), db=db)
-    assert "SSC" not in output["followed_organizations"]
-
-
-@pytest.mark.asyncio
-async def test_unfollow_organization_not_following():
-    from fastapi import HTTPException
-    from app.routers.users import unfollow_organization
-    profile = _make_profile()
-    profile.followed_organizations = ["UPSC"]
-
-    db = AsyncMock()
-    result = MagicMock()
-    result.scalar_one_or_none.return_value = profile
-    db.execute.return_value = result
-
-    with pytest.raises(HTTPException) as exc_info:
-        await unfollow_organization(name="SSC", current_user=_make_current_user(), db=db)
-    assert exc_info.value.status_code == 404
+    assert output["phone"] == "+919876543210"
+    assert user.phone == "+919876543210"
 
 
 # ─── register_fcm_token ───────────────────────────────────────────────────────

@@ -74,12 +74,12 @@ async def test_update_profile_preferred_states(client: AsyncClient, user_token: 
 async def test_update_phone(client: AsyncClient, user_token: str):
     resp = await client.put(
         "/api/v1/users/profile/phone",
-        json={"phone": "9876543210"},
+        json={"phone": "+919876543210"},
         headers=auth_header(user_token),
     )
     assert resp.status_code == 200
     data = resp.json()
-    assert data["phone"] == "9876543210"
+    assert data["phone"] == "+919876543210"
 
 
 async def test_update_phone_too_short(client: AsyncClient, user_token: str):
@@ -93,54 +93,6 @@ async def test_update_phone_too_short(client: AsyncClient, user_token: str):
 
 async def test_update_phone_requires_auth(client: AsyncClient):
     resp = await client.put("/api/v1/users/profile/phone", json={"phone": "9876543210"})
-    assert resp.status_code in (401, 403)
-
-
-# --- Following organizations ---
-
-async def test_follow_organization(client: AsyncClient, user_token: str):
-    resp = await client.post(
-        "/api/v1/organizations/UPSC/follow",
-        headers=auth_header(user_token),
-    )
-    assert resp.status_code == 200
-    data = resp.json()
-    assert "UPSC" in data["followed_organizations"] or "upsc" in [o.lower() for o in data["followed_organizations"]]
-
-
-async def test_follow_organization_idempotent(client: AsyncClient, user_token: str):
-    await client.post("/api/v1/organizations/SSC/follow", headers=auth_header(user_token))
-    resp = await client.post("/api/v1/organizations/SSC/follow", headers=auth_header(user_token))
-    assert resp.status_code == 200
-    assert "Already following" in resp.json()["message"]
-
-
-async def test_unfollow_organization(client: AsyncClient, user_token: str):
-    await client.post("/api/v1/organizations/RRB/follow", headers=auth_header(user_token))
-    resp = await client.delete("/api/v1/organizations/RRB/follow", headers=auth_header(user_token))
-    assert resp.status_code == 200
-    assert "Unfollowed" in resp.json()["message"]
-
-
-async def test_unfollow_not_following(client: AsyncClient, user_token: str):
-    resp = await client.delete(
-        f"/api/v1/organizations/NonExistentOrg{uuid.uuid4().hex[:4]}/follow",
-        headers=auth_header(user_token),
-    )
-    assert resp.status_code == 404
-
-
-async def test_list_following(client: AsyncClient, user_token: str):
-    await client.post("/api/v1/organizations/IBPS/follow", headers=auth_header(user_token))
-    resp = await client.get("/api/v1/users/me/following", headers=auth_header(user_token))
-    assert resp.status_code == 200
-    data = resp.json()
-    assert "followed_organizations" in data
-    assert "count" in data
-
-
-async def test_follow_requires_auth(client: AsyncClient):
-    resp = await client.post("/api/v1/organizations/UPSC/follow")
     assert resp.status_code in (401, 403)
 
 

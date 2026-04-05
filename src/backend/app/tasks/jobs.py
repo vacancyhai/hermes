@@ -42,7 +42,7 @@ def close_expired_job_listings(self):
         raise self.retry(exc=exc)
 
     logger.info(f"Marked {len(expired_ids)} job listings as expired")
-    return {"expired_count": len(expired_ids)}
+    return {"closed_count": len(expired_ids)}
 
 
 @celery.task(name="app.tasks.jobs.update_exam_statuses", bind=True, max_retries=3, default_retry_delay=60)

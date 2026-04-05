@@ -21,9 +21,9 @@ Dashboard:
   GET    /api/v1/admin/logs              — Admin activity logs
 """
 
+import asyncio
 import logging
 import os
-import re
 import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -37,6 +37,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.rate_limit import limiter
 from app.dependencies import get_db, require_admin, require_operator
+from app.utils import slugify as _slugify
 from app.models.admin_log import AdminLog
 from app.models.admin_user import AdminUser
 from app.models.admit_card import AdmitCard
@@ -85,15 +86,6 @@ class AdminCreateRequest(BaseModel):
 _admin_pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
-def _slugify(text: str) -> str:
-    """Generate URL-safe slug from text."""
-    slug = text.lower().strip()
-    slug = re.sub(r"[^\w\s-]", "", slug)
-    slug = re.sub(r"[\s_]+", "-", slug)
-    slug = re.sub(r"-+", "-", slug).strip("-")
-    return slug
-
-
 async def _log_action(db: AsyncSession, admin: AdminUser, action: str, resource_type: str | None = None,
                       resource_id: uuid.UUID | None = None, details: str | None = None,
                       changes: dict | None = None, request: Request | None = None):
@@ -120,41 +112,26 @@ async def dashboard_stats(
     db: AsyncSession = Depends(get_db),
 ):
     """Dashboard stats: separate counts for jobs, admit cards, answer keys, results, entrance exams."""
-    # Jobs
-    jobs_count = (await db.execute(select(func.count(Job.id)))).scalar()
-    jobs_active = (await db.execute(
-        select(func.count(Job.id)).where(
-            Job.status == "active"
-        )
-    )).scalar()
-    jobs_draft = (await db.execute(
-        select(func.count(Job.id)).where(
-            Job.status == "draft"
-        )
-    )).scalar()
-    
-    # Admit Cards
-    admit_cards_count = (await db.execute(select(func.count(AdmitCard.id)))).scalar()
-    
-    # Answer Keys
-    answer_keys_count = (await db.execute(select(func.count(AnswerKey.id)))).scalar()
-    
-    # Results
-    results_count = (await db.execute(select(func.count(Result.id)))).scalar()
-    
-    # Entrance Exams
-    entrance_exams_count = (await db.execute(select(func.count(EntranceExam.id)))).scalar()
-    entrance_exams_active = (await db.execute(
-        select(func.count(EntranceExam.id)).where(EntranceExam.status == "active")
-    )).scalar()
-    
-    # Users
-    users_total = (await db.execute(select(func.count(User.id)))).scalar()
-    users_active = (await db.execute(select(func.count(User.id)).where(User.status == "active"))).scalar()
     week_ago = datetime.now(timezone.utc) - timedelta(days=7)
-    users_new_this_week = (await db.execute(
-        select(func.count(User.id)).where(User.created_at >= week_ago)
-    )).scalar()
+    _r = await asyncio.gather(
+        db.execute(select(func.count(Job.id))),
+        db.execute(select(func.count(Job.id)).where(Job.status == "active")),
+        db.execute(select(func.count(Job.id)).where(Job.status == "draft")),
+        db.execute(select(func.count(AdmitCard.id))),
+        db.execute(select(func.count(AnswerKey.id))),
+        db.execute(select(func.count(Result.id))),
+        db.execute(select(func.count(EntranceExam.id))),
+        db.execute(select(func.count(EntranceExam.id)).where(EntranceExam.status == "active")),
+        db.execute(select(func.count(User.id))),
+        db.execute(select(func.count(User.id)).where(User.status == "active")),
+        db.execute(select(func.count(User.id)).where(User.created_at >= week_ago)),
+    )
+    (
+        jobs_count, jobs_active, jobs_draft,
+        admit_cards_count, answer_keys_count, results_count,
+        entrance_exams_count, entrance_exams_active,
+        users_total, users_active, users_new_this_week,
+    ) = [r.scalar() for r in _r]
 
     return {
         "jobs": {"total": jobs_count, "active": jobs_active, "draft": jobs_draft},

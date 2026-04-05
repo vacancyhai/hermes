@@ -28,7 +28,7 @@ Admin endpoints:
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import func, select, or_
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
@@ -54,6 +54,23 @@ from app.services.matching import (
     get_recommended_answer_keys,
     get_recommended_results,
 )
+
+async def _validate_document_parent(
+    job_id: uuid.UUID | None,
+    exam_id: uuid.UUID | None,
+    db: AsyncSession,
+) -> None:
+    """Raise 400 unless exactly one of job_id/exam_id is provided and the parent exists."""
+    if bool(job_id) == bool(exam_id):
+        detail = "Cannot specify both job_id and exam_id" if job_id else "Must specify either job_id or exam_id"
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=detail)
+    if job_id:
+        if not (await db.execute(select(Job.id).where(Job.id == job_id))).scalar():
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
+    else:
+        if not (await db.execute(select(EntranceExam.id).where(EntranceExam.id == exam_id))).scalar():
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Entrance exam not found")
+
 
 # Public routers
 admit_cards_router = APIRouter(prefix="/api/v1/admit-cards", tags=["admit-cards"])
@@ -368,28 +385,7 @@ async def admin_create_admit_card(
     db: AsyncSession = Depends(get_db),
 ):
     """Create a new admit card. Must specify either job_id or exam_id."""
-    # Validate that exactly one parent is specified
-    if body.job_id and body.exam_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot specify both job_id and exam_id"
-        )
-    if not body.job_id and not body.exam_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Must specify either job_id or exam_id"
-        )
-    
-    # Validate parent exists
-    if body.job_id:
-        result = await db.execute(select(Job).where(Job.id == body.job_id))
-        if not result.scalar_one_or_none():
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
-    else:
-        result = await db.execute(select(EntranceExam).where(EntranceExam.id == body.exam_id))
-        if not result.scalar_one_or_none():
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Entrance exam not found")
-    
+    await _validate_document_parent(body.job_id, body.exam_id, db)
     doc = AdmitCard(
         job_id=body.job_id,
         exam_id=body.exam_id,
@@ -478,28 +474,7 @@ async def admin_create_answer_key(
     db: AsyncSession = Depends(get_db),
 ):
     """Create a new answer key. Must specify either job_id or exam_id."""
-    # Validate that exactly one parent is specified
-    if body.job_id and body.exam_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot specify both job_id and exam_id"
-        )
-    if not body.job_id and not body.exam_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Must specify either job_id or exam_id"
-        )
-    
-    # Validate parent exists
-    if body.job_id:
-        result = await db.execute(select(Job).where(Job.id == body.job_id))
-        if not result.scalar_one_or_none():
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
-    else:
-        result = await db.execute(select(EntranceExam).where(EntranceExam.id == body.exam_id))
-        if not result.scalar_one_or_none():
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Entrance exam not found")
-    
+    await _validate_document_parent(body.job_id, body.exam_id, db)
     doc = AnswerKey(
         job_id=body.job_id,
         exam_id=body.exam_id,
@@ -588,28 +563,7 @@ async def admin_create_result(
     db: AsyncSession = Depends(get_db),
 ):
     """Create a new result. Must specify either job_id or exam_id."""
-    # Validate that exactly one parent is specified
-    if body.job_id and body.exam_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot specify both job_id and exam_id"
-        )
-    if not body.job_id and not body.exam_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Must specify either job_id or exam_id"
-        )
-    
-    # Validate parent exists
-    if body.job_id:
-        result = await db.execute(select(Job).where(Job.id == body.job_id))
-        if not result.scalar_one_or_none():
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
-    else:
-        result = await db.execute(select(EntranceExam).where(EntranceExam.id == body.exam_id))
-        if not result.scalar_one_or_none():
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Entrance exam not found")
-    
+    await _validate_document_parent(body.job_id, body.exam_id, db)
     doc = Result(
         job_id=body.job_id,
         exam_id=body.exam_id,

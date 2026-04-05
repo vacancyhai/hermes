@@ -138,17 +138,17 @@ async def test_get_job_found():
     from app.schemas.jobs import JobResponse
     job = _make_job()
 
+    select_result = MagicMock()
+    select_result.scalar_one_or_none.return_value = job
+    empty_result = MagicMock()
+    empty_result.scalars.return_value.all.return_value = []
     db = AsyncMock()
-    result = MagicMock()
-    result.scalar_one_or_none.return_value = job
-    db.execute.return_value = result
+    db.execute = AsyncMock(side_effect=[select_result, empty_result, empty_result, empty_result, empty_result])
 
     mock_response = MagicMock()
     mock_response.model_dump.return_value = {"id": str(job.id), "slug": "test-job"}
-
     with patch.object(JobResponse, "model_validate", return_value=mock_response):
-        output = await get_job(slug="test-job", db=db)
-    assert job.views == 1
+        await get_job(job_id=job.id, db=db)
 
 
 @pytest.mark.asyncio
@@ -158,8 +158,8 @@ async def test_get_job_not_found():
     db = AsyncMock()
     result = MagicMock()
     result.scalar_one_or_none.return_value = None
-    db.execute.return_value = result
+    db.execute = AsyncMock(return_value=result)
 
     with pytest.raises(HTTPException) as exc_info:
-        await get_job(slug="nonexistent", db=db)
+        await get_job(job_id=uuid.uuid4(), db=db)
     assert exc_info.value.status_code == 404

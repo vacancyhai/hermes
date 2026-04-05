@@ -45,10 +45,6 @@ class ProfileUpdateRequest(BaseModel):
     preferred_categories: list | None = None
 
 
-class PhoneUpdateRequest(BaseModel):
-    phone: str = Field(min_length=10, max_length=20)
-
-
 class FCMTokenRequest(BaseModel):
     token: str = Field(min_length=10, max_length=500)
     device_name: str | None = None

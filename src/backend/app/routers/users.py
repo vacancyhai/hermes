@@ -11,7 +11,6 @@ PUT    /api/v1/users/me/notification-preferences — Update notification prefere
 """
 
 import logging
-import secrets
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -27,7 +26,7 @@ from app.rate_limit import limiter
 from app.schemas.auth import (
     MessageResponse,
     UpdatePhoneRequest,
-    VerifyPhoneOTPRequest,
+    VerifyPhoneRequest,
     UserResponse,
     SetPasswordRequest,
     ChangePasswordRequest,
@@ -37,14 +36,12 @@ from app.schemas.users import (
     FCMTokenDeleteRequest,
     FCMTokenRequest,
     NotificationPreferencesRequest,
-    PhoneUpdateRequest,
     ProfileResponse,
     ProfileUpdateRequest,
 )
+from app.utils import MAX_FCM_TOKENS
 
 router = APIRouter(tags=["users"])
-
-MAX_FCM_TOKENS = 10
 
 
 @router.get("/api/v1/users/profile")
@@ -127,12 +124,12 @@ async def send_phone_otp(
     request: Request,
     current_user=Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-    redis=Depends(get_redis),
 ):
-    """Send OTP to user's phone for verification via Firebase (client-side).
-    
-    Note: This is a hybrid approach - backend generates OTP for tracking,
-    but actual SMS is sent via Firebase phone auth on the client.
+    """Initiate phone verification via Firebase client-side phone auth.
+
+    The client should use the Firebase JS SDK to send an SMS to the user's
+    registered phone number, then call POST /verify-phone-otp with the
+    resulting Firebase ID token to complete verification server-side.
     """
     user, _ = current_user
     
@@ -145,30 +142,23 @@ async def send_phone_otp(
     if user.is_phone_verified:
         return MessageResponse(message="Phone number already verified")
     
-    # Generate 6-digit OTP and store in Redis (5 min TTL)
-    otp = f"{secrets.randbelow(1000000):06d}"
-    otp_key = f"{settings.REDIS_KEY_PREFIX}:phone_otp:{user.id}"
-    await redis.setex(otp_key, 300, otp)
-    
-    logger.info("phone_otp_generated", extra={"user_id": str(user.id), "phone": user.phone})
-    
-    # Frontend will use Firebase phone auth to actually send SMS
-    return MessageResponse(message="Ready for phone verification. Use Firebase phone auth on client.")
+    logger.info("phone_otp_requested", extra={"user_id": str(user.id), "phone": user.phone})
+    return MessageResponse(message="Use Firebase phone auth on the client to verify your number.")
 
 
 @router.post("/api/v1/users/me/verify-phone-otp")
 @limiter.limit("5/minute")
 async def verify_phone_otp(
     request: Request,
-    body: VerifyPhoneOTPRequest,
+    body: VerifyPhoneRequest,
     current_user=Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-    redis=Depends(get_redis),
 ):
-    """Verify phone OTP and mark phone as verified.
-    
-    Note: For Firebase phone auth, verification happens on client-side.
-    This endpoint is for fallback/manual OTP verification if needed.
+    """Mark the authenticated user's phone as verified.
+
+    Client must complete Firebase phone auth (SMS → OTP entry) and send the
+    resulting Firebase ID token. The phone_number claim in the token must
+    match the phone number stored on the account.
     """
     user, _ = current_user
     
@@ -178,26 +168,23 @@ async def verify_phone_otp(
             detail="No phone number on file"
         )
     
-    # Check OTP in Redis
-    otp_key = f"{settings.REDIS_KEY_PREFIX}:phone_otp:{user.id}"
-    stored_otp = await redis.get(otp_key)
-    
-    if not stored_otp:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="OTP expired or not found. Please request a new one."
-        )
-    
-    if stored_otp.decode() != body.otp:
+    from app.firebase import verify_id_token
+    try:
+        decoded = verify_id_token(body.firebase_id_token)
+    except Exception:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid OTP code"
+            detail="Invalid Firebase token"
         )
     
-    # Mark phone as verified
-    user.is_phone_verified = True
-    await redis.delete(otp_key)  # One-time use
+    token_phone = decoded.get("phone_number")
+    if not token_phone or token_phone != user.phone:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Token phone number does not match account phone number"
+        )
     
+    user.is_phone_verified = True
     logger.info("phone_verified", extra={"user_id": str(user.id), "phone": user.phone})
     
     # Send email notification if user has email

@@ -39,14 +39,13 @@ async def list_jobs(
     query = select(Job)
     count_query = select(func.count(Job.id))
 
-    # Apply status filter if explicitly provided
-    if status_filter:
-        query = query.where(Job.status == status_filter)
-        count_query = count_query.where(Job.status == status_filter)
+    # Default to active-only; allow explicit override
+    effective_status = status_filter or "active"
+    query = query.where(Job.status == effective_status)
+    count_query = count_query.where(Job.status == effective_status)
 
     # Full-text search
     if q:
-        ts_query = func.plainto_tsquery("english", q)
         query = query.where(text("search_vector @@ plainto_tsquery('english', :q)")).params(q=q)
         count_query = count_query.where(text("search_vector @@ plainto_tsquery('english', :q)")).params(q=q)
         # Order by relevance when searching

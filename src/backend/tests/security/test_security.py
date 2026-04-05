@@ -63,7 +63,7 @@ async def test_expired_token_rejected(client: AsyncClient):
         settings.JWT_SECRET_KEY,
         algorithm="HS256",
     )
-    resp = await client.get("/api/v1/applications/stats", headers=auth_header(expired))
+    resp = await client.get("/api/v1/notifications", headers=auth_header(expired))
     assert resp.status_code == 401
 
 
@@ -80,7 +80,7 @@ async def test_user_token_cannot_access_admin_endpoints(client: AsyncClient, use
 
 
 async def test_admin_token_cannot_access_user_endpoints(client: AsyncClient, admin_token: str):
-    resp = await client.get("/api/v1/applications/stats", headers=auth_header(admin_token))
+    resp = await client.get("/api/v1/notifications", headers=auth_header(admin_token))
     assert resp.status_code == 403
 
 
@@ -117,38 +117,6 @@ async def test_password_hash_not_exposed_in_api(client: AsyncClient, user_token:
     resp = await client.get("/api/v1/users/profile", headers=auth_header(user_token))
     assert resp.status_code == 200
     assert "password_hash" not in resp.text
-
-
-# --- File Upload Security ---
-
-async def test_upload_rejects_non_pdf(client: AsyncClient, admin_token: str):
-    resp = await client.post(
-        "/api/v1/admin/jobs/upload-pdf",
-        files={"file": ("test.txt", b"not a pdf", "text/plain")},
-        headers=auth_header(admin_token),
-    )
-    assert resp.status_code == 400
-    assert "pdf" in resp.json()["error"]["message"].lower()
-
-
-async def test_upload_rejects_oversized_file(client: AsyncClient, admin_token: str):
-    # Create a file just over 10MB
-    big_content = b"%PDF-1.4\n" + b"x" * (11 * 1024 * 1024)
-    resp = await client.post(
-        "/api/v1/admin/jobs/upload-pdf",
-        files={"file": ("big.pdf", big_content, "application/pdf")},
-        headers=auth_header(admin_token),
-    )
-    assert resp.status_code == 400
-    assert "exceed" in resp.json()["error"]["message"].lower() or "limit" in resp.json()["error"]["message"].lower()
-
-
-async def test_upload_requires_auth(client: AsyncClient):
-    resp = await client.post(
-        "/api/v1/admin/jobs/upload-pdf",
-        files={"file": ("test.pdf", b"%PDF-1.4", "application/pdf")},
-    )
-    assert resp.status_code in (401, 403)
 
 
 # --- Input Validation ---

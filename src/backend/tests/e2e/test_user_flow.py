@@ -13,59 +13,6 @@ def auth_header(token: str) -> dict:
 pytestmark = pytest.mark.asyncio
 
 
-async def test_full_user_flow(client: AsyncClient):
-    """Firebase sign-in → view jobs → track application → update status → delete."""
-    email = f"flow_{uuid.uuid4().hex[:8]}@test.com"
-    firebase_uid = f"flow-uid-{uuid.uuid4().hex[:12]}"
-
-    # Sign in via Firebase verify-token (creates new user)
-    decoded = {
-        "uid": firebase_uid,
-        "email": email,
-        "email_verified": True,
-        "name": "Flow User",
-        "firebase": {"sign_in_provider": "password"},
-    }
-    with patch("app.firebase.verify_id_token", return_value=decoded):
-        resp = await client.post("/api/v1/auth/verify-token", json={"id_token": "fake-token"})
-    assert resp.status_code == 200
-    token = resp.json()["access_token"]
-    headers = auth_header(token)
-
-    # View jobs
-    resp = await client.get("/api/v1/jobs")
-    assert resp.status_code == 200
-    jobs = resp.json()["data"]
-
-    if not jobs:
-        pytest.skip("No active jobs available for integration test")
-
-    job = jobs[0]
-
-    # Track the job
-    resp = await client.post("/api/v1/applications", json={"job_id": job["id"]}, headers=headers)
-    assert resp.status_code == 201
-    app_id = resp.json()["id"]
-
-    # Update status
-    resp = await client.put(
-        f"/api/v1/applications/{app_id}",
-        json={"status": "exam_completed", "notes": "Exam went well"},
-        headers=headers,
-    )
-    assert resp.status_code == 200
-    assert resp.json()["status"] == "exam_completed"
-
-    # Check stats
-    resp = await client.get("/api/v1/applications/stats", headers=headers)
-    assert resp.status_code == 200
-    assert resp.json()["total"] >= 1
-
-    # Delete
-    resp = await client.delete(f"/api/v1/applications/{app_id}", headers=headers)
-    assert resp.status_code == 204
-
-
 async def test_admin_job_lifecycle(client: AsyncClient, admin_token: str):
     """Create draft → update → approve → verify published → soft delete."""
     headers = auth_header(admin_token)

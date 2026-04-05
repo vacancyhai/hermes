@@ -121,12 +121,15 @@ def _make_job(
 
 
 def _make_profile(
-    preferred_states=None, preferred_categories=None, highest_qualification=None
+    preferred_states=None, preferred_categories=None, highest_qualification=None,
+    category=None, date_of_birth=None,
 ):
     p = MagicMock()
     p.preferred_states = preferred_states or []
     p.preferred_categories = preferred_categories or []
     p.highest_qualification = highest_qualification
+    p.category = category
+    p.date_of_birth = date_of_birth
     return p
 
 

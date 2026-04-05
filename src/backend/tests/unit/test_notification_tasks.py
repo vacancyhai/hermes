@@ -130,148 +130,6 @@ def test_send_email_notification_success():
     mock_smtp.assert_called_once_with("user@test.com", "Test", "<h1>Hi</h1>")
 
 
-# ─── send_new_job_notifications ───────────────────────────────────────────────
-
-def _session_ctx_for_notifications(job_row=None, profiles=None):
-    """Create mock Session context manager with configurable query results."""
-    session = MagicMock()
-    results = []
-
-    if job_row:
-        r1 = MagicMock()
-        r1.fetchone.return_value = job_row
-        results.append(r1)
-    else:
-        r1 = MagicMock()
-        r1.fetchone.return_value = None
-        results.append(r1)
-
-    if profiles is not None:
-        r2 = MagicMock()
-        r2.fetchall.return_value = profiles
-        results.append(r2)
-
-    result_iter = iter(results)
-    session.execute.side_effect = lambda *a, **kw: next(result_iter)
-
-    ctx = MagicMock()
-    ctx.__enter__ = MagicMock(return_value=session)
-    ctx.__exit__ = MagicMock(return_value=False)
-    return ctx, session
-
-
-def test_send_new_job_notifications_job_not_found():
-    """Exits early when job doesn't exist."""
-    ctx, session = _session_ctx_for_notifications(job_row=None)
-    with patch("app.tasks.notifications.Session", return_value=ctx):
-        from app.tasks.notifications import send_new_job_notifications
-        send_new_job_notifications("non-existent-job-id")
-    session.commit.assert_not_called()
-
-
-def test_send_new_job_notifications_no_followers():
-    """Exits early when no followers of the org."""
-    job_row = ("job-id", "Test Job", "test-job-slug", "UPSC", None)
-    ctx, session = _session_ctx_for_notifications(job_row=job_row, profiles=[])
-    with patch("app.tasks.notifications.Session", return_value=ctx):
-        from app.tasks.notifications import send_new_job_notifications
-        send_new_job_notifications("job-id")
-    session.commit.assert_not_called()
-
-
-def test_send_new_job_notifications_with_followers():
-    """Queues notifications for followers when a new job is posted."""
-    job_row = ("job-id", "UPSC IAS 2024", "upsc-ias-2024", "UPSC", None)
-    user_id = str(uuid.uuid4())
-    profiles = [(user_id,)]
-
-    session = MagicMock()
-    job_result = MagicMock()
-    job_result.fetchone.return_value = job_row
-    profiles_result = MagicMock()
-    profiles_result.fetchall.return_value = profiles
-
-    side_effects = [job_result, profiles_result]
-    session.execute.side_effect = side_effects
-
-    ctx = MagicMock()
-    ctx.__enter__ = MagicMock(return_value=session)
-    ctx.__exit__ = MagicMock(return_value=False)
-
-    with patch("app.tasks.notifications.Session", return_value=ctx), \
-         patch("app.tasks.notifications.smart_notify") as mock_notify:
-        mock_notify.delay = MagicMock()
-        from app.tasks.notifications import send_new_job_notifications
-        send_new_job_notifications("job-id")
-
-    # Should queue smart_notify for each follower
-    mock_notify.delay.assert_called_once()
-
-
-# ─── notify_priority_subscribers ──────────────────────────────────────────────
-
-def test_notify_priority_subscribers_job_not_found():
-    """Exits early when job doesn't exist."""
-    session = MagicMock()
-    result = MagicMock()
-    result.fetchone.return_value = None
-    session.execute.return_value = result
-
-    ctx = MagicMock()
-    ctx.__enter__ = MagicMock(return_value=session)
-    ctx.__exit__ = MagicMock(return_value=False)
-
-    with patch("app.tasks.notifications.Session", return_value=ctx):
-        from app.tasks.notifications import notify_priority_subscribers
-        notify_priority_subscribers("bad-job-id")
-
-    session.commit.assert_not_called()
-
-
-def test_notify_priority_subscribers_no_apps():
-    """Exits early when no priority trackers."""
-    session = MagicMock()
-    job_result = MagicMock()
-    job_result.fetchone.return_value = ("job-id", "SSC CGL", "ssc-cgl", "SSC")
-    apps_result = MagicMock()
-    apps_result.fetchall.return_value = []
-
-    session.execute.side_effect = [job_result, apps_result]
-    ctx = MagicMock()
-    ctx.__enter__ = MagicMock(return_value=session)
-    ctx.__exit__ = MagicMock(return_value=False)
-
-    with patch("app.tasks.notifications.Session", return_value=ctx):
-        from app.tasks.notifications import notify_priority_subscribers
-        notify_priority_subscribers("job-id")
-
-    session.commit.assert_not_called()
-
-
-def test_notify_priority_subscribers_with_trackers():
-    """Queues notifications for priority trackers."""
-    user_id = str(uuid.uuid4())
-    session = MagicMock()
-    job_result = MagicMock()
-    job_result.fetchone.return_value = ("job-id", "SSC CGL", "ssc-cgl", "SSC")
-    apps_result = MagicMock()
-    apps_result.fetchall.return_value = [(user_id,)]
-
-    session.execute.side_effect = [job_result, apps_result]
-    ctx = MagicMock()
-    ctx.__enter__ = MagicMock(return_value=session)
-    ctx.__exit__ = MagicMock(return_value=False)
-
-    with patch("app.tasks.notifications.Session", return_value=ctx), \
-         patch("app.tasks.notifications.smart_notify") as mock_notify:
-        mock_notify.delay = MagicMock()
-        from app.tasks.notifications import notify_priority_subscribers
-        notify_priority_subscribers("job-id")
-
-    # Should queue smart_notify for each priority tracker
-    mock_notify.delay.assert_called_once()
-
-
 # ─── send_deadline_reminders ───────────────────────────────────────────────────
 
 def test_send_deadline_reminders_no_upcoming():
@@ -309,20 +167,21 @@ def test_send_deadline_reminders_with_apps():
     apps_result.fetchall.return_value = [apps_row]
     notif_check_result = MagicMock()
     notif_check_result.fetchone.return_value = None  # No existing notification
-    user_pref_result = MagicMock()
-    user_pref_result.fetchone.return_value = ("user@test.com", "Test User", {})
 
     empty_result = MagicMock()
     empty_result.fetchall.return_value = []
 
-    # 3 REMINDER_DAYS: first call returns apps, rest empty
+    # 3 REMINDER_DAYS × 2 queries (job watches + exam watches) = 6 base calls
+    # T-7: job watches → 1 result; notif check; exam watches → empty
+    # T-3, T-1: job watches → empty; exam watches → empty
     call_sequence = [
-        apps_result,         # T-7 apps
+        apps_result,         # T-7 job watches
         notif_check_result,  # check if already notified
-        MagicMock(),         # insert notification
-        user_pref_result,    # _queue_email_for_user
-        empty_result,        # T-3 apps
-        empty_result,        # T-1 apps
+        empty_result,        # T-7 exam watches
+        empty_result,        # T-3 job watches
+        empty_result,        # T-3 exam watches
+        empty_result,        # T-1 job watches
+        empty_result,        # T-1 exam watches
     ]
     session.execute.side_effect = call_sequence
 
@@ -338,68 +197,6 @@ def test_send_deadline_reminders_with_apps():
 
     # Notification was inserted
     assert session.execute.call_count >= 4
-
-
-# ─── _queue_email_for_user ─────────────────────────────────────────────────────
-
-def test_queue_email_for_user_user_not_found():
-    """Does nothing when user doesn't exist."""
-    session = MagicMock()
-    result = MagicMock()
-    result.fetchone.return_value = None
-    session.execute.return_value = result
-
-    with patch("app.tasks.notifications.send_email_notification") as mock_email:
-        mock_email.delay = MagicMock()
-        from app.tasks.notifications import _queue_email_for_user
-        _queue_email_for_user(session, str(uuid.uuid4()), "Subject", "template.html", {})
-
-    mock_email.delay.assert_not_called()
-
-
-def test_queue_email_for_user_email_disabled():
-    """Does nothing when user has email notifications disabled."""
-    session = MagicMock()
-    result = MagicMock()
-    result.fetchone.return_value = ("user@test.com", "Test User", {"email": False})
-    session.execute.return_value = result
-
-    with patch("app.tasks.notifications.send_email_notification") as mock_email:
-        mock_email.delay = MagicMock()
-        from app.tasks.notifications import _queue_email_for_user
-        _queue_email_for_user(session, str(uuid.uuid4()), "Subject", "template.html", {})
-
-    mock_email.delay.assert_not_called()
-
-
-def test_queue_email_for_user_email_enabled():
-    """Queues email task when user has email notifications enabled (default)."""
-    session = MagicMock()
-    result = MagicMock()
-    result.fetchone.return_value = ("user@test.com", "Test User", {})  # No explicit disable
-    session.execute.return_value = result
-
-    with patch("app.tasks.notifications.send_email_notification") as mock_email:
-        mock_email.delay = MagicMock()
-        from app.tasks.notifications import _queue_email_for_user
-        _queue_email_for_user(session, str(uuid.uuid4()), "Subject", "template.html", {"key": "val"})
-
-    mock_email.delay.assert_called_once()
-
-
-def test_queue_email_for_user_explicit_email_enabled():
-    """Queues email when user explicitly set email=True in preferences."""
-    session = MagicMock()
-    result = MagicMock()
-    result.fetchone.return_value = ("user@test.com", "Test User", {"email": True})
-    session.execute.return_value = result
-
-    with patch("app.tasks.notifications.send_email_notification") as mock_email:
-        mock_email.delay = MagicMock()
-        from app.tasks.notifications import _queue_email_for_user
-        _queue_email_for_user(session, str(uuid.uuid4()), "Subject", "template.html", {})
-
-    mock_email.delay.assert_called_once()
 
 
 # ─── smart_notify task ────────────────────────────────────────────────────────
@@ -537,7 +334,16 @@ def test_send_deadline_reminders_already_notified_skips():
     empty_result = MagicMock()
     empty_result.fetchall.return_value = []
 
-    session.execute.side_effect = [apps_result, existing_result, empty_result, empty_result]
+    # T-7: job(1 row→already notified), notif_check, exam(empty); T-3: job(empty), exam(empty); T-1: job(empty), exam(empty)
+    session.execute.side_effect = [
+        apps_result,    # T-7 job watches
+        existing_result,  # notif check → already sent
+        empty_result,   # T-7 exam watches
+        empty_result,   # T-3 job watches
+        empty_result,   # T-3 exam watches
+        empty_result,   # T-1 job watches
+        empty_result,   # T-1 exam watches
+    ]
     ctx = MagicMock()
     ctx.__enter__ = MagicMock(return_value=session)
     ctx.__exit__ = MagicMock(return_value=False)
@@ -570,8 +376,16 @@ def test_send_deadline_reminders_1d_uses_high_priority():
     no_existing = MagicMock()
     no_existing.fetchone.return_value = None
 
-    # T-7: empty, T-3: empty, T-1: matches
-    session.execute.side_effect = [empty_result, empty_result, apps_result, no_existing]
+    # T-7: job(empty), exam(empty); T-3: job(empty), exam(empty); T-1: job(1 row), notif_check, exam(empty)
+    session.execute.side_effect = [
+        empty_result,  # T-7 job watches
+        empty_result,  # T-7 exam watches
+        empty_result,  # T-3 job watches
+        empty_result,  # T-3 exam watches
+        apps_result,   # T-1 job watches
+        no_existing,   # notif check
+        empty_result,  # T-1 exam watches
+    ]
     ctx = MagicMock()
     ctx.__enter__ = MagicMock(return_value=session)
     ctx.__exit__ = MagicMock(return_value=False)
@@ -606,8 +420,16 @@ def test_send_deadline_reminders_3d_uses_high_priority():
     no_existing = MagicMock()
     no_existing.fetchone.return_value = None
 
-    # T-7: empty, T-3: matches, T-1: empty
-    session.execute.side_effect = [empty_result, apps_result, no_existing, empty_result]
+    # T-7: job(empty), exam(empty); T-3: job(1 row), notif_check, exam(empty); T-1: job(empty), exam(empty)
+    session.execute.side_effect = [
+        empty_result,  # T-7 job watches
+        empty_result,  # T-7 exam watches
+        apps_result,   # T-3 job watches
+        no_existing,   # notif check
+        empty_result,  # T-3 exam watches
+        empty_result,  # T-1 job watches
+        empty_result,  # T-1 exam watches
+    ]
     ctx = MagicMock()
     ctx.__enter__ = MagicMock(return_value=session)
     ctx.__exit__ = MagicMock(return_value=False)

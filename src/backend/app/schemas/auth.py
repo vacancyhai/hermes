@@ -126,12 +126,8 @@ class UpdatePhoneRequest(BaseModel):
     phone: str = Field(pattern=r"^\+\d{10,15}$")  # E.164 format
 
 
-class SendPhoneOTPRequest(BaseModel):
-    pass  # Uses authenticated user's phone from database
-
-
-class VerifyPhoneOTPRequest(BaseModel):
-    otp: str = Field(min_length=6, max_length=6)
+class VerifyPhoneRequest(BaseModel):
+    firebase_id_token: str  # Firebase ID token obtained after client-side phone auth
 
 
 class SetPasswordRequest(BaseModel):

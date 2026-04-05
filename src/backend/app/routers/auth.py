@@ -17,6 +17,7 @@ Admin endpoints (local bcrypt + JWT):
 """
 
 import asyncio
+import json
 import logging
 import os
 import secrets
@@ -38,6 +39,7 @@ logger = logging.getLogger(__name__)
 
 from app.config import settings
 from app.dependencies import get_current_admin, get_current_user, get_db, get_redis
+from app.utils import ALGORITHM
 from app.models.admin_log import AdminLog
 from app.models.admin_user import AdminUser
 from app.models.user import User
@@ -70,7 +72,11 @@ router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 # Used only for admin auth (users authenticate via Firebase)
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-ALGORITHM = "HS256"
+async def _blocklist_jti(redis, jti: str | None, exp: int) -> None:
+    """Add a JWT JTI to the Redis blocklist until its natural expiry."""
+    if jti:
+        ttl = max(int(exp - datetime.now(timezone.utc).timestamp()), 1)
+        await redis.setex(f"{settings.REDIS_KEY_PREFIX}:blocklist:{jti}", ttl, "1")
 
 
 def _create_token(data: dict, expires_delta: timedelta) -> str:
@@ -161,8 +167,9 @@ async def verify_token(request: Request, body: FirebaseVerifyRequest, db: AsyncS
         await db.flush()
         db.add(UserProfile(user_id=user.id))
         
-        # Send welcome email for new users
-        if email:
+        # Send welcome email — skip for email/password provider since
+        # complete_registration already dispatched it before verify_token is called.
+        if email and provider != "password":
             from app.tasks.notifications import send_email_notification
             send_email_notification.delay(
                 email,
@@ -195,20 +202,13 @@ async def logout(
     also blocklisted so the token cannot be used to obtain new access tokens.
     """
     user, payload = current_user
-    jti = payload.get("jti")
-    if jti:
-        exp = payload.get("exp", 0)
-        ttl = max(int(exp - datetime.now(timezone.utc).timestamp()), 1)
-        await redis.setex(f"{settings.REDIS_KEY_PREFIX}:blocklist:{jti}", ttl, "1")
+    await _blocklist_jti(redis, payload.get("jti"), payload.get("exp", 0))
 
     if body.refresh_token:
         try:
             rt_payload = jwt.decode(body.refresh_token, settings.JWT_SECRET_KEY, algorithms=[ALGORITHM])
-            rt_jti = rt_payload.get("jti")
-            if rt_jti and rt_payload.get("type") == "refresh" and rt_payload.get("user_type") == "user":
-                rt_exp = rt_payload.get("exp", 0)
-                rt_ttl = max(int(rt_exp - datetime.now(timezone.utc).timestamp()), 1)
-                await redis.setex(f"{settings.REDIS_KEY_PREFIX}:blocklist:{rt_jti}", rt_ttl, "1")
+            if rt_payload.get("type") == "refresh" and rt_payload.get("user_type") == "user":
+                await _blocklist_jti(redis, rt_payload.get("jti"), rt_payload.get("exp", 0))
         except JWTError:
             pass  # Malformed refresh token — ignore; access token already blocklisted
 
@@ -236,9 +236,7 @@ async def refresh(body: RefreshRequest, db: AsyncSession = Depends(get_db), redi
     if not user or user.status != "active":
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found or inactive")
 
-    exp = payload.get("exp", 0)
-    ttl = max(int(exp - datetime.now(timezone.utc).timestamp()), 1)
-    await redis.setex(f"{settings.REDIS_KEY_PREFIX}:blocklist:{jti}", ttl, "1")
+    await _blocklist_jti(redis, jti, payload.get("exp", 0))
 
     logger.info("token_refreshed", extra={"user_id": str(user.id)})
     return TokenResponse(
@@ -345,7 +343,8 @@ async def add_password(
         
         # Generate custom token for sign-in
         custom_token = fb_auth.create_custom_token(user_record.uid)
-        return FirebaseCustomTokenResponse(custom_token=custom_token.decode())
+        token_str = custom_token if isinstance(custom_token, str) else custom_token.decode()
+        return FirebaseCustomTokenResponse(custom_token=token_str)
         
     except firebase_admin.auth.UserNotFoundError:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User account not found")
@@ -379,15 +378,15 @@ def _smtp_send_otp(to: str, otp: str) -> None:
     msg["To"] = to
     msg.attach(MIMEText(html, "html"))
 
-    if settings.MAIL_USE_TLS:
-        server = smtplib.SMTP(settings.MAIL_SERVER, settings.MAIL_PORT, timeout=30)
-        server.starttls()
-    else:
-        server = smtplib.SMTP(settings.MAIL_SERVER, settings.MAIL_PORT, timeout=30)
-    if settings.MAIL_USERNAME:
-        server.login(settings.MAIL_USERNAME, settings.MAIL_PASSWORD)
-    server.sendmail(settings.MAIL_DEFAULT_SENDER, to, msg.as_string())
-    server.quit()
+    server = smtplib.SMTP(settings.MAIL_SERVER, settings.MAIL_PORT, timeout=30)
+    try:
+        if settings.MAIL_USE_TLS:
+            server.starttls()
+        if settings.MAIL_USERNAME:
+            server.login(settings.MAIL_USERNAME, settings.MAIL_PASSWORD)
+        server.sendmail(settings.MAIL_DEFAULT_SENDER, to, msg.as_string())
+    finally:
+        server.quit()
 
 
 @router.post("/send-email-otp", response_model=MessageResponse)
@@ -409,7 +408,6 @@ async def send_email_otp(
     data_key = f"{settings.REDIS_KEY_PREFIX}:email_otp_data:{email_lower}"
     
     # Store OTP and registration data (full_name and optional phone)
-    import json
     registration_data = {"full_name": body.full_name}
     if body.phone:
         registration_data["phone"] = body.phone
@@ -481,7 +479,6 @@ async def complete_registration(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired verification token")
 
     # Retrieve stored registration data (full_name and optional phone)
-    import json
     email_lower = body.email.lower()
     data_key = f"{settings.REDIS_KEY_PREFIX}:email_otp_data:{email_lower}"
     data_bytes = await redis.get(data_key)
@@ -556,7 +553,8 @@ async def complete_registration(
     # Clean up Redis data
     await redis.delete(data_key)
     
-    return FirebaseCustomTokenResponse(custom_token=custom_token.decode())
+    token_str = custom_token if isinstance(custom_token, str) else custom_token.decode()
+    return FirebaseCustomTokenResponse(custom_token=token_str)
 
 
 # ─── Admin Auth (local bcrypt + JWT — unchanged) ─────────────────────────────
@@ -613,20 +611,13 @@ async def admin_logout(
     also blocklisted so the token cannot be used to obtain new access tokens.
     """
     admin, payload = current_admin
-    jti = payload.get("jti")
-    if jti:
-        exp = payload.get("exp", 0)
-        ttl = max(int(exp - datetime.now(timezone.utc).timestamp()), 1)
-        await redis.setex(f"{settings.REDIS_KEY_PREFIX}:blocklist:{jti}", ttl, "1")
+    await _blocklist_jti(redis, payload.get("jti"), payload.get("exp", 0))
 
     if body.refresh_token:
         try:
             rt_payload = jwt.decode(body.refresh_token, settings.JWT_SECRET_KEY, algorithms=[ALGORITHM])
-            rt_jti = rt_payload.get("jti")
-            if rt_jti and rt_payload.get("type") == "refresh" and rt_payload.get("user_type") == "admin":
-                rt_exp = rt_payload.get("exp", 0)
-                rt_ttl = max(int(rt_exp - datetime.now(timezone.utc).timestamp()), 1)
-                await redis.setex(f"{settings.REDIS_KEY_PREFIX}:blocklist:{rt_jti}", rt_ttl, "1")
+            if rt_payload.get("type") == "refresh" and rt_payload.get("user_type") == "admin":
+                await _blocklist_jti(redis, rt_payload.get("jti"), rt_payload.get("exp", 0))
         except JWTError:
             pass
 
@@ -668,9 +659,7 @@ async def admin_refresh(
     if not admin or admin.status != "active":
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Admin not found or inactive")
 
-    exp = payload.get("exp", 0)
-    ttl = max(int(exp - datetime.now(timezone.utc).timestamp()), 1)
-    await redis.setex(f"{settings.REDIS_KEY_PREFIX}:blocklist:{jti}", ttl, "1")
+    await _blocklist_jti(redis, jti, payload.get("exp", 0))
 
     ip = request.client.host if request.client else "unknown"
     db.add(AdminLog(

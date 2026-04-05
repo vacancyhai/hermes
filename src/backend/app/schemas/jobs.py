@@ -172,11 +172,6 @@ class JobListItem(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class PaginatedResponse(BaseModel):
-    data: list
-    pagination: dict
-
-
 # ── Admit Card schemas ────────────────────────────────────────────────────────
 
 class AdmitCardCreateRequest(BaseModel):

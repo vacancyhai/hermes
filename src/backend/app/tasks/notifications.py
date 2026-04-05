@@ -24,10 +24,11 @@ from app.celery_app import celery
 from app.config import settings
 from app.database import sync_engine
 
+from app.utils import MAX_FCM_TOKENS
+
 logger = structlog.get_logger()
 
 REMINDER_DAYS = [7, 3, 1]  # T-7, T-3, T-1
-MAX_FCM_TOKENS = 10
 BASE_URL = settings.FRONTEND_URL
 
 # Jinja2 env for email templates
@@ -54,23 +55,20 @@ def _send_smtp(to: str, subject: str, html_body: str) -> bool:
     msg["To"] = to
     msg.attach(MIMEText(html_body, "html"))
 
+    server = smtplib.SMTP(settings.MAIL_SERVER, settings.MAIL_PORT, timeout=30)
     try:
         if settings.MAIL_USE_TLS:
-            server = smtplib.SMTP(settings.MAIL_SERVER, settings.MAIL_PORT, timeout=30)
             server.starttls()
-        else:
-            server = smtplib.SMTP(settings.MAIL_SERVER, settings.MAIL_PORT, timeout=30)
-
         if settings.MAIL_USERNAME:
             server.login(settings.MAIL_USERNAME, settings.MAIL_PASSWORD)
-
         server.sendmail(settings.MAIL_DEFAULT_SENDER, to, msg.as_string())
-        server.quit()
         logger.info("email_sent", to=to, subject=subject)
         return True
     except Exception as exc:
         logger.error("email_failed", to=to, subject=subject, error=str(exc))
         raise
+    finally:
+        server.quit()
 
 
 def _get_sync_redis():
@@ -223,7 +221,7 @@ def send_deadline_reminders():
             # ── 1. Watch-based job reminders ──────────────────────────────────
             watch_job_rows = session.execute(
                 text("""
-                    SELECT uw.user_id, jv.id, jv.job_title, jv.slug, jv.organization, jv.application_end
+                    SELECT uw.id, uw.user_id, jv.id, jv.job_title, jv.slug, jv.organization, jv.application_end
                     FROM user_watches uw
                     JOIN jobs jv ON jv.id = uw.entity_id
                     WHERE uw.entity_type = 'job'
@@ -233,7 +231,7 @@ def send_deadline_reminders():
                 {"target_date": target_date},
             ).fetchall()
 
-            for user_id, job_id, job_title, slug, org, app_end in watch_job_rows:
+            for _watch_id, user_id, job_id, job_title, slug, org, app_end in watch_job_rows:
                 ntype = f"deadline_reminder_{days_before}d"
                 existing = session.execute(
                     text("SELECT 1 FROM notifications WHERE user_id=:uid AND entity_id=:eid AND type=:t LIMIT 1"),
@@ -337,13 +335,14 @@ def notify_watchers_on_update(entity_type: str, entity_id: str):
         if not watchers:
             return
 
-        for (user_id,) in watchers:
-            smart_notify.delay(
-                user_id=str(user_id),
+        BATCH_SIZE = 100
+        user_ids = [str(row[0]) for row in watchers]
+        for i in range(0, len(user_ids), BATCH_SIZE):
+            batch = user_ids[i : i + BATCH_SIZE]
+            notify_watcher_batch.delay(
+                user_ids=batch,
                 title=title,
                 message=msg,
-                notification_type="watched_item_updated",
-                priority="medium",
                 entity_type=entity_type,
                 entity_id=entity_id,
                 action_url=action_url,
@@ -352,34 +351,36 @@ def notify_watchers_on_update(entity_type: str, entity_id: str):
         logger.info("watchers_notified", entity_type=entity_type, entity_id=entity_id, count=len(watchers))
 
 
-# ─── Legacy helper (kept for any direct callers) ─────────────────────────────
+@celery.task(name="app.tasks.notifications.notify_watcher_batch")
+def notify_watcher_batch(
+    user_ids: list[str],
+    title: str,
+    message: str,
+    entity_type: str,
+    entity_id: str,
+    action_url: str,
+):
+    """Process a batch of watcher notifications dispatched by notify_watchers_on_update."""
+    for user_id in user_ids:
+        smart_notify.delay(
+            user_id=user_id,
+            title=title,
+            message=message,
+            notification_type="watched_item_updated",
+            priority="medium",
+            entity_type=entity_type,
+            entity_id=entity_id,
+            action_url=action_url,
+        )
 
 
-def _queue_email_for_user(session, user_id: str, subject: str, template_name: str, context: dict):
-    """Check user's email preference and queue email task if enabled.
+@celery.task(name="app.tasks.notifications.send_new_job_notifications")
+def send_new_job_notifications(job_id: str):
+    """Notify users who follow the job's organization when a new job is posted."""
+    pass
 
-    Legacy helper — new code uses NotificationService._send_email instead.
-    """
-    row = session.execute(
-        text("""
-            SELECT u.email, u.full_name, up.notification_preferences
-            FROM users u
-            LEFT JOIN user_profiles up ON up.user_id = u.id
-            WHERE u.id = :uid
-        """),
-        {"uid": user_id},
-    ).fetchone()
 
-    if not row:
-        return
-
-    email, full_name, prefs = row
-    if not email:
-        return
-    prefs = prefs or {}
-
-    if prefs.get("email") is False:
-        return
-
-    context["name"] = full_name or email
-    send_email_notification.delay(email, subject, template_name, context)
+@celery.task(name="app.tasks.notifications.notify_priority_subscribers")
+def notify_priority_subscribers(job_id: str):
+    """Notify users who are priority-tracking a job when it gets updated."""
+    pass

@@ -31,51 +31,58 @@ For email/password and Google login, create a new account via the `/login` page 
 
 ---
 
-## Backend — ~93% (~312 tests)
+## Backend — 77% (250 unit tests)
 
-One test (`test_send_push_notification_no_firebase_config`) was removed alongside the deleted `send_push_notification` legacy task.
+Test suite updated: removed all `UserJobApplication`, `platform_analytics`, `update_user_role`, org-following, `send_new_job_notifications`, and `notify_priority_subscribers` tests (premature features reverted). Added `test_matching_entrance_exams.py` (14 tests) and new coverage-improvement test files for `content.py`, `entrance_exams.py`, `watches.py`, and `dependencies.py`.
 
 | Module | Coverage | Notes |
-|--------|----------|---------|
-| `routers/notifications.py` | 100% | |
-| `routers/watches.py` | 97% | IntegrityError rollback path |
-| `routers/jobs.py` | 100% | |
-| `routers/users.py` | 98% | |
-| `routers/admin.py` | ~93% | PDF file-write + Celery dispatch path; `create_admin_user` endpoint needs integration tests |
-| `routers/auth.py` | ~92% | Firebase `verify_id_token` uncovered paths; optional refresh_token logout branch |
-| `firebase.py` | 69% | Real Firebase token verify path requires live credentials |
-| `services/notifications.py` | ~88% | Firebase FCM send requires credentials; new `_send_fcm_with_status` happy path |
-| `services/matching.py` | ~99% | New age/category scoring paths need targeted tests |
-| `services/ai_extractor.py` | 100% | |
-| `services/pdf_extractor.py` | 100% | |
-| `tasks/notifications.py` | ~80% | Firebase push requires credentials |
+|--------|----------|-------|
+| `routers/notifications.py` | 93% | |
+| `routers/watches.py` | 47% | IntegrityError rollback path covered at integration level |
+| `routers/jobs.py` | 93% | |
+| `routers/users.py` | 100% | |
+| `routers/admin.py` | 0% | PDF file-write + Celery dispatch path; covered at integration level |
+| `routers/content.py` | 19% | List/get/CRUD public+admin endpoints covered; detail views with parent enrichment covered |
+| `routers/entrance_exams.py` | 96% | |
+| `routers/auth.py` | 66% | Covered at integration level (Firebase mocking) |
+| `dependencies.py` | 97% | JWT decode, blocklist, RBAC fully covered |
+| `firebase.py` | 75% | Real Firebase token verify path requires live credentials |
+| `services/notifications.py` | 80% | FCM `_send_push` uses `user_devices` table; `_send_fcm_with_status` happy path requires credentials |
+| `services/matching.py` | 80% | with-prefs scoring paths covered; no-prefs pagination covered |
+| `services/ai_extractor.py` | 0% | Requires live Anthropic API |
+| `services/pdf_extractor.py` | 77% | |
+| `tasks/notifications.py` | 57% | Firebase FCM send in `smart_notify` requires credentials |
 | `tasks/cleanup.py` | 100% | |
-| `tasks/jobs.py` | ~89% | |
-| `tasks/seo.py` | 100% | |
+| `tasks/jobs.py` | 100% | |
+| `tasks/seo.py` | 68% | |
 | `models/*` / `schemas/*` | 100% | |
 
 ### Backend Test Files
 
 | File | Tests | Covers |
 |------|-------|--------|
-| `unit/test_route_admin.py` | 34 | Dashboard stats, jobs CRUD, user mgmt, audit logs |
-| `unit/test_route_notifications.py` | 15 | List, mark read/all, delete, has_more pagination |
-| `unit/test_route_users.py` | 18 | Profile, phone, follow orgs, FCM tokens |
-| `unit/test_route_jobs.py` | 7 | Listing filters, recommended, detail |
-| `unit/test_matching.py` | 14 | Job recommendation scoring |
+| `unit/test_route_admin.py` | 26 | Dashboard stats, jobs CRUD, user mgmt, audit logs |
+| `unit/test_route_notifications.py` | 17 | List, mark read/all, delete, has_more pagination |
+| `unit/test_route_users.py` | 12 | Profile, phone, FCM tokens |
+| `unit/test_route_jobs.py` | 7 | Listing filters (active-only default), recommended, detail |
+| `unit/test_route_content.py` | 44 | Admit cards, answer keys, results — public list/detail + admin CRUD; `_validate_document_parent` |
+| `unit/test_route_entrance_exams.py` | 28 | Public list (filters, pagination, search) + detail; admin list/get/create (slug collision, published_at)/update/delete |
+| `unit/test_route_watches.py` | 17 | Watch/unwatch jobs & exams (limit enforcement, duplicate guard); list_watched (empty, job-only, exam-only, mixed) |
+| `unit/test_dependencies.py` | 27 | `_decode_and_validate_token` (valid, expired, wrong type, blocklist, scope); `get_current_user/admin`; `require_admin/operator` |
+| `unit/test_matching.py` | 14 | Job recommendation scoring (state, category, education, age, recency) |
+| `unit/test_matching_entrance_exams.py` | 14 | Entrance exam recommendation scoring |
 | `unit/test_services.py` | 10 | PDF extraction, AI parsing |
-| `unit/test_tasks.py` | 12 | Cleanup, sitemap, job extraction |
-| `unit/test_notification_tasks.py` | 28 | Email, deadline reminders, smart_notify, delayed delivery (legacy push task test removed) |
-| `unit/test_notification_service.py` | 22 | NotificationService: all 4 channels, prefs, dedup, email limits |
-| `integration/test_auth.py` | 19 | Firebase verify-token (new/existing/migrate/suspended/deleted/phone-only), logout, refresh, admin login/logout/refresh, RBAC |
-| `integration/test_auth_extended.py` | 21 | Email OTP registration, password validation (strength requirements), password set/change, phone verification, email linking to phone-only accounts |
-| `integration/test_admin.py` | ~40 | Admin API, analytics, RBAC |
-| `integration/test_jobs.py` | ~25 | Public job listing and search |
-| `integration/test_users.py` | ~30 | User profile API |
-| `integration/test_notifications.py` | ~25 | Notification API |
-| `integration/test_applications.py` | ~25 | Application tracking API |
-| `security/test_security.py` | 17 | JWT structure (HS256/exp/iat/jti), RBAC, token revocation, admin bcrypt, file upload safety, XSS, SQLi, CORS |
-| `e2e/test_user_flow.py` | 4 | Full user + admin lifecycle flows (Firebase verify-token) |
+| `unit/test_tasks.py` | 9 | Cleanup, close_expired_job_listings, job extraction |
+| `unit/test_notification_tasks.py` | 16 | Deadline reminders (7/3/1 day), smart_notify, delayed delivery |
+| `unit/test_notification_service.py` | 22 | NotificationService: all channels (`_send_push` via `user_devices`, fingerprint dedup, `_send_fcm`), prefs, email limits |
+| `integration/test_auth.py` | 20 | Firebase verify-token (new/existing/migrate/suspended/deleted/phone-only), logout (blocklist check via `/notifications`), refresh, admin login/logout/refresh, RBAC |
+| `integration/test_auth_extended.py` | 21 | Email OTP registration, password validation, password set/change, phone verification, email linking |
+| `integration/test_admin.py` | 14 | Admin API, stats, RBAC |
+| `integration/test_jobs.py` | 17 | Public job listing and search (active-only filter) |
+| `integration/test_users.py` | 18 | User profile API |
+| `integration/test_notifications.py` | 20 | Notification API |
+| `security/test_security.py` | 14 | JWT structure (HS256/exp/iat/jti), RBAC, token revocation, admin bcrypt, XSS, SQLi, CORS |
+| `e2e/test_user_flow.py` | 3 | Admin job lifecycle, user management, RBAC operator-vs-admin |
 
 ### Backend Unit Test Strategy
 
@@ -89,12 +96,15 @@ Firebase tests mock `app.firebase.verify_id_token` via `unittest.mock.patch` so 
 
 ### Why Some Backend Lines Are Uncovered
 
-- **`auth.py`** — optional `refresh_token` logout branch and `user.status != "active"` in `/refresh` require specific state; covered at integration level.
+- **`routers/auth.py`** — Firebase-dependent paths covered at integration level; OAuth and OTP flows require live credentials.
+- **`routers/watches.py`** — IntegrityError rollback and ordering-by-creation-date reassembly paths covered at integration level.
+- **`routers/content.py`** — Recommend endpoints and some detail enrichment paths are covered; remaining uncovered lines are in rarely-reached branches (e.g. both-job-and-exam parent edge cases).
 - **`firebase.py`** — real `verify_id_token()` call requires a live Firebase project; the init guard (`firebase_admin._apps`) is covered by unit tests.
-- **`admin.py`** — PDF file-write + Celery dispatch block; validation paths (wrong extension/MIME) are covered. The new `create_admin_user` endpoint needs integration tests.
-- **`tasks/notifications.py`** — Firebase FCM send in `smart_notify` requires `FIREBASE_CREDENTIALS_PATH`, absent in the test environment.
-- **`services/notifications.py`** — FCM `_send_fcm_with_status` happy path and invalid-token cleanup require Firebase credentials; no-credentials path is covered.
-- **`services/matching.py`** — age scoring branch (`age_min`/`age_max` present in eligibility) needs targeted unit tests with fixture jobs that include these fields.
+- **`routers/admin.py`** — PDF file-write + Celery dispatch block; covered at integration level.
+- **`tasks/notifications.py`** — Firebase FCM send in `smart_notify` requires `FIREBASE_CREDENTIALS_PATH`, absent in the test environment. Stubs `send_new_job_notifications` and `notify_priority_subscribers` are no-ops.
+- **`services/notifications.py`** — `_send_fcm_with_status` happy path and the new `_send_push` (reads `user_devices` with fingerprint dedup) require Firebase credentials for the FCM leg; `_send_fcm` wrapper and no-credentials path are covered.
+- **`services/ai_extractor.py`** — requires live Anthropic API credentials.
+- **`tasks/seo.py`** — sitemap file-write path requires filesystem setup.
 
 ---
 

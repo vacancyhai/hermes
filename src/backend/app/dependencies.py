@@ -12,10 +12,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.database import async_session
+from app.utils import ALGORITHM
 
 security = HTTPBearer()
-
-ALGORITHM = "HS256"
 
 # Redis connection pool (lazy singleton)
 _redis_pool: aioredis.Redis | None = None

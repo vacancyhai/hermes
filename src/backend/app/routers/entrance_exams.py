@@ -15,7 +15,6 @@ Note: Admin document CRUD has been moved to top-level endpoints:
   /api/v1/admin/results
 """
 
-import re
 import uuid
 from datetime import datetime, timezone
 
@@ -24,6 +23,7 @@ from sqlalchemy import func, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import get_current_user, get_db, require_operator
+from app.utils import slugify as _slugify
 from app.services.matching import get_recommended_entrance_exams
 from app.models.entrance_exam import EntranceExam
 from app.models.admit_card import AdmitCard
@@ -41,13 +41,6 @@ from app.schemas.jobs import (
 
 public_router = APIRouter(prefix="/api/v1/entrance-exams", tags=["entrance-exams"])
 admin_router = APIRouter(prefix="/api/v1/admin/entrance-exams", tags=["admin-entrance-exams"])
-
-
-def _slugify(text_: str) -> str:
-    slug = text_.lower().strip()
-    slug = re.sub(r"[^\w\s-]", "", slug)
-    slug = re.sub(r"[\s_]+", "-", slug)
-    return re.sub(r"-+", "-", slug).strip("-")
 
 
 async def _require_exam(exam_id: uuid.UUID, db: AsyncSession) -> EntranceExam:
@@ -235,7 +228,7 @@ async def create_exam(
     exam = EntranceExam(
         **body.model_dump(exclude_none=True),
         slug=slug,
-        published_at=datetime.now(timezone.utc),
+        published_at=datetime.now(timezone.utc) if body.status == "active" else None,
     )
     db.add(exam)
     await db.flush()

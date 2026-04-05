@@ -232,7 +232,7 @@ async def test_logout_revokes_token(client: AsyncClient, user_token: str):
     assert resp.status_code == 204
 
     # Token should be blocklisted — access protected route
-    resp = await client.get("/api/v1/applications/stats", headers=auth_header(user_token))
+    resp = await client.get("/api/v1/notifications", headers=auth_header(user_token))
     assert resp.status_code == 401
 
 
