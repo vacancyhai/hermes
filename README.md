@@ -110,23 +110,27 @@ PostgreSQL and Redis are isolated inside Docker networks — never exposed to th
 
 | Document | Description |
 | -------- | ----------- |
-| [docs/DESIGN.md](docs/DESIGN.md) | System design: architecture, auth, Celery tasks, SEO, notifications, security, deployment |
+| [docs/DESIGN.md](docs/DESIGN.md) | System design: architecture, auth, Celery tasks, SEO, notifications, CI/CD, security, deployment |
 | [docs/DATABASE.md](docs/DATABASE.md) | Full database schema: ERD, all 13 tables, column definitions, indexes, CHECK constraints |
 | [docs/API.md](docs/API.md) | Complete API endpoint reference with request/response examples |
 | [docs/DIAGRAMS.md](docs/DIAGRAMS.md) | ASCII workflow diagrams for all major user and system flows |
-| [docs/TESTING.md](docs/TESTING.md) | Test coverage report for all three services |
+| [docs/TESTING.md](docs/TESTING.md) | Test commands, CI pipeline, pre-commit hooks, coverage report for all three services |
 | [docs/hermes.postman_collection.json](docs/hermes.postman_collection.json) | Postman collection for all API endpoints |
 
 ## Development Quick Start
 
 ```bash
-# 1. Copy development env files and fill in secrets
-cp config/development/.env.backend.development       src/backend/.env
+# 1. Copy the backend env template and fill in secrets
+cp src/backend/.env.example src/backend/.env
+# Edit src/backend/.env — required: POSTGRES_PASSWORD, JWT_SECRET_KEY,
+# FIREBASE_WEB_API_KEY, FIREBASE_AUTH_DOMAIN, FIREBASE_PROJECT_ID,
+# FIREBASE_CREDENTIALS_PATH for your Firebase project.
+# Optional: ANTHROPIC_API_KEY (enables AI PDF extraction).
+#
+# Or use a pre-filled environment template:
+# cp config/development/.env.backend.development src/backend/.env
 cp config/development/.env.frontend.development      src/frontend/.env
 cp config/development/.env.frontend-admin.development src/frontend-admin/.env
-# Edit src/backend/.env — required: FIREBASE_WEB_API_KEY, FIREBASE_AUTH_DOMAIN,
-# FIREBASE_PROJECT_ID, FIREBASE_CREDENTIALS_PATH for your Firebase project.
-# Optional: ANTHROPIC_API_KEY (enables AI PDF extraction).
 
 # 2. Start backend (PostgreSQL, Redis, PgBouncer, FastAPI, Celery)
 cd src/backend && docker compose up -d --build
@@ -160,8 +164,8 @@ cd ../frontend-admin && docker compose up -d --build
 # 6. Start Nginx reverse proxy (must be last — joins all three Docker networks)
 cd ../nginx && docker compose up -d
 
-# 7. Run tests
-docker exec -w /app -e PYTHONPATH=/app hermes_backend python -m pytest tests/ -v
+# 7. Run tests (coverage XML written to /app/coverage.xml automatically)
+docker exec hermes_backend python -m pytest tests/unit/ -q
 
 # Access:
 #   Backend API:    http://localhost:8000/api/v1/health
@@ -171,6 +175,37 @@ docker exec -w /app -e PYTHONPATH=/app hermes_backend python -m pytest tests/ -v
 ```
 
 Or use the deploy script: `./scripts/deployment/deploy_all.sh development`
+
+## Branching Strategy
+
+All work is done on short-lived branches; `main` is protected and only accepts reviewed PRs.
+
+```
+main          ← protected; merges only from reviewed, CI-passing PRs
+feature/xxx   ← new features    (e.g. feature/add-whatsapp-notifications)
+fix/xxx       ← bug fixes
+chore/xxx     ← dependency bumps, config changes
+```
+
+**Required GitHub branch protection rules (Settings → Branches → Add rule for `main`):**
+- Require pull request before merging
+- Require status checks: **Unit Tests (pytest + coverage)** and **SonarCloud Scan**
+- Require branches to be up to date before merging
+
+## Pre-commit Hooks
+
+Code quality is enforced locally before every commit. Install once per developer clone:
+
+```bash
+sudo apt install pre-commit   # or: pip install pre-commit
+pre-commit install            # registers .git/hooks/pre-commit
+
+# Run manually across all files:
+pre-commit run --all-files
+```
+
+Hooks: `black` (formatting), `isort` (imports), `flake8` (lint), `mypy` (types), `detect-secrets` (credential leak detection), plus standard file-hygiene checks.
+See `.pre-commit-config.yaml` for full configuration.
 
 ## Project Structure
 
@@ -237,6 +272,8 @@ hermes/
 ├── scripts/
 │   ├── backup/                   # backup_db.sh + restore_db.sh
 │   └── deployment/               # deploy_all.sh + stop_all.sh + check_config.sh
+├── .pre-commit-config.yaml       # Pre-commit hooks (black, isort, flake8, mypy, detect-secrets)
+├── .secrets.baseline             # detect-secrets baseline (empty — no secrets in repo)
 ├── docs/                         # See Documentation table above
 └── README.md
 ```
@@ -262,4 +299,3 @@ hermes/
 ## License
 
 MIT
-

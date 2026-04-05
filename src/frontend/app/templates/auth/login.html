@@ -379,7 +379,7 @@
         // Send OTP BEFORE creating Firebase account
         var requestBody = { email: email, full_name: name };
         if (phone) requestBody.phone = phone;
-        
+
         fetch("/auth/send-email-otp", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -421,13 +421,13 @@
             if (res.ok && res.data.verified) {
                 _verificationToken = res.data.verification_token;
                 // Step 2: Create Firebase account server-side
-                var requestBody = { 
-                    email: _regEmail, 
-                    password: _regPassword, 
-                    verification_token: _verificationToken 
+                var requestBody = {
+                    email: _regEmail,
+                    password: _regPassword,
+                    verification_token: _verificationToken
                 };
                 if (_regPhone) requestBody.phone = _regPhone;
-                
+
                 return fetch("/auth/complete-registration", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -536,10 +536,10 @@
                 return fetch("/auth/add-password", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ 
-                        email: _addPasswordEmail, 
-                        password: _addPasswordPassword, 
-                        verification_token: _verificationToken 
+                    body: JSON.stringify({
+                        email: _addPasswordEmail,
+                        password: _addPasswordPassword,
+                        verification_token: _verificationToken
                     }),
                 });
             } else {

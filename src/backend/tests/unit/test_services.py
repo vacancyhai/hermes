@@ -5,8 +5,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-
 # --- pdf_extractor ---
+
 
 def test_extract_text_from_pdf_single_page():
     mock_page = MagicMock()
@@ -18,6 +18,7 @@ def test_extract_text_from_pdf_single_page():
 
     with patch("pdfplumber.open", return_value=mock_pdf):
         from app.services.pdf_extractor import extract_text_from_pdf
+
         result = extract_text_from_pdf("/fake/path.pdf")
 
     assert result == "Page one text"
@@ -35,6 +36,7 @@ def test_extract_text_from_pdf_multiple_pages():
 
     with patch("pdfplumber.open", return_value=mock_pdf):
         from app.services.pdf_extractor import extract_text_from_pdf
+
         result = extract_text_from_pdf("/fake/path.pdf")
 
     assert result == "First page\n\nSecond page"
@@ -53,6 +55,7 @@ def test_extract_text_from_pdf_empty_page():
 
     with patch("pdfplumber.open", return_value=mock_pdf):
         from app.services.pdf_extractor import extract_text_from_pdf
+
         result = extract_text_from_pdf("/fake/path.pdf")
 
     assert result == "Real text"
@@ -68,6 +71,7 @@ def test_extract_text_from_pdf_all_empty():
 
     with patch("pdfplumber.open", return_value=mock_pdf):
         from app.services.pdf_extractor import extract_text_from_pdf
+
         result = extract_text_from_pdf("/fake/path.pdf")
 
     assert result == ""
@@ -75,11 +79,13 @@ def test_extract_text_from_pdf_all_empty():
 
 # --- ai_extractor ---
 
+
 def test_extract_job_data_no_api_key():
     """Returns None immediately when ANTHROPIC_API_KEY is not set."""
     with patch("app.services.ai_extractor.settings") as mock_settings:
         mock_settings.ANTHROPIC_API_KEY = None
         from app.services.ai_extractor import extract_job_data
+
         result = extract_job_data("some pdf text")
 
     assert result is None
@@ -87,7 +93,11 @@ def test_extract_job_data_no_api_key():
 
 def test_extract_job_data_returns_parsed_json():
     """Successful Claude API call returns parsed dict."""
-    expected = {"job_title": "SSC CGL 2024", "organization": "SSC", "total_vacancies": 1000}
+    expected = {
+        "job_title": "SSC CGL 2024",
+        "organization": "SSC",
+        "total_vacancies": 1000,
+    }
 
     mock_message = MagicMock()
     mock_message.content = [MagicMock(text=json.dumps(expected))]
@@ -95,11 +105,13 @@ def test_extract_job_data_returns_parsed_json():
     mock_client = MagicMock()
     mock_client.messages.create.return_value = mock_message
 
-    with patch("app.services.ai_extractor.settings") as mock_settings, \
-         patch("anthropic.Anthropic", return_value=mock_client):
+    with patch("app.services.ai_extractor.settings") as mock_settings, patch(
+        "anthropic.Anthropic", return_value=mock_client
+    ):
         mock_settings.ANTHROPIC_API_KEY = "test-key"
         mock_settings.AI_MODEL = "claude-3-haiku-20240307"
         from app.services.ai_extractor import extract_job_data
+
         result = extract_job_data("some pdf text")
 
     assert result == expected
@@ -116,11 +128,13 @@ def test_extract_job_data_strips_markdown_code_block():
     mock_client = MagicMock()
     mock_client.messages.create.return_value = mock_message
 
-    with patch("app.services.ai_extractor.settings") as mock_settings, \
-         patch("anthropic.Anthropic", return_value=mock_client):
+    with patch("app.services.ai_extractor.settings") as mock_settings, patch(
+        "anthropic.Anthropic", return_value=mock_client
+    ):
         mock_settings.ANTHROPIC_API_KEY = "test-key"
         mock_settings.AI_MODEL = "claude-3-haiku-20240307"
         from app.services.ai_extractor import extract_job_data
+
         result = extract_job_data("pdf text")
 
     assert result == inner
@@ -137,11 +151,13 @@ def test_extract_job_data_strips_plain_code_block():
     mock_client = MagicMock()
     mock_client.messages.create.return_value = mock_message
 
-    with patch("app.services.ai_extractor.settings") as mock_settings, \
-         patch("anthropic.Anthropic", return_value=mock_client):
+    with patch("app.services.ai_extractor.settings") as mock_settings, patch(
+        "anthropic.Anthropic", return_value=mock_client
+    ):
         mock_settings.ANTHROPIC_API_KEY = "test-key"
         mock_settings.AI_MODEL = "claude-3-haiku-20240307"
         from app.services.ai_extractor import extract_job_data
+
         result = extract_job_data("pdf text")
 
     assert result == inner
@@ -152,11 +168,13 @@ def test_extract_job_data_api_exception_returns_none():
     mock_client = MagicMock()
     mock_client.messages.create.side_effect = Exception("API error")
 
-    with patch("app.services.ai_extractor.settings") as mock_settings, \
-         patch("anthropic.Anthropic", return_value=mock_client):
+    with patch("app.services.ai_extractor.settings") as mock_settings, patch(
+        "anthropic.Anthropic", return_value=mock_client
+    ):
         mock_settings.ANTHROPIC_API_KEY = "test-key"
         mock_settings.AI_MODEL = "claude-3-haiku-20240307"
         from app.services.ai_extractor import extract_job_data
+
         result = extract_job_data("pdf text")
 
     assert result is None
@@ -170,11 +188,13 @@ def test_extract_job_data_invalid_json_returns_none():
     mock_client = MagicMock()
     mock_client.messages.create.return_value = mock_message
 
-    with patch("app.services.ai_extractor.settings") as mock_settings, \
-         patch("anthropic.Anthropic", return_value=mock_client):
+    with patch("app.services.ai_extractor.settings") as mock_settings, patch(
+        "anthropic.Anthropic", return_value=mock_client
+    ):
         mock_settings.ANTHROPIC_API_KEY = "test-key"
         mock_settings.AI_MODEL = "claude-3-haiku-20240307"
         from app.services.ai_extractor import extract_job_data
+
         result = extract_job_data("pdf text")
 
     assert result is None

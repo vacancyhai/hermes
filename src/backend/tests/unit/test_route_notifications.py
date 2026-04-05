@@ -34,9 +34,11 @@ def _make_notif(user_id=None, is_read=False):
 
 # ─── list_notifications ───────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_list_notifications_empty():
     from app.routers.notifications import list_notifications
+
     db = AsyncMock()
     count_result = MagicMock()
     count_result.scalar.return_value = 0
@@ -45,8 +47,12 @@ async def test_list_notifications_empty():
     db.execute.side_effect = [count_result, data_result]
 
     output = await list_notifications(
-        limit=20, offset=0, type=None, is_read=None,
-        current_user=_make_current_user(), db=db,
+        limit=20,
+        offset=0,
+        type=None,
+        is_read=None,
+        current_user=_make_current_user(),
+        db=db,
     )
     assert output["pagination"]["total"] == 0
     assert output["data"] == []
@@ -55,6 +61,7 @@ async def test_list_notifications_empty():
 @pytest.mark.asyncio
 async def test_list_notifications_with_data():
     from app.routers.notifications import list_notifications
+
     user, _ = _make_current_user()
     n = _make_notif(user_id=user.id)
 
@@ -66,8 +73,12 @@ async def test_list_notifications_with_data():
     db.execute.side_effect = [count_result, data_result]
 
     output = await list_notifications(
-        limit=20, offset=0, type=None, is_read=None,
-        current_user=(user, {}), db=db,
+        limit=20,
+        offset=0,
+        type=None,
+        is_read=None,
+        current_user=(user, {}),
+        db=db,
     )
     assert output["pagination"]["total"] == 1
     assert len(output["data"]) == 1
@@ -76,6 +87,7 @@ async def test_list_notifications_with_data():
 @pytest.mark.asyncio
 async def test_list_notifications_with_type_filter():
     from app.routers.notifications import list_notifications
+
     db = AsyncMock()
     count_result = MagicMock()
     count_result.scalar.return_value = 0
@@ -84,8 +96,12 @@ async def test_list_notifications_with_type_filter():
     db.execute.side_effect = [count_result, data_result]
 
     output = await list_notifications(
-        limit=20, offset=0, type="deadline_reminder", is_read=None,
-        current_user=_make_current_user(), db=db,
+        limit=20,
+        offset=0,
+        type="deadline_reminder",
+        is_read=None,
+        current_user=_make_current_user(),
+        db=db,
     )
     assert output["data"] == []
 
@@ -93,6 +109,7 @@ async def test_list_notifications_with_type_filter():
 @pytest.mark.asyncio
 async def test_list_notifications_with_is_read_filter():
     from app.routers.notifications import list_notifications
+
     db = AsyncMock()
     count_result = MagicMock()
     count_result.scalar.return_value = 0
@@ -101,17 +118,23 @@ async def test_list_notifications_with_is_read_filter():
     db.execute.side_effect = [count_result, data_result]
 
     output = await list_notifications(
-        limit=20, offset=0, type=None, is_read=False,
-        current_user=_make_current_user(), db=db,
+        limit=20,
+        offset=0,
+        type=None,
+        is_read=False,
+        current_user=_make_current_user(),
+        db=db,
     )
     assert output["pagination"]["has_more"] is False
 
 
 # ─── unread_count ─────────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_unread_count_zero():
     from app.routers.notifications import unread_count
+
     db = AsyncMock()
     result = MagicMock()
     result.scalar.return_value = 0
@@ -124,6 +147,7 @@ async def test_unread_count_zero():
 @pytest.mark.asyncio
 async def test_unread_count_with_unreads():
     from app.routers.notifications import unread_count
+
     db = AsyncMock()
     result = MagicMock()
     result.scalar.return_value = 3
@@ -135,9 +159,11 @@ async def test_unread_count_with_unreads():
 
 # ─── mark_all_read ────────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_mark_all_read_zero():
     from app.routers.notifications import mark_all_read
+
     db = AsyncMock()
     result = MagicMock()
     result.rowcount = 0
@@ -150,6 +176,7 @@ async def test_mark_all_read_zero():
 @pytest.mark.asyncio
 async def test_mark_all_read_some():
     from app.routers.notifications import mark_all_read
+
     db = AsyncMock()
     result = MagicMock()
     result.rowcount = 5
@@ -162,10 +189,12 @@ async def test_mark_all_read_some():
 
 # ─── mark_read ────────────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_mark_read_not_found():
-    from fastapi import HTTPException
     from app.routers.notifications import mark_read
+    from fastapi import HTTPException
+
     db = AsyncMock()
     result = MagicMock()
     result.scalar_one_or_none.return_value = None
@@ -174,15 +203,17 @@ async def test_mark_read_not_found():
     with pytest.raises(HTTPException) as exc_info:
         await mark_read(
             notification_id=uuid.uuid4(),
-            current_user=_make_current_user(), db=db,
+            current_user=_make_current_user(),
+            db=db,
         )
     assert exc_info.value.status_code == 404
 
 
 @pytest.mark.asyncio
 async def test_mark_read_wrong_user():
-    from fastapi import HTTPException
     from app.routers.notifications import mark_read
+    from fastapi import HTTPException
+
     user, _ = _make_current_user()
     n = _make_notif(user_id=uuid.uuid4())  # different user_id
 
@@ -194,7 +225,8 @@ async def test_mark_read_wrong_user():
     with pytest.raises(HTTPException) as exc_info:
         await mark_read(
             notification_id=n.id,
-            current_user=(user, {}), db=db,
+            current_user=(user, {}),
+            db=db,
         )
     assert exc_info.value.status_code == 403
 
@@ -202,6 +234,7 @@ async def test_mark_read_wrong_user():
 @pytest.mark.asyncio
 async def test_mark_read_success():
     from app.routers.notifications import mark_read
+
     user, _ = _make_current_user()
     n = _make_notif(user_id=user.id, is_read=False)
 
@@ -212,7 +245,8 @@ async def test_mark_read_success():
 
     output = await mark_read(
         notification_id=n.id,
-        current_user=(user, {}), db=db,
+        current_user=(user, {}),
+        db=db,
     )
     assert n.is_read is True
 
@@ -221,6 +255,7 @@ async def test_mark_read_success():
 async def test_mark_read_already_read():
     """Already read notification: no change to read_at, still returns 200."""
     from app.routers.notifications import mark_read
+
     user, _ = _make_current_user()
     n = _make_notif(user_id=user.id, is_read=True)
     original_read_at = n.read_at
@@ -237,10 +272,12 @@ async def test_mark_read_already_read():
 
 # ─── delete_notification ──────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_delete_notification_not_found():
-    from fastapi import HTTPException
     from app.routers.notifications import delete_notification
+    from fastapi import HTTPException
+
     db = AsyncMock()
     result = MagicMock()
     result.scalar_one_or_none.return_value = None
@@ -249,15 +286,17 @@ async def test_delete_notification_not_found():
     with pytest.raises(HTTPException) as exc_info:
         await delete_notification(
             notification_id=uuid.uuid4(),
-            current_user=_make_current_user(), db=db,
+            current_user=_make_current_user(),
+            db=db,
         )
     assert exc_info.value.status_code == 404
 
 
 @pytest.mark.asyncio
 async def test_delete_notification_wrong_user():
-    from fastapi import HTTPException
     from app.routers.notifications import delete_notification
+    from fastapi import HTTPException
+
     user, _ = _make_current_user()
     n = _make_notif(user_id=uuid.uuid4())
 
@@ -269,7 +308,8 @@ async def test_delete_notification_wrong_user():
     with pytest.raises(HTTPException) as exc_info:
         await delete_notification(
             notification_id=n.id,
-            current_user=(user, {}), db=db,
+            current_user=(user, {}),
+            db=db,
         )
     assert exc_info.value.status_code == 403
 
@@ -277,6 +317,7 @@ async def test_delete_notification_wrong_user():
 @pytest.mark.asyncio
 async def test_delete_notification_success():
     from app.routers.notifications import delete_notification
+
     user, _ = _make_current_user()
     n = _make_notif(user_id=user.id)
 
@@ -288,17 +329,20 @@ async def test_delete_notification_success():
 
     await delete_notification(
         notification_id=n.id,
-        current_user=(user, {}), db=db,
+        current_user=(user, {}),
+        db=db,
     )
     db.delete.assert_called_once_with(n)
 
 
 # ─── has_more pagination edge case ────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_list_notifications_has_more_true():
     """has_more is True when total > offset + limit."""
     from app.routers.notifications import list_notifications
+
     db = AsyncMock()
     count_result = MagicMock()
     count_result.scalar.return_value = 50  # total=50
@@ -307,8 +351,12 @@ async def test_list_notifications_has_more_true():
     db.execute.side_effect = [count_result, data_result]
 
     output = await list_notifications(
-        limit=20, offset=0, type=None, is_read=None,
-        current_user=_make_current_user(), db=db,
+        limit=20,
+        offset=0,
+        type=None,
+        is_read=None,
+        current_user=_make_current_user(),
+        db=db,
     )
     # offset(0) + limit(20) = 20 < total(50) → has_more = True
     assert output["pagination"]["has_more"] is True
@@ -318,6 +366,7 @@ async def test_list_notifications_has_more_true():
 async def test_list_notifications_has_more_false_when_last_page():
     """has_more is False on the last page."""
     from app.routers.notifications import list_notifications
+
     db = AsyncMock()
     count_result = MagicMock()
     count_result.scalar.return_value = 5  # total=5
@@ -326,8 +375,12 @@ async def test_list_notifications_has_more_false_when_last_page():
     db.execute.side_effect = [count_result, data_result]
 
     output = await list_notifications(
-        limit=20, offset=0, type=None, is_read=None,
-        current_user=_make_current_user(), db=db,
+        limit=20,
+        offset=0,
+        type=None,
+        is_read=None,
+        current_user=_make_current_user(),
+        db=db,
     )
     # offset(0) + limit(20) = 20 >= total(5) → has_more = False
     assert output["pagination"]["has_more"] is False

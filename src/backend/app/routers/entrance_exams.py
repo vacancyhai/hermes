@@ -18,36 +18,37 @@ Note: Admin document CRUD has been moved to top-level endpoints:
 import uuid
 from datetime import datetime, timezone
 
+from app.dependencies import get_current_user, get_db, require_operator
+from app.models.admit_card import AdmitCard
+from app.models.answer_key import AnswerKey
+from app.models.entrance_exam import EntranceExam
+from app.models.result import Result
+from app.schemas.entrance_exams import (
+    EntranceExamCreateRequest,
+    EntranceExamListItem,
+    EntranceExamResponse,
+    EntranceExamUpdateRequest,
+)
+from app.schemas.jobs import AdmitCardResponse, AnswerKeyResponse, ResultResponse
+from app.services.matching import get_recommended_entrance_exams
+from app.utils import slugify as _slugify
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.dependencies import get_current_user, get_db, require_operator
-from app.utils import slugify as _slugify
-from app.services.matching import get_recommended_entrance_exams
-from app.models.entrance_exam import EntranceExam
-from app.models.admit_card import AdmitCard
-from app.models.answer_key import AnswerKey
-from app.models.result import Result
-from app.schemas.entrance_exams import (
-    EntranceExamCreateRequest, EntranceExamUpdateRequest,
-    EntranceExamListItem, EntranceExamResponse,
-)
-from app.schemas.jobs import (
-    AdmitCardResponse,
-    AnswerKeyResponse,
-    ResultResponse,
-)
-
 public_router = APIRouter(prefix="/api/v1/entrance-exams", tags=["entrance-exams"])
-admin_router = APIRouter(prefix="/api/v1/admin/entrance-exams", tags=["admin-entrance-exams"])
+admin_router = APIRouter(
+    prefix="/api/v1/admin/entrance-exams", tags=["admin-entrance-exams"]
+)
 
 
 async def _require_exam(exam_id: uuid.UUID, db: AsyncSession) -> EntranceExam:
     result = await db.execute(select(EntranceExam).where(EntranceExam.id == exam_id))
     exam = result.scalar_one_or_none()
     if not exam:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Exam not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Exam not found"
+        )
     return exam
 
 
@@ -71,9 +72,17 @@ async def list_exams(
     count_query = select(func.count(EntranceExam.id))
 
     if q:
-        query = query.where(text("search_vector @@ plainto_tsquery('english', :q)")).params(q=q)
-        count_query = count_query.where(text("search_vector @@ plainto_tsquery('english', :q)")).params(q=q)
-        query = query.order_by(text("ts_rank(search_vector, plainto_tsquery('english', :q)) DESC").params(q=q))
+        query = query.where(
+            text("search_vector @@ plainto_tsquery('english', :q)")
+        ).params(q=q)
+        count_query = count_query.where(
+            text("search_vector @@ plainto_tsquery('english', :q)")
+        ).params(q=q)
+        query = query.order_by(
+            text("ts_rank(search_vector, plainto_tsquery('english', :q)) DESC").params(
+                q=q
+            )
+        )
     else:
         query = query.order_by(EntranceExam.created_at.desc())
 
@@ -93,7 +102,12 @@ async def list_exams(
     # Increment views asynchronously (fire-and-forget style via bulk update)
     return {
         "data": [EntranceExamListItem.model_validate(r).model_dump() for r in rows],
-        "pagination": {"limit": limit, "offset": offset, "total": total, "has_more": (offset + limit) < total},
+        "pagination": {
+            "limit": limit,
+            "offset": offset,
+            "total": total,
+            "has_more": (offset + limit) < total,
+        },
     }
 
 
@@ -106,8 +120,10 @@ async def recommended_exams(
 ):
     """Personalized entrance exam recommendations based on user profile."""
     user, _ = current_user
-    exams, total = await get_recommended_entrance_exams(user.id, db, limit=limit, offset=offset)
-    
+    exams, total = await get_recommended_entrance_exams(
+        user.id, db, limit=limit, offset=offset
+    )
+
     return {
         "data": [EntranceExamListItem.model_validate(e).model_dump() for e in exams],
         "pagination": {
@@ -122,46 +138,61 @@ async def recommended_exams(
 @public_router.get("/{exam_id}")
 async def get_exam(exam_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     """Get entrance exam detail by ID. Increments view count. Includes all related documents."""
-    result = await db.execute(
-        select(EntranceExam).where(EntranceExam.id == exam_id)
-    )
+    result = await db.execute(select(EntranceExam).where(EntranceExam.id == exam_id))
     exam = result.scalar_one_or_none()
     if not exam:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Exam not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Exam not found"
+        )
     # Increment view count (inline, committed with the response)
     await db.execute(
-        update(EntranceExam).where(EntranceExam.id == exam.id).values(views=EntranceExam.views + 1)
+        update(EntranceExam)
+        .where(EntranceExam.id == exam.id)
+        .values(views=EntranceExam.views + 1)
     )
     await db.commit()
-    
+
     # Fetch related documents
     admit_cards_result = await db.execute(
         select(AdmitCard)
         .where(AdmitCard.exam_id == exam_id)
         .order_by(AdmitCard.phase_number.nulls_last(), AdmitCard.published_at.desc())
     )
-    admit_cards = [AdmitCardResponse.model_validate(card).model_dump() for card in admit_cards_result.scalars().all()]
+    admit_cards = [
+        AdmitCardResponse.model_validate(card).model_dump()
+        for card in admit_cards_result.scalars().all()
+    ]
 
     answer_keys_result = await db.execute(
         select(AnswerKey)
         .where(AnswerKey.exam_id == exam_id)
-        .order_by(AnswerKey.phase_number.nulls_last(), AnswerKey.answer_key_type, AnswerKey.published_at.desc())
+        .order_by(
+            AnswerKey.phase_number.nulls_last(),
+            AnswerKey.answer_key_type,
+            AnswerKey.published_at.desc(),
+        )
     )
-    answer_keys = [AnswerKeyResponse.model_validate(key).model_dump() for key in answer_keys_result.scalars().all()]
+    answer_keys = [
+        AnswerKeyResponse.model_validate(key).model_dump()
+        for key in answer_keys_result.scalars().all()
+    ]
 
     results_result = await db.execute(
         select(Result)
         .where(Result.exam_id == exam_id)
         .order_by(Result.phase_number.nulls_last(), Result.published_at.desc())
     )
-    results = [ResultResponse.model_validate(res).model_dump() for res in results_result.scalars().all()]
-    
+    results = [
+        ResultResponse.model_validate(res).model_dump()
+        for res in results_result.scalars().all()
+    ]
+
     # Build response with nested documents
     exam_data = EntranceExamResponse.model_validate(exam).model_dump()
     exam_data["admit_cards"] = admit_cards
     exam_data["answer_keys"] = answer_keys
     exam_data["results"] = results
-    
+
     return exam_data
 
 
@@ -192,10 +223,23 @@ async def admin_list_exams(
         q = q.where(EntranceExam.status == status)
         cq = cq.where(EntranceExam.status == status)
     total = (await db.execute(cq)).scalar()
-    rows = (await db.execute(q.order_by(EntranceExam.created_at.desc()).offset(offset).limit(limit))).scalars().all()
+    rows = (
+        (
+            await db.execute(
+                q.order_by(EntranceExam.created_at.desc()).offset(offset).limit(limit)
+            )
+        )
+        .scalars()
+        .all()
+    )
     return {
         "data": [EntranceExamListItem.model_validate(r).model_dump() for r in rows],
-        "pagination": {"limit": limit, "offset": offset, "total": total, "has_more": (offset + limit) < total},
+        "pagination": {
+            "limit": limit,
+            "offset": offset,
+            "total": total,
+            "has_more": (offset + limit) < total,
+        },
     }
 
 
@@ -217,9 +261,14 @@ async def create_exam(
     db: AsyncSession = Depends(get_db),
 ):
     base_slug = _slugify(body.exam_name)
-    existing = {r[0] for r in (await db.execute(
-        select(EntranceExam.slug).where(EntranceExam.slug.like(f"{base_slug}%"))
-    )).all()}
+    existing = {
+        r[0]
+        for r in (
+            await db.execute(
+                select(EntranceExam.slug).where(EntranceExam.slug.like(f"{base_slug}%"))
+            )
+        ).all()
+    }
     slug, counter = base_slug, 1
     while slug in existing:
         slug = f"{base_slug}-{counter}"

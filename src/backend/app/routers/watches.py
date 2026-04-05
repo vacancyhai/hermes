@@ -9,14 +9,13 @@ GET    /api/v1/users/me/watched               — List all watched jobs + exams
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import func, select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.dependencies import get_current_user, get_db
 from app.models.entrance_exam import EntranceExam
 from app.models.job import Job
 from app.models.user_watch import UserWatch
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(tags=["watches"])
 
@@ -26,7 +25,9 @@ MAX_WATCHES = 100
 # ── helpers ────────────────────────────────────────────────────────────────────
 
 
-async def _get_watch(user_id: uuid.UUID, entity_type: str, entity_id: uuid.UUID, db: AsyncSession):
+async def _get_watch(
+    user_id: uuid.UUID, entity_type: str, entity_id: uuid.UUID, db: AsyncSession
+):
     result = await db.execute(
         select(UserWatch).where(
             UserWatch.user_id == user_id,
@@ -60,7 +61,9 @@ async def watch_job(
 
     result = await db.execute(select(Job).where(Job.id == job_id))
     if not result.scalar_one_or_none():
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Job not found"
+        )
 
     if await _get_watch(user.id, "job", job_id, db):
         return {"message": "Already watching this job", "watching": True}
@@ -87,7 +90,9 @@ async def unwatch_job(
 
     watch = await _get_watch(user.id, "job", job_id, db)
     if not watch:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not watching this job")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Not watching this job"
+        )
 
     await db.delete(watch)
     await db.commit()
@@ -110,7 +115,9 @@ async def watch_exam(
 
     result = await db.execute(select(EntranceExam).where(EntranceExam.id == exam_id))
     if not result.scalar_one_or_none():
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Entrance exam not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Entrance exam not found"
+        )
 
     if await _get_watch(user.id, "exam", exam_id, db):
         return {"message": "Already watching this exam", "watching": True}
@@ -137,7 +144,9 @@ async def unwatch_exam(
 
     watch = await _get_watch(user.id, "exam", exam_id, db)
     if not watch:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not watching this exam")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Not watching this exam"
+        )
 
     await db.delete(watch)
     await db.commit()
@@ -177,7 +186,9 @@ async def list_watched(
                 "job_title": j.job_title,
                 "slug": j.slug,
                 "organization": j.organization,
-                "application_end": str(j.application_end) if j.application_end else None,
+                "application_end": (
+                    str(j.application_end) if j.application_end else None
+                ),
                 "status": j.status,
             }
             for j in result.scalars().all()
@@ -185,21 +196,33 @@ async def list_watched(
 
     exams_by_id: dict = {}
     if exam_ids:
-        result = await db.execute(select(EntranceExam).where(EntranceExam.id.in_(exam_ids)))
+        result = await db.execute(
+            select(EntranceExam).where(EntranceExam.id.in_(exam_ids))
+        )
         exams_by_id = {
             e.id: {
                 "id": str(e.id),
                 "exam_name": e.exam_name,
                 "slug": e.slug,
                 "conducting_body": e.conducting_body,
-                "application_end": str(e.application_end) if e.application_end else None,
+                "application_end": (
+                    str(e.application_end) if e.application_end else None
+                ),
                 "status": e.status,
             }
             for e in result.scalars().all()
         }
 
     # Re-assemble in watch created_at order (watches already sorted desc)
-    jobs = [jobs_by_id[w.entity_id] for w in watches if w.entity_type == "job" and w.entity_id in jobs_by_id]
-    exams = [exams_by_id[w.entity_id] for w in watches if w.entity_type == "exam" and w.entity_id in exams_by_id]
+    jobs = [
+        jobs_by_id[w.entity_id]
+        for w in watches
+        if w.entity_type == "job" and w.entity_id in jobs_by_id
+    ]
+    exams = [
+        exams_by_id[w.entity_id]
+        for w in watches
+        if w.entity_type == "exam" and w.entity_id in exams_by_id
+    ]
 
     return {"jobs": jobs, "exams": exams, "total": len(jobs) + len(exams)}

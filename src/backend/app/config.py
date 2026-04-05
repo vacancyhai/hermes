@@ -13,7 +13,9 @@ class Settings(BaseSettings):
     BACKEND_PORT: int = 8000
 
     # PostgreSQL (through PgBouncer)
-    DATABASE_URL: str = "postgresql+asyncpg://hermes_user:hermes_pass@pgbouncer:5432/hermes_db"
+    DATABASE_URL: str = (
+        "postgresql+asyncpg://hermes_user:hermes_pass@pgbouncer:5432/hermes_db"
+    )
     DB_POOL_SIZE: int = 20
 
     # Redis
@@ -47,7 +49,9 @@ class Settings(BaseSettings):
     PDF_MAX_SIZE_MB: int = 10
     ANTHROPIC_API_KEY: str = ""
     AI_MODEL: str = "claude-3-5-sonnet-20241022"
-    PDF_KEEP_AFTER_EXTRACTION: bool = False  # Set True to retain PDFs after AI extraction
+    PDF_KEEP_AFTER_EXTRACTION: bool = (
+        False  # Set True to retain PDFs after AI extraction
+    )
 
     # Firebase Auth (frontend JS SDK config)
     FIREBASE_WEB_API_KEY: str = ""
@@ -62,12 +66,12 @@ class Settings(BaseSettings):
     SITEMAP_PATH: str = "/app/sitemap.xml"
 
     # Telegram Bot API
-    TELEGRAM_BOT_TOKEN: str = ""        # Set to activate Telegram notifications
+    TELEGRAM_BOT_TOKEN: str = ""  # Set to activate Telegram notifications
 
     # Notification delivery delays (staggered mode, in seconds)
-    NOTIFY_EMAIL_DELAY: int = 900       # 15 minutes
-    NOTIFY_WHATSAPP_DELAY: int = 3600   # 1 hour
-    NOTIFY_TELEGRAM_DELAY: int = 900    # 15 minutes
+    NOTIFY_EMAIL_DELAY: int = 900  # 15 minutes
+    NOTIFY_WHATSAPP_DELAY: int = 3600  # 1 hour
+    NOTIFY_TELEGRAM_DELAY: int = 900  # 15 minutes
 
     # CORS
     CORS_ORIGINS: list[str] = ["http://localhost:8080", "http://localhost:8081"]
@@ -78,7 +82,9 @@ class Settings(BaseSettings):
     def validate_production_secrets(self) -> "Settings":
         if self.APP_ENV == "production":
             if self.JWT_SECRET_KEY.startswith("change-me"):
-                raise ValueError("JWT_SECRET_KEY must not use the default value in production")
+                raise ValueError(
+                    "JWT_SECRET_KEY must not use the default value in production"
+                )
         return self
 
 

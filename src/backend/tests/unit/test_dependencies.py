@@ -5,13 +5,11 @@ from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from app.config import settings
+from app.utils import ALGORITHM
 from fastapi import HTTPException
 from fastapi.security import HTTPAuthorizationCredentials
 from jose import jwt
-
-from app.config import settings
-from app.utils import ALGORITHM
-
 
 # ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -59,6 +57,7 @@ def _db_with_user(user):
 @pytest.mark.asyncio
 async def test_decode_valid_user_token():
     from app.dependencies import _decode_and_validate_token
+
     token = _build_token({"user_type": "user"})
     payload = await _decode_and_validate_token(_creds(token), _redis(), "user")
     assert payload["user_type"] == "user"
@@ -68,6 +67,7 @@ async def test_decode_valid_user_token():
 @pytest.mark.asyncio
 async def test_decode_valid_admin_token():
     from app.dependencies import _decode_and_validate_token
+
     token = _build_token({"user_type": "admin"})
     payload = await _decode_and_validate_token(_creds(token), _redis(), "admin")
     assert payload["user_type"] == "admin"
@@ -76,6 +76,7 @@ async def test_decode_valid_admin_token():
 @pytest.mark.asyncio
 async def test_decode_malformed_token_raises_401():
     from app.dependencies import _decode_and_validate_token
+
     with pytest.raises(HTTPException) as exc:
         await _decode_and_validate_token(_creds("not.a.valid.jwt"), _redis(), "user")
     assert exc.value.status_code == 401
@@ -85,8 +86,14 @@ async def test_decode_malformed_token_raises_401():
 @pytest.mark.asyncio
 async def test_decode_wrong_secret_raises_401():
     from app.dependencies import _decode_and_validate_token
+
     bad_token = jwt.encode(
-        {"sub": str(uuid.uuid4()), "user_type": "user", "type": "access", "jti": str(uuid.uuid4())},
+        {
+            "sub": str(uuid.uuid4()),
+            "user_type": "user",
+            "type": "access",
+            "jti": str(uuid.uuid4()),
+        },
         "wrong-secret",
         algorithm=ALGORITHM,
     )
@@ -98,6 +105,7 @@ async def test_decode_wrong_secret_raises_401():
 @pytest.mark.asyncio
 async def test_decode_refresh_token_type_raises_401():
     from app.dependencies import _decode_and_validate_token
+
     token = _build_token({"type": "refresh"})
     with pytest.raises(HTTPException) as exc:
         await _decode_and_validate_token(_creds(token), _redis(), "user")
@@ -108,6 +116,7 @@ async def test_decode_refresh_token_type_raises_401():
 @pytest.mark.asyncio
 async def test_decode_wrong_user_type_raises_403():
     from app.dependencies import _decode_and_validate_token
+
     token = _build_token({"user_type": "admin"})
     with pytest.raises(HTTPException) as exc:
         await _decode_and_validate_token(_creds(token), _redis(), "user")
@@ -118,9 +127,12 @@ async def test_decode_wrong_user_type_raises_403():
 @pytest.mark.asyncio
 async def test_decode_blocklisted_jti_raises_401():
     from app.dependencies import _decode_and_validate_token
+
     token = _build_token({"user_type": "user"})
     with pytest.raises(HTTPException) as exc:
-        await _decode_and_validate_token(_creds(token), _redis(blocklisted=True), "user")
+        await _decode_and_validate_token(
+            _creds(token), _redis(blocklisted=True), "user"
+        )
     assert exc.value.status_code == 401
     assert "revoked" in exc.value.detail.lower()
 
@@ -128,6 +140,7 @@ async def test_decode_blocklisted_jti_raises_401():
 @pytest.mark.asyncio
 async def test_decode_missing_sub_raises_401():
     from app.dependencies import _decode_and_validate_token
+
     token = _build_token({"sub": ""})
     with pytest.raises(HTTPException) as exc:
         await _decode_and_validate_token(_creds(token), _redis(), "user")
@@ -142,6 +155,7 @@ async def test_decode_missing_sub_raises_401():
 @pytest.mark.asyncio
 async def test_get_current_user_valid_returns_tuple():
     from app.dependencies import get_current_user
+
     user_id = uuid.uuid4()
     token = _build_token({"sub": str(user_id), "user_type": "user"})
 
@@ -161,6 +175,7 @@ async def test_get_current_user_valid_returns_tuple():
 @pytest.mark.asyncio
 async def test_get_current_user_not_found_raises_401():
     from app.dependencies import get_current_user
+
     token = _build_token({"user_type": "user"})
     with pytest.raises(HTTPException) as exc:
         await get_current_user(
@@ -175,6 +190,7 @@ async def test_get_current_user_not_found_raises_401():
 @pytest.mark.asyncio
 async def test_get_current_user_suspended_raises_401():
     from app.dependencies import get_current_user
+
     token = _build_token({"user_type": "user"})
 
     user = MagicMock()
@@ -193,6 +209,7 @@ async def test_get_current_user_suspended_raises_401():
 @pytest.mark.asyncio
 async def test_get_current_user_invalid_token_raises_401():
     from app.dependencies import get_current_user
+
     with pytest.raises(HTTPException) as exc:
         await get_current_user(
             credentials=_creds("garbage"),
@@ -210,6 +227,7 @@ async def test_get_current_user_invalid_token_raises_401():
 @pytest.mark.asyncio
 async def test_get_current_admin_valid_returns_tuple():
     from app.dependencies import get_current_admin
+
     admin_id = uuid.uuid4()
     token = _build_token({"sub": str(admin_id), "user_type": "admin"})
 
@@ -229,6 +247,7 @@ async def test_get_current_admin_valid_returns_tuple():
 @pytest.mark.asyncio
 async def test_get_current_admin_not_found_raises_401():
     from app.dependencies import get_current_admin
+
     token = _build_token({"user_type": "admin"})
     with pytest.raises(HTTPException) as exc:
         await get_current_admin(
@@ -242,6 +261,7 @@ async def test_get_current_admin_not_found_raises_401():
 @pytest.mark.asyncio
 async def test_get_current_admin_inactive_raises_401():
     from app.dependencies import get_current_admin
+
     token = _build_token({"user_type": "admin"})
 
     admin = MagicMock()
@@ -260,6 +280,7 @@ async def test_get_current_admin_inactive_raises_401():
 @pytest.mark.asyncio
 async def test_get_current_admin_wrong_token_scope_raises_403():
     from app.dependencies import get_current_admin
+
     # user-scoped token used for admin endpoint
     token = _build_token({"user_type": "user"})
     with pytest.raises(HTTPException) as exc:
@@ -279,6 +300,7 @@ async def test_get_current_admin_wrong_token_scope_raises_403():
 @pytest.mark.asyncio
 async def test_require_admin_with_admin_role_passes():
     from app.dependencies import require_admin
+
     admin = MagicMock()
     admin.role = "admin"
     result = await require_admin(current_admin=(admin, {}))
@@ -288,6 +310,7 @@ async def test_require_admin_with_admin_role_passes():
 @pytest.mark.asyncio
 async def test_require_admin_with_operator_role_raises_403():
     from app.dependencies import require_admin
+
     admin = MagicMock()
     admin.role = "operator"
     with pytest.raises(HTTPException) as exc:
@@ -299,6 +322,7 @@ async def test_require_admin_with_operator_role_raises_403():
 @pytest.mark.asyncio
 async def test_require_admin_with_viewer_role_raises_403():
     from app.dependencies import require_admin
+
     admin = MagicMock()
     admin.role = "viewer"
     with pytest.raises(HTTPException) as exc:
@@ -314,6 +338,7 @@ async def test_require_admin_with_viewer_role_raises_403():
 @pytest.mark.asyncio
 async def test_require_operator_with_admin_role_passes():
     from app.dependencies import require_operator
+
     admin = MagicMock()
     admin.role = "admin"
     result = await require_operator(current_admin=(admin, {}))
@@ -323,6 +348,7 @@ async def test_require_operator_with_admin_role_passes():
 @pytest.mark.asyncio
 async def test_require_operator_with_operator_role_passes():
     from app.dependencies import require_operator
+
     admin = MagicMock()
     admin.role = "operator"
     result = await require_operator(current_admin=(admin, {}))
@@ -332,6 +358,7 @@ async def test_require_operator_with_operator_role_passes():
 @pytest.mark.asyncio
 async def test_require_operator_with_viewer_role_raises_403():
     from app.dependencies import require_operator
+
     admin = MagicMock()
     admin.role = "viewer"
     with pytest.raises(HTTPException) as exc:

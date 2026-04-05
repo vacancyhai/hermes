@@ -2,15 +2,14 @@
 
 from datetime import date, timedelta
 
-from sqlalchemy import func, or_, select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.models.admit_card import AdmitCard
 from app.models.answer_key import AnswerKey
 from app.models.entrance_exam import EntranceExam
 from app.models.job import Job
 from app.models.result import Result
 from app.models.user_profile import UserProfile
+from sqlalchemy import func, or_, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 # Maximum candidates fetched from DB before in-memory scoring (avoids loading all jobs)
 # NOTE: Users whose preferences best match jobs created beyond this window may not see
@@ -20,9 +19,9 @@ CANDIDATE_LIMIT = 500
 # Scoring weights
 STATE_MATCH = 3
 CATEGORY_ELIGIBILITY_MATCH = 4  # user's actual reservation category is eligible
-CATEGORY_PREF_MATCH = 2         # user's preferred categories include a job category
+CATEGORY_PREF_MATCH = 2  # user's preferred categories include a job category
 EDUCATION_MATCH = 2
-AGE_MATCH = 2                   # user's age is within job's eligibility range
+AGE_MATCH = 2  # user's age is within job's eligibility range
 RECENCY_BONUS = 1
 RECENCY_DAYS = 7
 
@@ -44,8 +43,10 @@ def _user_age(date_of_birth: date | None) -> int | None:
     if not date_of_birth:
         return None
     today = date.today()
-    return today.year - date_of_birth.year - (
-        (today.month, today.day) < (date_of_birth.month, date_of_birth.day)
+    return (
+        today.year
+        - date_of_birth.year
+        - ((today.month, today.day) < (date_of_birth.month, date_of_birth.day))
     )
 
 
@@ -68,9 +69,7 @@ async def get_recommended_jobs(
     Returns (scored_jobs, total_count).
     """
     # Load profile
-    result = await db.execute(
-        select(UserProfile).where(UserProfile.user_id == user_id)
-    )
+    result = await db.execute(select(UserProfile).where(UserProfile.user_id == user_id))
     profile = result.scalar_one_or_none()
 
     # Base query: active jobs with future (or null) deadlines
@@ -90,9 +89,9 @@ async def get_recommended_jobs(
 
     if not has_prefs:
         # No preferences — return newest active jobs using DB-level pagination
-        total = (await db.execute(
-            select(func.count(Job.id)).where(*base_filter)
-        )).scalar() or 0
+        total = (
+            await db.execute(select(func.count(Job.id)).where(*base_filter))
+        ).scalar() or 0
         result = await db.execute(
             select(Job)
             .where(*base_filter)
@@ -159,7 +158,11 @@ async def get_recommended_jobs(
             score += EDUCATION_MATCH
 
         # Age match: user's age is within the job's eligibility range
-        if user_age is not None and job.eligibility and isinstance(job.eligibility, dict):
+        if (
+            user_age is not None
+            and job.eligibility
+            and isinstance(job.eligibility, dict)
+        ):
             age_min = job.eligibility.get("age_min")
             age_max = job.eligibility.get("age_max")
             if age_min is not None or age_max is not None:
@@ -189,9 +192,11 @@ async def get_recommended_jobs(
 async def _get_watched_ids(user_id, db: AsyncSession) -> tuple[list, list]:
     """Return (watched_job_ids, watched_exam_ids) for a user."""
     from app.models.user_watch import UserWatch
+
     result = await db.execute(
-        select(UserWatch.entity_type, UserWatch.entity_id)
-        .where(UserWatch.user_id == user_id)
+        select(UserWatch.entity_type, UserWatch.entity_id).where(
+            UserWatch.user_id == user_id
+        )
     )
     rows = result.all()
     job_ids = [r.entity_id for r in rows if r.entity_type == "job"]
@@ -213,7 +218,9 @@ async def get_recommended_admit_cards(
         AdmitCard.job_id.in_(job_ids) if job_ids else False,
         AdmitCard.exam_id.in_(exam_ids) if exam_ids else False,
     )
-    total = (await db.execute(select(func.count(AdmitCard.id)).where(predicate))).scalar() or 0
+    total = (
+        await db.execute(select(func.count(AdmitCard.id)).where(predicate))
+    ).scalar() or 0
     result = await db.execute(
         select(AdmitCard)
         .where(predicate)
@@ -238,7 +245,9 @@ async def get_recommended_answer_keys(
         AnswerKey.job_id.in_(job_ids) if job_ids else False,
         AnswerKey.exam_id.in_(exam_ids) if exam_ids else False,
     )
-    total = (await db.execute(select(func.count(AnswerKey.id)).where(predicate))).scalar() or 0
+    total = (
+        await db.execute(select(func.count(AnswerKey.id)).where(predicate))
+    ).scalar() or 0
     result = await db.execute(
         select(AnswerKey)
         .where(predicate)
@@ -263,7 +272,9 @@ async def get_recommended_results(
         Result.job_id.in_(job_ids) if job_ids else False,
         Result.exam_id.in_(exam_ids) if exam_ids else False,
     )
-    total = (await db.execute(select(func.count(Result.id)).where(predicate))).scalar() or 0
+    total = (
+        await db.execute(select(func.count(Result.id)).where(predicate))
+    ).scalar() or 0
     result = await db.execute(
         select(Result)
         .where(predicate)
@@ -292,30 +303,28 @@ async def get_recommended_entrance_exams(
     Returns (scored_exams, total_count).
     """
     # Load profile
-    result = await db.execute(
-        select(UserProfile).where(UserProfile.user_id == user_id)
-    )
+    result = await db.execute(select(UserProfile).where(UserProfile.user_id == user_id))
     profile = result.scalar_one_or_none()
-    
+
     # Base query: active exams with future (or null) exam dates
     today = date.today()
     base_filter = (
         EntranceExam.status == "active",
         (EntranceExam.exam_date >= today) | (EntranceExam.exam_date.is_(None)),
     )
-    
+
     has_prefs = profile and (
         profile.preferred_states
         or profile.highest_qualification
         or profile.category
         or profile.date_of_birth
     )
-    
+
     if not has_prefs:
         # No preferences — return newest active exams using DB-level pagination
-        total = (await db.execute(
-            select(func.count(EntranceExam.id)).where(*base_filter)
-        )).scalar() or 0
+        total = (
+            await db.execute(select(func.count(EntranceExam.id)).where(*base_filter))
+        ).scalar() or 0
         result = await db.execute(
             select(EntranceExam)
             .where(*base_filter)
@@ -324,7 +333,7 @@ async def get_recommended_entrance_exams(
             .limit(limit)
         )
         return list(result.scalars().all()), total
-    
+
     result = await db.execute(
         select(EntranceExam)
         .where(*base_filter)
@@ -332,18 +341,18 @@ async def get_recommended_entrance_exams(
         .limit(CANDIDATE_LIMIT)
     )
     exams = result.scalars().all()
-    
+
     # Pre-compute user attributes for scoring
     pref_states = {s.lower() for s in (profile.preferred_states or [])}
     user_category = profile.category.lower() if profile.category else None
     user_edu_rank = _education_rank(profile.highest_qualification)
     user_age = _user_age(profile.date_of_birth)
     recency_cutoff = today - timedelta(days=RECENCY_DAYS)
-    
+
     scored: list[tuple[int, date | None, EntranceExam]] = []
     for exam in exams:
         score = 0
-        
+
         # Build exam's eligible category set from eligibility dict
         exam_cats = set()
         if exam.eligibility and isinstance(exam.eligibility, dict):
@@ -352,11 +361,11 @@ async def get_recommended_entrance_exams(
                 exam_cats = {c.lower() for c in cat_val}
             elif isinstance(cat_val, str):
                 exam_cats.add(cat_val.lower())
-        
+
         # Category eligibility: user's actual reservation category is in the exam's categories
         if user_category and (not exam_cats or user_category in exam_cats):
             score += CATEGORY_ELIGIBILITY_MATCH
-        
+
         # State match via eligibility dict
         exam_states = set()
         if exam.eligibility and isinstance(exam.eligibility, dict):
@@ -368,18 +377,24 @@ async def get_recommended_entrance_exams(
                     exam_states.add(val.lower())
         if pref_states and (not exam_states or pref_states & exam_states):
             score += STATE_MATCH
-        
+
         # Education match: extract qualification from eligibility dict
         exam_edu_rank = -1
         if exam.eligibility and isinstance(exam.eligibility, dict):
-            qual = exam.eligibility.get("qualification") or exam.eligibility.get("min_qualification")
+            qual = exam.eligibility.get("qualification") or exam.eligibility.get(
+                "min_qualification"
+            )
             if qual:
                 exam_edu_rank = _education_rank(qual)
         if user_edu_rank >= 0 and exam_edu_rank >= 0 and user_edu_rank >= exam_edu_rank:
             score += EDUCATION_MATCH
-        
+
         # Age match: user's age is within the exam's eligibility range
-        if user_age is not None and exam.eligibility and isinstance(exam.eligibility, dict):
+        if (
+            user_age is not None
+            and exam.eligibility
+            and isinstance(exam.eligibility, dict)
+        ):
             age_min = exam.eligibility.get("age_min") or exam.eligibility.get("min_age")
             age_max = exam.eligibility.get("age_max") or exam.eligibility.get("max_age")
             if age_min is not None or age_max is not None:
@@ -390,13 +405,13 @@ async def get_recommended_entrance_exams(
                     age_ok = age_ok and user_age <= int(age_max)
                 if age_ok:
                     score += AGE_MATCH
-        
+
         # Recency bonus
         if exam.created_at and exam.created_at.date() >= recency_cutoff:
             score += RECENCY_BONUS
-        
+
         scored.append((score, exam.exam_date, exam))
-    
+
     # Sort: score DESC, then exam_date ASC (None exam_dates last)
     far_future = date(9999, 12, 31)
     scored.sort(key=lambda t: (-t[0], t[1] or far_future))

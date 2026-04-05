@@ -1,10 +1,9 @@
 """Firebase Admin SDK — shared initialization for Auth + FCM."""
 
 import firebase_admin
+from app.config import settings
 from firebase_admin import auth as firebase_auth
 from firebase_admin import credentials
-
-from app.config import settings
 
 
 def init_firebase() -> bool:

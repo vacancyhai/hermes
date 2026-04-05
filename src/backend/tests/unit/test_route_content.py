@@ -6,7 +6,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-
 # ── fixtures ─────────────────────────────────────────────────────────────────
 
 
@@ -101,8 +100,9 @@ def _mock_resp(id_val):
 
 @pytest.mark.asyncio
 async def test_validate_parent_both_ids_raises_400():
-    from fastapi import HTTPException
     from app.routers.content import _validate_document_parent
+    from fastapi import HTTPException
+
     with pytest.raises(HTTPException) as exc:
         await _validate_document_parent(uuid.uuid4(), uuid.uuid4(), AsyncMock())
     assert exc.value.status_code == 400
@@ -111,8 +111,9 @@ async def test_validate_parent_both_ids_raises_400():
 
 @pytest.mark.asyncio
 async def test_validate_parent_neither_id_raises_400():
-    from fastapi import HTTPException
     from app.routers.content import _validate_document_parent
+    from fastapi import HTTPException
+
     with pytest.raises(HTTPException) as exc:
         await _validate_document_parent(None, None, AsyncMock())
     assert exc.value.status_code == 400
@@ -120,8 +121,9 @@ async def test_validate_parent_neither_id_raises_400():
 
 @pytest.mark.asyncio
 async def test_validate_parent_job_not_found_raises_404():
-    from fastapi import HTTPException
     from app.routers.content import _validate_document_parent
+    from fastapi import HTTPException
+
     db = _db_single(None)
     db.execute.return_value.scalar.return_value = None
     with pytest.raises(HTTPException) as exc:
@@ -132,8 +134,9 @@ async def test_validate_parent_job_not_found_raises_404():
 
 @pytest.mark.asyncio
 async def test_validate_parent_exam_not_found_raises_404():
-    from fastapi import HTTPException
     from app.routers.content import _validate_document_parent
+    from fastapi import HTTPException
+
     db = _db_single(None)
     db.execute.return_value.scalar.return_value = None
     with pytest.raises(HTTPException) as exc:
@@ -145,6 +148,7 @@ async def test_validate_parent_exam_not_found_raises_404():
 @pytest.mark.asyncio
 async def test_validate_parent_job_found_passes():
     from app.routers.content import _validate_document_parent
+
     job_id = uuid.uuid4()
     db = AsyncMock()
     res = MagicMock()
@@ -156,6 +160,7 @@ async def test_validate_parent_job_found_passes():
 @pytest.mark.asyncio
 async def test_validate_parent_exam_found_passes():
     from app.routers.content import _validate_document_parent
+
     exam_id = uuid.uuid4()
     db = AsyncMock()
     res = MagicMock()
@@ -172,6 +177,7 @@ async def test_validate_parent_exam_found_passes():
 @pytest.mark.asyncio
 async def test_list_admit_cards_empty():
     from app.routers.content import list_admit_cards
+
     result = await list_admit_cards(limit=20, offset=0, db=_db_list([], count=0))
     assert result["data"] == []
     assert result["pagination"]["total"] == 0
@@ -182,6 +188,7 @@ async def test_list_admit_cards_empty():
 async def test_list_admit_cards_returns_items():
     from app.routers.content import list_admit_cards
     from app.schemas.jobs import AdmitCardResponse
+
     card = _make_card()
     mock_r = _mock_resp(card.id)
     with patch.object(AdmitCardResponse, "model_validate", return_value=mock_r):
@@ -194,16 +201,20 @@ async def test_list_admit_cards_returns_items():
 async def test_list_admit_cards_has_more():
     from app.routers.content import list_admit_cards
     from app.schemas.jobs import AdmitCardResponse
+
     card = _make_card()
-    with patch.object(AdmitCardResponse, "model_validate", return_value=_mock_resp(card.id)):
+    with patch.object(
+        AdmitCardResponse, "model_validate", return_value=_mock_resp(card.id)
+    ):
         result = await list_admit_cards(limit=1, offset=0, db=_db_list([card], count=5))
     assert result["pagination"]["has_more"] is True
 
 
 @pytest.mark.asyncio
 async def test_get_admit_card_not_found():
-    from fastapi import HTTPException
     from app.routers.content import get_admit_card
+    from fastapi import HTTPException
+
     with pytest.raises(HTTPException) as exc:
         await get_admit_card(card_id=uuid.uuid4(), db=_db_single(None))
     assert exc.value.status_code == 404
@@ -213,6 +224,7 @@ async def test_get_admit_card_not_found():
 async def test_get_admit_card_found_no_parent():
     from app.routers.content import get_admit_card
     from app.schemas.jobs import AdmitCardResponse
+
     card = _make_card()
     mock_r = _mock_resp(card.id)
     with patch.object(AdmitCardResponse, "model_validate", return_value=mock_r):
@@ -226,6 +238,7 @@ async def test_get_admit_card_found_no_parent():
 async def test_get_admit_card_found_with_job():
     from app.routers.content import get_admit_card
     from app.schemas.jobs import AdmitCardResponse
+
     job_id = uuid.uuid4()
     card = _make_card(job_id=job_id)
     card.job = MagicMock()
@@ -243,6 +256,7 @@ async def test_get_admit_card_found_with_job():
 async def test_get_admit_card_found_with_exam():
     from app.routers.content import get_admit_card
     from app.schemas.jobs import AdmitCardResponse
+
     exam_id = uuid.uuid4()
     card = _make_card(exam_id=exam_id)
     card.exam = MagicMock()
@@ -265,19 +279,28 @@ async def test_get_admit_card_found_with_exam():
 async def test_admin_list_admit_cards():
     from app.routers.content import admin_list_admit_cards
     from app.schemas.jobs import AdmitCardResponse
+
     card = _make_card()
-    with patch.object(AdmitCardResponse, "model_validate", return_value=_mock_resp(card.id)):
-        result = await admin_list_admit_cards(limit=20, offset=0, db=_db_list([card]), admin=MagicMock())
+    with patch.object(
+        AdmitCardResponse, "model_validate", return_value=_mock_resp(card.id)
+    ):
+        result = await admin_list_admit_cards(
+            limit=20, offset=0, db=_db_list([card]), admin=MagicMock()
+        )
     assert result["pagination"]["total"] == 1
 
 
 @pytest.mark.asyncio
 async def test_admin_create_admit_card_both_parents_raises():
-    from fastapi import HTTPException
     from app.routers.content import admin_create_admit_card
     from app.schemas.jobs import AdmitCardCreateRequest
+    from fastapi import HTTPException
+
     body = AdmitCardCreateRequest(
-        job_id=uuid.uuid4(), exam_id=uuid.uuid4(), title="Card", download_url="https://x.com/c.pdf"
+        job_id=uuid.uuid4(),
+        exam_id=uuid.uuid4(),
+        title="Card",
+        download_url="https://x.com/c.pdf",
     )
     with pytest.raises(HTTPException) as exc:
         await admin_create_admit_card(body=body, admin=MagicMock(), db=AsyncMock())
@@ -286,9 +309,10 @@ async def test_admin_create_admit_card_both_parents_raises():
 
 @pytest.mark.asyncio
 async def test_admin_create_admit_card_no_parent_raises():
-    from fastapi import HTTPException
     from app.routers.content import admin_create_admit_card
     from app.schemas.jobs import AdmitCardCreateRequest
+    from fastapi import HTTPException
+
     body = AdmitCardCreateRequest(title="Card", download_url="https://x.com/c.pdf")
     with pytest.raises(HTTPException) as exc:
         await admin_create_admit_card(body=body, admin=MagicMock(), db=AsyncMock())
@@ -299,13 +323,18 @@ async def test_admin_create_admit_card_no_parent_raises():
 async def test_admin_create_admit_card_success():
     from app.routers.content import admin_create_admit_card
     from app.schemas.jobs import AdmitCardCreateRequest, AdmitCardResponse
+
     job_id = uuid.uuid4()
-    body = AdmitCardCreateRequest(job_id=job_id, title="Card", download_url="https://x.com/c.pdf")
+    body = AdmitCardCreateRequest(
+        job_id=job_id, title="Card", download_url="https://x.com/c.pdf"
+    )
     db = AsyncMock()
     parent_res = MagicMock()
     parent_res.scalar.return_value = job_id
     db.execute = AsyncMock(return_value=parent_res)
-    with patch.object(AdmitCardResponse, "model_validate", return_value=_mock_resp(uuid.uuid4())):
+    with patch.object(
+        AdmitCardResponse, "model_validate", return_value=_mock_resp(uuid.uuid4())
+    ):
         await admin_create_admit_card(body=body, admin=MagicMock(), db=db)
     db.add.assert_called_once()
     db.flush.assert_called_once()
@@ -313,12 +342,16 @@ async def test_admin_create_admit_card_success():
 
 @pytest.mark.asyncio
 async def test_admin_update_admit_card_not_found():
-    from fastapi import HTTPException
     from app.routers.content import admin_update_admit_card
     from app.schemas.jobs import AdmitCardUpdateRequest
+    from fastapi import HTTPException
+
     with pytest.raises(HTTPException) as exc:
         await admin_update_admit_card(
-            card_id=uuid.uuid4(), body=AdmitCardUpdateRequest(), admin=MagicMock(), db=_db_single(None)
+            card_id=uuid.uuid4(),
+            body=AdmitCardUpdateRequest(),
+            admin=MagicMock(),
+            db=_db_single(None),
         )
     assert exc.value.status_code == 404
 
@@ -326,28 +359,37 @@ async def test_admin_update_admit_card_not_found():
 @pytest.mark.asyncio
 async def test_admin_update_admit_card_success():
     from app.routers.content import admin_update_admit_card
-    from app.schemas.jobs import AdmitCardUpdateRequest, AdmitCardResponse
+    from app.schemas.jobs import AdmitCardResponse, AdmitCardUpdateRequest
+
     card = _make_card()
-    with patch.object(AdmitCardResponse, "model_validate", return_value=_mock_resp(card.id)):
+    with patch.object(
+        AdmitCardResponse, "model_validate", return_value=_mock_resp(card.id)
+    ):
         await admin_update_admit_card(
-            card_id=card.id, body=AdmitCardUpdateRequest(title="New Title"),
-            admin=MagicMock(), db=_db_single(card)
+            card_id=card.id,
+            body=AdmitCardUpdateRequest(title="New Title"),
+            admin=MagicMock(),
+            db=_db_single(card),
         )
     _db_single(card).flush.assert_not_called()
 
 
 @pytest.mark.asyncio
 async def test_admin_delete_admit_card_not_found():
-    from fastapi import HTTPException
     from app.routers.content import admin_delete_admit_card
+    from fastapi import HTTPException
+
     with pytest.raises(HTTPException) as exc:
-        await admin_delete_admit_card(card_id=uuid.uuid4(), admin=MagicMock(), db=_db_single(None))
+        await admin_delete_admit_card(
+            card_id=uuid.uuid4(), admin=MagicMock(), db=_db_single(None)
+        )
     assert exc.value.status_code == 404
 
 
 @pytest.mark.asyncio
 async def test_admin_delete_admit_card_success():
     from app.routers.content import admin_delete_admit_card
+
     card = _make_card()
     db = _db_single(card)
     await admin_delete_admit_card(card_id=card.id, admin=MagicMock(), db=db)
@@ -362,6 +404,7 @@ async def test_admin_delete_admit_card_success():
 @pytest.mark.asyncio
 async def test_list_answer_keys_empty():
     from app.routers.content import list_answer_keys
+
     result = await list_answer_keys(limit=20, offset=0, db=_db_list([], count=0))
     assert result["data"] == []
     assert result["pagination"]["total"] == 0
@@ -371,16 +414,20 @@ async def test_list_answer_keys_empty():
 async def test_list_answer_keys_returns_items():
     from app.routers.content import list_answer_keys
     from app.schemas.jobs import AnswerKeyResponse
+
     key = _make_key()
-    with patch.object(AnswerKeyResponse, "model_validate", return_value=_mock_resp(key.id)):
+    with patch.object(
+        AnswerKeyResponse, "model_validate", return_value=_mock_resp(key.id)
+    ):
         result = await list_answer_keys(limit=20, offset=0, db=_db_list([key]))
     assert len(result["data"]) == 1
 
 
 @pytest.mark.asyncio
 async def test_get_answer_key_not_found():
-    from fastapi import HTTPException
     from app.routers.content import get_answer_key
+    from fastapi import HTTPException
+
     with pytest.raises(HTTPException) as exc:
         await get_answer_key(key_id=uuid.uuid4(), db=_db_single(None))
     assert exc.value.status_code == 404
@@ -390,6 +437,7 @@ async def test_get_answer_key_not_found():
 async def test_get_answer_key_found_with_job():
     from app.routers.content import get_answer_key
     from app.schemas.jobs import AnswerKeyResponse
+
     job_id = uuid.uuid4()
     key = _make_key(job_id=job_id)
     key.job = MagicMock()
@@ -407,6 +455,7 @@ async def test_get_answer_key_found_with_job():
 async def test_get_answer_key_found_with_exam():
     from app.routers.content import get_answer_key
     from app.schemas.jobs import AnswerKeyResponse
+
     exam_id = uuid.uuid4()
     key = _make_key(exam_id=exam_id)
     key.exam = MagicMock()
@@ -429,9 +478,14 @@ async def test_get_answer_key_found_with_exam():
 async def test_admin_list_answer_keys():
     from app.routers.content import admin_list_answer_keys
     from app.schemas.jobs import AnswerKeyResponse
+
     key = _make_key()
-    with patch.object(AnswerKeyResponse, "model_validate", return_value=_mock_resp(key.id)):
-        result = await admin_list_answer_keys(limit=20, offset=0, db=_db_list([key]), admin=MagicMock())
+    with patch.object(
+        AnswerKeyResponse, "model_validate", return_value=_mock_resp(key.id)
+    ):
+        result = await admin_list_answer_keys(
+            limit=20, offset=0, db=_db_list([key]), admin=MagicMock()
+        )
     assert result["pagination"]["total"] == 1
 
 
@@ -439,13 +493,18 @@ async def test_admin_list_answer_keys():
 async def test_admin_create_answer_key_success():
     from app.routers.content import admin_create_answer_key
     from app.schemas.jobs import AnswerKeyCreateRequest, AnswerKeyResponse
+
     job_id = uuid.uuid4()
-    body = AnswerKeyCreateRequest(job_id=job_id, title="Key", answer_key_type="provisional")
+    body = AnswerKeyCreateRequest(
+        job_id=job_id, title="Key", answer_key_type="provisional"
+    )
     db = AsyncMock()
     parent_res = MagicMock()
     parent_res.scalar.return_value = job_id
     db.execute = AsyncMock(return_value=parent_res)
-    with patch.object(AnswerKeyResponse, "model_validate", return_value=_mock_resp(uuid.uuid4())):
+    with patch.object(
+        AnswerKeyResponse, "model_validate", return_value=_mock_resp(uuid.uuid4())
+    ):
         await admin_create_answer_key(body=body, admin=MagicMock(), db=db)
     db.add.assert_called_once()
     db.flush.assert_called_once()
@@ -453,12 +512,16 @@ async def test_admin_create_answer_key_success():
 
 @pytest.mark.asyncio
 async def test_admin_update_answer_key_not_found():
-    from fastapi import HTTPException
     from app.routers.content import admin_update_answer_key
     from app.schemas.jobs import AnswerKeyUpdateRequest
+    from fastapi import HTTPException
+
     with pytest.raises(HTTPException) as exc:
         await admin_update_answer_key(
-            key_id=uuid.uuid4(), body=AnswerKeyUpdateRequest(), admin=MagicMock(), db=_db_single(None)
+            key_id=uuid.uuid4(),
+            body=AnswerKeyUpdateRequest(),
+            admin=MagicMock(),
+            db=_db_single(None),
         )
     assert exc.value.status_code == 404
 
@@ -466,27 +529,36 @@ async def test_admin_update_answer_key_not_found():
 @pytest.mark.asyncio
 async def test_admin_update_answer_key_success():
     from app.routers.content import admin_update_answer_key
-    from app.schemas.jobs import AnswerKeyUpdateRequest, AnswerKeyResponse
+    from app.schemas.jobs import AnswerKeyResponse, AnswerKeyUpdateRequest
+
     key = _make_key()
-    with patch.object(AnswerKeyResponse, "model_validate", return_value=_mock_resp(key.id)):
+    with patch.object(
+        AnswerKeyResponse, "model_validate", return_value=_mock_resp(key.id)
+    ):
         await admin_update_answer_key(
-            key_id=key.id, body=AnswerKeyUpdateRequest(title="Updated"),
-            admin=MagicMock(), db=_db_single(key)
+            key_id=key.id,
+            body=AnswerKeyUpdateRequest(title="Updated"),
+            admin=MagicMock(),
+            db=_db_single(key),
         )
 
 
 @pytest.mark.asyncio
 async def test_admin_delete_answer_key_not_found():
-    from fastapi import HTTPException
     from app.routers.content import admin_delete_answer_key
+    from fastapi import HTTPException
+
     with pytest.raises(HTTPException) as exc:
-        await admin_delete_answer_key(key_id=uuid.uuid4(), admin=MagicMock(), db=_db_single(None))
+        await admin_delete_answer_key(
+            key_id=uuid.uuid4(), admin=MagicMock(), db=_db_single(None)
+        )
     assert exc.value.status_code == 404
 
 
 @pytest.mark.asyncio
 async def test_admin_delete_answer_key_success():
     from app.routers.content import admin_delete_answer_key
+
     key = _make_key()
     db = _db_single(key)
     await admin_delete_answer_key(key_id=key.id, admin=MagicMock(), db=db)
@@ -501,6 +573,7 @@ async def test_admin_delete_answer_key_success():
 @pytest.mark.asyncio
 async def test_list_results_empty():
     from app.routers.content import list_results
+
     result = await list_results(limit=20, offset=0, db=_db_list([], count=0))
     assert result["data"] == []
     assert result["pagination"]["total"] == 0
@@ -510,16 +583,20 @@ async def test_list_results_empty():
 async def test_list_results_returns_items():
     from app.routers.content import list_results
     from app.schemas.jobs import ResultResponse
+
     res_obj = _make_result()
-    with patch.object(ResultResponse, "model_validate", return_value=_mock_resp(res_obj.id)):
+    with patch.object(
+        ResultResponse, "model_validate", return_value=_mock_resp(res_obj.id)
+    ):
         result = await list_results(limit=20, offset=0, db=_db_list([res_obj]))
     assert len(result["data"]) == 1
 
 
 @pytest.mark.asyncio
 async def test_get_result_not_found():
-    from fastapi import HTTPException
     from app.routers.content import get_result
+    from fastapi import HTTPException
+
     with pytest.raises(HTTPException) as exc:
         await get_result(result_id=uuid.uuid4(), db=_db_single(None))
     assert exc.value.status_code == 404
@@ -529,6 +606,7 @@ async def test_get_result_not_found():
 async def test_get_result_found_no_parent():
     from app.routers.content import get_result
     from app.schemas.jobs import ResultResponse
+
     res_obj = _make_result()
     mock_r = _mock_resp(res_obj.id)
     with patch.object(ResultResponse, "model_validate", return_value=mock_r):
@@ -540,6 +618,7 @@ async def test_get_result_found_no_parent():
 async def test_get_result_found_with_job():
     from app.routers.content import get_result
     from app.schemas.jobs import ResultResponse
+
     job_id = uuid.uuid4()
     res_obj = _make_result(job_id=job_id)
     res_obj.job = MagicMock()
@@ -557,6 +636,7 @@ async def test_get_result_found_with_job():
 async def test_get_result_found_with_exam():
     from app.routers.content import get_result
     from app.schemas.jobs import ResultResponse
+
     exam_id = uuid.uuid4()
     res_obj = _make_result(exam_id=exam_id)
     res_obj.exam = MagicMock()
@@ -579,9 +659,14 @@ async def test_get_result_found_with_exam():
 async def test_admin_list_results():
     from app.routers.content import admin_list_results
     from app.schemas.jobs import ResultResponse
+
     res_obj = _make_result()
-    with patch.object(ResultResponse, "model_validate", return_value=_mock_resp(res_obj.id)):
-        result = await admin_list_results(limit=20, offset=0, db=_db_list([res_obj]), admin=MagicMock())
+    with patch.object(
+        ResultResponse, "model_validate", return_value=_mock_resp(res_obj.id)
+    ):
+        result = await admin_list_results(
+            limit=20, offset=0, db=_db_list([res_obj]), admin=MagicMock()
+        )
     assert result["pagination"]["total"] == 1
 
 
@@ -589,13 +674,16 @@ async def test_admin_list_results():
 async def test_admin_create_result_success():
     from app.routers.content import admin_create_result
     from app.schemas.jobs import ResultCreateRequest, ResultResponse
+
     job_id = uuid.uuid4()
     body = ResultCreateRequest(job_id=job_id, title="Final Result", result_type="final")
     db = AsyncMock()
     parent_res = MagicMock()
     parent_res.scalar.return_value = job_id
     db.execute = AsyncMock(return_value=parent_res)
-    with patch.object(ResultResponse, "model_validate", return_value=_mock_resp(uuid.uuid4())):
+    with patch.object(
+        ResultResponse, "model_validate", return_value=_mock_resp(uuid.uuid4())
+    ):
         await admin_create_result(body=body, admin=MagicMock(), db=db)
     db.add.assert_called_once()
     db.flush.assert_called_once()
@@ -603,12 +691,16 @@ async def test_admin_create_result_success():
 
 @pytest.mark.asyncio
 async def test_admin_update_result_not_found():
-    from fastapi import HTTPException
     from app.routers.content import admin_update_result
     from app.schemas.jobs import ResultUpdateRequest
+    from fastapi import HTTPException
+
     with pytest.raises(HTTPException) as exc:
         await admin_update_result(
-            result_id=uuid.uuid4(), body=ResultUpdateRequest(), admin=MagicMock(), db=_db_single(None)
+            result_id=uuid.uuid4(),
+            body=ResultUpdateRequest(),
+            admin=MagicMock(),
+            db=_db_single(None),
         )
     assert exc.value.status_code == 404
 
@@ -616,27 +708,36 @@ async def test_admin_update_result_not_found():
 @pytest.mark.asyncio
 async def test_admin_update_result_success():
     from app.routers.content import admin_update_result
-    from app.schemas.jobs import ResultUpdateRequest, ResultResponse
+    from app.schemas.jobs import ResultResponse, ResultUpdateRequest
+
     res_obj = _make_result()
-    with patch.object(ResultResponse, "model_validate", return_value=_mock_resp(res_obj.id)):
+    with patch.object(
+        ResultResponse, "model_validate", return_value=_mock_resp(res_obj.id)
+    ):
         await admin_update_result(
-            result_id=res_obj.id, body=ResultUpdateRequest(title="Updated"),
-            admin=MagicMock(), db=_db_single(res_obj)
+            result_id=res_obj.id,
+            body=ResultUpdateRequest(title="Updated"),
+            admin=MagicMock(),
+            db=_db_single(res_obj),
         )
 
 
 @pytest.mark.asyncio
 async def test_admin_delete_result_not_found():
-    from fastapi import HTTPException
     from app.routers.content import admin_delete_result
+    from fastapi import HTTPException
+
     with pytest.raises(HTTPException) as exc:
-        await admin_delete_result(result_id=uuid.uuid4(), admin=MagicMock(), db=_db_single(None))
+        await admin_delete_result(
+            result_id=uuid.uuid4(), admin=MagicMock(), db=_db_single(None)
+        )
     assert exc.value.status_code == 404
 
 
 @pytest.mark.asyncio
 async def test_admin_delete_result_success():
     from app.routers.content import admin_delete_result
+
     res_obj = _make_result()
     db = _db_single(res_obj)
     await admin_delete_result(result_id=res_obj.id, admin=MagicMock(), db=db)

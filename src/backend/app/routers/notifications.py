@@ -37,7 +37,9 @@ async def list_notifications(
     user, _ = current_user
 
     query = select(Notification).where(Notification.user_id == user.id)
-    count_query = select(func.count(Notification.id)).where(Notification.user_id == user.id)
+    count_query = select(func.count(Notification.id)).where(
+        Notification.user_id == user.id
+    )
 
     if type:
         query = query.where(Notification.type == type)
@@ -53,7 +55,9 @@ async def list_notifications(
     notifications = result.scalars().all()
 
     return {
-        "data": [NotificationResponse.model_validate(n).model_dump() for n in notifications],
+        "data": [
+            NotificationResponse.model_validate(n).model_dump() for n in notifications
+        ],
         "pagination": {
             "limit": limit,
             "offset": offset,
@@ -92,12 +96,17 @@ async def mark_all_read(
 
     result = await db.execute(
         update(Notification)
-        .where(Notification.user_id == user.id, Notification.is_read == False)  # noqa: E712
+        .where(
+            Notification.user_id == user.id, Notification.is_read == False
+        )  # noqa: E712
         .values(is_read=True, read_at=now)
     )
     updated = result.rowcount
 
-    logger.info("notifications_marked_all_read", extra={"user_id": str(user.id), "count": updated})
+    logger.info(
+        "notifications_marked_all_read",
+        extra={"user_id": str(user.id), "count": updated},
+    )
     return {"message": f"Marked {updated} notifications as read", "updated": updated}
 
 
@@ -116,14 +125,21 @@ async def mark_read(
     notification = result.scalar_one_or_none()
 
     if not notification:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Notification not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Notification not found"
+        )
     if notification.user_id != user.id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not your notification")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Not your notification"
+        )
 
     if not notification.is_read:
         notification.is_read = True
         notification.read_at = datetime.now(timezone.utc)
-        logger.info("notification_marked_read", extra={"user_id": str(user.id), "notification_id": str(notification_id)})
+        logger.info(
+            "notification_marked_read",
+            extra={"user_id": str(user.id), "notification_id": str(notification_id)},
+        )
 
     return NotificationResponse.model_validate(notification).model_dump()
 
@@ -143,9 +159,16 @@ async def delete_notification(
     notification = result.scalar_one_or_none()
 
     if not notification:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Notification not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Notification not found"
+        )
     if notification.user_id != user.id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not your notification")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Not your notification"
+        )
 
     await db.delete(notification)
-    logger.info("notification_deleted", extra={"user_id": str(user.id), "notification_id": str(notification_id)})
+    logger.info(
+        "notification_deleted",
+        extra={"user_id": str(user.id), "notification_id": str(notification_id)},
+    )

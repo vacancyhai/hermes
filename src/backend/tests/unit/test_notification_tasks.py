@@ -5,16 +5,17 @@ All external I/O (DB, SMTP, Firebase) is mocked. Tasks run synchronously via .ru
 
 import uuid
 from datetime import date, timedelta
-from unittest.mock import MagicMock, patch, call
-
+from unittest.mock import MagicMock, call, patch
 
 # ─── _send_smtp ───────────────────────────────────────────────────────────────
+
 
 def test_send_smtp_mail_disabled():
     """When MAIL_ENABLED=False, email is skipped and False is returned."""
     with patch("app.tasks.notifications.settings") as s:
         s.MAIL_ENABLED = False
         from app.tasks.notifications import _send_smtp
+
         result = _send_smtp("user@example.com", "Test Subject", "<h1>Hello</h1>")
     assert result is False
 
@@ -23,8 +24,9 @@ def test_send_smtp_success_with_tls():
     """Successful SMTP send via TLS returns True."""
     mock_server = MagicMock()
 
-    with patch("app.tasks.notifications.settings") as s, \
-         patch("smtplib.SMTP", return_value=mock_server):
+    with patch("app.tasks.notifications.settings") as s, patch(
+        "smtplib.SMTP", return_value=mock_server
+    ):
         s.MAIL_ENABLED = True
         s.MAIL_USE_TLS = True
         s.MAIL_SERVER = "smtp.example.com"
@@ -34,6 +36,7 @@ def test_send_smtp_success_with_tls():
         s.MAIL_DEFAULT_SENDER = "noreply@example.com"
 
         from app.tasks.notifications import _send_smtp
+
         result = _send_smtp("to@example.com", "Subject", "<p>Body</p>")
 
     assert result is True
@@ -47,8 +50,9 @@ def test_send_smtp_success_no_tls():
     """SMTP send without TLS (MAIL_USE_TLS=False)."""
     mock_server = MagicMock()
 
-    with patch("app.tasks.notifications.settings") as s, \
-         patch("smtplib.SMTP", return_value=mock_server):
+    with patch("app.tasks.notifications.settings") as s, patch(
+        "smtplib.SMTP", return_value=mock_server
+    ):
         s.MAIL_ENABLED = True
         s.MAIL_USE_TLS = False
         s.MAIL_SERVER = "smtp.example.com"
@@ -57,6 +61,7 @@ def test_send_smtp_success_no_tls():
         s.MAIL_DEFAULT_SENDER = "noreply@example.com"
 
         from app.tasks.notifications import _send_smtp
+
         result = _send_smtp("to@example.com", "Subject", "<p>Body</p>")
 
     assert result is True
@@ -66,8 +71,9 @@ def test_send_smtp_success_no_tls():
 
 def test_send_smtp_exception_reraises():
     """SMTP exception is re-raised after logging."""
-    with patch("app.tasks.notifications.settings") as s, \
-         patch("smtplib.SMTP", side_effect=ConnectionRefusedError("refused")):
+    with patch("app.tasks.notifications.settings") as s, patch(
+        "smtplib.SMTP", side_effect=ConnectionRefusedError("refused")
+    ):
         s.MAIL_ENABLED = True
         s.MAIL_USE_TLS = False
         s.MAIL_SERVER = "bad-server"
@@ -75,13 +81,15 @@ def test_send_smtp_exception_reraises():
         s.MAIL_USERNAME = None
         s.MAIL_DEFAULT_SENDER = "noreply@example.com"
 
-        from app.tasks.notifications import _send_smtp
         import pytest
+        from app.tasks.notifications import _send_smtp
+
         with pytest.raises(ConnectionRefusedError):
             _send_smtp("to@example.com", "Subject", "<p>body</p>")
 
 
 # ─── _render_email ─────────────────────────────────────────────────────────────
+
 
 def test_render_email():
     """Template rendering returns HTML string."""
@@ -91,6 +99,7 @@ def test_render_email():
     with patch("app.tasks.notifications._jinja_env") as mock_env:
         mock_env.get_template.return_value = mock_template
         from app.tasks.notifications import _render_email
+
         result = _render_email("test.html", {"key": "value"})
 
     assert result == "<h1>Test Email</h1>"
@@ -112,6 +121,7 @@ def test_render_email_sets_base_url():
     with patch("app.tasks.notifications._jinja_env") as mock_env:
         mock_env.get_template.return_value = mock_template
         from app.tasks.notifications import _render_email
+
         _render_email("test.html", {"name": "Alice"})
 
     assert "base_url" in captured_kwargs
@@ -119,18 +129,26 @@ def test_render_email_sets_base_url():
 
 # ─── send_email_notification task ─────────────────────────────────────────────
 
+
 def test_send_email_notification_success():
     """Happy path: renders template and sends SMTP."""
-    with patch("app.tasks.notifications._render_email", return_value="<h1>Hi</h1>") as mock_render, \
-         patch("app.tasks.notifications._send_smtp", return_value=True) as mock_smtp:
+    with patch(
+        "app.tasks.notifications._render_email", return_value="<h1>Hi</h1>"
+    ) as mock_render, patch(
+        "app.tasks.notifications._send_smtp", return_value=True
+    ) as mock_smtp:
         from app.tasks.notifications import send_email_notification
-        send_email_notification.run("user@test.com", "Test", "welcome.html", {"name": "Bob"})
+
+        send_email_notification.run(
+            "user@test.com", "Test", "welcome.html", {"name": "Bob"}
+        )
 
     mock_render.assert_called_once_with("welcome.html", {"name": "Bob"})
     mock_smtp.assert_called_once_with("user@test.com", "Test", "<h1>Hi</h1>")
 
 
 # ─── send_deadline_reminders ───────────────────────────────────────────────────
+
 
 def test_send_deadline_reminders_no_upcoming():
     """No apps with upcoming deadlines → no notifications created."""
@@ -146,6 +164,7 @@ def test_send_deadline_reminders_no_upcoming():
 
     with patch("app.tasks.notifications.Session", return_value=ctx):
         from app.tasks.notifications import send_deadline_reminders
+
         send_deadline_reminders()
 
     # No inserts or commits expected (beyond session management)
@@ -175,13 +194,13 @@ def test_send_deadline_reminders_with_apps():
     # T-7: job watches → 1 result; notif check; exam watches → empty
     # T-3, T-1: job watches → empty; exam watches → empty
     call_sequence = [
-        apps_result,         # T-7 job watches
+        apps_result,  # T-7 job watches
         notif_check_result,  # check if already notified
-        empty_result,        # T-7 exam watches
-        empty_result,        # T-3 job watches
-        empty_result,        # T-3 exam watches
-        empty_result,        # T-1 job watches
-        empty_result,        # T-1 exam watches
+        empty_result,  # T-7 exam watches
+        empty_result,  # T-3 job watches
+        empty_result,  # T-3 exam watches
+        empty_result,  # T-1 job watches
+        empty_result,  # T-1 exam watches
     ]
     session.execute.side_effect = call_sequence
 
@@ -189,10 +208,12 @@ def test_send_deadline_reminders_with_apps():
     ctx.__enter__ = MagicMock(return_value=session)
     ctx.__exit__ = MagicMock(return_value=False)
 
-    with patch("app.tasks.notifications.Session", return_value=ctx), \
-         patch("app.tasks.notifications.send_email_notification") as mock_email:
+    with patch("app.tasks.notifications.Session", return_value=ctx), patch(
+        "app.tasks.notifications.send_email_notification"
+    ) as mock_email:
         mock_email.delay = MagicMock()
         from app.tasks.notifications import send_deadline_reminders
+
         send_deadline_reminders()
 
     # Notification was inserted
@@ -200,6 +221,7 @@ def test_send_deadline_reminders_with_apps():
 
 
 # ─── smart_notify task ────────────────────────────────────────────────────────
+
 
 def test_smart_notify_calls_service_send():
     """smart_notify delegates to NotificationService.send and returns notification_id."""
@@ -215,10 +237,11 @@ def test_smart_notify_calls_service_send():
     ctx.__enter__ = MagicMock(return_value=session)
     ctx.__exit__ = MagicMock(return_value=False)
 
-    with patch("app.tasks.notifications.Session", return_value=ctx), \
-         patch("app.tasks.notifications._get_sync_redis", return_value=MagicMock()), \
-         patch("app.services.notifications.NotificationService", mock_svc_cls):
+    with patch("app.tasks.notifications.Session", return_value=ctx), patch(
+        "app.tasks.notifications._get_sync_redis", return_value=MagicMock()
+    ), patch("app.services.notifications.NotificationService", mock_svc_cls):
         from app.tasks.notifications import smart_notify
+
         smart_notify(
             user_id=user_id,
             title="New Job Alert",
@@ -243,10 +266,11 @@ def test_smart_notify_staggered_mode():
     ctx.__enter__ = MagicMock(return_value=session)
     ctx.__exit__ = MagicMock(return_value=False)
 
-    with patch("app.tasks.notifications.Session", return_value=ctx), \
-         patch("app.tasks.notifications._get_sync_redis", return_value=MagicMock()), \
-         patch("app.services.notifications.NotificationService", mock_svc_cls):
+    with patch("app.tasks.notifications.Session", return_value=ctx), patch(
+        "app.tasks.notifications._get_sync_redis", return_value=MagicMock()
+    ), patch("app.services.notifications.NotificationService", mock_svc_cls):
         from app.tasks.notifications import smart_notify
+
         smart_notify(
             user_id=str(uuid.uuid4()),
             title="Test",
@@ -261,6 +285,7 @@ def test_smart_notify_staggered_mode():
 
 # ─── deliver_delayed_email task ───────────────────────────────────────────────
 
+
 def test_deliver_delayed_email_calls_send_email():
     """deliver_delayed_email calls NotificationService._send_email then commits."""
     mock_svc_instance = MagicMock()
@@ -271,10 +296,11 @@ def test_deliver_delayed_email_calls_send_email():
     ctx.__enter__ = MagicMock(return_value=session)
     ctx.__exit__ = MagicMock(return_value=False)
 
-    with patch("app.tasks.notifications.Session", return_value=ctx), \
-         patch("app.tasks.notifications._get_sync_redis", return_value=MagicMock()), \
-         patch("app.services.notifications.NotificationService", mock_svc_cls):
+    with patch("app.tasks.notifications.Session", return_value=ctx), patch(
+        "app.tasks.notifications._get_sync_redis", return_value=MagicMock()
+    ), patch("app.services.notifications.NotificationService", mock_svc_cls):
         from app.tasks.notifications import deliver_delayed_email
+
         deliver_delayed_email(
             notification_id=str(uuid.uuid4()),
             user_id=str(uuid.uuid4()),
@@ -289,6 +315,7 @@ def test_deliver_delayed_email_calls_send_email():
 
 # ─── deliver_delayed_whatsapp task ────────────────────────────────────────────
 
+
 def test_deliver_delayed_whatsapp_calls_send_whatsapp():
     """deliver_delayed_whatsapp calls NotificationService._send_whatsapp then commits."""
     mock_svc_instance = MagicMock()
@@ -299,10 +326,11 @@ def test_deliver_delayed_whatsapp_calls_send_whatsapp():
     ctx.__enter__ = MagicMock(return_value=session)
     ctx.__exit__ = MagicMock(return_value=False)
 
-    with patch("app.tasks.notifications.Session", return_value=ctx), \
-         patch("app.tasks.notifications._get_sync_redis", return_value=MagicMock()), \
-         patch("app.services.notifications.NotificationService", mock_svc_cls):
+    with patch("app.tasks.notifications.Session", return_value=ctx), patch(
+        "app.tasks.notifications._get_sync_redis", return_value=MagicMock()
+    ), patch("app.services.notifications.NotificationService", mock_svc_cls):
         from app.tasks.notifications import deliver_delayed_whatsapp
+
         deliver_delayed_whatsapp(
             notification_id=str(uuid.uuid4()),
             user_id=str(uuid.uuid4()),
@@ -316,15 +344,26 @@ def test_deliver_delayed_whatsapp_calls_send_whatsapp():
 
 # ─── send_deadline_reminders — edge cases ─────────────────────────────────────
 
+
 def test_send_deadline_reminders_already_notified_skips():
     """De-duplication: if a reminder notification already exists, skip it."""
     import uuid as _uuid
+
     user_id = str(_uuid.uuid4())
     job_id = str(_uuid.uuid4())
     from datetime import date, timedelta
+
     today = date.today()
     deadline = today + timedelta(days=7)
-    app_row = (str(_uuid.uuid4()), user_id, job_id, "Test Job", "test-job", "UPSC", deadline)
+    app_row = (
+        str(_uuid.uuid4()),
+        user_id,
+        job_id,
+        "Test Job",
+        "test-job",
+        "UPSC",
+        deadline,
+    )
 
     session = MagicMock()
     apps_result = MagicMock()
@@ -336,22 +375,24 @@ def test_send_deadline_reminders_already_notified_skips():
 
     # T-7: job(1 row→already notified), notif_check, exam(empty); T-3: job(empty), exam(empty); T-1: job(empty), exam(empty)
     session.execute.side_effect = [
-        apps_result,    # T-7 job watches
+        apps_result,  # T-7 job watches
         existing_result,  # notif check → already sent
-        empty_result,   # T-7 exam watches
-        empty_result,   # T-3 job watches
-        empty_result,   # T-3 exam watches
-        empty_result,   # T-1 job watches
-        empty_result,   # T-1 exam watches
+        empty_result,  # T-7 exam watches
+        empty_result,  # T-3 job watches
+        empty_result,  # T-3 exam watches
+        empty_result,  # T-1 job watches
+        empty_result,  # T-1 exam watches
     ]
     ctx = MagicMock()
     ctx.__enter__ = MagicMock(return_value=session)
     ctx.__exit__ = MagicMock(return_value=False)
 
-    with patch("app.tasks.notifications.Session", return_value=ctx), \
-         patch("app.tasks.notifications.smart_notify") as mock_notify:
+    with patch("app.tasks.notifications.Session", return_value=ctx), patch(
+        "app.tasks.notifications.smart_notify"
+    ) as mock_notify:
         mock_notify.delay = MagicMock()
         from app.tasks.notifications import send_deadline_reminders
+
         send_deadline_reminders()
 
     # smart_notify should NOT be called since reminder was already sent
@@ -362,11 +403,20 @@ def test_send_deadline_reminders_1d_uses_high_priority():
     """T-1 reminders use priority=high."""
     import uuid as _uuid
     from datetime import date, timedelta
+
     user_id = str(_uuid.uuid4())
     job_id = str(_uuid.uuid4())
     today = date.today()
     deadline = today + timedelta(days=1)
-    app_row = (str(_uuid.uuid4()), user_id, job_id, "Test Job", "test-job", "UPSC", deadline)
+    app_row = (
+        str(_uuid.uuid4()),
+        user_id,
+        job_id,
+        "Test Job",
+        "test-job",
+        "UPSC",
+        deadline,
+    )
 
     session = MagicMock()
     empty_result = MagicMock()
@@ -382,18 +432,20 @@ def test_send_deadline_reminders_1d_uses_high_priority():
         empty_result,  # T-7 exam watches
         empty_result,  # T-3 job watches
         empty_result,  # T-3 exam watches
-        apps_result,   # T-1 job watches
-        no_existing,   # notif check
+        apps_result,  # T-1 job watches
+        no_existing,  # notif check
         empty_result,  # T-1 exam watches
     ]
     ctx = MagicMock()
     ctx.__enter__ = MagicMock(return_value=session)
     ctx.__exit__ = MagicMock(return_value=False)
 
-    with patch("app.tasks.notifications.Session", return_value=ctx), \
-         patch("app.tasks.notifications.smart_notify") as mock_notify:
+    with patch("app.tasks.notifications.Session", return_value=ctx), patch(
+        "app.tasks.notifications.smart_notify"
+    ) as mock_notify:
         mock_notify.delay = MagicMock()
         from app.tasks.notifications import send_deadline_reminders
+
         send_deadline_reminders()
 
     mock_notify.delay.assert_called_once()
@@ -406,11 +458,20 @@ def test_send_deadline_reminders_3d_uses_high_priority():
     """T-3 reminders also use priority=high."""
     import uuid as _uuid
     from datetime import date, timedelta
+
     user_id = str(_uuid.uuid4())
     job_id = str(_uuid.uuid4())
     today = date.today()
     deadline = today + timedelta(days=3)
-    app_row = (str(_uuid.uuid4()), user_id, job_id, "Test Job", "test-job", "SSC", deadline)
+    app_row = (
+        str(_uuid.uuid4()),
+        user_id,
+        job_id,
+        "Test Job",
+        "test-job",
+        "SSC",
+        deadline,
+    )
 
     session = MagicMock()
     empty_result = MagicMock()
@@ -424,8 +485,8 @@ def test_send_deadline_reminders_3d_uses_high_priority():
     session.execute.side_effect = [
         empty_result,  # T-7 job watches
         empty_result,  # T-7 exam watches
-        apps_result,   # T-3 job watches
-        no_existing,   # notif check
+        apps_result,  # T-3 job watches
+        no_existing,  # notif check
         empty_result,  # T-3 exam watches
         empty_result,  # T-1 job watches
         empty_result,  # T-1 exam watches
@@ -434,10 +495,12 @@ def test_send_deadline_reminders_3d_uses_high_priority():
     ctx.__enter__ = MagicMock(return_value=session)
     ctx.__exit__ = MagicMock(return_value=False)
 
-    with patch("app.tasks.notifications.Session", return_value=ctx), \
-         patch("app.tasks.notifications.smart_notify") as mock_notify:
+    with patch("app.tasks.notifications.Session", return_value=ctx), patch(
+        "app.tasks.notifications.smart_notify"
+    ) as mock_notify:
         mock_notify.delay = MagicMock()
         from app.tasks.notifications import send_deadline_reminders
+
         send_deadline_reminders()
 
     mock_notify.delay.assert_called_once()

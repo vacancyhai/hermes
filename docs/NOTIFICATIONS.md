@@ -61,7 +61,7 @@ MAIL_USE_TLS=false
 MAIL_DEFAULT_SENDER=noreply@hermes.example.com
 ```
 
-**Development:** Emails are captured by Mailpit (web UI at `http://localhost:8025`)  
+**Development:** Emails are captured by Mailpit (web UI at `http://localhost:8025`)
 **Production:** Configure SMTP server with TLS enabled
 
 ## Security Features

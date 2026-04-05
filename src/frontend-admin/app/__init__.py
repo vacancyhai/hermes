@@ -263,14 +263,14 @@ def create_app():
             return {"error": "No file provided"}, 400
 
         file = request.files["file"]
-        
+
         # Forward to backend API
         resp = current_app.api_client.post_file(
             "/admin/jobs/extract-pdf",
             token=token,
             files={"file": (file.filename, file.stream, file.content_type)}
         )
-        
+
         if resp.ok:
             return resp.json(), 200
         else:
@@ -707,7 +707,7 @@ def create_app():
         token = session.get("token")
         if not token:
             return redirect("/login")
-        
+
         resp = current_app.api_client.delete(f"/admin/users/{user_id}", token=token)
         if resp.ok:
             flash("User permanently deleted.", "success")

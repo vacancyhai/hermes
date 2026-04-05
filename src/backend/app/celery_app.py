@@ -1,9 +1,8 @@
 """Celery application configuration."""
 
+from app.config import settings
 from celery import Celery
 from celery.schedules import crontab
-
-from app.config import settings
 
 celery = Celery(
     "hermes",

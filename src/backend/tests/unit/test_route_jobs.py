@@ -31,9 +31,11 @@ def _make_job(**kwargs):
 
 # ─── list_jobs ────────────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_list_jobs_with_qualification_filter():
     from app.routers.jobs import list_jobs
+
     db = AsyncMock()
     count_result = MagicMock()
     count_result.scalar.return_value = 0
@@ -42,10 +44,15 @@ async def test_list_jobs_with_qualification_filter():
     db.execute.side_effect = [count_result, data_result]
 
     output = await list_jobs(
-        q=None, qualification_level="graduate",
-        organization=None, department=None,
-        is_featured=None, is_urgent=None,
-        limit=20, offset=0, db=db,
+        q=None,
+        qualification_level="graduate",
+        organization=None,
+        department=None,
+        is_featured=None,
+        is_urgent=None,
+        limit=20,
+        offset=0,
+        db=db,
     )
     assert output["data"] == []
 
@@ -53,6 +60,7 @@ async def test_list_jobs_with_qualification_filter():
 @pytest.mark.asyncio
 async def test_list_jobs_with_department_filter():
     from app.routers.jobs import list_jobs
+
     db = AsyncMock()
     count_result = MagicMock()
     count_result.scalar.return_value = 0
@@ -61,10 +69,15 @@ async def test_list_jobs_with_department_filter():
     db.execute.side_effect = [count_result, data_result]
 
     output = await list_jobs(
-        q=None, qualification_level=None,
-        organization=None, department="Engineering",
-        is_featured=None, is_urgent=None,
-        limit=20, offset=0, db=db,
+        q=None,
+        qualification_level=None,
+        organization=None,
+        department="Engineering",
+        is_featured=None,
+        is_urgent=None,
+        limit=20,
+        offset=0,
+        db=db,
     )
     assert output["data"] == []
 
@@ -72,6 +85,7 @@ async def test_list_jobs_with_department_filter():
 @pytest.mark.asyncio
 async def test_list_jobs_with_featured_filter():
     from app.routers.jobs import list_jobs
+
     db = AsyncMock()
     count_result = MagicMock()
     count_result.scalar.return_value = 0
@@ -80,10 +94,15 @@ async def test_list_jobs_with_featured_filter():
     db.execute.side_effect = [count_result, data_result]
 
     output = await list_jobs(
-        q=None, qualification_level=None,
-        organization=None, department=None,
-        is_featured=True, is_urgent=None,
-        limit=20, offset=0, db=db,
+        q=None,
+        qualification_level=None,
+        organization=None,
+        department=None,
+        is_featured=True,
+        is_urgent=None,
+        limit=20,
+        offset=0,
+        db=db,
     )
     assert output["pagination"]["total"] == 0
 
@@ -91,6 +110,7 @@ async def test_list_jobs_with_featured_filter():
 @pytest.mark.asyncio
 async def test_list_jobs_with_urgent_filter():
     from app.routers.jobs import list_jobs
+
     db = AsyncMock()
     count_result = MagicMock()
     count_result.scalar.return_value = 0
@@ -99,20 +119,27 @@ async def test_list_jobs_with_urgent_filter():
     db.execute.side_effect = [count_result, data_result]
 
     output = await list_jobs(
-        q=None, qualification_level=None,
-        organization=None, department=None,
-        is_featured=None, is_urgent=True,
-        limit=20, offset=0, db=db,
+        q=None,
+        qualification_level=None,
+        organization=None,
+        department=None,
+        is_featured=None,
+        is_urgent=True,
+        limit=20,
+        offset=0,
+        db=db,
     )
     assert output["data"] == []
 
 
 # ─── recommended_jobs ────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_recommended_jobs():
-    from app.routers.jobs import recommended_jobs
     from unittest.mock import patch
+
+    from app.routers.jobs import recommended_jobs
 
     user = MagicMock()
     user.id = uuid.uuid4()
@@ -121,8 +148,10 @@ async def test_recommended_jobs():
         mock_get.return_value = ([], 0)
         db = AsyncMock()
         output = await recommended_jobs(
-            limit=20, offset=0,
-            current_user=(user, {}), db=db,
+            limit=20,
+            offset=0,
+            current_user=(user, {}),
+            db=db,
         )
 
     assert output["data"] == []
@@ -131,11 +160,14 @@ async def test_recommended_jobs():
 
 # ─── get_job ──────────────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_get_job_found():
     from unittest.mock import patch
+
     from app.routers.jobs import get_job
     from app.schemas.jobs import JobResponse
+
     job = _make_job()
 
     select_result = MagicMock()
@@ -143,7 +175,15 @@ async def test_get_job_found():
     empty_result = MagicMock()
     empty_result.scalars.return_value.all.return_value = []
     db = AsyncMock()
-    db.execute = AsyncMock(side_effect=[select_result, empty_result, empty_result, empty_result, empty_result])
+    db.execute = AsyncMock(
+        side_effect=[
+            select_result,
+            empty_result,
+            empty_result,
+            empty_result,
+            empty_result,
+        ]
+    )
 
     mock_response = MagicMock()
     mock_response.model_dump.return_value = {"id": str(job.id), "slug": "test-job"}
@@ -153,8 +193,9 @@ async def test_get_job_found():
 
 @pytest.mark.asyncio
 async def test_get_job_not_found():
-    from fastapi import HTTPException
     from app.routers.jobs import get_job
+    from fastapi import HTTPException
+
     db = AsyncMock()
     result = MagicMock()
     result.scalar_one_or_none.return_value = None

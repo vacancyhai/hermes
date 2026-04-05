@@ -4,24 +4,28 @@ import uuid as _uuid
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
+import app.models  # noqa: F401 — register all models for SQLAlchemy relationships
+from app.config import settings
+from app.logging_config import setup_logging
+from app.rate_limit import limiter
+from app.routers import admin, auth, health, jobs, notifications, users
+from app.routers.content import (
+    admit_cards_admin_router,
+    admit_cards_router,
+    answer_keys_admin_router,
+    answer_keys_router,
+    results_admin_router,
+    results_router,
+)
+from app.routers.entrance_exams import admin_router as exams_admin_router
+from app.routers.entrance_exams import public_router as exams_public_router
+from app.routers.watches import router as watches_router
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from slowapi.errors import RateLimitExceeded
 from starlette.exceptions import HTTPException as StarletteHTTPException
-
-from app.config import settings
-from app.logging_config import setup_logging
-from app.rate_limit import limiter
-import app.models  # noqa: F401 — register all models for SQLAlchemy relationships
-from app.routers import auth, health, jobs, notifications, users, admin
-from app.routers.watches import router as watches_router
-from app.routers.entrance_exams import public_router as exams_public_router, admin_router as exams_admin_router
-from app.routers.content import (
-    admit_cards_router, answer_keys_router, results_router,
-    admit_cards_admin_router, answer_keys_admin_router, results_admin_router,
-)
 
 
 @asynccontextmanager
@@ -46,6 +50,7 @@ app.state.limiter = limiter
 
 # ─── X-Request-ID Middleware ─────────────────────────────────────────────────
 
+
 @app.middleware("http")
 async def request_id_middleware(request: Request, call_next):
     """Propagate or generate X-Request-ID for every request."""
@@ -69,7 +74,10 @@ app.add_middleware(
 
 # ─── Structured Error Handlers ──────────────────────────────────────────────
 
-def _error_response(status_code: int, code: str, message: str, details: list | None = None) -> JSONResponse:
+
+def _error_response(
+    status_code: int, code: str, message: str, details: list | None = None
+) -> JSONResponse:
     """Build a structured error JSON response."""
     return JSONResponse(
         status_code=status_code,
@@ -124,7 +132,10 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     details = [
-        {"field": ".".join(str(loc) for loc in err.get("loc", [])), "issue": err.get("msg", "")}
+        {
+            "field": ".".join(str(loc) for loc in err.get("loc", [])),
+            "issue": err.get("msg", ""),
+        }
         for err in exc.errors()
     ]
     return _error_response(422, "VALIDATION_MISSING_FIELD", "Validation error", details)
@@ -132,7 +143,9 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
 @app.exception_handler(RateLimitExceeded)
 async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
-    return _error_response(429, "RATE_LIMIT_EXCEEDED", "Too many requests, please slow down")
+    return _error_response(
+        429, "RATE_LIMIT_EXCEEDED", "Too many requests, please slow down"
+    )
 
 
 # ─── SlowAPI rate limits on auth endpoints ───────────────────────────────────

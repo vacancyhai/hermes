@@ -11,15 +11,14 @@ import uuid
 import pytest
 import pytest_asyncio
 import redis.asyncio as aioredis
-from httpx import ASGITransport, AsyncClient
-from passlib.context import CryptContext
-from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-
 from app.config import settings
 from app.dependencies import get_db, get_redis
 from app.main import app
 from app.rate_limit import limiter
+from httpx import ASGITransport, AsyncClient
+from passlib.context import CryptContext
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 # Disable rate limiting for the entire test suite so auth fixtures don't hit 429
 limiter.enabled = False
@@ -66,6 +65,7 @@ async def truncate_all_tables():
     await engine.dispose()
     yield
 
+
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # Import token helpers for test fixtures (avoids calling removed /auth/login endpoint)
@@ -94,7 +94,9 @@ async def test_redis():
 
 @pytest_asyncio.fixture
 async def db(test_engine):
-    session_factory = async_sessionmaker(test_engine, class_=AsyncSession, expire_on_commit=False)
+    session_factory = async_sessionmaker(
+        test_engine, class_=AsyncSession, expire_on_commit=False
+    )
     async with session_factory() as session:
         yield session
         await session.rollback()
@@ -102,7 +104,9 @@ async def db(test_engine):
 
 @pytest_asyncio.fixture
 async def client(test_engine, test_redis):
-    session_factory = async_sessionmaker(test_engine, class_=AsyncSession, expire_on_commit=False)
+    session_factory = async_sessionmaker(
+        test_engine, class_=AsyncSession, expire_on_commit=False
+    )
 
     async def override_db():
         async with session_factory() as session:
@@ -138,7 +142,9 @@ async def test_user(db: AsyncSession):
     password = "TestPass123"
     user = User(
         email=email,
-        password_hash=pwd_context.hash(password),  # kept nullable; used by some legacy tests
+        password_hash=pwd_context.hash(
+            password
+        ),  # kept nullable; used by some legacy tests
         firebase_uid=f"test-firebase-uid-{uuid.uuid4().hex[:12]}",
         full_name="Test User",
         status="active",
@@ -207,7 +213,9 @@ async def user_token(test_user):
 async def admin_token(client: AsyncClient, test_admin):
     """Get a valid admin JWT access token."""
     _, email, password = test_admin
-    resp = await client.post("/api/v1/auth/admin/login", json={"email": email, "password": password})
+    resp = await client.post(
+        "/api/v1/auth/admin/login", json={"email": email, "password": password}
+    )
     assert resp.status_code == 200
     return resp.json()["access_token"]
 
@@ -216,7 +224,9 @@ async def admin_token(client: AsyncClient, test_admin):
 async def operator_token(client: AsyncClient, test_operator):
     """Get a valid operator JWT access token."""
     _, email, password = test_operator
-    resp = await client.post("/api/v1/auth/admin/login", json={"email": email, "password": password})
+    resp = await client.post(
+        "/api/v1/auth/admin/login", json={"email": email, "password": password}
+    )
     assert resp.status_code == 200
     return resp.json()["access_token"]
 

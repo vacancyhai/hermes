@@ -13,12 +13,12 @@ Admin endpoints:
   PUT    /api/v1/admin/admit-cards/{id} — Update admit card
   DELETE /api/v1/admin/admit-cards/{id} — Delete admit card
   GET    /api/v1/admin/admit-cards     — List all admit cards (any status)
-  
+
   POST   /api/v1/admin/answer-keys     — Create answer key
   PUT    /api/v1/admin/answer-keys/{id} — Update answer key
   DELETE /api/v1/admin/answer-keys/{id} — Delete answer key
   GET    /api/v1/admin/answer-keys     — List all answer keys (any status)
-  
+
   POST   /api/v1/admin/results         — Create result
   PUT    /api/v1/admin/results/{id}     — Update result
   DELETE /api/v1/admin/results/{id}     — Delete result
@@ -27,16 +27,11 @@ Admin endpoints:
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import func, select
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload
-
 from app.dependencies import get_current_user, get_db, require_operator
 from app.models.admit_card import AdmitCard
 from app.models.answer_key import AnswerKey
-from app.models.job import Job
 from app.models.entrance_exam import EntranceExam
+from app.models.job import Job
 from app.models.result import Result
 from app.schemas.jobs import (
     AdmitCardCreateRequest,
@@ -54,6 +49,11 @@ from app.services.matching import (
     get_recommended_answer_keys,
     get_recommended_results,
 )
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
+
 
 async def _validate_document_parent(
     job_id: uuid.UUID | None,
@@ -62,14 +62,24 @@ async def _validate_document_parent(
 ) -> None:
     """Raise 400 unless exactly one of job_id/exam_id is provided and the parent exists."""
     if bool(job_id) == bool(exam_id):
-        detail = "Cannot specify both job_id and exam_id" if job_id else "Must specify either job_id or exam_id"
+        detail = (
+            "Cannot specify both job_id and exam_id"
+            if job_id
+            else "Must specify either job_id or exam_id"
+        )
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=detail)
     if job_id:
         if not (await db.execute(select(Job.id).where(Job.id == job_id))).scalar():
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Job not found"
+            )
     else:
-        if not (await db.execute(select(EntranceExam.id).where(EntranceExam.id == exam_id))).scalar():
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Entrance exam not found")
+        if not (
+            await db.execute(select(EntranceExam.id).where(EntranceExam.id == exam_id))
+        ).scalar():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Entrance exam not found"
+            )
 
 
 # Public routers
@@ -90,7 +100,9 @@ async def list_admit_cards(
     db: AsyncSession = Depends(get_db),
 ):
     """List all admit cards from admit_cards table, ordered by published_at."""
-    query = select(AdmitCard).order_by(AdmitCard.published_at.desc().nulls_last(), AdmitCard.created_at.desc())
+    query = select(AdmitCard).order_by(
+        AdmitCard.published_at.desc().nulls_last(), AdmitCard.created_at.desc()
+    )
     count_query = select(func.count(AdmitCard.id))
 
     total = (await db.execute(count_query)).scalar()
@@ -117,8 +129,10 @@ async def recommended_admit_cards(
 ):
     """Personalized admit card recommendations based on user profile."""
     user, _ = current_user
-    cards, total = await get_recommended_admit_cards(user.id, db, limit=limit, offset=offset)
-    
+    cards, total = await get_recommended_admit_cards(
+        user.id, db, limit=limit, offset=offset
+    )
+
     return {
         "data": [AdmitCardResponse.model_validate(c).model_dump() for c in cards],
         "pagination": {
@@ -136,38 +150,38 @@ async def get_admit_card(
     db: AsyncSession = Depends(get_db),
 ):
     """Get single admit card by ID with related job/exam."""
-    query = select(AdmitCard).options(
-        joinedload(AdmitCard.job),
-        joinedload(AdmitCard.exam)
-    ).where(AdmitCard.id == card_id)
-    
+    query = (
+        select(AdmitCard)
+        .options(joinedload(AdmitCard.job), joinedload(AdmitCard.exam))
+        .where(AdmitCard.id == card_id)
+    )
+
     result = await db.execute(query)
     card = result.scalar_one_or_none()
-    
+
     if not card:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Admit card not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Admit card not found"
         )
-    
+
     card_data = AdmitCardResponse.model_validate(card).model_dump()
-    
+
     # Add job/exam context
     if card.job:
         card_data["job"] = {
             "id": str(card.job.id),
             "slug": card.job.slug,
             "job_title": card.job.job_title,
-            "organization": card.job.organization
+            "organization": card.job.organization,
         }
     elif card.exam:
         card_data["exam"] = {
             "id": str(card.exam.id),
             "slug": card.exam.slug,
             "exam_name": card.exam.exam_name,
-            "conducting_body": card.exam.conducting_body
+            "conducting_body": card.exam.conducting_body,
         }
-    
+
     return card_data
 
 
@@ -178,7 +192,9 @@ async def list_answer_keys(
     db: AsyncSession = Depends(get_db),
 ):
     """List all answer keys from job_answer_keys table, ordered by published_at."""
-    query = select(AnswerKey).order_by(AnswerKey.published_at.desc().nulls_last(), AnswerKey.created_at.desc())
+    query = select(AnswerKey).order_by(
+        AnswerKey.published_at.desc().nulls_last(), AnswerKey.created_at.desc()
+    )
     count_query = select(func.count(AnswerKey.id))
 
     total = (await db.execute(count_query)).scalar()
@@ -205,8 +221,10 @@ async def recommended_answer_keys(
 ):
     """Personalized answer key recommendations based on user profile."""
     user, _ = current_user
-    keys, total = await get_recommended_answer_keys(user.id, db, limit=limit, offset=offset)
-    
+    keys, total = await get_recommended_answer_keys(
+        user.id, db, limit=limit, offset=offset
+    )
+
     return {
         "data": [AnswerKeyResponse.model_validate(k).model_dump() for k in keys],
         "pagination": {
@@ -224,38 +242,38 @@ async def get_answer_key(
     db: AsyncSession = Depends(get_db),
 ):
     """Get single answer key by ID with related job/exam."""
-    query = select(AnswerKey).options(
-        joinedload(AnswerKey.job),
-        joinedload(AnswerKey.exam)
-    ).where(AnswerKey.id == key_id)
-    
+    query = (
+        select(AnswerKey)
+        .options(joinedload(AnswerKey.job), joinedload(AnswerKey.exam))
+        .where(AnswerKey.id == key_id)
+    )
+
     result = await db.execute(query)
     key = result.scalar_one_or_none()
-    
+
     if not key:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Answer key not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Answer key not found"
         )
-    
+
     key_data = AnswerKeyResponse.model_validate(key).model_dump()
-    
+
     # Add job/exam context
     if key.job:
         key_data["job"] = {
             "id": str(key.job.id),
             "slug": key.job.slug,
             "job_title": key.job.job_title,
-            "organization": key.job.organization
+            "organization": key.job.organization,
         }
     elif key.exam:
         key_data["exam"] = {
             "id": str(key.exam.id),
             "slug": key.exam.slug,
             "exam_name": key.exam.exam_name,
-            "conducting_body": key.exam.conducting_body
+            "conducting_body": key.exam.conducting_body,
         }
-    
+
     return key_data
 
 
@@ -266,7 +284,9 @@ async def list_results(
     db: AsyncSession = Depends(get_db),
 ):
     """List all results from results table, ordered by published_at."""
-    query = select(Result).order_by(Result.published_at.desc().nulls_last(), Result.created_at.desc())
+    query = select(Result).order_by(
+        Result.published_at.desc().nulls_last(), Result.created_at.desc()
+    )
     count_query = select(func.count(Result.id))
 
     total = (await db.execute(count_query)).scalar()
@@ -293,8 +313,10 @@ async def recommended_results(
 ):
     """Personalized result recommendations based on user profile."""
     user, _ = current_user
-    results_list, total = await get_recommended_results(user.id, db, limit=limit, offset=offset)
-    
+    results_list, total = await get_recommended_results(
+        user.id, db, limit=limit, offset=offset
+    )
+
     return {
         "data": [ResultResponse.model_validate(r).model_dump() for r in results_list],
         "pagination": {
@@ -312,38 +334,38 @@ async def get_result(
     db: AsyncSession = Depends(get_db),
 ):
     """Get single result by ID with related job/exam."""
-    query = select(Result).options(
-        joinedload(Result.job),
-        joinedload(Result.exam)
-    ).where(Result.id == result_id)
-    
+    query = (
+        select(Result)
+        .options(joinedload(Result.job), joinedload(Result.exam))
+        .where(Result.id == result_id)
+    )
+
     result = await db.execute(query)
     result_obj = result.scalar_one_or_none()
-    
+
     if not result_obj:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Result not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Result not found"
         )
-    
+
     result_data = ResultResponse.model_validate(result_obj).model_dump()
-    
+
     # Add job/exam context
     if result_obj.job:
         result_data["job"] = {
             "id": str(result_obj.job.id),
             "slug": result_obj.job.slug,
             "job_title": result_obj.job.job_title,
-            "organization": result_obj.job.organization
+            "organization": result_obj.job.organization,
         }
     elif result_obj.exam:
         result_data["exam"] = {
             "id": str(result_obj.exam.id),
             "slug": result_obj.exam.slug,
             "exam_name": result_obj.exam.exam_name,
-            "conducting_body": result_obj.exam.conducting_body
+            "conducting_body": result_obj.exam.conducting_body,
         }
-    
+
     return result_data
 
 
@@ -360,7 +382,9 @@ async def admin_list_admit_cards(
     admin=Depends(require_operator),
 ):
     """Admin: List all admit cards (no filtering by parent status)."""
-    query = select(AdmitCard).order_by(AdmitCard.published_at.desc().nulls_last(), AdmitCard.created_at.desc())
+    query = select(AdmitCard).order_by(
+        AdmitCard.published_at.desc().nulls_last(), AdmitCard.created_at.desc()
+    )
     count_query = select(func.count(AdmitCard.id))
 
     total = (await db.execute(count_query)).scalar()
@@ -378,7 +402,9 @@ async def admin_list_admit_cards(
     }
 
 
-@admit_cards_admin_router.post("", status_code=status.HTTP_201_CREATED, response_model=AdmitCardResponse)
+@admit_cards_admin_router.post(
+    "", status_code=status.HTTP_201_CREATED, response_model=AdmitCardResponse
+)
 async def admin_create_admit_card(
     body: AdmitCardCreateRequest,
     admin=Depends(require_operator),
@@ -413,7 +439,9 @@ async def admin_update_admit_card(
     result = await db.execute(select(AdmitCard).where(AdmitCard.id == card_id))
     doc = result.scalar_one_or_none()
     if not doc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Admit card not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Admit card not found"
+        )
 
     for field, value in body.model_dump(exclude_unset=True).items():
         setattr(doc, field, value)
@@ -432,7 +460,9 @@ async def admin_delete_admit_card(
     result = await db.execute(select(AdmitCard).where(AdmitCard.id == card_id))
     doc = result.scalar_one_or_none()
     if not doc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Admit card not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Admit card not found"
+        )
     await db.delete(doc)
 
 
@@ -449,7 +479,9 @@ async def admin_list_answer_keys(
     admin=Depends(require_operator),
 ):
     """Admin: List all answer keys (no filtering by parent status)."""
-    query = select(AnswerKey).order_by(AnswerKey.published_at.desc().nulls_last(), AnswerKey.created_at.desc())
+    query = select(AnswerKey).order_by(
+        AnswerKey.published_at.desc().nulls_last(), AnswerKey.created_at.desc()
+    )
     count_query = select(func.count(AnswerKey.id))
 
     total = (await db.execute(count_query)).scalar()
@@ -467,7 +499,9 @@ async def admin_list_answer_keys(
     }
 
 
-@answer_keys_admin_router.post("", status_code=status.HTTP_201_CREATED, response_model=AnswerKeyResponse)
+@answer_keys_admin_router.post(
+    "", status_code=status.HTTP_201_CREATED, response_model=AnswerKeyResponse
+)
 async def admin_create_answer_key(
     body: AnswerKeyCreateRequest,
     admin=Depends(require_operator),
@@ -502,7 +536,9 @@ async def admin_update_answer_key(
     result = await db.execute(select(AnswerKey).where(AnswerKey.id == key_id))
     doc = result.scalar_one_or_none()
     if not doc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Answer key not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Answer key not found"
+        )
 
     for field, value in body.model_dump(exclude_unset=True).items():
         setattr(doc, field, value)
@@ -521,7 +557,9 @@ async def admin_delete_answer_key(
     result = await db.execute(select(AnswerKey).where(AnswerKey.id == key_id))
     doc = result.scalar_one_or_none()
     if not doc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Answer key not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Answer key not found"
+        )
     await db.delete(doc)
 
 
@@ -538,7 +576,9 @@ async def admin_list_results(
     admin=Depends(require_operator),
 ):
     """Admin: List all results (no filtering by parent status)."""
-    query = select(Result).order_by(Result.published_at.desc().nulls_last(), Result.created_at.desc())
+    query = select(Result).order_by(
+        Result.published_at.desc().nulls_last(), Result.created_at.desc()
+    )
     count_query = select(func.count(Result.id))
 
     total = (await db.execute(count_query)).scalar()
@@ -556,7 +596,9 @@ async def admin_list_results(
     }
 
 
-@results_admin_router.post("", status_code=status.HTTP_201_CREATED, response_model=ResultResponse)
+@results_admin_router.post(
+    "", status_code=status.HTTP_201_CREATED, response_model=ResultResponse
+)
 async def admin_create_result(
     body: ResultCreateRequest,
     admin=Depends(require_operator),
@@ -592,7 +634,9 @@ async def admin_update_result(
     result = await db.execute(select(Result).where(Result.id == result_id))
     doc = result.scalar_one_or_none()
     if not doc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Result not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Result not found"
+        )
 
     for field, value in body.model_dump(exclude_unset=True).items():
         setattr(doc, field, value)
@@ -611,5 +655,7 @@ async def admin_delete_result(
     result = await db.execute(select(Result).where(Result.id == result_id))
     doc = result.scalar_one_or_none()
     if not doc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Result not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Result not found"
+        )
     await db.delete(doc)

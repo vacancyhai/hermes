@@ -5,10 +5,10 @@ All DB calls are mocked so these run without a live database/Redis/Celery broker
 
 import os
 import tempfile
-from unittest.mock import MagicMock, patch, call
-
+from unittest.mock import MagicMock, call, patch
 
 # ─── cleanup tasks ────────────────────────────────────────────────────────────
+
 
 def _make_conn_ctx(rowcount: int = 3):
     """Build a mock that works as a context-manager for sync_engine.connect()."""
@@ -27,6 +27,7 @@ def test_execute_cleanup_returns_rowcount():
     with patch("app.tasks.cleanup.sync_engine") as mock_engine:
         mock_engine.connect.return_value = ctx
         from app.tasks.cleanup import _execute_cleanup
+
         count = _execute_cleanup("DELETE FROM foo WHERE 1=1")
 
     assert count == 5
@@ -38,6 +39,7 @@ def test_purge_expired_notifications():
     with patch("app.tasks.cleanup.sync_engine") as mock_engine:
         mock_engine.connect.return_value = ctx
         from app.tasks.cleanup import purge_expired_notifications
+
         result = purge_expired_notifications()
 
     assert result == {"purged_notifications": 2}
@@ -48,6 +50,7 @@ def test_purge_expired_admin_logs():
     with patch("app.tasks.cleanup.sync_engine") as mock_engine:
         mock_engine.connect.return_value = ctx
         from app.tasks.cleanup import purge_expired_admin_logs
+
         result = purge_expired_admin_logs()
 
     assert result == {"purged_admin_logs": 1}
@@ -58,12 +61,14 @@ def test_purge_soft_deleted_jobs():
     with patch("app.tasks.cleanup.sync_engine") as mock_engine:
         mock_engine.connect.return_value = ctx
         from app.tasks.cleanup import purge_soft_deleted_jobs
+
         result = purge_soft_deleted_jobs()
 
     assert result == {"purged_jobs": 0}
 
 
 # ─── seo tasks ────────────────────────────────────────────────────────────────
+
 
 def _make_session_ctx(rows=None):
     """Build a mock for Session(sync_engine) context manager."""
@@ -80,15 +85,18 @@ def _make_session_ctx(rows=None):
 def test_generate_sitemap_empty():
     """Sitemap is generated even when no active jobs exist."""
     from datetime import datetime, timezone
+
     session_ctx = _make_session_ctx(rows=[])
 
     with tempfile.NamedTemporaryFile(suffix=".xml", delete=False) as f:
         tmp_path = f.name
 
     try:
-        with patch("app.tasks.seo.Session", return_value=session_ctx), \
-             patch("app.tasks.seo.SITEMAP_PATH", tmp_path):
+        with patch("app.tasks.seo.Session", return_value=session_ctx), patch(
+            "app.tasks.seo.SITEMAP_PATH", tmp_path
+        ):
             from app.tasks.seo import generate_sitemap
+
             result = generate_sitemap()
 
         assert result["jobs_count"] == 0
@@ -103,6 +111,7 @@ def test_generate_sitemap_empty():
 def test_generate_sitemap_with_jobs():
     """Sitemap includes job URLs."""
     from datetime import datetime, timezone
+
     slug = "ssc-cgl-2024"
     updated_at = datetime(2024, 6, 1, tzinfo=timezone.utc)
     session_ctx = _make_session_ctx(rows=[(slug, updated_at)])
@@ -111,10 +120,11 @@ def test_generate_sitemap_with_jobs():
         tmp_path = f.name
 
     try:
-        with patch("app.tasks.seo.Session", return_value=session_ctx), \
-             patch("app.tasks.seo.SITEMAP_PATH", tmp_path), \
-             patch("app.tasks.seo.SITE_URL", "http://example.com"):
+        with patch("app.tasks.seo.Session", return_value=session_ctx), patch(
+            "app.tasks.seo.SITEMAP_PATH", tmp_path
+        ), patch("app.tasks.seo.SITE_URL", "http://example.com"):
             from app.tasks.seo import generate_sitemap
+
             result = generate_sitemap()
 
         assert result["jobs_count"] == 1
@@ -134,9 +144,11 @@ def test_generate_sitemap_job_no_updated_at():
         tmp_path = f.name
 
     try:
-        with patch("app.tasks.seo.Session", return_value=session_ctx), \
-             patch("app.tasks.seo.SITEMAP_PATH", tmp_path):
+        with patch("app.tasks.seo.Session", return_value=session_ctx), patch(
+            "app.tasks.seo.SITEMAP_PATH", tmp_path
+        ):
             from app.tasks.seo import generate_sitemap
+
             result = generate_sitemap()
 
         assert result["jobs_count"] == 1
@@ -145,6 +157,7 @@ def test_generate_sitemap_job_no_updated_at():
 
 
 # ─── jobs tasks ───────────────────────────────────────────────────────────────
+
 
 def test_close_expired_job_listings_none_expired():
     session = MagicMock()
@@ -157,6 +170,7 @@ def test_close_expired_job_listings_none_expired():
 
     with patch("app.tasks.jobs.Session", return_value=ctx):
         from app.tasks.jobs import close_expired_job_listings
+
         result_dict = close_expired_job_listings()
 
     assert result_dict == {"closed_count": 0}
@@ -165,6 +179,7 @@ def test_close_expired_job_listings_none_expired():
 
 def test_close_expired_job_listings_some_expired():
     import uuid as _uuid
+
     expired_ids = [_uuid.uuid4(), _uuid.uuid4()]
     session = MagicMock()
     result = MagicMock()
@@ -176,6 +191,7 @@ def test_close_expired_job_listings_some_expired():
 
     with patch("app.tasks.jobs.Session", return_value=ctx):
         from app.tasks.jobs import close_expired_job_listings
+
         result_dict = close_expired_job_listings()
 
     assert result_dict == {"closed_count": 2}

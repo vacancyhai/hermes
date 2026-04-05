@@ -14,6 +14,7 @@ def auth_header(token: str) -> dict:
 
 # --- Get profile ---
 
+
 async def test_get_profile(client: AsyncClient, user_token: str, test_user):
     resp = await client.get("/api/v1/users/profile", headers=auth_header(user_token))
     assert resp.status_code == 200
@@ -30,6 +31,7 @@ async def test_get_profile_requires_auth(client: AsyncClient):
 
 
 # --- Update profile ---
+
 
 async def test_update_profile(client: AsyncClient, user_token: str):
     resp = await client.put(
@@ -61,7 +63,10 @@ async def test_update_profile_requires_auth(client: AsyncClient):
 async def test_update_profile_preferred_states(client: AsyncClient, user_token: str):
     resp = await client.put(
         "/api/v1/users/profile",
-        json={"preferred_states": ["Maharashtra", "Karnataka"], "preferred_categories": ["general", "obc"]},
+        json={
+            "preferred_states": ["Maharashtra", "Karnataka"],
+            "preferred_categories": ["general", "obc"],
+        },
         headers=auth_header(user_token),
     )
     assert resp.status_code == 200
@@ -70,6 +75,7 @@ async def test_update_profile_preferred_states(client: AsyncClient, user_token: 
 
 
 # --- Update phone ---
+
 
 async def test_update_phone(client: AsyncClient, user_token: str):
     resp = await client.put(
@@ -97,6 +103,7 @@ async def test_update_phone_requires_auth(client: AsyncClient):
 
 
 # --- FCM token management ---
+
 
 async def test_register_fcm_token(client: AsyncClient, user_token: str):
     token = f"fcm-token-{uuid.uuid4().hex}"
@@ -169,6 +176,7 @@ async def test_fcm_token_requires_auth(client: AsyncClient):
 
 # --- Notification preferences ---
 
+
 async def test_update_notification_preferences(client: AsyncClient, user_token: str):
     resp = await client.put(
         "/api/v1/users/me/notification-preferences",
@@ -181,7 +189,9 @@ async def test_update_notification_preferences(client: AsyncClient, user_token: 
     assert prefs["push"] is False
 
 
-async def test_update_notification_preferences_partial(client: AsyncClient, user_token: str):
+async def test_update_notification_preferences_partial(
+    client: AsyncClient, user_token: str
+):
     resp = await client.put(
         "/api/v1/users/me/notification-preferences",
         json={"push": True},
@@ -192,5 +202,7 @@ async def test_update_notification_preferences_partial(client: AsyncClient, user
 
 
 async def test_notification_preferences_requires_auth(client: AsyncClient):
-    resp = await client.put("/api/v1/users/me/notification-preferences", json={"email": True})
+    resp = await client.put(
+        "/api/v1/users/me/notification-preferences", json={"email": True}
+    )
     assert resp.status_code in (401, 403)

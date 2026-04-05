@@ -1,9 +1,8 @@
 """Cleanup Celery tasks — purge expired records."""
 
-from sqlalchemy import text
-
 from app.celery_app import celery
 from app.database import sync_engine
+from sqlalchemy import text
 
 
 def _execute_cleanup(stmt_text: str) -> int:

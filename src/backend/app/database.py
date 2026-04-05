@@ -1,9 +1,8 @@
 """Async database session management via SQLAlchemy 2.0."""
 
+from app.config import settings
 from sqlalchemy import create_engine
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-
-from app.config import settings
 
 engine = create_async_engine(
     settings.DATABASE_URL,

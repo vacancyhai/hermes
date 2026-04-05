@@ -7,7 +7,9 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 EXAM_TYPES = Literal["ug", "pg", "doctoral", "lateral"]
-EXAM_STREAMS = Literal["medical", "engineering", "law", "management", "arts_science", "general"]
+EXAM_STREAMS = Literal[
+    "medical", "engineering", "law", "management", "arts_science", "general"
+]
 EXAM_STATUSES = Literal["upcoming", "active", "completed", "cancelled"]
 
 

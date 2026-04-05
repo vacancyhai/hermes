@@ -7,11 +7,14 @@ from typing import Literal
 from pydantic import BaseModel, Field, model_validator
 
 EMPLOYMENT_TYPES = Literal["permanent", "temporary", "contract", "apprentice"]
-QUALIFICATION_LEVELS = Literal["10th", "12th", "diploma", "graduate", "postgraduate", "phd"]
+QUALIFICATION_LEVELS = Literal[
+    "10th", "12th", "diploma", "graduate", "postgraduate", "phd"
+]
 JOB_STATUSES = Literal["draft", "active", "expired", "cancelled", "upcoming"]
 
 
 # --- Request schemas ---
+
 
 class JobCreateRequest(BaseModel):
     job_title: str = Field(min_length=1, max_length=500)
@@ -99,6 +102,7 @@ class JobUpdateRequest(BaseModel):
 
 # --- Response schemas ---
 
+
 class JobResponse(BaseModel):
     id: uuid.UUID
     job_title: str
@@ -173,6 +177,7 @@ class JobListItem(BaseModel):
 
 
 # ── Admit Card schemas ────────────────────────────────────────────────────────
+
 
 class AdmitCardCreateRequest(BaseModel):
     job_id: uuid.UUID | None = None

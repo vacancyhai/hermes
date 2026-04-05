@@ -4,15 +4,14 @@ from datetime import date, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 from app.services.matching import (
     EDUCATION_LEVELS,
     _education_rank,
     get_recommended_jobs,
 )
 
-
 # --- _education_rank ---
+
 
 def test_education_rank_known_levels():
     assert _education_rank("10th") == 0
@@ -42,11 +41,12 @@ def test_education_rank_empty_string():
 
 # --- get_recommended_jobs —— no profile path ---
 
+
 @pytest.mark.asyncio
 async def test_get_recommended_jobs_no_profile():
     """When user has no profile, return newest jobs sorted by created_at (DB-paginated)."""
-    from unittest.mock import AsyncMock, MagicMock
     from datetime import datetime, timezone
+    from unittest.mock import AsyncMock, MagicMock
 
     db = AsyncMock()
 
@@ -72,7 +72,9 @@ async def test_get_recommended_jobs_no_profile():
 
     db.execute = AsyncMock(side_effect=[profile_result, count_result, jobs_result])
 
-    jobs, total = await get_recommended_jobs(user_id="some-uuid", db=db, limit=10, offset=0)
+    jobs, total = await get_recommended_jobs(
+        user_id="some-uuid", db=db, limit=10, offset=0
+    )
     assert total == 2
     assert jobs[0] == job2
 
@@ -80,8 +82,8 @@ async def test_get_recommended_jobs_no_profile():
 @pytest.mark.asyncio
 async def test_get_recommended_jobs_no_profile_pagination():
     """Offset/limit pagination works in the no-profile path (DB-level)."""
-    from unittest.mock import AsyncMock, MagicMock
     from datetime import datetime, timezone
+    from unittest.mock import AsyncMock, MagicMock
 
     db = AsyncMock()
 
@@ -106,11 +108,16 @@ async def test_get_recommended_jobs_no_profile_pagination():
 
 # --- get_recommended_jobs — with profile / scoring ---
 
+
 def _make_job(
-    eligibility=None, vacancy_breakdown=None, qualification_level=None,
-    created_at=None, application_end=None,
+    eligibility=None,
+    vacancy_breakdown=None,
+    qualification_level=None,
+    created_at=None,
+    application_end=None,
 ):
     from datetime import datetime, timezone
+
     j = MagicMock()
     j.eligibility = eligibility or {}
     j.vacancy_breakdown = vacancy_breakdown or {}
@@ -121,8 +128,11 @@ def _make_job(
 
 
 def _make_profile(
-    preferred_states=None, preferred_categories=None, highest_qualification=None,
-    category=None, date_of_birth=None,
+    preferred_states=None,
+    preferred_categories=None,
+    highest_qualification=None,
+    category=None,
+    date_of_birth=None,
 ):
     p = MagicMock()
     p.preferred_states = preferred_states or []
@@ -188,7 +198,10 @@ async def test_get_recommended_jobs_education_match():
     profile_result = MagicMock()
     profile_result.scalar_one_or_none.return_value = profile
     jobs_result = MagicMock()
-    jobs_result.scalars.return_value.all.return_value = [job_overqualified, job_qualifies]
+    jobs_result.scalars.return_value.all.return_value = [
+        job_overqualified,
+        job_qualifies,
+    ]
     db.execute = AsyncMock(side_effect=[profile_result, jobs_result])
 
     jobs, _ = await get_recommended_jobs(user_id="uid", db=db, limit=10)
@@ -253,7 +266,9 @@ async def test_get_recommended_jobs_empty_profile_no_scoring():
     from unittest.mock import AsyncMock, MagicMock
 
     db = AsyncMock()
-    profile = _make_profile(preferred_states=[], preferred_categories=[], highest_qualification=None)
+    profile = _make_profile(
+        preferred_states=[], preferred_categories=[], highest_qualification=None
+    )
 
     j = _make_job()
     profile_result = MagicMock()

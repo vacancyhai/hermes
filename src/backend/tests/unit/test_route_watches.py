@@ -6,7 +6,6 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-
 # ── fixtures ──────────────────────────────────────────────────────────────────
 
 
@@ -62,8 +61,9 @@ def _db_single(obj):
 
 @pytest.mark.asyncio
 async def test_watch_job_job_not_found():
-    from fastapi import HTTPException
     from app.routers.watches import watch_job
+    from fastapi import HTTPException
+
     user = _make_user()
     db = _db_single(None)
     with pytest.raises(HTTPException) as exc:
@@ -75,6 +75,7 @@ async def test_watch_job_job_not_found():
 @pytest.mark.asyncio
 async def test_watch_job_already_watching():
     from app.routers.watches import watch_job
+
     user = _make_user()
     job = _make_job()
     watch = _make_watch("job", job.id)
@@ -95,8 +96,9 @@ async def test_watch_job_already_watching():
 
 @pytest.mark.asyncio
 async def test_watch_job_max_watches_exceeded():
+    from app.routers.watches import MAX_WATCHES, watch_job
     from fastapi import HTTPException
-    from app.routers.watches import watch_job, MAX_WATCHES
+
     user = _make_user()
     job = _make_job()
 
@@ -118,6 +120,7 @@ async def test_watch_job_max_watches_exceeded():
 @pytest.mark.asyncio
 async def test_watch_job_success():
     from app.routers.watches import watch_job
+
     user = _make_user()
     job = _make_job()
 
@@ -145,8 +148,9 @@ async def test_watch_job_success():
 
 @pytest.mark.asyncio
 async def test_unwatch_job_not_watching():
-    from fastapi import HTTPException
     from app.routers.watches import unwatch_job
+    from fastapi import HTTPException
+
     user = _make_user()
     db = _db_single(None)
     with pytest.raises(HTTPException) as exc:
@@ -157,6 +161,7 @@ async def test_unwatch_job_not_watching():
 @pytest.mark.asyncio
 async def test_unwatch_job_success():
     from app.routers.watches import unwatch_job
+
     user = _make_user()
     job = _make_job()
     watch = _make_watch("job", job.id)
@@ -177,8 +182,9 @@ async def test_unwatch_job_success():
 
 @pytest.mark.asyncio
 async def test_watch_exam_not_found():
-    from fastapi import HTTPException
     from app.routers.watches import watch_exam
+    from fastapi import HTTPException
+
     user = _make_user()
     db = _db_single(None)
     with pytest.raises(HTTPException) as exc:
@@ -190,6 +196,7 @@ async def test_watch_exam_not_found():
 @pytest.mark.asyncio
 async def test_watch_exam_already_watching():
     from app.routers.watches import watch_exam
+
     user = _make_user()
     exam = _make_exam()
     watch = _make_watch("exam", exam.id)
@@ -210,8 +217,9 @@ async def test_watch_exam_already_watching():
 
 @pytest.mark.asyncio
 async def test_watch_exam_max_watches_exceeded():
+    from app.routers.watches import MAX_WATCHES, watch_exam
     from fastapi import HTTPException
-    from app.routers.watches import watch_exam, MAX_WATCHES
+
     user = _make_user()
     exam = _make_exam()
 
@@ -232,6 +240,7 @@ async def test_watch_exam_max_watches_exceeded():
 @pytest.mark.asyncio
 async def test_watch_exam_success():
     from app.routers.watches import watch_exam
+
     user = _make_user()
     exam = _make_exam()
 
@@ -258,8 +267,9 @@ async def test_watch_exam_success():
 
 @pytest.mark.asyncio
 async def test_unwatch_exam_not_watching():
-    from fastapi import HTTPException
     from app.routers.watches import unwatch_exam
+    from fastapi import HTTPException
+
     user = _make_user()
     db = _db_single(None)
     with pytest.raises(HTTPException) as exc:
@@ -270,6 +280,7 @@ async def test_unwatch_exam_not_watching():
 @pytest.mark.asyncio
 async def test_unwatch_exam_success():
     from app.routers.watches import unwatch_exam
+
     user = _make_user()
     exam = _make_exam()
     watch = _make_watch("exam", exam.id)
@@ -290,6 +301,7 @@ async def test_unwatch_exam_success():
 @pytest.mark.asyncio
 async def test_list_watched_empty():
     from app.routers.watches import list_watched
+
     user = _make_user()
     watches_res = MagicMock()
     watches_res.scalars.return_value.all.return_value = []
@@ -305,6 +317,7 @@ async def test_list_watched_empty():
 @pytest.mark.asyncio
 async def test_list_watched_with_job():
     from app.routers.watches import list_watched
+
     user = _make_user()
     job = _make_job()
     watch = _make_watch("job", job.id)
@@ -327,6 +340,7 @@ async def test_list_watched_with_job():
 @pytest.mark.asyncio
 async def test_list_watched_with_exam():
     from app.routers.watches import list_watched
+
     user = _make_user()
     exam = _make_exam()
     watch = _make_watch("exam", exam.id)
@@ -349,6 +363,7 @@ async def test_list_watched_with_exam():
 @pytest.mark.asyncio
 async def test_list_watched_mixed_jobs_and_exams():
     from app.routers.watches import list_watched
+
     user = _make_user()
     job = _make_job()
     exam = _make_exam()

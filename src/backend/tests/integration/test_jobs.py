@@ -9,10 +9,12 @@ from httpx import AsyncClient
 def auth_header(token: str) -> dict:
     return {"Authorization": f"Bearer {token}"}
 
+
 pytestmark = pytest.mark.asyncio
 
 
 # --- Public Job Listing ---
+
 
 async def test_list_jobs_default_active(client: AsyncClient, active_job):
     resp = await client.get("/api/v1/jobs")
@@ -67,6 +69,7 @@ async def test_list_jobs_fts_search(client: AsyncClient, active_job):
 
 # --- Admin Job CRUD ---
 
+
 async def test_admin_create_job(client: AsyncClient, admin_token: str):
     resp = await client.post(
         "/api/v1/admin/jobs",
@@ -90,8 +93,12 @@ async def test_admin_list_all_jobs(client: AsyncClient, admin_token: str, active
     assert resp.json()["pagination"]["total"] >= 1
 
 
-async def test_admin_list_jobs_by_status(client: AsyncClient, admin_token: str, draft_job):
-    resp = await client.get("/api/v1/admin/jobs?status=draft", headers=auth_header(admin_token))
+async def test_admin_list_jobs_by_status(
+    client: AsyncClient, admin_token: str, draft_job
+):
+    resp = await client.get(
+        "/api/v1/admin/jobs?status=draft", headers=auth_header(admin_token)
+    )
     assert resp.status_code == 200
     for job in resp.json()["data"]:
         assert job["status"] == "draft"
@@ -122,7 +129,9 @@ async def test_admin_approve_draft(client: AsyncClient, admin_token: str, draft_
     assert data["published_at"] is not None
 
 
-async def test_admin_approve_non_draft_fails(client: AsyncClient, admin_token: str, active_job):
+async def test_admin_approve_non_draft_fails(
+    client: AsyncClient, admin_token: str, active_job
+):
     job_id = active_job["id"]
     resp = await client.put(
         f"/api/v1/admin/jobs/{job_id}/approve",
@@ -140,7 +149,9 @@ async def test_admin_delete_job(client: AsyncClient, admin_token: str, draft_job
     assert resp.status_code == 204
 
 
-async def test_operator_cannot_delete_job(client: AsyncClient, operator_token: str, active_job):
+async def test_operator_cannot_delete_job(
+    client: AsyncClient, operator_token: str, active_job
+):
     job_id = active_job["id"]
     resp = await client.delete(
         f"/api/v1/admin/jobs/{job_id}",
@@ -153,12 +164,22 @@ async def test_slug_uniqueness(client: AsyncClient, admin_token: str):
     title = f"Unique Slug Test {uuid.uuid4().hex[:4]}"
     resp1 = await client.post(
         "/api/v1/admin/jobs",
-        json={"job_title": title, "organization": "Test", "description": "d", "status": "draft"},
+        json={
+            "job_title": title,
+            "organization": "Test",
+            "description": "d",
+            "status": "draft",
+        },
         headers=auth_header(admin_token),
     )
     resp2 = await client.post(
         "/api/v1/admin/jobs",
-        json={"job_title": title, "organization": "Test", "description": "d", "status": "draft"},
+        json={
+            "job_title": title,
+            "organization": "Test",
+            "description": "d",
+            "status": "draft",
+        },
         headers=auth_header(admin_token),
     )
     assert resp1.status_code == 201

@@ -1,25 +1,31 @@
 """Unit tests for entrance exam matching/recommendation engine."""
 
-import pytest
 from datetime import date, datetime, timedelta, timezone
+
+import pytest
 from app.services.matching import (
-    get_recommended_entrance_exams,
-    _education_rank,
-    _user_age,
-    STATE_MATCH,
+    AGE_MATCH,
     CATEGORY_ELIGIBILITY_MATCH,
     EDUCATION_MATCH,
-    AGE_MATCH,
     RECENCY_BONUS,
+    STATE_MATCH,
+    _education_rank,
+    _user_age,
+    get_recommended_entrance_exams,
 )
 
 
 def _make_exam(
-    eligibility=None, exam_type="pg", stream="general",
-    created_at=None, exam_date=None, status="active",
+    eligibility=None,
+    exam_type="pg",
+    stream="general",
+    created_at=None,
+    exam_date=None,
+    status="active",
 ):
     """Helper to create mock EntranceExam."""
     from unittest.mock import MagicMock
+
     exam = MagicMock()
     exam.eligibility = eligibility or {}
     exam.exam_type = exam_type
@@ -31,11 +37,15 @@ def _make_exam(
 
 
 def _make_profile(
-    preferred_states=None, preferred_categories=None,
-    highest_qualification=None, category=None, date_of_birth=None,
+    preferred_states=None,
+    preferred_categories=None,
+    highest_qualification=None,
+    category=None,
+    date_of_birth=None,
 ):
     """Helper to create mock UserProfile."""
     from unittest.mock import MagicMock
+
     p = MagicMock()
     p.preferred_states = preferred_states or []
     p.preferred_categories = preferred_categories or []
@@ -47,6 +57,7 @@ def _make_profile(
 
 # --- get_recommended_entrance_exams — no profile path ---
 
+
 @pytest.mark.asyncio
 async def test_get_recommended_entrance_exams_no_profile():
     """When user has no profile, return newest exams sorted by created_at (DB-paginated)."""
@@ -55,8 +66,14 @@ async def test_get_recommended_entrance_exams_no_profile():
     db = AsyncMock()
 
     today = date.today()
-    exam1 = _make_exam(created_at=datetime(2024, 1, 10, tzinfo=timezone.utc), exam_date=today + timedelta(days=30))
-    exam2 = _make_exam(created_at=datetime(2024, 1, 20, tzinfo=timezone.utc), exam_date=today + timedelta(days=60))
+    exam1 = _make_exam(
+        created_at=datetime(2024, 1, 10, tzinfo=timezone.utc),
+        exam_date=today + timedelta(days=30),
+    )
+    exam2 = _make_exam(
+        created_at=datetime(2024, 1, 20, tzinfo=timezone.utc),
+        exam_date=today + timedelta(days=60),
+    )
 
     profile_result = MagicMock()
     profile_result.scalar_one_or_none.return_value = None
@@ -70,7 +87,9 @@ async def test_get_recommended_entrance_exams_no_profile():
 
     db.execute = AsyncMock(side_effect=[profile_result, count_result, exams_result])
 
-    exams, total = await get_recommended_entrance_exams(user_id="some-uuid", db=db, limit=10, offset=0)
+    exams, total = await get_recommended_entrance_exams(
+        user_id="some-uuid", db=db, limit=10, offset=0
+    )
     assert total == 2
     assert exams[0] == exam2
 
@@ -95,12 +114,15 @@ async def test_get_recommended_entrance_exams_no_profile_pagination():
 
     db.execute = AsyncMock(side_effect=[profile_result, count_result, exams_result])
 
-    exams, total = await get_recommended_entrance_exams(user_id="uid", db=db, limit=2, offset=2)
+    exams, total = await get_recommended_entrance_exams(
+        user_id="uid", db=db, limit=2, offset=2
+    )
     assert total == 5
     assert len(exams) == 2
 
 
 # --- get_recommended_entrance_exams — with profile / scoring ---
+
 
 @pytest.mark.asyncio
 async def test_get_recommended_entrance_exams_state_match():
@@ -157,7 +179,10 @@ async def test_get_recommended_entrance_exams_education_match():
     profile_result = MagicMock()
     profile_result.scalar_one_or_none.return_value = profile
     exams_result = MagicMock()
-    exams_result.scalars.return_value.all.return_value = [exam_overqualified, exam_qualifies]
+    exams_result.scalars.return_value.all.return_value = [
+        exam_overqualified,
+        exam_qualifies,
+    ]
     db.execute = AsyncMock(side_effect=[profile_result, exams_result])
 
     exams, _ = await get_recommended_entrance_exams(user_id="uid", db=db, limit=10)
@@ -172,9 +197,9 @@ async def test_get_recommended_entrance_exams_age_match():
 
     db = AsyncMock()
     # User is 25 years old
-    dob = date.today() - timedelta(days=25*365)
+    dob = date.today() - timedelta(days=25 * 365)
     profile = _make_profile(date_of_birth=dob)
-    
+
     exam_match = _make_exam(eligibility={"age_min": 18, "age_max": 30})
     exam_no_match = _make_exam(eligibility={"age_min": 30, "age_max": 40})
 
@@ -222,7 +247,7 @@ async def test_get_recommended_entrance_exams_combined_scoring():
     from unittest.mock import AsyncMock, MagicMock
 
     db = AsyncMock()
-    dob = date.today() - timedelta(days=22*365)
+    dob = date.today() - timedelta(days=22 * 365)
     profile = _make_profile(
         preferred_states=["Delhi"],
         category="SC",
@@ -357,7 +382,7 @@ async def test_get_recommended_entrance_exams_age_flexible_keys():
     from unittest.mock import AsyncMock, MagicMock
 
     db = AsyncMock()
-    dob = date.today() - timedelta(days=20*365)
+    dob = date.today() - timedelta(days=20 * 365)
     profile = _make_profile(date_of_birth=dob)
     exam = _make_exam(eligibility={"min_age": 18, "max_age": 25})
 
@@ -378,7 +403,7 @@ async def test_get_recommended_entrance_exams_pagination():
 
     db = AsyncMock()
     profile = _make_profile(highest_qualification="graduate")
-    
+
     exams = [_make_exam(eligibility={"qualification": "graduate"}) for _ in range(10)]
 
     profile_result = MagicMock()
@@ -387,7 +412,9 @@ async def test_get_recommended_entrance_exams_pagination():
     exams_result.scalars.return_value.all.return_value = exams
     db.execute = AsyncMock(side_effect=[profile_result, exams_result])
 
-    page, total = await get_recommended_entrance_exams(user_id="uid", db=db, limit=5, offset=0)
+    page, total = await get_recommended_entrance_exams(
+        user_id="uid", db=db, limit=5, offset=0
+    )
     assert total == 10
     assert len(page) == 5
 
@@ -398,6 +425,8 @@ async def test_get_recommended_entrance_exams_pagination():
     exams_result2.scalars.return_value.all.return_value = exams
     db.execute = AsyncMock(side_effect=[profile_result2, exams_result2])
 
-    page2, total2 = await get_recommended_entrance_exams(user_id="uid", db=db, limit=5, offset=5)
+    page2, total2 = await get_recommended_entrance_exams(
+        user_id="uid", db=db, limit=5, offset=5
+    )
     assert total2 == 10
     assert len(page2) == 5

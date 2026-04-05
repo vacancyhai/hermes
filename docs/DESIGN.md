@@ -20,9 +20,10 @@
 8. [SEO Strategy](#seo-strategy)
 9. [5-Section Frontend Architecture](#5-section-frontend-architecture)
 10. [Docker Environments](#docker-environments)
-11. [Security Design](#security-design)
-12. [Environment Variables](#environment-variables)
-13. [Deployment](#deployment)
+11. [CI/CD Pipeline](#cicd-pipeline)
+12. [Security Design](#security-design)
+13. [Environment Variables](#environment-variables)
+14. [Deployment](#deployment)
 
 ---
 
@@ -862,6 +863,67 @@ All containers run via Docker Compose on this single VM.
 
 ---
 
+## CI/CD Pipeline
+
+### GitHub Actions Workflow (`.github/workflows/build.yml`)
+
+The pipeline has two sequential jobs and runs on every push to `main` and every pull request:
+
+```
+push to main / any PR
+  └─► job: test  (ubuntu-latest)
+  │     1. Checkout repo (full history for SonarCloud blame)
+  │     2. Write CI .env  → src/backend/.env  (safe defaults, no real secrets)
+  │     3. docker compose up -d --build --wait  (PostgreSQL + Redis + backend)
+  │     4. docker exec hermes_backend python -m pytest tests/unit/ --cov=app \
+  │              --cov-report=xml:/app/coverage.xml -q
+  │     5. docker cp hermes_backend:/app/coverage.xml ./coverage.xml
+  │     6. Upload coverage.xml as workflow artifact
+  │     7. docker compose down -v  (always, even on failure)
+  │
+  └─► job: sonarcloud  (needs: test)
+        1. Checkout repo
+        2. Download coverage.xml artifact
+        3. SonarCloud scan with -Dsonar.python.coverage.reportPaths=coverage.xml
+```
+
+### Branch Strategy
+
+| Branch | Purpose | CI trigger |
+|--------|---------|------------|
+| `main` | Production-ready code — protected | Push: full pipeline |
+| `feature/*` | New features | PR to main: full pipeline |
+| `fix/*` | Bug fixes | PR to main: full pipeline |
+| `chore/*` | Dependency bumps, config | PR to main: full pipeline |
+
+**Branch protection rules (set in GitHub repo Settings → Branches):**
+- Require pull request before merging
+- Require status checks: **Unit Tests (pytest + coverage)** + **SonarCloud Scan**
+- Require branches to be up to date before merging
+- No bypassing rules (including admins)
+
+### Pre-commit Hooks (`.pre-commit-config.yaml`)
+
+Run locally before every `git commit`. Installed once per developer clone:
+
+```bash
+pre-commit install   # registers .git/hooks/pre-commit
+```
+
+| Hook | Enforces |
+|------|----------|
+| `trailing-whitespace`, `end-of-file-fixer`, `mixed-line-ending` | File hygiene |
+| `check-yaml`, `check-json`, `check-toml` | Config syntax |
+| `check-merge-conflict`, `debug-statements` | Common accidents |
+| `check-added-large-files` (500 KB) | No accidental binary commits |
+| **black** | Auto-format Python (`src/backend/`) |
+| **isort** `--profile=black` | Import sort order |
+| **flake8** + bugbear, comprehensions, simplify | Lint (100-char limit) |
+| **mypy** `--ignore-missing-imports` | Type checking |
+| **detect-secrets** | Block credential leaks (baseline: `.secrets.baseline`) |
+
+---
+
 ## Security Design
 
 All items below are implemented.
@@ -921,7 +983,17 @@ All items below are implemented.
 
 ## Environment Variables
 
-Each service has its own `.env` file. Templates live in `config/<environment>/`.
+Each service has its own `.env` file.
+
+- **Template / reference:** `src/backend/.env.example` — fully annotated, safe to commit, lists every variable with defaults and "REQUIRED in production" markers.
+- **Environment-specific templates:** `config/<environment>/` — pre-filled values for dev/staging/production.
+- **Actual secrets:** `src/backend/.env` — gitignored, never committed.
+
+```bash
+# Onboarding a new developer:
+cp src/backend/.env.example src/backend/.env
+# Fill in REQUIRED values (POSTGRES_PASSWORD, JWT_SECRET_KEY, Firebase keys)
+```
 
 ### Backend (`src/backend/.env`)
 

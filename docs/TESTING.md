@@ -3,20 +3,57 @@
 ## Run Tests
 
 ```bash
-# Backend — all tests with coverage
-docker exec -w /app hermes_backend pytest tests/ --cov=app --cov-report=term-missing -q
+# Backend — unit tests only (coverage XML written to /app/coverage.xml automatically)
+docker exec hermes_backend python -m pytest tests/unit/ -q
 
-# Backend — unit tests only
-docker exec -w /app hermes_backend pytest tests/unit/ -q
+# Backend — all tests (unit + integration + security + e2e)
+docker exec hermes_backend python -m pytest tests/ -q
 
 # Backend — integration tests only
-docker exec -w /app hermes_backend pytest tests/integration/ -q
+docker exec hermes_backend python -m pytest tests/integration/ -q
 
 # User frontend
 docker exec -w /app hermes_frontend python -m pytest tests/ --cov=app --cov-report=term-missing -q
 
 # Admin frontend
 docker exec -w /app hermes_frontend_admin python -m pytest tests/ --cov=app --cov-report=term-missing -q
+```
+
+> **Coverage is automatic:** `src/backend/pytest.ini` sets `addopts = --cov=app --cov-report=xml:/app/coverage.xml --cov-report=term-missing`.
+> The XML report at `/app/coverage.xml` is what SonarCloud ingests in CI.
+
+## CI Pipeline (GitHub Actions)
+
+The workflow at `.github/workflows/build.yml` runs on every push to `main` and every pull request.
+
+```
+push / PR
+  └─► job: test          — builds Docker stack, runs pytest --cov, uploads coverage.xml
+        └─► job: sonarcloud  — downloads coverage.xml, runs SonarCloud scan
+```
+
+- **Tests must pass** before SonarCloud runs (`needs: test`).
+- **Branch protection** on `main` requires both jobs to pass before a PR can merge.
+- The CI `.env` is written inline in the workflow — no production secrets in CI.
+
+## Pre-commit Hooks
+
+Hooks run automatically before every `git commit` (installed via `pre-commit install`):
+
+| Hook | Purpose |
+|------|---------|
+| `trailing-whitespace`, `end-of-file-fixer` | File hygiene |
+| `check-yaml`, `check-json`, `check-toml` | Config syntax |
+| `check-merge-conflict`, `debug-statements` | Common accidents |
+| `black` | Auto-format Python in `src/backend/` |
+| `isort` (`--profile=black`) | Sort imports |
+| `flake8` + bugbear | Lint (100-char line limit) |
+| `mypy` | Type checking (`--ignore-missing-imports`) |
+| `detect-secrets` | Block credential leaks |
+
+```bash
+# Run all hooks manually across the full repo:
+pre-commit run --all-files
 ```
 
 ## Manual Firebase Test Credentials

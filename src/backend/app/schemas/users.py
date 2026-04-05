@@ -38,7 +38,9 @@ class ProfileUpdateRequest(BaseModel):
     state: str | None = None
     city: str | None = None
     pincode: str | None = None
-    highest_qualification: Literal["10th", "12th", "diploma", "graduate", "postgraduate", "phd"] | None = None
+    highest_qualification: (
+        Literal["10th", "12th", "diploma", "graduate", "postgraduate", "phd"] | None
+    ) = None
     education: dict | None = None
     notification_preferences: dict | None = None
     preferred_states: list | None = None
@@ -60,4 +62,6 @@ class NotificationPreferencesRequest(BaseModel):
     in_app: bool | None = None
     whatsapp: bool | None = None
     telegram: bool | None = None
-    telegram_chat_id: str | None = None  # Telegram chat_id from the bot (required for delivery)
+    telegram_chat_id: str | None = (
+        None  # Telegram chat_id from the bot (required for delivery)
+    )

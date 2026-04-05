@@ -337,33 +337,33 @@
     var apiKey = "{{ firebase_api_key }}";
     var authDomain = "{{ firebase_auth_domain }}";
     var projectId = "{{ firebase_project_id }}";
-    
+
     if (!apiKey) return;
-    
+
     firebase.initializeApp({ apiKey: apiKey, authDomain: authDomain, projectId: projectId });
     var auth = firebase.auth();
     var recaptchaVerifier = null;
     var confirmationResult = null;
     var hasPassword = false;
     var hasEmail = {% if user.get('email') %}true{% else %}false{% endif %};
-    
+
     // Check if user has password provider on load
     auth.onAuthStateChanged(function (user) {
         if (user) {
             var providers = user.providerData.map(function (p) { return p.providerId; });
             hasPassword = providers.indexOf("password") !== -1;
             var hasEmailProvider = user.email ? true : false;
-            
+
             // Update password button
             var btn = document.getElementById("password-action-btn");
             if (btn) {
                 btn.textContent = hasPassword ? "Change Password" : "Set Password";
             }
-            
+
             // Update email status
             var emailHint = document.getElementById("email-status-hint");
             var linkEmailBtn = document.getElementById("link-email-btn");
-            
+
             if (emailHint) {
                 if (hasEmail) {
                     emailHint.textContent = "{{ user.get('email', '') }}";
@@ -375,23 +375,23 @@
             }
         }
     });
-    
+
     window.editPhone = function () {
         document.getElementById("new-phone").value = document.getElementById("phone").value;
         document.getElementById("edit-phone-modal").classList.add("active");
     };
-    
+
     window.closeEditPhone = function () {
         document.getElementById("edit-phone-modal").classList.remove("active");
     };
-    
+
     window.savePhone = function () {
         var phone = document.getElementById("new-phone").value.trim();
         if (!phone || !phone.match(/^\+\d{10,15}$/)) {
             alert("Please enter a valid phone number (e.g., +91...)");
             return;
         }
-        
+
         fetch("/users/me/phone", {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
@@ -410,17 +410,17 @@
             alert("Failed to update phone number.");
         });
     };
-    
+
     window.verifyPhone = function () {
         var phone = document.getElementById("phone").value;
         if (!phone) {
             alert("No phone number on file.");
             return;
         }
-        
+
         document.getElementById("verify-phone-display").textContent = phone;
         document.getElementById("verify-phone-modal").classList.add("active");
-        
+
         // Initialize reCAPTCHA
         if (!recaptchaVerifier) {
             recaptchaVerifier = new firebase.auth.RecaptchaVerifier("recaptcha-container", {
@@ -428,7 +428,7 @@
             });
         }
     };
-    
+
     window.closeVerifyPhone = function () {
         document.getElementById("verify-phone-modal").classList.remove("active");
         document.getElementById("verify-otp-input").style.display = "none";
@@ -439,10 +439,10 @@
             recaptchaVerifier = null;
         }
     };
-    
+
     window.sendVerificationCode = function () {
         var phone = document.getElementById("phone").value;
-        
+
         auth.signInWithPhoneNumber(phone, recaptchaVerifier)
             .then(function (result) {
                 confirmationResult = result;
@@ -459,19 +459,19 @@
                 }
             });
     };
-    
+
     window.confirmVerificationCode = function () {
         var code = document.getElementById("verify-otp").value.trim();
         if (!code || code.length !== 6) {
             alert("Please enter the 6-digit code.");
             return;
         }
-        
+
         if (!confirmationResult) {
             alert("Please request a new code.");
             return;
         }
-        
+
         confirmationResult.confirm(code)
             .then(function (result) {
                 // Phone verified via Firebase - now update backend
@@ -498,9 +498,9 @@
                 alert("Verification failed: " + err.message);
             });
     };
-    
+
     // ── Password Management ──────────────────────────────────────
-    
+
     window.showPasswordModal = function () {
         if (hasPassword) {
             document.getElementById("change-password-modal").classList.add("active");
@@ -508,44 +508,44 @@
             document.getElementById("set-password-modal").classList.add("active");
         }
     };
-    
+
     window.closeSetPassword = function () {
         document.getElementById("set-password-modal").classList.remove("active");
         document.getElementById("new-password-set").value = "";
         document.getElementById("confirm-password-set").value = "";
     };
-    
+
     window.closeChangePassword = function () {
         document.getElementById("change-password-modal").classList.remove("active");
         document.getElementById("current-password").value = "";
         document.getElementById("new-password-change").value = "";
         document.getElementById("confirm-password-change").value = "";
     };
-    
+
     window.submitSetPassword = function () {
         var newPass = document.getElementById("new-password-set").value;
         var confirmPass = document.getElementById("confirm-password-set").value;
-        
+
         if (!newPass || newPass.length < 8) {
             alert("Password must be at least 8 characters.");
             return;
         }
-        
+
         if (!/[A-Z]/.test(newPass)) {
             alert("Password must contain at least one uppercase letter.");
             return;
         }
-        
+
         if (!/[!@#$%^&*(),.?":{}|<>]/.test(newPass)) {
             alert("Password must contain at least one special character.");
             return;
         }
-        
+
         if (newPass !== confirmPass) {
             alert("Passwords do not match.");
             return;
         }
-        
+
         fetch("/users/me/set-password", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -566,46 +566,46 @@
             alert("Failed to set password.");
         });
     };
-    
+
     window.submitChangePassword = function () {
         var currentPass = document.getElementById("current-password").value;
         var newPass = document.getElementById("new-password-change").value;
         var confirmPass = document.getElementById("confirm-password-change").value;
-        
+
         if (!currentPass) {
             alert("Please enter your current password.");
             return;
         }
-        
+
         if (!newPass || newPass.length < 8) {
             alert("New password must be at least 8 characters.");
             return;
         }
-        
+
         if (!/[A-Z]/.test(newPass)) {
             alert("Password must contain at least one uppercase letter.");
             return;
         }
-        
+
         if (!/[!@#$%^&*(),.?":{}|<>]/.test(newPass)) {
             alert("Password must contain at least one special character.");
             return;
         }
-        
+
         if (newPass !== confirmPass) {
             alert("New passwords do not match.");
             return;
         }
-        
+
         // Step 1: Re-authenticate with current password (required by Firebase)
         var user = auth.currentUser;
         if (!user || !user.email) {
             alert("User session expired. Please login again.");
             return;
         }
-        
+
         var credential = firebase.auth.EmailAuthProvider.credential(user.email, currentPass);
-        
+
         user.reauthenticateWithCredential(credential)
             .then(function () {
                 // Step 2: Update password on backend (which updates Firebase)
@@ -632,50 +632,50 @@
                 }
             });
     };
-    
+
     // ── Email Linking (for phone-only users) ────────────────────
-    
+
     window.showLinkEmailModal = function () {
         document.getElementById("link-email-modal").classList.add("active");
     };
-    
+
     window.closeLinkEmail = function () {
         document.getElementById("link-email-modal").classList.remove("active");
         document.getElementById("link-email").value = "";
         document.getElementById("link-password").value = "";
         document.getElementById("link-confirm-password").value = "";
     };
-    
+
     window.submitLinkEmail = function () {
         var email = document.getElementById("link-email").value.trim();
         var password = document.getElementById("link-password").value;
         var confirmPassword = document.getElementById("link-confirm-password").value;
-        
+
         if (!email) {
             alert("Please enter an email address.");
             return;
         }
-        
+
         if (!password || password.length < 8) {
             alert("Password must be at least 8 characters.");
             return;
         }
-        
+
         if (!/[A-Z]/.test(password)) {
             alert("Password must contain at least one uppercase letter.");
             return;
         }
-        
+
         if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
             alert("Password must contain at least one special character.");
             return;
         }
-        
+
         if (password !== confirmPassword) {
             alert("Passwords do not match.");
             return;
         }
-        
+
         fetch("/users/me/link-email-password", {
             method: "POST",
             headers: { "Content-Type": "application/json" },

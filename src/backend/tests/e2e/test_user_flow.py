@@ -10,6 +10,7 @@ from httpx import AsyncClient
 def auth_header(token: str) -> dict:
     return {"Authorization": f"Bearer {token}"}
 
+
 pytestmark = pytest.mark.asyncio
 
 
@@ -19,14 +20,18 @@ async def test_admin_job_lifecycle(client: AsyncClient, admin_token: str):
     title = f"Lifecycle Test {uuid.uuid4().hex[:6]}"
 
     # Create draft
-    resp = await client.post("/api/v1/admin/jobs", json={
-        "job_title": title,
-        "organization": "Lifecycle Org",
-        "qualification_level": "graduate",
-        "total_vacancies": 50,
-        "description": "Integration test job.",
-        "status": "draft",
-    }, headers=headers)
+    resp = await client.post(
+        "/api/v1/admin/jobs",
+        json={
+            "job_title": title,
+            "organization": "Lifecycle Org",
+            "qualification_level": "graduate",
+            "total_vacancies": 50,
+            "description": "Integration test job.",
+            "status": "draft",
+        },
+        headers=headers,
+    )
     assert resp.status_code == 201
     job_id = resp.json()["id"]
 
@@ -36,11 +41,15 @@ async def test_admin_job_lifecycle(client: AsyncClient, admin_token: str):
     assert job_id not in job_ids
 
     # Update draft
-    resp = await client.put(f"/api/v1/admin/jobs/{job_id}", json={
-        "total_vacancies": 75,
-        "fee_general": 500,
-        "fee_sc_st": 0,
-    }, headers=headers)
+    resp = await client.put(
+        f"/api/v1/admin/jobs/{job_id}",
+        json={
+            "total_vacancies": 75,
+            "fee_general": 500,
+            "fee_sc_st": 0,
+        },
+        headers=headers,
+    )
     assert resp.status_code == 200
     assert resp.json()["total_vacancies"] == 75
 
@@ -80,13 +89,18 @@ async def test_admin_user_management_flow(client: AsyncClient, admin_token: str)
         "firebase": {"sign_in_provider": "password"},
     }
     with patch("app.firebase.verify_id_token", return_value=decoded):
-        resp = await client.post("/api/v1/auth/verify-token", json={"id_token": "fake-token"})
+        resp = await client.post(
+            "/api/v1/auth/verify-token", json={"id_token": "fake-token"}
+        )
     assert resp.status_code == 200
     user_token_first = resp.json()["access_token"]
     # Extract user_id from JWT
-    from jose import jwt
     from app.config import settings
-    user_id = jwt.decode(user_token_first, settings.JWT_SECRET_KEY, algorithms=["HS256"])["sub"]
+    from jose import jwt
+
+    user_id = jwt.decode(
+        user_token_first, settings.JWT_SECRET_KEY, algorithms=["HS256"]
+    )["sub"]
 
     # Admin suspends user
     resp = await client.put(
@@ -98,7 +112,9 @@ async def test_admin_user_management_flow(client: AsyncClient, admin_token: str)
 
     # Suspended user can't verify-token
     with patch("app.firebase.verify_id_token", return_value=decoded):
-        resp = await client.post("/api/v1/auth/verify-token", json={"id_token": "fake-token"})
+        resp = await client.post(
+            "/api/v1/auth/verify-token", json={"id_token": "fake-token"}
+        )
     assert resp.status_code == 403
 
     # Admin activates user
@@ -111,11 +127,15 @@ async def test_admin_user_management_flow(client: AsyncClient, admin_token: str)
 
     # Active user can verify-token again
     with patch("app.firebase.verify_id_token", return_value=decoded):
-        resp = await client.post("/api/v1/auth/verify-token", json={"id_token": "fake-token"})
+        resp = await client.post(
+            "/api/v1/auth/verify-token", json={"id_token": "fake-token"}
+        )
     assert resp.status_code == 200
 
 
-async def test_rbac_admin_vs_operator(client: AsyncClient, admin_token: str, operator_token: str, test_user):
+async def test_rbac_admin_vs_operator(
+    client: AsyncClient, admin_token: str, operator_token: str, test_user
+):
     """Verify role-based access: operator can list, but only admin can delete/suspend."""
     user_id, _, _ = test_user
 
@@ -124,17 +144,23 @@ async def test_rbac_admin_vs_operator(client: AsyncClient, admin_token: str, ope
     assert resp.status_code == 200
 
     # Operator can create job
-    resp = await client.post("/api/v1/admin/jobs", json={
-        "job_title": "Operator Job",
-        "organization": "Operator Org",
-        "description": "op test",
-        "status": "draft",
-    }, headers=auth_header(operator_token))
+    resp = await client.post(
+        "/api/v1/admin/jobs",
+        json={
+            "job_title": "Operator Job",
+            "organization": "Operator Org",
+            "description": "op test",
+            "status": "draft",
+        },
+        headers=auth_header(operator_token),
+    )
     assert resp.status_code == 201
     job_id = resp.json()["id"]
 
     # Operator CANNOT delete job (admin only)
-    resp = await client.delete(f"/api/v1/admin/jobs/{job_id}", headers=auth_header(operator_token))
+    resp = await client.delete(
+        f"/api/v1/admin/jobs/{job_id}", headers=auth_header(operator_token)
+    )
     assert resp.status_code == 403
 
     # Operator CANNOT suspend user (admin only)
@@ -150,5 +176,7 @@ async def test_rbac_admin_vs_operator(client: AsyncClient, admin_token: str, ope
     assert resp.status_code == 403
 
     # Admin CAN delete
-    resp = await client.delete(f"/api/v1/admin/jobs/{job_id}", headers=auth_header(admin_token))
+    resp = await client.delete(
+        f"/api/v1/admin/jobs/{job_id}", headers=auth_header(admin_token)
+    )
     assert resp.status_code == 204

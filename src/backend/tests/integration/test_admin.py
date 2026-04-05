@@ -9,6 +9,7 @@ from httpx import AsyncClient
 def auth_header(token: str) -> dict:
     return {"Authorization": f"Bearer {token}"}
 
+
 pytestmark = pytest.mark.asyncio
 
 
@@ -32,14 +33,18 @@ async def test_admin_list_users(client: AsyncClient, admin_token: str, test_user
 
 async def test_admin_search_users(client: AsyncClient, admin_token: str, test_user):
     _, email, _ = test_user
-    resp = await client.get(f"/api/v1/admin/users?q={email}", headers=auth_header(admin_token))
+    resp = await client.get(
+        f"/api/v1/admin/users?q={email}", headers=auth_header(admin_token)
+    )
     assert resp.status_code == 200
     assert resp.json()["pagination"]["total"] >= 1
 
 
 async def test_admin_get_user_detail(client: AsyncClient, admin_token: str, test_user):
     user_id, _, _ = test_user
-    resp = await client.get(f"/api/v1/admin/users/{user_id}", headers=auth_header(admin_token))
+    resp = await client.get(
+        f"/api/v1/admin/users/{user_id}", headers=auth_header(admin_token)
+    )
     assert resp.status_code == 200
     assert resp.json()["id"] == user_id
 
@@ -73,7 +78,9 @@ async def test_admin_activate_user(client: AsyncClient, admin_token: str, test_u
     assert "active" in resp.json()["message"]
 
 
-async def test_admin_invalid_user_status(client: AsyncClient, admin_token: str, test_user):
+async def test_admin_invalid_user_status(
+    client: AsyncClient, admin_token: str, test_user
+):
     user_id, _, _ = test_user
     resp = await client.put(
         f"/api/v1/admin/users/{user_id}/status",
@@ -101,7 +108,9 @@ async def test_operator_cannot_access_logs(client: AsyncClient, operator_token: 
     assert resp.status_code == 403
 
 
-async def test_operator_cannot_suspend_user(client: AsyncClient, operator_token: str, test_user):
+async def test_operator_cannot_suspend_user(
+    client: AsyncClient, operator_token: str, test_user
+):
     user_id, _, _ = test_user
     resp = await client.put(
         f"/api/v1/admin/users/{user_id}/status",
@@ -113,9 +122,12 @@ async def test_operator_cannot_suspend_user(client: AsyncClient, operator_token:
 
 # --- User not found ---
 
+
 async def test_admin_get_nonexistent_user(client: AsyncClient, admin_token: str):
     fake_id = uuid.uuid4()
-    resp = await client.get(f"/api/v1/admin/users/{fake_id}", headers=auth_header(admin_token))
+    resp = await client.get(
+        f"/api/v1/admin/users/{fake_id}", headers=auth_header(admin_token)
+    )
     assert resp.status_code == 404
 
 
@@ -131,8 +143,13 @@ async def test_admin_suspend_nonexistent_user(client: AsyncClient, admin_token: 
 
 # --- Status filter for user listing ---
 
-async def test_admin_list_users_status_filter(client: AsyncClient, admin_token: str, test_user):
-    resp = await client.get("/api/v1/admin/users?status=active", headers=auth_header(admin_token))
+
+async def test_admin_list_users_status_filter(
+    client: AsyncClient, admin_token: str, test_user
+):
+    resp = await client.get(
+        "/api/v1/admin/users?status=active", headers=auth_header(admin_token)
+    )
     assert resp.status_code == 200
     for user in resp.json()["data"]:
         assert user["status"] == "active"

@@ -7,17 +7,22 @@ GET    /api/v1/jobs/:id          — Detail by ID
 
 import uuid
 
+from app.dependencies import get_current_user, get_db
+from app.models.admit_card import AdmitCard
+from app.models.answer_key import AnswerKey
+from app.models.job import Job
+from app.models.result import Result
+from app.schemas.jobs import (
+    AdmitCardResponse,
+    AnswerKeyResponse,
+    JobListItem,
+    JobResponse,
+    ResultResponse,
+)
+from app.services.matching import get_recommended_jobs
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.dependencies import get_current_user, get_db
-from app.models.job import Job
-from app.models.admit_card import AdmitCard
-from app.models.answer_key import AnswerKey
-from app.models.result import Result
-from app.schemas.jobs import JobListItem, JobResponse, AdmitCardResponse, AnswerKeyResponse, ResultResponse
-from app.services.matching import get_recommended_jobs
 
 router = APIRouter(prefix="/api/v1/jobs", tags=["jobs"])
 
@@ -46,10 +51,18 @@ async def list_jobs(
 
     # Full-text search
     if q:
-        query = query.where(text("search_vector @@ plainto_tsquery('english', :q)")).params(q=q)
-        count_query = count_query.where(text("search_vector @@ plainto_tsquery('english', :q)")).params(q=q)
+        query = query.where(
+            text("search_vector @@ plainto_tsquery('english', :q)")
+        ).params(q=q)
+        count_query = count_query.where(
+            text("search_vector @@ plainto_tsquery('english', :q)")
+        ).params(q=q)
         # Order by relevance when searching
-        query = query.order_by(text("ts_rank(search_vector, plainto_tsquery('english', :q)) DESC").params(q=q))
+        query = query.order_by(
+            text("ts_rank(search_vector, plainto_tsquery('english', :q)) DESC").params(
+                q=q
+            )
+        )
 
     # Filters
     if qualification_level:
@@ -120,12 +133,12 @@ async def get_job(job_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Job).where(Job.id == job_id))
     job = result.scalar_one_or_none()
     if not job:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Job not found"
+        )
 
     # Atomic view counter increment (avoids lost-update under concurrent reads)
-    await db.execute(
-        update(Job).where(Job.id == job.id).values(views=Job.views + 1)
-    )
+    await db.execute(update(Job).where(Job.id == job.id).values(views=Job.views + 1))
 
     # Fetch related documents
     admit_cards_result = await db.execute(
@@ -133,21 +146,34 @@ async def get_job(job_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
         .where(AdmitCard.job_id == job_id)
         .order_by(AdmitCard.phase_number.nulls_last(), AdmitCard.published_at.desc())
     )
-    admit_cards = [AdmitCardResponse.model_validate(card).model_dump() for card in admit_cards_result.scalars().all()]
+    admit_cards = [
+        AdmitCardResponse.model_validate(card).model_dump()
+        for card in admit_cards_result.scalars().all()
+    ]
 
     answer_keys_result = await db.execute(
         select(AnswerKey)
         .where(AnswerKey.job_id == job_id)
-        .order_by(AnswerKey.phase_number.nulls_last(), AnswerKey.answer_key_type, AnswerKey.published_at.desc())
+        .order_by(
+            AnswerKey.phase_number.nulls_last(),
+            AnswerKey.answer_key_type,
+            AnswerKey.published_at.desc(),
+        )
     )
-    answer_keys = [AnswerKeyResponse.model_validate(key).model_dump() for key in answer_keys_result.scalars().all()]
+    answer_keys = [
+        AnswerKeyResponse.model_validate(key).model_dump()
+        for key in answer_keys_result.scalars().all()
+    ]
 
     results_result = await db.execute(
         select(Result)
         .where(Result.job_id == job_id)
         .order_by(Result.phase_number.nulls_last(), Result.published_at.desc())
     )
-    results = [ResultResponse.model_validate(res).model_dump() for res in results_result.scalars().all()]
+    results = [
+        ResultResponse.model_validate(res).model_dump()
+        for res in results_result.scalars().all()
+    ]
 
     # Build response with nested documents
     job_data = JobResponse.model_validate(job).model_dump()

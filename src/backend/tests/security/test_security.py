@@ -7,15 +7,16 @@ password hashing, token revocation, CORS, and OWASP top 10 protections.
 import uuid
 
 import pytest
+from app.config import settings
+from app.routers.auth import create_access_token
 from httpx import AsyncClient
 from jose import jwt
 from passlib.context import CryptContext
 
-from app.config import settings
-from app.routers.auth import create_access_token
 
 def auth_header(token: str) -> dict:
     return {"Authorization": f"Bearer {token}"}
+
 
 pytestmark = pytest.mark.asyncio
 
@@ -23,6 +24,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 # --- JWT Security ---
+
 
 async def test_jwt_token_structure(user_token: str):
     """JWT uses HS256, has exp/iat/jti claims, and all values are valid."""
@@ -39,7 +41,12 @@ async def test_jwt_token_structure(user_token: str):
 
 async def test_forged_token_rejected(client: AsyncClient):
     forged = jwt.encode(
-        {"sub": str(uuid.uuid4()), "user_type": "admin", "type": "access", "jti": str(uuid.uuid4())},
+        {
+            "sub": str(uuid.uuid4()),
+            "user_type": "admin",
+            "type": "access",
+            "jti": str(uuid.uuid4()),
+        },
         "wrong-secret-key",
         algorithm="HS256",
     )
@@ -67,7 +74,9 @@ async def test_expired_token_rejected(client: AsyncClient):
     assert resp.status_code == 401
 
 
-async def test_user_token_cannot_access_admin_endpoints(client: AsyncClient, user_token: str):
+async def test_user_token_cannot_access_admin_endpoints(
+    client: AsyncClient, user_token: str
+):
     endpoints = [
         ("GET", "/api/v1/admin/stats"),
         ("GET", "/api/v1/admin/jobs"),
@@ -79,14 +88,19 @@ async def test_user_token_cannot_access_admin_endpoints(client: AsyncClient, use
         assert resp.status_code == 403, f"{method} {url} should be 403 for user token"
 
 
-async def test_admin_token_cannot_access_user_endpoints(client: AsyncClient, admin_token: str):
+async def test_admin_token_cannot_access_user_endpoints(
+    client: AsyncClient, admin_token: str
+):
     resp = await client.get("/api/v1/notifications", headers=auth_header(admin_token))
     assert resp.status_code == 403
 
 
 # --- Token Revocation ---
 
-async def test_logout_blocklists_token(client: AsyncClient, user_token: str, test_redis):
+
+async def test_logout_blocklists_token(
+    client: AsyncClient, user_token: str, test_redis
+):
     payload = jwt.decode(user_token, settings.JWT_SECRET_KEY, algorithms=["HS256"])
     jti = payload["jti"]
     prefix = settings.REDIS_KEY_PREFIX
@@ -102,6 +116,7 @@ async def test_logout_blocklists_token(client: AsyncClient, user_token: str, tes
 
 
 # --- Password Security (admin auth uses bcrypt) ---
+
 
 def test_admin_bcrypt_hashing():
     """Admin passwords are stored as bcrypt hashes."""
@@ -120,6 +135,7 @@ async def test_password_hash_not_exposed_in_api(client: AsyncClient, user_token:
 
 
 # --- Input Validation ---
+
 
 async def test_sql_injection_in_search(client: AsyncClient):
     resp = await client.get("/api/v1/jobs?q='; DROP TABLE users; --")
@@ -155,6 +171,7 @@ async def test_pagination_validation(client: AsyncClient):
 
 # --- CORS ---
 
+
 async def test_cors_headers(client: AsyncClient):
     resp = await client.options(
         "/api/v1/health",
@@ -168,6 +185,7 @@ async def test_cors_headers(client: AsyncClient):
 
 # --- Containers Non-root ---
 
+
 def test_dockerfile_uses_nonroot_user():
     """Verify Dockerfile switches to non-root user."""
     with open("Dockerfile") as f:
@@ -177,6 +195,7 @@ def test_dockerfile_uses_nonroot_user():
 
 
 # --- Health endpoint (no auth required) ---
+
 
 async def test_health_no_auth(client: AsyncClient):
     resp = await client.get("/api/v1/health")
