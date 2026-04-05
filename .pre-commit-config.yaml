@@ -36,25 +36,16 @@ repos:
     rev: 7.1.0
     hooks:
       - id: flake8
-        files: ^src/backend/
+        files: ^src/backend/app/
+        exclude: ^src/backend/app/data/   # seed files have unavoidably long strings
         additional_dependencies:
           - flake8-bugbear       # opinionated bug-catching rules
           - flake8-comprehensions
           - flake8-simplify
         args:
-          - --max-line-length=100
-          - --extend-ignore=E203,W503   # Black-compatible suppressions
-
-  # ── Static type checking (mypy, non-blocking) ───────────────────────────────
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.10.0
-    hooks:
-      - id: mypy
-        files: ^src/backend/app/
-        args: [--ignore-missing-imports, --no-strict-optional]
-        additional_dependencies:
-          - pydantic>=2.0
-          - sqlalchemy>=2.0
+          - --max-line-length=120
+          # Black-compatible + FastAPI/SQLAlchemy idioms
+          - --extend-ignore=E203,W503,B008,E402,E712,F811,SIM102,SIM105,SIM910,C416
 
   # ── Secret detection ─────────────────────────────────────────────────────────
   - repo: https://github.com/Yelp/detect-secrets

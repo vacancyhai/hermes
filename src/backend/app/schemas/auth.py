@@ -1,14 +1,13 @@
 """Pydantic schemas for authentication endpoints."""
 
+import re
 import uuid
 from datetime import datetime
-import re
-from typing import Any
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
-
 # --- Firebase Auth (user) ---
+
 
 class FirebaseVerifyRequest(BaseModel):
     id_token: str
@@ -47,6 +46,7 @@ class UserResponse(BaseModel):
 
 # --- Email OTP verification (email/password registration) ---
 
+
 class EmailOTPRequest(BaseModel):
     email: EmailStr
     full_name: str = Field(min_length=1, max_length=100)
@@ -79,7 +79,7 @@ class CompleteRegistrationRequest(BaseModel):
     password: str = Field(min_length=8)
     verification_token: str
     phone: str | None = Field(default=None, pattern=r"^\+\d{10,15}$")
-    
+
     @field_validator("password")
     @classmethod
     def validate_password(cls, v: str) -> str:
@@ -105,7 +105,7 @@ class AddPasswordRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8)
     verification_token: str
-    
+
     @field_validator("password")
     @classmethod
     def validate_password(cls, v: str) -> str:
@@ -132,7 +132,7 @@ class VerifyPhoneRequest(BaseModel):
 
 class SetPasswordRequest(BaseModel):
     new_password: str = Field(min_length=8)
-    
+
     @field_validator("new_password")
     @classmethod
     def validate_password(cls, v: str) -> str:
@@ -141,7 +141,7 @@ class SetPasswordRequest(BaseModel):
 
 class ChangePasswordRequest(BaseModel):
     new_password: str = Field(min_length=8)
-    
+
     @field_validator("new_password")
     @classmethod
     def validate_password(cls, v: str) -> str:
@@ -151,7 +151,7 @@ class ChangePasswordRequest(BaseModel):
 class LinkEmailPasswordRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8)
-    
+
     @field_validator("password")
     @classmethod
     def validate_password(cls, v: str) -> str:
@@ -159,6 +159,7 @@ class LinkEmailPasswordRequest(BaseModel):
 
 
 # --- Admin/Operator schemas (unchanged — local bcrypt + JWT) ---
+
 
 class AdminLoginRequest(BaseModel):
     email: EmailStr

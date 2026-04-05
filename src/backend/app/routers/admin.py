@@ -26,18 +26,9 @@ import logging
 import os
 import uuid
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
-
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, UploadFile, status
-from passlib.context import CryptContext
-from pydantic import BaseModel, Field
-from sqlalchemy import func, select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
-from app.rate_limit import limiter
 from app.dependencies import get_db, require_admin, require_operator
-from app.utils import slugify as _slugify
 from app.models.admin_log import AdminLog
 from app.models.admin_user import AdminUser
 from app.models.admit_card import AdmitCard
@@ -47,6 +38,7 @@ from app.models.job import Job
 from app.models.result import Result
 from app.models.user import User
 from app.models.user_profile import UserProfile
+from app.rate_limit import limiter
 from app.schemas.auth import AdminUserResponse, UserResponse
 from app.schemas.jobs import (
     AdmitCardResponse,
@@ -57,17 +49,39 @@ from app.schemas.jobs import (
     JobUpdateRequest,
     ResultResponse,
 )
+from app.utils import slugify as _slugify
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Query,
+    Request,
+    UploadFile,
+    status,
+)
+from passlib.context import CryptContext
+from pydantic import BaseModel, Field
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
 
 # Operators can only modify these fields on an existing job
-OPERATOR_ALLOWED_FIELDS = frozenset({
-    "status", "description", "short_description",
-    "notification_date", "application_start", "application_end",
-    "exam_start", "exam_end", "result_date",
-})
+OPERATOR_ALLOWED_FIELDS = frozenset(
+    {
+        "status",
+        "description",
+        "short_description",
+        "notification_date",
+        "application_start",
+        "application_end",
+        "exam_start",
+        "exam_end",
+        "result_date",
+    }
+)
 
 
 class UserStatusRequest(BaseModel):
@@ -86,9 +100,16 @@ class AdminCreateRequest(BaseModel):
 _admin_pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
-async def _log_action(db: AsyncSession, admin: AdminUser, action: str, resource_type: str | None = None,
-                      resource_id: uuid.UUID | None = None, details: str | None = None,
-                      changes: dict | None = None, request: Request | None = None):
+async def _log_action(
+    db: AsyncSession,
+    admin: AdminUser,
+    action: str,
+    resource_type: str | None = None,
+    resource_id: uuid.UUID | None = None,
+    details: str | None = None,
+    changes: dict | None = None,
+    request: Request | None = None,
+):
     """Create an admin audit log entry."""
     log = AdminLog(
         admin_id=admin.id,
@@ -121,16 +142,25 @@ async def dashboard_stats(
         db.execute(select(func.count(AnswerKey.id))),
         db.execute(select(func.count(Result.id))),
         db.execute(select(func.count(EntranceExam.id))),
-        db.execute(select(func.count(EntranceExam.id)).where(EntranceExam.status == "active")),
+        db.execute(
+            select(func.count(EntranceExam.id)).where(EntranceExam.status == "active")
+        ),
         db.execute(select(func.count(User.id))),
         db.execute(select(func.count(User.id)).where(User.status == "active")),
         db.execute(select(func.count(User.id)).where(User.created_at >= week_ago)),
     )
     (
-        jobs_count, jobs_active, jobs_draft,
-        admit_cards_count, answer_keys_count, results_count,
-        entrance_exams_count, entrance_exams_active,
-        users_total, users_active, users_new_this_week,
+        jobs_count,
+        jobs_active,
+        jobs_draft,
+        admit_cards_count,
+        answer_keys_count,
+        results_count,
+        entrance_exams_count,
+        entrance_exams_active,
+        users_total,
+        users_active,
+        users_new_this_week,
     ) = [r.scalar() for r in _r]
 
     return {
@@ -138,10 +168,16 @@ async def dashboard_stats(
         "admit_cards": {"total": admit_cards_count},
         "answer_keys": {"total": answer_keys_count},
         "results": {"total": results_count},
-        "entrance_exams": {"total": entrance_exams_count, "active": entrance_exams_active},
-        "users": {"total": users_total, "active": users_active, "new_this_week": users_new_this_week},
+        "entrance_exams": {
+            "total": entrance_exams_count,
+            "active": entrance_exams_active,
+        },
+        "users": {
+            "total": users_total,
+            "active": users_active,
+            "new_this_week": users_new_this_week,
+        },
     }
-
 
 
 # ─── Job Management ─────────────────────────────────────────────────────────
@@ -171,7 +207,12 @@ async def list_jobs(
 
     return {
         "data": [JobListItem.model_validate(j).model_dump() for j in jobs],
-        "pagination": {"limit": limit, "offset": offset, "total": total, "has_more": (offset + limit) < total},
+        "pagination": {
+            "limit": limit,
+            "offset": offset,
+            "total": total,
+            "has_more": (offset + limit) < total,
+        },
     }
 
 
@@ -192,7 +233,12 @@ async def list_admit_cards(
 
     return {
         "data": [AdmitCardResponse.model_validate(c).model_dump() for c in cards],
-        "pagination": {"limit": limit, "offset": offset, "total": total, "has_more": (offset + limit) < total},
+        "pagination": {
+            "limit": limit,
+            "offset": offset,
+            "total": total,
+            "has_more": (offset + limit) < total,
+        },
     }
 
 
@@ -213,7 +259,12 @@ async def list_answer_keys(
 
     return {
         "data": [AnswerKeyResponse.model_validate(k).model_dump() for k in keys],
-        "pagination": {"limit": limit, "offset": offset, "total": total, "has_more": (offset + limit) < total},
+        "pagination": {
+            "limit": limit,
+            "offset": offset,
+            "total": total,
+            "has_more": (offset + limit) < total,
+        },
     }
 
 
@@ -234,7 +285,12 @@ async def list_results(
 
     return {
         "data": [ResultResponse.model_validate(r).model_dump() for r in results],
-        "pagination": {"limit": limit, "offset": offset, "total": total, "has_more": (offset + limit) < total},
+        "pagination": {
+            "limit": limit,
+            "offset": offset,
+            "total": total,
+            "has_more": (offset + limit) < total,
+        },
     }
 
 
@@ -248,7 +304,9 @@ async def get_job(
     result = await db.execute(select(Job).where(Job.id == job_id))
     job = result.scalar_one_or_none()
     if not job:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Job not found"
+        )
     return JobResponse.model_validate(job).model_dump()
 
 
@@ -315,12 +373,20 @@ async def create_job(
     db.add(job)
     await db.flush()
 
-    await _log_action(db, admin, "create_job", "job_vacancy", job.id,
-                      details=f"Created job: {body.job_title}", request=request)
+    await _log_action(
+        db,
+        admin,
+        "create_job",
+        "job_vacancy",
+        job.id,
+        details=f"Created job: {body.job_title}",
+        request=request,
+    )
 
     # If created as active, notify watchers
     if body.status == "active":
         from app.tasks.notifications import notify_watchers_on_update
+
         notify_watchers_on_update.delay("job", str(job.id))
 
     return JobResponse.model_validate(job).model_dump()
@@ -338,10 +404,16 @@ async def extract_pdf_data(
     admin = current_admin
 
     if not file.filename or not file.filename.lower().endswith(".pdf"):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only PDF files are accepted")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only PDF files are accepted",
+        )
 
     if file.content_type and file.content_type != "application/pdf":
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only PDF files are accepted")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only PDF files are accepted",
+        )
 
     content = await file.read()
     max_bytes = settings.PDF_MAX_SIZE_MB * 1024 * 1024
@@ -353,8 +425,9 @@ async def extract_pdf_data(
 
     # Extract text from PDF
     import tempfile
-    from app.services.pdf_extractor import extract_text_from_pdf
+
     from app.services.ai_extractor import extract_job_data
+    from app.services.pdf_extractor import extract_text_from_pdf
 
     with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
         tmp.write(content)
@@ -363,7 +436,10 @@ async def extract_pdf_data(
     try:
         pdf_text = extract_text_from_pdf(tmp_path)
         if not pdf_text.strip():
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="PDF has no extractable text")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="PDF has no extractable text",
+            )
 
         # AI extraction
         extracted = extract_job_data(pdf_text)
@@ -375,7 +451,14 @@ async def extract_pdf_data(
                 "description": pdf_text[:2000],
             }
 
-        await _log_action(db, admin, "extract_pdf", "job_vacancy", details=f"PDF: {file.filename}", request=request)
+        await _log_action(
+            db,
+            admin,
+            "extract_pdf",
+            "job_vacancy",
+            details=f"PDF: {file.filename}",
+            request=request,
+        )
 
         return {"status": "success", "data": extracted}
 
@@ -400,7 +483,9 @@ async def update_job(
     result = await db.execute(select(Job).where(Job.id == job_id))
     job = result.scalar_one_or_none()
     if not job:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Job not found"
+        )
 
     changes = {}
     update_data = body.model_dump(exclude_unset=True)
@@ -426,12 +511,14 @@ async def update_job(
     if "status" in changes and body.status == "active" and not job.published_at:
         job.published_at = datetime.now(timezone.utc)
 
-    await _log_action(db, admin, "update_job", "job_vacancy", job.id,
-                      changes=changes, request=request)
+    await _log_action(
+        db, admin, "update_job", "job_vacancy", job.id, changes=changes, request=request
+    )
 
     # If status changed to active, also notify watchers
     if "status" in changes and body.status == "active":
         from app.tasks.notifications import notify_watchers_on_update
+
         notify_watchers_on_update.delay("job", str(job.id))
 
     return JobResponse.model_validate(job).model_dump()
@@ -449,19 +536,32 @@ async def approve_job(
     result = await db.execute(select(Job).where(Job.id == job_id))
     job = result.scalar_one_or_none()
     if not job:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Job not found"
+        )
 
     if job.status != "draft":
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only draft jobs can be approved")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only draft jobs can be approved",
+        )
 
     job.status = "active"
     job.published_at = datetime.now(timezone.utc)
 
-    await _log_action(db, admin, "approve_job", "job_vacancy", job.id,
-                      details=f"Approved: {job.job_title}", request=request)
+    await _log_action(
+        db,
+        admin,
+        "approve_job",
+        "job_vacancy",
+        job.id,
+        details=f"Approved: {job.job_title}",
+        request=request,
+    )
 
     # Trigger notification to watchers (async Celery task)
     from app.tasks.notifications import notify_watchers_on_update
+
     notify_watchers_on_update.delay("job", str(job.id))
 
     return JobResponse.model_validate(job).model_dump()
@@ -478,12 +578,21 @@ async def delete_job(
     result = await db.execute(select(Job).where(Job.id == job_id))
     job = result.scalar_one_or_none()
     if not job:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Job not found"
+        )
 
     job.status = "cancelled"
 
-    await _log_action(db, admin, "delete_job", "job_vacancy", job.id,
-                      details=f"Soft-deleted: {job.job_title}", request=request)
+    await _log_action(
+        db,
+        admin,
+        "delete_job",
+        "job_vacancy",
+        job.id,
+        details=f"Soft-deleted: {job.job_title}",
+        request=request,
+    )
 
 
 # ─── User Management ────────────────────────────────────────────────────────
@@ -509,7 +618,9 @@ async def list_users(
     if q:
         search = f"%{q}%"
         query = query.where(User.full_name.ilike(search) | User.email.ilike(search))
-        count_query = count_query.where(User.full_name.ilike(search) | User.email.ilike(search))
+        count_query = count_query.where(
+            User.full_name.ilike(search) | User.email.ilike(search)
+        )
 
     query = query.order_by(User.created_at.desc())
 
@@ -519,7 +630,12 @@ async def list_users(
 
     return {
         "data": [UserResponse.model_validate(u).model_dump() for u in users],
-        "pagination": {"limit": limit, "offset": offset, "total": total, "has_more": (offset + limit) < total},
+        "pagination": {
+            "limit": limit,
+            "offset": offset,
+            "total": total,
+            "has_more": (offset + limit) < total,
+        },
     }
 
 
@@ -533,15 +649,21 @@ async def get_user(
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
 
-    profile_result = await db.execute(select(UserProfile).where(UserProfile.user_id == user_id))
+    profile_result = await db.execute(
+        select(UserProfile).where(UserProfile.user_id == user_id)
+    )
     profile = profile_result.scalar_one_or_none()
 
     user_data = UserResponse.model_validate(user).model_dump()
     if profile:
         user_data["profile"] = {
-            "date_of_birth": str(profile.date_of_birth) if profile.date_of_birth else None,
+            "date_of_birth": (
+                str(profile.date_of_birth) if profile.date_of_birth else None
+            ),
             "gender": profile.gender,
             "category": profile.category,
             "state": profile.state,
@@ -563,12 +685,17 @@ async def update_user_status(
     """Suspend or activate a user (admin only). Also disables/enables Firebase account."""
     new_status = body.status
     if new_status not in ("active", "suspended"):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Status must be 'active' or 'suspended'")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Status must be 'active' or 'suspended'",
+        )
 
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
 
     old_status = user.status
     user.status = new_status
@@ -576,24 +703,43 @@ async def update_user_status(
     # Update Firebase account status if user has firebase_uid
     if user.firebase_uid:
         from app.firebase import init_firebase
+
         if init_firebase():
             try:
                 import firebase_admin
                 from firebase_admin import auth as fb_auth
-                
+
                 if new_status == "suspended":
                     fb_auth.update_user(user.firebase_uid, disabled=True)
-                    logger.info("firebase_user_disabled", extra={"firebase_uid": user.firebase_uid})
+                    logger.info(
+                        "firebase_user_disabled",
+                        extra={"firebase_uid": user.firebase_uid},
+                    )
                 elif new_status == "active":
                     fb_auth.update_user(user.firebase_uid, disabled=False)
-                    logger.info("firebase_user_enabled", extra={"firebase_uid": user.firebase_uid})
+                    logger.info(
+                        "firebase_user_enabled",
+                        extra={"firebase_uid": user.firebase_uid},
+                    )
             except firebase_admin.auth.UserNotFoundError:
-                logger.warning("firebase_user_not_found", extra={"firebase_uid": user.firebase_uid})
+                logger.warning(
+                    "firebase_user_not_found", extra={"firebase_uid": user.firebase_uid}
+                )
             except Exception as exc:
-                logger.error("firebase_update_failed", extra={"firebase_uid": user.firebase_uid, "error": str(exc)})
+                logger.error(
+                    "firebase_update_failed",
+                    extra={"firebase_uid": user.firebase_uid, "error": str(exc)},
+                )
 
-    await _log_action(db, admin, "update_user_status", "user", user_id,
-                      changes={"status": {"old": old_status, "new": new_status}}, request=request)
+    await _log_action(
+        db,
+        admin,
+        "update_user_status",
+        "user",
+        user_id,
+        changes={"status": {"old": old_status, "new": new_status}},
+        request=request,
+    )
 
     return {"message": f"User status changed to {new_status}"}
 
@@ -609,7 +755,9 @@ async def delete_user_permanently(
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
 
     firebase_uid = user.firebase_uid
     user_email = user.email
@@ -617,23 +765,41 @@ async def delete_user_permanently(
     # Delete from Firebase first (if exists)
     if firebase_uid:
         from app.firebase import init_firebase
+
         if init_firebase():
             try:
                 import firebase_admin
                 from firebase_admin import auth as fb_auth
+
                 fb_auth.delete_user(firebase_uid)
-                logger.info("firebase_user_deleted", extra={"firebase_uid": firebase_uid, "email": user_email})
+                logger.info(
+                    "firebase_user_deleted",
+                    extra={"firebase_uid": firebase_uid, "email": user_email},
+                )
             except firebase_admin.auth.UserNotFoundError:
-                logger.warning("firebase_user_already_deleted", extra={"firebase_uid": firebase_uid})
+                logger.warning(
+                    "firebase_user_already_deleted",
+                    extra={"firebase_uid": firebase_uid},
+                )
             except Exception as exc:
-                logger.error("firebase_delete_failed", extra={"firebase_uid": firebase_uid, "error": str(exc)})
+                logger.error(
+                    "firebase_delete_failed",
+                    extra={"firebase_uid": firebase_uid, "error": str(exc)},
+                )
                 # Continue with PostgreSQL deletion even if Firebase fails
 
     # Delete from PostgreSQL
     await db.delete(user)
-    
-    await _log_action(db, admin, "delete_user_permanently", "user", user_id,
-                      details=f"Deleted user {user_email} from both systems", request=request)
+
+    await _log_action(
+        db,
+        admin,
+        "delete_user_permanently",
+        "user",
+        user_id,
+        details=f"Deleted user {user_email} from both systems",
+        request=request,
+    )
 
     return {"message": "User permanently deleted from both PostgreSQL and Firebase"}
 
@@ -679,8 +845,13 @@ async def create_admin_user(
     await db.flush()
 
     await _log_action(
-        db, admin, "create_admin_user", "admin_user", new_admin.id,
-        details=f"Created {body.role} account: {body.email}", request=request,
+        db,
+        admin,
+        "create_admin_user",
+        "admin_user",
+        new_admin.id,
+        details=f"Created {body.role} account: {body.email}",
+        request=request,
     )
 
     return AdminUserResponse.model_validate(new_admin).model_dump()
@@ -701,10 +872,7 @@ async def admin_logs(
     total = (await db.execute(count_query)).scalar()
 
     query = (
-        select(AdminLog)
-        .order_by(AdminLog.timestamp.desc())
-        .offset(offset)
-        .limit(limit)
+        select(AdminLog).order_by(AdminLog.timestamp.desc()).offset(offset).limit(limit)
     )
     result = await db.execute(query)
     logs = result.scalars().all()
@@ -724,5 +892,10 @@ async def admin_logs(
             }
             for log in logs
         ],
-        "pagination": {"limit": limit, "offset": offset, "total": total, "has_more": (offset + limit) < total},
+        "pagination": {
+            "limit": limit,
+            "offset": offset,
+            "total": total,
+            "has_more": (offset + limit) < total,
+        },
     }

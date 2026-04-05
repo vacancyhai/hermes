@@ -11,15 +11,13 @@ User preferences (notification_preferences JSONB) respected per channel.
 Every delivery attempt logged in notification_delivery_log.
 """
 
-import json
 import uuid
 from datetime import datetime, timezone
 
 import structlog
+from app.config import settings
 from sqlalchemy import text
 from sqlalchemy.orm import Session
-
-from app.config import settings
 
 logger = structlog.get_logger()
 
@@ -67,8 +65,16 @@ class NotificationService:
 
         # 1. In-app — always instant
         self._create_in_app(
-            notification_id, user_id, title, message, notification_type,
-            priority, entity_type, entity_id, action_url, now,
+            notification_id,
+            user_id,
+            title,
+            message,
+            notification_type,
+            priority,
+            entity_type,
+            entity_id,
+            action_url,
+            now,
         )
 
         # 2. Push — always instant (FCM, fingerprint de-dup)
@@ -78,10 +84,21 @@ class NotificationService:
         # 3. Email
         if prefs.get("email") is not False and email_template:
             if delivery_mode == "instant":
-                self._send_email(notification_id, user_id, title, email_template, email_context or {}, now)
+                self._send_email(
+                    notification_id,
+                    user_id,
+                    title,
+                    email_template,
+                    email_context or {},
+                    now,
+                )
             else:
                 self._schedule_delayed_email(
-                    notification_id, user_id, title, email_template, email_context or {},
+                    notification_id,
+                    user_id,
+                    title,
+                    email_template,
+                    email_context or {},
                 )
 
         # 4. WhatsApp
@@ -89,16 +106,24 @@ class NotificationService:
             if delivery_mode == "instant":
                 self._send_whatsapp(notification_id, user_id, title, message, now)
             else:
-                self._schedule_delayed_whatsapp(notification_id, user_id, title, message)
+                self._schedule_delayed_whatsapp(
+                    notification_id, user_id, title, message
+                )
 
         # 5. Telegram
         tg_prefs = prefs.get("telegram")
-        tg_enabled = tg_prefs.get("enabled", True) if isinstance(tg_prefs, dict) else (tg_prefs is not False)
+        tg_enabled = (
+            tg_prefs.get("enabled", True)
+            if isinstance(tg_prefs, dict)
+            else (tg_prefs is not False)
+        )
         if tg_enabled:
             if delivery_mode == "instant":
                 self._send_telegram(notification_id, user_id, title, message, now)
             else:
-                self._schedule_delayed_telegram(notification_id, user_id, title, message)
+                self._schedule_delayed_telegram(
+                    notification_id, user_id, title, message
+                )
 
         self.session.commit()
 
@@ -115,18 +140,29 @@ class NotificationService:
     # ─── 1. In-App ─────────────────────────────────────────────────────
 
     def _create_in_app(
-        self, notification_id, user_id, title, message, notification_type,
-        priority, entity_type, entity_id, action_url, now,
+        self,
+        notification_id,
+        user_id,
+        title,
+        message,
+        notification_type,
+        priority,
+        entity_type,
+        entity_id,
+        action_url,
+        now,
     ):
         self.session.execute(
-            text("""
+            text(
+                """
                 INSERT INTO notifications
                     (id, user_id, entity_type, entity_id, type, title, message,
                      action_url, priority, sent_via, created_at)
                 VALUES
                     (:id, :uid, :etype, :eid, :ntype, :title, :msg,
                      :url, :priority, :sent_via, :now)
-            """),
+            """
+            ),
             {
                 "id": notification_id,
                 "uid": user_id,
@@ -141,24 +177,30 @@ class NotificationService:
                 "now": now,
             },
         )
-        self._log_delivery(notification_id, user_id, "in_app", "delivered", now, delivered_at=now)
+        self._log_delivery(
+            notification_id, user_id, "in_app", "delivered", now, delivered_at=now
+        )
 
     # ─── 2. Push — FCM via user_profiles.fcm_tokens ─────────────────────
 
     def _send_push(self, notification_id, user_id, title, message, now):
         """Send FCM push to all registered devices, deduplicating by fingerprint."""
         rows = self.session.execute(
-            text("""
+            text(
+                """
                 SELECT id, fcm_token, device_fingerprint, last_active_at
                 FROM user_devices
                 WHERE user_id = :uid AND is_active = true AND fcm_token IS NOT NULL
                 ORDER BY last_active_at DESC
-            """),
+            """
+            ),
             {"uid": user_id},
         ).fetchall()
 
         if not rows:
-            self._log_delivery(notification_id, user_id, "push", "skipped", now, error="no_devices")
+            self._log_delivery(
+                notification_id, user_id, "push", "skipped", now, error="no_devices"
+            )
             return
 
         sent_any = False
@@ -171,20 +213,30 @@ class NotificationService:
                 seen_fingerprints.add(fingerprint)
             success = self._send_fcm(fcm_token, title, message, notification_id)
             status = "sent" if success else "failed"
-            self._log_delivery(notification_id, user_id, "push", status, now,
-                               delivered_at=now if success else None)
+            self._log_delivery(
+                notification_id,
+                user_id,
+                "push",
+                status,
+                now,
+                delivered_at=now if success else None,
+            )
             if success:
                 sent_any = True
 
         if sent_any:
             self._append_sent_via(notification_id, "push")
 
-    def _send_fcm(self, token: str, title: str, body: str, notification_id: str) -> bool:
+    def _send_fcm(
+        self, token: str, title: str, body: str, notification_id: str
+    ) -> bool:
         """Send a single FCM message. Returns True on success, False otherwise."""
         success, _ = self._send_fcm_with_status(token, title, body, notification_id)
         return success
 
-    def _send_fcm_with_status(self, token: str, title: str, body: str, notification_id: str) -> tuple[bool, bool]:
+    def _send_fcm_with_status(
+        self, token: str, title: str, body: str, notification_id: str
+    ) -> tuple[bool, bool]:
         """Send a single FCM message. Returns (success, is_invalid_token)."""
         from app.firebase import init_firebase
 
@@ -205,16 +257,23 @@ class NotificationService:
             return True, False
         except Exception as exc:
             err_str = str(exc)
-            is_invalid = any(code in err_str for code in ("NOT_FOUND", "UNREGISTERED", "INVALID_ARGUMENT"))
+            is_invalid = any(
+                code in err_str
+                for code in ("NOT_FOUND", "UNREGISTERED", "INVALID_ARGUMENT")
+            )
             logger.error("fcm_failed", error=err_str, token=token[:20] + "...")
             return False, is_invalid
 
     # ─── 3. Email ──────────────────────────────────────────────────────
 
-    def _send_email(self, notification_id, user_id, subject, template_name, context, now):
+    def _send_email(
+        self, notification_id, user_id, subject, template_name, context, now
+    ):
         """Send email immediately (instant mode)."""
         if self._is_email_limit_reached():
-            self._log_delivery(notification_id, user_id, "email", "skipped", now, error="daily_limit")
+            self._log_delivery(
+                notification_id, user_id, "email", "skipped", now, error="daily_limit"
+            )
             return
 
         row = self.session.execute(
@@ -222,22 +281,28 @@ class NotificationService:
             {"uid": user_id},
         ).fetchone()
         if not row or not row[0]:
-            self._log_delivery(notification_id, user_id, "email", "skipped", now, error="no_email")
+            self._log_delivery(
+                notification_id, user_id, "email", "skipped", now, error="no_email"
+            )
             return
 
         email, full_name = row
         context["name"] = full_name or email
 
         from app.tasks.notifications import send_email_notification
+
         send_email_notification.delay(email, subject, template_name, context)
 
         self._log_delivery(notification_id, user_id, "email", "queued", now)
         self._append_sent_via(notification_id, "email")
         self._increment_email_count()
 
-    def _schedule_delayed_email(self, notification_id, user_id, subject, template_name, context):
+    def _schedule_delayed_email(
+        self, notification_id, user_id, subject, template_name, context
+    ):
         """Schedule email after NOTIFY_EMAIL_DELAY seconds (staggered mode)."""
         from app.tasks.notifications import deliver_delayed_email
+
         deliver_delayed_email.apply_async(
             args=[notification_id, user_id, subject, template_name, context],
             countdown=settings.NOTIFY_EMAIL_DELAY,
@@ -272,17 +337,21 @@ class NotificationService:
     def _send_whatsapp(self, notification_id, user_id, title, message, now):
         """Send WhatsApp immediately (instant mode)."""
         row = self.session.execute(
-            text("""
+            text(
+                """
                 SELECT up.notification_preferences, u.phone
                 FROM user_profiles up
                 JOIN users u ON u.id = up.user_id
                 WHERE up.user_id = :uid
-            """),
+            """
+            ),
             {"uid": user_id},
         ).fetchone()
 
         if not row:
-            self._log_delivery(notification_id, user_id, "whatsapp", "skipped", now, error="no_profile")
+            self._log_delivery(
+                notification_id, user_id, "whatsapp", "skipped", now, error="no_profile"
+            )
             return
 
         prefs, phone = row
@@ -290,13 +359,19 @@ class NotificationService:
         wa_phone = wa_config.get("phone") or phone
 
         if not wa_phone:
-            self._log_delivery(notification_id, user_id, "whatsapp", "skipped", now, error="no_phone")
+            self._log_delivery(
+                notification_id, user_id, "whatsapp", "skipped", now, error="no_phone"
+            )
             return
 
         success = self._send_whatsapp_message(wa_phone, title, message)
         status = "sent" if success else "failed"
         self._log_delivery(
-            notification_id, user_id, "whatsapp", status, now,
+            notification_id,
+            user_id,
+            "whatsapp",
+            status,
+            now,
             delivered_at=now if success else None,
             error=None if success else "send_failed",
         )
@@ -306,6 +381,7 @@ class NotificationService:
     def _schedule_delayed_whatsapp(self, notification_id, user_id, title, message):
         """Schedule WhatsApp after NOTIFY_WHATSAPP_DELAY seconds (staggered mode)."""
         from app.tasks.notifications import deliver_delayed_whatsapp
+
         deliver_delayed_whatsapp.apply_async(
             args=[notification_id, user_id, title, message],
             countdown=settings.NOTIFY_WHATSAPP_DELAY,
@@ -322,29 +398,41 @@ class NotificationService:
     def _send_telegram(self, notification_id, user_id, title, message, now):
         """Send Telegram message immediately (instant mode)."""
         row = self.session.execute(
-            text("SELECT notification_preferences FROM user_profiles WHERE user_id = :uid"),
+            text(
+                "SELECT notification_preferences FROM user_profiles WHERE user_id = :uid"
+            ),
             {"uid": user_id},
         ).fetchone()
 
         if not row:
-            self._log_delivery(notification_id, user_id, "telegram", "skipped", now, error="no_profile")
+            self._log_delivery(
+                notification_id, user_id, "telegram", "skipped", now, error="no_profile"
+            )
             return
 
         prefs = row[0] or {}
         tg_config = prefs.get("telegram", {})
         if not isinstance(tg_config, dict):
-            self._log_delivery(notification_id, user_id, "telegram", "skipped", now, error="no_chat_id")
+            self._log_delivery(
+                notification_id, user_id, "telegram", "skipped", now, error="no_chat_id"
+            )
             return
 
         chat_id = tg_config.get("chat_id")
         if not chat_id:
-            self._log_delivery(notification_id, user_id, "telegram", "skipped", now, error="no_chat_id")
+            self._log_delivery(
+                notification_id, user_id, "telegram", "skipped", now, error="no_chat_id"
+            )
             return
 
         success = self._send_telegram_message(chat_id, title, message)
         status = "sent" if success else "failed"
         self._log_delivery(
-            notification_id, user_id, "telegram", status, now,
+            notification_id,
+            user_id,
+            "telegram",
+            status,
+            now,
             delivered_at=now if success else None,
             error=None if success else "send_failed",
         )
@@ -354,6 +442,7 @@ class NotificationService:
     def _schedule_delayed_telegram(self, notification_id, user_id, title, message):
         """Schedule Telegram after NOTIFY_TELEGRAM_DELAY seconds (staggered mode)."""
         from app.tasks.notifications import deliver_delayed_telegram
+
         deliver_delayed_telegram.apply_async(
             args=[notification_id, user_id, title, message],
             countdown=settings.NOTIFY_TELEGRAM_DELAY,
@@ -371,15 +460,17 @@ class NotificationService:
             return False
 
         import json
-        import urllib.request
         import urllib.error
+        import urllib.request
 
         try:
-            payload = json.dumps({
-                "chat_id": chat_id,
-                "text": f"*{title}*\n\n{message}",
-                "parse_mode": "Markdown",
-            }).encode()
+            payload = json.dumps(
+                {
+                    "chat_id": chat_id,
+                    "text": f"*{title}*\n\n{message}",
+                    "parse_mode": "Markdown",
+                }
+            ).encode()
             req = urllib.request.Request(
                 f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}/sendMessage",
                 data=payload,
@@ -390,7 +481,9 @@ class NotificationService:
                 logger.info("telegram_sent", chat_id=chat_id[:6] + "***")
                 return success
         except urllib.error.HTTPError as exc:
-            logger.error("telegram_failed", error=f"HTTP {exc.code}", chat_id=chat_id[:6] + "***")
+            logger.error(
+                "telegram_failed", error=f"HTTP {exc.code}", chat_id=chat_id[:6] + "***"
+            )
             return False
         except Exception as exc:
             logger.error("telegram_failed", error=str(exc), chat_id=chat_id[:6] + "***")
@@ -400,7 +493,9 @@ class NotificationService:
 
     def _load_preferences(self, user_id: str) -> dict:
         row = self.session.execute(
-            text("SELECT notification_preferences FROM user_profiles WHERE user_id = :uid"),
+            text(
+                "SELECT notification_preferences FROM user_profiles WHERE user_id = :uid"
+            ),
             {"uid": user_id},
         ).fetchone()
         return (row[0] if row and row[0] else {}) or {}
@@ -412,18 +507,27 @@ class NotificationService:
         )
 
     def _log_delivery(
-        self, notification_id, user_id, channel, status, now,
-        delivered_at=None, device_id=None, error=None,
+        self,
+        notification_id,
+        user_id,
+        channel,
+        status,
+        now,
+        delivered_at=None,
+        device_id=None,
+        error=None,
     ):
         self.session.execute(
-            text("""
+            text(
+                """
                 INSERT INTO notification_delivery_log
                     (id, notification_id, user_id, channel, status, device_id,
                      error_message, attempted_at, delivered_at, created_at)
                 VALUES
                     (:id, :nid, :uid, :channel, :status, :did,
                      :err, :now, :delivered, :now)
-            """),
+            """
+            ),
             {
                 "id": str(uuid.uuid4()),
                 "nid": notification_id,

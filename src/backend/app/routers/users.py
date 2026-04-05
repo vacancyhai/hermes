@@ -20,17 +20,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 logger = logging.getLogger(__name__)
 
 from app.config import settings
-from app.dependencies import get_current_user, get_db, get_redis
+from app.dependencies import get_current_user, get_db
 from app.models.user_profile import UserProfile
 from app.rate_limit import limiter
 from app.schemas.auth import (
-    MessageResponse,
-    UpdatePhoneRequest,
-    VerifyPhoneRequest,
-    UserResponse,
-    SetPasswordRequest,
     ChangePasswordRequest,
     LinkEmailPasswordRequest,
+    MessageResponse,
+    SetPasswordRequest,
+    UpdatePhoneRequest,
+    UserResponse,
+    VerifyPhoneRequest,
 )
 from app.schemas.users import (
     FCMTokenDeleteRequest,
@@ -74,13 +74,18 @@ async def update_profile(
     result = await db.execute(select(UserProfile).where(UserProfile.user_id == user.id))
     profile = result.scalar_one_or_none()
     if not profile:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Profile not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Profile not found"
+        )
 
     update_data = body.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(profile, field, value)
 
-    logger.info("profile_updated", extra={"user_id": str(user.id), "fields": list(update_data.keys())})
+    logger.info(
+        "profile_updated",
+        extra={"user_id": str(user.id), "fields": list(update_data.keys())},
+    )
     return ProfileResponse.model_validate(profile).model_dump()
 
 
@@ -92,16 +97,17 @@ async def update_phone(
 ):
     """Update phone number on user record. Marks phone as unverified."""
     user, _ = current_user
-    
+
     # Update phone and mark as unverified
     user.phone = body.phone
     user.is_phone_verified = False
-    
+
     logger.info("phone_updated", extra={"user_id": str(user.id), "phone": body.phone})
-    
+
     # Send email notification if user has email
     if user.email:
         from app.tasks.notifications import send_email_notification
+
         send_email_notification.delay(
             user.email,
             "Phone Number Added to Your Account",
@@ -110,12 +116,18 @@ async def update_phone(
                 "name": user.full_name or user.email,
                 "email": user.email,
                 "phone": body.phone,
-                "timestamp": datetime.now(timezone.utc).strftime("%B %d, %Y at %H:%M UTC"),
-                "base_url": settings.FRONTEND_URL or "http://localhost:5000"
-            }
+                "timestamp": datetime.now(timezone.utc).strftime(
+                    "%B %d, %Y at %H:%M UTC"
+                ),
+                "base_url": settings.FRONTEND_URL or "http://localhost:5000",
+            },
         )
-    
-    return {"message": "Phone number updated. Please verify your new number.", "phone": body.phone, "is_phone_verified": False}
+
+    return {
+        "message": "Phone number updated. Please verify your new number.",
+        "phone": body.phone,
+        "is_phone_verified": False,
+    }
 
 
 @router.post("/api/v1/users/me/send-phone-otp", response_model=MessageResponse)
@@ -132,18 +144,22 @@ async def send_phone_otp(
     resulting Firebase ID token to complete verification server-side.
     """
     user, _ = current_user
-    
+
     if not user.phone:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No phone number on file. Please update your phone number first."
+            detail="No phone number on file. Please update your phone number first.",
         )
-    
+
     if user.is_phone_verified:
         return MessageResponse(message="Phone number already verified")
-    
-    logger.info("phone_otp_requested", extra={"user_id": str(user.id), "phone": user.phone})
-    return MessageResponse(message="Use Firebase phone auth on the client to verify your number.")
+
+    logger.info(
+        "phone_otp_requested", extra={"user_id": str(user.id), "phone": user.phone}
+    )
+    return MessageResponse(
+        message="Use Firebase phone auth on the client to verify your number."
+    )
 
 
 @router.post("/api/v1/users/me/verify-phone-otp")
@@ -161,35 +177,35 @@ async def verify_phone_otp(
     match the phone number stored on the account.
     """
     user, _ = current_user
-    
+
     if not user.phone:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No phone number on file"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="No phone number on file"
         )
-    
+
     from app.firebase import verify_id_token
+
     try:
         decoded = verify_id_token(body.firebase_id_token)
     except Exception:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid Firebase token"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Firebase token"
         )
-    
+
     token_phone = decoded.get("phone_number")
     if not token_phone or token_phone != user.phone:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Token phone number does not match account phone number"
+            detail="Token phone number does not match account phone number",
         )
-    
+
     user.is_phone_verified = True
     logger.info("phone_verified", extra={"user_id": str(user.id), "phone": user.phone})
-    
+
     # Send email notification if user has email
     if user.email:
         from app.tasks.notifications import send_email_notification
+
         send_email_notification.delay(
             user.email,
             "Phone Number Verified Successfully",
@@ -197,11 +213,13 @@ async def verify_phone_otp(
             {
                 "name": user.full_name or user.email,
                 "phone": user.phone,
-                "timestamp": datetime.now(timezone.utc).strftime("%B %d, %Y at %H:%M UTC"),
-                "base_url": settings.FRONTEND_URL or "http://localhost:5000"
-            }
+                "timestamp": datetime.now(timezone.utc).strftime(
+                    "%B %d, %Y at %H:%M UTC"
+                ),
+                "base_url": settings.FRONTEND_URL or "http://localhost:5000",
+            },
         )
-    
+
     return {"message": "Phone number verified successfully", "is_phone_verified": True}
 
 
@@ -217,41 +235,45 @@ async def set_password(
 ):
     """Set password for Google OAuth users who don't have one."""
     user, _ = current_user
-    
+
     if not user.firebase_uid:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="User not linked to Firebase"
+            detail="User not linked to Firebase",
         )
-    
+
     from app.firebase import init_firebase
+
     if not init_firebase():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Firebase not configured"
+            detail="Firebase not configured",
         )
-    
+
     import firebase_admin
     from firebase_admin import auth as fb_auth
-    
+
     try:
         user_record = fb_auth.get_user(user.firebase_uid)
         providers = [p.provider_id for p in user_record.provider_data]
-        
+
         # Check if password already exists
         if "password" in providers:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Password already set. Use change password instead."
+                detail="Password already set. Use change password instead.",
             )
-        
+
         # Add password to Firebase account
         fb_auth.update_user(user.firebase_uid, password=body.new_password)
-        logger.info("password_set", extra={"user_id": str(user.id), "uid": user.firebase_uid})
-        
+        logger.info(
+            "password_set", extra={"user_id": str(user.id), "uid": user.firebase_uid}
+        )
+
         # Send email notification
         if user.email:
             from app.tasks.notifications import send_email_notification
+
             send_email_notification.delay(
                 user.email,
                 "Password Added to Your Account",
@@ -259,26 +281,36 @@ async def set_password(
                 {
                     "name": user.full_name or user.email,
                     "email": user.email,
-                    "timestamp": datetime.now(timezone.utc).strftime("%B %d, %Y at %H:%M UTC"),
-                    "original_method": "Google" if "google.com" in [p.provider_id for p in user_record.provider_data] else "Phone",
-                    "base_url": settings.FRONTEND_URL or "http://localhost:5000"
-                }
+                    "timestamp": datetime.now(timezone.utc).strftime(
+                        "%B %d, %Y at %H:%M UTC"
+                    ),
+                    "original_method": (
+                        "Google"
+                        if "google.com"
+                        in [p.provider_id for p in user_record.provider_data]
+                        else "Phone"
+                    ),
+                    "base_url": settings.FRONTEND_URL or "http://localhost:5000",
+                },
             )
-        
-        return {"message": "Password set successfully. You can now login with email and password."}
-        
+
+        return {
+            "message": "Password set successfully. You can now login with email and password."
+        }
+
     except firebase_admin.auth.UserNotFoundError:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Firebase user not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Firebase user not found"
         )
     except HTTPException:
         raise
     except Exception as exc:
-        logger.error("set_password_failed", extra={"user_id": str(user.id), "error": str(exc)})
+        logger.error(
+            "set_password_failed", extra={"user_id": str(user.id), "error": str(exc)}
+        )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to set password"
+            detail="Failed to set password",
         )
 
 
@@ -291,40 +323,45 @@ async def change_password(
 ):
     """Change password for users who already have one. Re-authenticate client-side before calling."""
     user, _ = current_user
-    
+
     if not user.firebase_uid or not user.email:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="User not properly configured"
+            detail="User not properly configured",
         )
-    
+
     from app.firebase import init_firebase
+
     if not init_firebase():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Firebase not configured"
+            detail="Firebase not configured",
         )
-    
+
     import firebase_admin
     from firebase_admin import auth as fb_auth
-    
+
     try:
         user_record = fb_auth.get_user(user.firebase_uid)
         providers = [p.provider_id for p in user_record.provider_data]
-        
+
         if "password" not in providers:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="No password set. Use set password instead."
+                detail="No password set. Use set password instead.",
             )
-        
+
         # Update password in Firebase
         fb_auth.update_user(user.firebase_uid, password=body.new_password)
-        logger.info("password_changed", extra={"user_id": str(user.id), "uid": user.firebase_uid})
-        
+        logger.info(
+            "password_changed",
+            extra={"user_id": str(user.id), "uid": user.firebase_uid},
+        )
+
         # Send email notification
         if user.email:
             from app.tasks.notifications import send_email_notification
+
             send_email_notification.delay(
                 user.email,
                 "Password Changed Successfully",
@@ -332,25 +369,28 @@ async def change_password(
                 {
                     "name": user.full_name or user.email,
                     "email": user.email,
-                    "timestamp": datetime.now(timezone.utc).strftime("%B %d, %Y at %H:%M UTC"),
-                    "base_url": settings.FRONTEND_URL or "http://localhost:5000"
-                }
+                    "timestamp": datetime.now(timezone.utc).strftime(
+                        "%B %d, %Y at %H:%M UTC"
+                    ),
+                    "base_url": settings.FRONTEND_URL or "http://localhost:5000",
+                },
             )
-        
+
         return {"message": "Password changed successfully."}
-        
+
     except firebase_admin.auth.UserNotFoundError:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Firebase user not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Firebase user not found"
         )
     except HTTPException:
         raise
     except Exception as exc:
-        logger.error("change_password_failed", extra={"user_id": str(user.id), "error": str(exc)})
+        logger.error(
+            "change_password_failed", extra={"user_id": str(user.id), "error": str(exc)}
+        )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to change password"
+            detail="Failed to change password",
         )
 
 
@@ -364,74 +404,81 @@ async def link_email_password(
 ):
     """Link email+password to phone-only account. Only if email not already registered."""
     user, _ = current_user
-    
+
     if not user.firebase_uid:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="User not linked to Firebase"
+            detail="User not linked to Firebase",
         )
-    
+
     # Check if user already has email
     if user.email:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Account already has an email address"
+            detail="Account already has an email address",
         )
-    
+
     email_lower = body.email.lower()
-    
+
     # Check if email already exists in PostgreSQL
     from app.models.user import User
+
     result = await db.execute(select(User).where(User.email == email_lower))
     existing_user = result.scalar_one_or_none()
-    
+
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="This email is already registered. Please use a different email."
+            detail="This email is already registered. Please use a different email.",
         )
-    
+
     from app.firebase import init_firebase
+
     if not init_firebase():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Firebase not configured"
+            detail="Firebase not configured",
         )
-    
+
     import firebase_admin
     from firebase_admin import auth as fb_auth
-    
+
     try:
         # Check if email already exists in Firebase
         try:
             fb_auth.get_user_by_email(body.email)
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="This email is already registered. Please use a different email."
+                detail="This email is already registered. Please use a different email.",
             )
         except firebase_admin.auth.UserNotFoundError:
             # Email not found in Firebase - good to proceed
             pass
-        
+
         # Update Firebase user with email and password
         fb_auth.update_user(
             user.firebase_uid,
             email=body.email,
             password=body.password,
-            email_verified=False  # User should verify email
+            email_verified=False,  # User should verify email
         )
-        
+
         # Update PostgreSQL user record
         user.email = email_lower
         user.is_email_verified = False
-        
+
         logger.info(
             "email_password_linked",
-            extra={"user_id": str(user.id), "uid": user.firebase_uid, "email": email_lower}
+            extra={
+                "user_id": str(user.id),
+                "uid": user.firebase_uid,
+                "email": email_lower,
+            },
         )
-        
+
         # Send email notification to newly linked email
         from app.tasks.notifications import send_email_notification
+
         send_email_notification.delay(
             email_lower,
             "Email Address Linked to Your Account",
@@ -440,31 +487,32 @@ async def link_email_password(
                 "name": user.full_name or "User",
                 "email": email_lower,
                 "phone": user.phone,
-                "timestamp": datetime.now(timezone.utc).strftime("%B %d, %Y at %H:%M UTC"),
-                "base_url": settings.FRONTEND_URL or "http://localhost:5000"
-            }
+                "timestamp": datetime.now(timezone.utc).strftime(
+                    "%B %d, %Y at %H:%M UTC"
+                ),
+                "base_url": settings.FRONTEND_URL or "http://localhost:5000",
+            },
         )
-        
+
         return {
             "message": "Email and password added successfully. You can now login with email/password.",
-            "email": email_lower
+            "email": email_lower,
         }
-        
+
     except firebase_admin.auth.UserNotFoundError:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Firebase user not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Firebase user not found"
         )
     except HTTPException:
         raise
     except Exception as exc:
         logger.error(
             "link_email_password_failed",
-            extra={"user_id": str(user.id), "error": str(exc)}
+            extra={"user_id": str(user.id), "error": str(exc)},
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to link email and password"
+            detail="Failed to link email and password",
         )
 
 
@@ -482,12 +530,16 @@ async def register_fcm_token(
     result = await db.execute(select(UserProfile).where(UserProfile.user_id == user.id))
     profile = result.scalar_one_or_none()
     if not profile:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Profile not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Profile not found"
+        )
 
     tokens = list(profile.fcm_tokens or [])
 
     # Deduplicate by token value
-    existing = [t for t in tokens if isinstance(t, dict) and t.get("token") == body.token]
+    existing = [
+        t for t in tokens if isinstance(t, dict) and t.get("token") == body.token
+    ]
     if existing:
         return {"message": "Token already registered", "fcm_tokens_count": len(tokens)}
 
@@ -497,13 +549,18 @@ async def register_fcm_token(
             detail=f"Maximum {MAX_FCM_TOKENS} devices allowed",
         )
 
-    tokens.append({
-        "token": body.token,
-        "device_name": body.device_name or "Unknown",
-        "registered_at": datetime.now(timezone.utc).isoformat(),
-    })
+    tokens.append(
+        {
+            "token": body.token,
+            "device_name": body.device_name or "Unknown",
+            "registered_at": datetime.now(timezone.utc).isoformat(),
+        }
+    )
     profile.fcm_tokens = tokens
-    logger.info("fcm_token_registered", extra={"user_id": str(user.id), "device_name": body.device_name or "Unknown"})
+    logger.info(
+        "fcm_token_registered",
+        extra={"user_id": str(user.id), "device_name": body.device_name or "Unknown"},
+    )
     return {"message": "FCM token registered", "fcm_tokens_count": len(tokens)}
 
 
@@ -518,13 +575,19 @@ async def unregister_fcm_token(
     result = await db.execute(select(UserProfile).where(UserProfile.user_id == user.id))
     profile = result.scalar_one_or_none()
     if not profile:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Profile not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Profile not found"
+        )
 
     tokens = list(profile.fcm_tokens or [])
-    new_tokens = [t for t in tokens if not (isinstance(t, dict) and t.get("token") == body.token)]
+    new_tokens = [
+        t for t in tokens if not (isinstance(t, dict) and t.get("token") == body.token)
+    ]
 
     if len(new_tokens) == len(tokens):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Token not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Token not found"
+        )
 
     profile.fcm_tokens = new_tokens
     logger.info("fcm_token_removed", extra={"user_id": str(user.id)})
@@ -545,7 +608,9 @@ async def update_notification_preferences(
     result = await db.execute(select(UserProfile).where(UserProfile.user_id == user.id))
     profile = result.scalar_one_or_none()
     if not profile:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Profile not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Profile not found"
+        )
 
     prefs = dict(profile.notification_preferences or {})
     update_data = body.model_dump(exclude_unset=True)
@@ -565,5 +630,8 @@ async def update_notification_preferences(
             prefs[key] = value
 
     profile.notification_preferences = prefs
-    logger.info("notification_preferences_updated", extra={"user_id": str(user.id), "channels": list(update_data.keys())})
+    logger.info(
+        "notification_preferences_updated",
+        extra={"user_id": str(user.id), "channels": list(update_data.keys())},
+    )
     return {"message": "Preferences updated", "notification_preferences": prefs}

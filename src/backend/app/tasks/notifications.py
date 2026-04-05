@@ -1,30 +1,25 @@
 """Notification-related Celery tasks.
 
-smart_notify                — Unified entry: routes to in-app + FCM + email + WhatsApp + Telegram via NotificationService
+smart_notify                — Unified entry: routes to in-app + FCM + email + WhatsApp + Telegram
 send_deadline_reminders     — Daily Beat task: T-7, T-3, T-1 deadline reminders for watched jobs + exams
 notify_watchers_on_update   — Event: notify watchers when a job/exam is approved or updated
 send_email_notification     — Sync email via SMTP (retries 3x)
 deliver_delayed_telegram    — Delayed Telegram delivery for staggered mode (T+15min)
 """
 
-import json
 import os
 import smtplib
-import uuid
 from datetime import date, datetime, timedelta, timezone
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 import structlog
-from jinja2 import Environment, FileSystemLoader
-from sqlalchemy import text
-from sqlalchemy.orm import Session
-
 from app.celery_app import celery
 from app.config import settings
 from app.database import sync_engine
-
-from app.utils import MAX_FCM_TOKENS
+from jinja2 import Environment, FileSystemLoader
+from sqlalchemy import text
+from sqlalchemy.orm import Session
 
 logger = structlog.get_logger()
 
@@ -46,7 +41,9 @@ def _render_email(template_name: str, context: dict) -> str:
 def _send_smtp(to: str, subject: str, html_body: str) -> bool:
     """Send an email via SMTP. Returns True on success."""
     if not settings.MAIL_ENABLED:
-        logger.info("email_skipped", reason="MAIL_ENABLED=false", to=to, subject=subject)
+        logger.info(
+            "email_skipped", reason="MAIL_ENABLED=false", to=to, subject=subject
+        )
         return False
 
     msg = MIMEMultipart("alternative")
@@ -74,6 +71,7 @@ def _send_smtp(to: str, subject: str, html_body: str) -> bool:
 def _get_sync_redis():
     """Return a synchronous Redis client for Celery tasks."""
     import redis
+
     return redis.from_url(settings.REDIS_URL, decode_responses=True)
 
 
@@ -86,14 +84,22 @@ def _get_sync_redis():
     max_retries=3,
     default_retry_delay=30,
 )
-def send_email_notification(self, to: str, subject: str, template_name: str, context: dict):
+def send_email_notification(
+    self, to: str, subject: str, template_name: str, context: dict
+):
     """Send a templated email. Retries 3x with exponential backoff."""
     try:
         html = _render_email(template_name, context)
         _send_smtp(to, subject, html)
     except Exception as exc:
-        countdown = 2 ** self.request.retries * 30
-        logger.warning("email_retry", to=to, subject=subject, retry=self.request.retries, countdown=countdown)
+        countdown = 2**self.request.retries * 30
+        logger.warning(
+            "email_retry",
+            to=to,
+            subject=subject,
+            retry=self.request.retries,
+            countdown=countdown,
+        )
         raise self.retry(exc=exc, countdown=countdown)
 
 
@@ -141,11 +147,18 @@ def smart_notify(
             email_context=email_context,
             delivery_mode=delivery_mode,
         )
-    logger.info("smart_notify_complete", notification_id=notification_id, user_id=user_id, mode=delivery_mode)
+    logger.info(
+        "smart_notify_complete",
+        notification_id=notification_id,
+        user_id=user_id,
+        mode=delivery_mode,
+    )
 
 
 @celery.task(name="app.tasks.notifications.deliver_delayed_email")
-def deliver_delayed_email(notification_id: str, user_id: str, subject: str, template_name: str, context: dict):
+def deliver_delayed_email(
+    notification_id: str, user_id: str, subject: str, template_name: str, context: dict
+):
     """Delayed email delivery for staggered mode. Fired T+15min after smart_notify."""
     from app.services.notifications import NotificationService
 
@@ -160,7 +173,9 @@ def deliver_delayed_email(notification_id: str, user_id: str, subject: str, temp
 
 
 @celery.task(name="app.tasks.notifications.deliver_delayed_whatsapp")
-def deliver_delayed_whatsapp(notification_id: str, user_id: str, title: str, message: str):
+def deliver_delayed_whatsapp(
+    notification_id: str, user_id: str, title: str, message: str
+):
     """Delayed WhatsApp delivery for staggered mode. Fired T+1hr after smart_notify."""
     from app.services.notifications import NotificationService
 
@@ -171,11 +186,15 @@ def deliver_delayed_whatsapp(notification_id: str, user_id: str, title: str, mes
         svc = NotificationService(session, redis_sync=redis_client)
         svc._send_whatsapp(notification_id, user_id, title, message, now)
         session.commit()
-    logger.info("delayed_whatsapp_sent", notification_id=notification_id, user_id=user_id)
+    logger.info(
+        "delayed_whatsapp_sent", notification_id=notification_id, user_id=user_id
+    )
 
 
 @celery.task(name="app.tasks.notifications.deliver_delayed_telegram")
-def deliver_delayed_telegram(notification_id: str, user_id: str, title: str, message: str):
+def deliver_delayed_telegram(
+    notification_id: str, user_id: str, title: str, message: str
+):
     """Delayed Telegram delivery for staggered mode. Fired T+15min after smart_notify."""
     from app.services.notifications import NotificationService
 
@@ -186,19 +205,35 @@ def deliver_delayed_telegram(notification_id: str, user_id: str, title: str, mes
         svc = NotificationService(session, redis_sync=redis_client)
         svc._send_telegram(notification_id, user_id, title, message, now)
         session.commit()
-    logger.info("delayed_telegram_sent", notification_id=notification_id, user_id=user_id)
+    logger.info(
+        "delayed_telegram_sent", notification_id=notification_id, user_id=user_id
+    )
 
 
 # ─── Deadline Reminders (Beat schedule) ──────────────────────────────────────
 
 
-def _build_reminder_text(days_before: int, job_title: str, org: str) -> tuple[str, str, str]:
+def _build_reminder_text(
+    days_before: int, job_title: str, org: str
+) -> tuple[str, str, str]:
     """Return (title, message, priority) for a deadline reminder."""
     if days_before == 1:
-        return f"Last day to apply: {job_title}", f"Application deadline for {job_title} ({org}) is tomorrow!", "high"
+        return (
+            f"Last day to apply: {job_title}",
+            f"Application deadline for {job_title} ({org}) is tomorrow!",
+            "high",
+        )
     if days_before == 3:
-        return f"3 days left: {job_title}", f"Application deadline for {job_title} ({org}) is in 3 days.", "high"
-    return f"1 week left: {job_title}", f"Application deadline for {job_title} ({org}) is in 7 days.", "medium"
+        return (
+            f"3 days left: {job_title}",
+            f"Application deadline for {job_title} ({org}) is in 3 days.",
+            "high",
+        )
+    return (
+        f"1 week left: {job_title}",
+        f"Application deadline for {job_title} ({org}) is in 7 days.",
+        "medium",
+    )
 
 
 @celery.task(name="app.tasks.notifications.send_deadline_reminders")
@@ -220,21 +255,33 @@ def send_deadline_reminders():
 
             # ── 1. Watch-based job reminders ──────────────────────────────────
             watch_job_rows = session.execute(
-                text("""
+                text(
+                    """
                     SELECT uw.id, uw.user_id, jv.id, jv.job_title, jv.slug, jv.organization, jv.application_end
                     FROM user_watches uw
                     JOIN jobs jv ON jv.id = uw.entity_id
                     WHERE uw.entity_type = 'job'
                       AND jv.application_end = :target_date
                       AND jv.status = 'active'
-                """),
+                """
+                ),
                 {"target_date": target_date},
             ).fetchall()
 
-            for _watch_id, user_id, job_id, job_title, slug, org, app_end in watch_job_rows:
+            for (
+                _watch_id,
+                user_id,
+                job_id,
+                job_title,
+                slug,
+                org,
+                app_end,
+            ) in watch_job_rows:
                 ntype = f"deadline_reminder_{days_before}d"
                 existing = session.execute(
-                    text("SELECT 1 FROM notifications WHERE user_id=:uid AND entity_id=:eid AND type=:t LIMIT 1"),
+                    text(
+                        "SELECT 1 FROM notifications WHERE user_id=:uid AND entity_id=:eid AND type=:t LIMIT 1"
+                    ),
                     {"uid": str(user_id), "eid": str(job_id), "t": ntype},
                 ).fetchone()
                 if existing:
@@ -251,33 +298,52 @@ def send_deadline_reminders():
                     entity_id=str(job_id),
                     action_url=f"/jobs/{slug}",
                     email_template="deadline_reminder.html",
-                    email_context={"title": title, "message": msg, "job_title": job_title,
-                                   "organization": org, "slug": slug, "deadline": str(app_end)},
+                    email_context={
+                        "title": title,
+                        "message": msg,
+                        "job_title": job_title,
+                        "organization": org,
+                        "slug": slug,
+                        "deadline": str(app_end),
+                    },
                 )
 
             # ── 2. Watch-based exam reminders ─────────────────────────────────
             watch_exam_rows = session.execute(
-                text("""
+                text(
+                    """
                     SELECT uw.user_id, ee.id, ee.exam_name, ee.slug, ee.conducting_body, ee.application_end
                     FROM user_watches uw
                     JOIN entrance_exams ee ON ee.id = uw.entity_id
                     WHERE uw.entity_type = 'exam'
                       AND ee.application_end = :target_date
                       AND ee.status != 'cancelled'
-                """),
+                """
+                ),
                 {"target_date": target_date},
             ).fetchall()
 
-            for user_id, exam_id, exam_name, slug, conducting_body, app_end in watch_exam_rows:
+            for (
+                user_id,
+                exam_id,
+                exam_name,
+                slug,
+                conducting_body,
+                app_end,
+            ) in watch_exam_rows:
                 ntype = f"deadline_reminder_{days_before}d"
                 existing = session.execute(
-                    text("SELECT 1 FROM notifications WHERE user_id=:uid AND entity_id=:eid AND type=:t LIMIT 1"),
+                    text(
+                        "SELECT 1 FROM notifications WHERE user_id=:uid AND entity_id=:eid AND type=:t LIMIT 1"
+                    ),
                     {"uid": str(user_id), "eid": str(exam_id), "t": ntype},
                 ).fetchone()
                 if existing:
                     continue
 
-                title, msg, priority = _build_reminder_text(days_before, exam_name, conducting_body)
+                title, msg, priority = _build_reminder_text(
+                    days_before, exam_name, conducting_body
+                )
                 smart_notify.delay(
                     user_id=str(user_id),
                     title=title,
@@ -288,8 +354,14 @@ def send_deadline_reminders():
                     entity_id=str(exam_id),
                     action_url=f"/entrance-exams/{slug}",
                     email_template="deadline_reminder.html",
-                    email_context={"title": title, "message": msg, "job_title": exam_name,
-                                   "organization": conducting_body, "slug": slug, "deadline": str(app_end)},
+                    email_context={
+                        "title": title,
+                        "message": msg,
+                        "job_title": exam_name,
+                        "organization": conducting_body,
+                        "slug": slug,
+                        "deadline": str(app_end),
+                    },
                 )
 
 
@@ -306,7 +378,9 @@ def notify_watchers_on_update(entity_type: str, entity_id: str):
     with Session(sync_engine) as session:
         if entity_type == "job":
             row = session.execute(
-                text("SELECT job_title, slug, organization, application_end FROM jobs WHERE id = :eid"),
+                text(
+                    "SELECT job_title, slug, organization, application_end FROM jobs WHERE id = :eid"
+                ),
                 {"eid": entity_id},
             ).fetchone()
             if not row:
@@ -317,7 +391,9 @@ def notify_watchers_on_update(entity_type: str, entity_id: str):
             msg = f"{name} by {org} has been updated."
         else:
             row = session.execute(
-                text("SELECT exam_name, slug, conducting_body, application_end FROM entrance_exams WHERE id = :eid"),
+                text(
+                    "SELECT exam_name, slug, conducting_body, application_end FROM entrance_exams WHERE id = :eid"
+                ),
                 {"eid": entity_id},
             ).fetchone()
             if not row:
@@ -328,7 +404,9 @@ def notify_watchers_on_update(entity_type: str, entity_id: str):
             msg = f"{name} by {org} has been updated."
 
         watchers = session.execute(
-            text("SELECT user_id FROM user_watches WHERE entity_type = :et AND entity_id = :eid"),
+            text(
+                "SELECT user_id FROM user_watches WHERE entity_type = :et AND entity_id = :eid"
+            ),
             {"et": entity_type, "eid": entity_id},
         ).fetchall()
 
@@ -348,7 +426,12 @@ def notify_watchers_on_update(entity_type: str, entity_id: str):
                 action_url=action_url,
             )
 
-        logger.info("watchers_notified", entity_type=entity_type, entity_id=entity_id, count=len(watchers))
+        logger.info(
+            "watchers_notified",
+            entity_type=entity_type,
+            entity_id=entity_id,
+            count=len(watchers),
+        )
 
 
 @celery.task(name="app.tasks.notifications.notify_watcher_batch")

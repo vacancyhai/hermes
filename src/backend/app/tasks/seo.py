@@ -5,14 +5,12 @@ Scheduled:
 """
 
 import os
-from datetime import datetime, timezone
-from xml.etree.ElementTree import Element, SubElement, ElementTree
-
-from sqlalchemy import text
-from sqlalchemy.orm import Session
+from xml.etree.ElementTree import Element, ElementTree, SubElement
 
 from app.celery_app import celery
 from app.database import sync_engine
+from sqlalchemy import text
+from sqlalchemy.orm import Session
 
 SITE_URL = os.environ.get("SITE_URL", "http://localhost:8080")
 SITEMAP_PATH = os.environ.get("SITEMAP_PATH", "/app/sitemap.xml")
@@ -23,10 +21,15 @@ def generate_sitemap():
     """Regenerate /sitemap.xml with all active job + admission exam URLs. Daily 04:00 UTC."""
     with Session(sync_engine) as session:
         jobs = session.execute(
-            text("SELECT slug, updated_at FROM jobs WHERE status = 'active' ORDER BY updated_at DESC")
+            text(
+                "SELECT slug, updated_at FROM jobs WHERE status = 'active' ORDER BY updated_at DESC"
+            )
         ).fetchall()
         exams = session.execute(
-            text("SELECT slug, updated_at FROM entrance_exams WHERE status IN ('active','upcoming') ORDER BY updated_at DESC")
+            text(
+                "SELECT slug, updated_at FROM entrance_exams"
+                " WHERE status IN ('active','upcoming') ORDER BY updated_at DESC"
+            )
         ).fetchall()
 
     urlset = Element("urlset")
