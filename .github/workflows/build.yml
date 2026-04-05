@@ -90,11 +90,106 @@ jobs:
         working-directory: src/backend
         run: docker compose down -v
 
-  # ── 2. SonarCloud analysis — runs after tests so it gets the coverage XML ──
+  # ── 2. User frontend tests (Flask + MagicMock — no live services needed) ───
+  test-frontend:
+    name: User Frontend Tests (pytest + coverage)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Write CI .env for user frontend
+        run: |
+          cat > src/frontend/.env <<'EOF'
+          FLASK_APP=app:app
+          FLASK_ENV=test
+          FLASK_DEBUG=0
+          FRONTEND_PORT=8080
+          SECRET_KEY=ci-frontend-secret  # pragma: allowlist secret
+          SESSION_TIMEOUT=3600
+          BACKEND_API_URL=http://backend:8000/api/v1
+          FIREBASE_WEB_API_KEY=
+          FIREBASE_AUTH_DOMAIN=
+          FIREBASE_PROJECT_ID=
+          EOF
+
+      - name: Build user frontend image
+        working-directory: src/frontend
+        run: docker build -t hermes_frontend_ci .
+
+      - name: Run frontend tests with coverage
+        run: |
+          docker run --rm \
+            --env-file src/frontend/.env \
+            -v ${{ github.workspace }}/src/frontend/coverage:/app/coverage \
+            hermes_frontend_ci \
+            python -m pytest tests/ \
+              --cov=app \
+              --cov-report=xml:/app/coverage/coverage.xml \
+              --cov-report=term-missing \
+              -q
+
+      - name: Upload frontend coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report-frontend
+          path: src/frontend/coverage/coverage.xml
+          retention-days: 1
+
+  # ── 3. Admin frontend tests (Flask + MagicMock — no live services needed) ──
+  test-frontend-admin:
+    name: Admin Frontend Tests (pytest + coverage)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Write CI .env for admin frontend
+        run: |
+          cat > src/frontend-admin/.env <<'EOF'
+          FLASK_APP=app:app
+          FLASK_ENV=test
+          FLASK_DEBUG=0
+          FRONTEND_ADMIN_PORT=8081
+          SECRET_KEY=ci-admin-frontend-secret  # pragma: allowlist secret
+          SESSION_TIMEOUT=3600
+          BACKEND_API_URL=http://backend:8000/api/v1
+          EOF
+
+      - name: Build admin frontend image
+        working-directory: src/frontend-admin
+        run: docker build -t hermes_frontend_admin_ci .
+
+      - name: Run admin frontend tests with coverage
+        run: |
+          docker run --rm \
+            --env-file src/frontend-admin/.env \
+            -v ${{ github.workspace }}/src/frontend-admin/coverage:/app/coverage \
+            hermes_frontend_admin_ci \
+            python -m pytest tests/ \
+              --cov=app \
+              --cov-report=xml:/app/coverage/coverage.xml \
+              --cov-report=term-missing \
+              -q
+
+      - name: Upload admin frontend coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report-frontend-admin
+          path: src/frontend-admin/coverage/coverage.xml
+          retention-days: 1
+
+  # ── 4. SonarCloud — waits for all 3 test jobs, merges all coverage reports ─
   sonarcloud:
     name: SonarCloud Scan
     runs-on: ubuntu-latest
-    needs: test
+    needs: [test, test-frontend, test-frontend-admin]
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
@@ -104,17 +199,30 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Download coverage report
+      - name: Download backend coverage report
         uses: actions/download-artifact@v4
         with:
           name: coverage-report
+          path: coverage/backend
+
+      - name: Download frontend coverage report
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-report-frontend
+          path: coverage/frontend
+
+      - name: Download admin frontend coverage report
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-report-frontend-admin
+          path: coverage/frontend-admin
 
       - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@v7.1.0
         with:
           args: >
             -Dsonar.qualitygate.wait=false
-            -Dsonar.python.coverage.reportPaths=coverage.xml
+            -Dsonar.python.coverage.reportPaths=coverage/backend/coverage.xml,coverage/frontend/coverage.xml,coverage/frontend-admin/coverage.xml
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
