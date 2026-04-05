@@ -3,6 +3,8 @@
 from pydantic import model_validator
 from pydantic_settings import BaseSettings
 
+_DEFAULT_REDIS_URL = "redis://redis:6379/0"
+
 
 class Settings(BaseSettings):
     """Settings loaded from .env file and environment variables."""
@@ -13,19 +15,17 @@ class Settings(BaseSettings):
     BACKEND_PORT: int = 8000
 
     # PostgreSQL (through PgBouncer)
-    DATABASE_URL: str = (
-        "postgresql+asyncpg://hermes_user:hermes_pass@pgbouncer:5432/hermes_db"
-    )
+    DATABASE_URL: str = "postgresql+asyncpg://hermes_user:@pgbouncer:5432/hermes_db"
     DB_POOL_SIZE: int = 20
 
     # Redis
-    REDIS_URL: str = "redis://redis:6379/0"
+    REDIS_URL: str = _DEFAULT_REDIS_URL
     REDIS_PASSWORD: str = ""
     REDIS_KEY_PREFIX: str = "hermes"
 
     # Celery
-    CELERY_BROKER_URL: str = "redis://redis:6379/0"
-    CELERY_RESULT_BACKEND: str = "redis://redis:6379/0"
+    CELERY_BROKER_URL: str = _DEFAULT_REDIS_URL
+    CELERY_RESULT_BACKEND: str = _DEFAULT_REDIS_URL
 
     # Email
     MAIL_SERVER: str = ""

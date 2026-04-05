@@ -19,7 +19,7 @@ security = HTTPBearer()
 _redis_pool: aioredis.Redis | None = None
 
 
-async def get_redis() -> aioredis.Redis:
+def get_redis() -> aioredis.Redis:
     """Return an async Redis client."""
     global _redis_pool
     if _redis_pool is None:
@@ -120,7 +120,7 @@ async def get_current_admin(
     return admin, payload
 
 
-async def require_admin(current_admin=Depends(get_current_admin)):
+def require_admin(current_admin=Depends(get_current_admin)):
     """Require the current admin to have admin role (not operator)."""
     admin, _ = current_admin
     if admin.role != "admin":
@@ -130,7 +130,7 @@ async def require_admin(current_admin=Depends(get_current_admin)):
     return admin
 
 
-async def require_operator(current_admin=Depends(get_current_admin)):
+def require_operator(current_admin=Depends(get_current_admin)):
     """Require the current admin to have operator or admin role."""
     admin, _ = current_admin
     if admin.role not in ("operator", "admin"):

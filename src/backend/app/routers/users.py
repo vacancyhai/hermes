@@ -12,6 +12,7 @@ PUT    /api/v1/users/me/notification-preferences — Update notification prefere
 
 import logging
 from datetime import datetime, timezone
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
@@ -41,13 +42,19 @@ from app.schemas.users import (
 )
 from app.utils import MAX_FCM_TOKENS
 
+_DATETIME_FMT = "%B %d, %Y at %H:%M UTC"
+_PROFILE_NOT_FOUND = "Profile not found"
+_DEFAULT_BASE_URL = "http://localhost:5000"
+_FIREBASE_NOT_CONFIGURED = "Firebase not configured"
+_FIREBASE_USER_NOT_FOUND = "Firebase user not found"
+
 router = APIRouter(tags=["users"])
 
 
 @router.get("/api/v1/users/profile")
 async def get_profile(
-    current_user=Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[Any, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Get own user data and profile."""
     user, _ = current_user
@@ -65,8 +72,8 @@ async def get_profile(
 @router.put("/api/v1/users/profile")
 async def update_profile(
     body: ProfileUpdateRequest,
-    current_user=Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[Any, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Update own profile fields."""
     user, _ = current_user
@@ -75,7 +82,7 @@ async def update_profile(
     profile = result.scalar_one_or_none()
     if not profile:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Profile not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=_PROFILE_NOT_FOUND
         )
 
     update_data = body.model_dump(exclude_unset=True)
@@ -92,8 +99,8 @@ async def update_profile(
 @router.put("/api/v1/users/profile/phone")
 async def update_phone(
     body: UpdatePhoneRequest,
-    current_user=Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[Any, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Update phone number on user record. Marks phone as unverified."""
     user, _ = current_user
@@ -116,10 +123,8 @@ async def update_phone(
                 "name": user.full_name or user.email,
                 "email": user.email,
                 "phone": body.phone,
-                "timestamp": datetime.now(timezone.utc).strftime(
-                    "%B %d, %Y at %H:%M UTC"
-                ),
-                "base_url": settings.FRONTEND_URL or "http://localhost:5000",
+                "timestamp": datetime.now(timezone.utc).strftime(_DATETIME_FMT),
+                "base_url": settings.FRONTEND_URL or _DEFAULT_BASE_URL,
             },
         )
 
@@ -134,8 +139,8 @@ async def update_phone(
 @limiter.limit("3/minute")
 async def send_phone_otp(
     request: Request,
-    current_user=Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[Any, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Initiate phone verification via Firebase client-side phone auth.
 
@@ -167,8 +172,8 @@ async def send_phone_otp(
 async def verify_phone_otp(
     request: Request,
     body: VerifyPhoneRequest,
-    current_user=Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[Any, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Mark the authenticated user's phone as verified.
 
@@ -213,10 +218,8 @@ async def verify_phone_otp(
             {
                 "name": user.full_name or user.email,
                 "phone": user.phone,
-                "timestamp": datetime.now(timezone.utc).strftime(
-                    "%B %d, %Y at %H:%M UTC"
-                ),
-                "base_url": settings.FRONTEND_URL or "http://localhost:5000",
+                "timestamp": datetime.now(timezone.utc).strftime(_DATETIME_FMT),
+                "base_url": settings.FRONTEND_URL or _DEFAULT_BASE_URL,
             },
         )
 
@@ -231,7 +234,7 @@ async def verify_phone_otp(
 async def set_password(
     request: Request,
     body: SetPasswordRequest,
-    current_user=Depends(get_current_user),
+    current_user: Annotated[Any, Depends(get_current_user)],
 ):
     """Set password for Google OAuth users who don't have one."""
     user, _ = current_user
@@ -247,7 +250,7 @@ async def set_password(
     if not init_firebase():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Firebase not configured",
+            detail=_FIREBASE_NOT_CONFIGURED,
         )
 
     import firebase_admin
@@ -281,16 +284,14 @@ async def set_password(
                 {
                     "name": user.full_name or user.email,
                     "email": user.email,
-                    "timestamp": datetime.now(timezone.utc).strftime(
-                        "%B %d, %Y at %H:%M UTC"
-                    ),
+                    "timestamp": datetime.now(timezone.utc).strftime(_DATETIME_FMT),
                     "original_method": (
                         "Google"
                         if "google.com"
                         in [p.provider_id for p in user_record.provider_data]
                         else "Phone"
                     ),
-                    "base_url": settings.FRONTEND_URL or "http://localhost:5000",
+                    "base_url": settings.FRONTEND_URL or _DEFAULT_BASE_URL,
                 },
             )
 
@@ -300,7 +301,7 @@ async def set_password(
 
     except firebase_admin.auth.UserNotFoundError:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Firebase user not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=_FIREBASE_USER_NOT_FOUND
         )
     except HTTPException:
         raise
@@ -319,7 +320,7 @@ async def set_password(
 async def change_password(
     request: Request,
     body: ChangePasswordRequest,
-    current_user=Depends(get_current_user),
+    current_user: Annotated[Any, Depends(get_current_user)],
 ):
     """Change password for users who already have one. Re-authenticate client-side before calling."""
     user, _ = current_user
@@ -335,7 +336,7 @@ async def change_password(
     if not init_firebase():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Firebase not configured",
+            detail=_FIREBASE_NOT_CONFIGURED,
         )
 
     import firebase_admin
@@ -369,10 +370,8 @@ async def change_password(
                 {
                     "name": user.full_name or user.email,
                     "email": user.email,
-                    "timestamp": datetime.now(timezone.utc).strftime(
-                        "%B %d, %Y at %H:%M UTC"
-                    ),
-                    "base_url": settings.FRONTEND_URL or "http://localhost:5000",
+                    "timestamp": datetime.now(timezone.utc).strftime(_DATETIME_FMT),
+                    "base_url": settings.FRONTEND_URL or _DEFAULT_BASE_URL,
                 },
             )
 
@@ -380,7 +379,7 @@ async def change_password(
 
     except firebase_admin.auth.UserNotFoundError:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Firebase user not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=_FIREBASE_USER_NOT_FOUND
         )
     except HTTPException:
         raise
@@ -399,8 +398,8 @@ async def change_password(
 async def link_email_password(
     request: Request,
     body: LinkEmailPasswordRequest,
-    current_user=Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[Any, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Link email+password to phone-only account. Only if email not already registered."""
     user, _ = current_user
@@ -437,7 +436,7 @@ async def link_email_password(
     if not init_firebase():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Firebase not configured",
+            detail=_FIREBASE_NOT_CONFIGURED,
         )
 
     import firebase_admin
@@ -487,10 +486,8 @@ async def link_email_password(
                 "name": user.full_name or "User",
                 "email": email_lower,
                 "phone": user.phone,
-                "timestamp": datetime.now(timezone.utc).strftime(
-                    "%B %d, %Y at %H:%M UTC"
-                ),
-                "base_url": settings.FRONTEND_URL or "http://localhost:5000",
+                "timestamp": datetime.now(timezone.utc).strftime(_DATETIME_FMT),
+                "base_url": settings.FRONTEND_URL or _DEFAULT_BASE_URL,
             },
         )
 
@@ -501,7 +498,7 @@ async def link_email_password(
 
     except firebase_admin.auth.UserNotFoundError:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Firebase user not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=_FIREBASE_USER_NOT_FOUND
         )
     except HTTPException:
         raise
@@ -522,8 +519,8 @@ async def link_email_password(
 @router.post("/api/v1/users/me/fcm-token")
 async def register_fcm_token(
     body: FCMTokenRequest,
-    current_user=Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[Any, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Register an FCM device token for push notifications. Max 10 devices."""
     user, _ = current_user
@@ -531,7 +528,7 @@ async def register_fcm_token(
     profile = result.scalar_one_or_none()
     if not profile:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Profile not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=_PROFILE_NOT_FOUND
         )
 
     tokens = list(profile.fcm_tokens or [])
@@ -567,8 +564,8 @@ async def register_fcm_token(
 @router.delete("/api/v1/users/me/fcm-token")
 async def unregister_fcm_token(
     body: FCMTokenDeleteRequest,
-    current_user=Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[Any, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Unregister an FCM device token."""
     user, _ = current_user
@@ -576,7 +573,7 @@ async def unregister_fcm_token(
     profile = result.scalar_one_or_none()
     if not profile:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Profile not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=_PROFILE_NOT_FOUND
         )
 
     tokens = list(profile.fcm_tokens or [])
@@ -600,8 +597,8 @@ async def unregister_fcm_token(
 @router.put("/api/v1/users/me/notification-preferences")
 async def update_notification_preferences(
     body: NotificationPreferencesRequest,
-    current_user=Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[Any, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Update notification channel preferences (email, push, in_app)."""
     user, _ = current_user
@@ -609,7 +606,7 @@ async def update_notification_preferences(
     profile = result.scalar_one_or_none()
     if not profile:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Profile not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=_PROFILE_NOT_FOUND
         )
 
     prefs = dict(profile.notification_preferences or {})

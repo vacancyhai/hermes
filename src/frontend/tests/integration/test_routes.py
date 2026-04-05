@@ -37,67 +37,28 @@ def test_health(client):
 
 # ─── index ────────────────────────────────────────────────────────────────────
 
-def test_index_renders_jobs(client, mock_api):
-    mock_api.get.return_value = _ok({
-        "data": [{"id": "1", "job_title": "SSC CGL", "slug": "ssc-cgl", "organization": "SSC",
-                  "status": "active", "is_featured": False,
-                  "is_urgent": False, "created_at": "2026-01-01T00:00:00"}],
-        "pagination": {"total": 1, "has_more": False},
-    })
+def test_index_redirects_to_dashboard(client):
+    """/ redirects to /dashboard."""
     resp = client.get("/")
-    assert resp.status_code == 200
-    assert b"SSC CGL" in resp.data
+    assert resp.status_code == 302
+    assert "/dashboard" in resp.headers["Location"]
 
 
-def test_index_api_failure_shows_empty(client, mock_api):
-    mock_api.get.return_value = _fail()
-    resp = client.get("/")
-    assert resp.status_code == 200
+# ─── /jobs ────────────────────────────────────────────────────────────────────
 
-
-def test_index_with_filter_params(client, mock_api):
-    mock_api.get.return_value = _ok({"data": [], "pagination": {}})
-    resp = client.get("/?q=UPSC&limit=10&offset=0")
-    assert resp.status_code == 200
-    call_kwargs = mock_api.get.call_args[1]
-    assert call_kwargs["params"]["q"] == "UPSC"
-    assert call_kwargs["params"]["limit"] == 10
-
-
-def test_index_recommended_tab_no_token(client, mock_api):
-    """Without a token, ?recommended=1 falls back to normal job listing."""
-    mock_api.get.return_value = _ok({"data": [], "pagination": {}})
-    resp = client.get("/?recommended=1")
-    assert resp.status_code == 200
-    called_path = mock_api.get.call_args[0][0]
-    assert called_path == "/jobs"
-
-
-def test_index_recommended_tab_with_token(auth_client):
-    """With a token and ?recommended=1, calls /jobs/recommended."""
-    client, mock_api = auth_client
-    mock_api.get.return_value = _ok({"data": [], "pagination": {}})
-    resp = client.get("/?recommended=1")
-    assert resp.status_code == 200
-    called_path = mock_api.get.call_args[0][0]
-    assert called_path == "/jobs/recommended"
-
-
-# ─── /jobs (HTMX partial) ─────────────────────────────────────────────────────
-
-def test_job_list_partial(client, mock_api):
+def test_job_list(client, mock_api):
     mock_api.get.return_value = _ok({"data": [], "pagination": {}})
     resp = client.get("/jobs")
     assert resp.status_code == 200
 
 
-def test_job_list_partial_recommended(auth_client):
-    """?recommended=1 partial uses /jobs/recommended endpoint."""
-    client, mock_api = auth_client
+def test_job_list_with_filter_params(client, mock_api):
     mock_api.get.return_value = _ok({"data": [], "pagination": {}})
-    resp = client.get("/jobs?recommended=1")
+    resp = client.get("/jobs?q=UPSC&limit=10&offset=0")
     assert resp.status_code == 200
-    assert mock_api.get.call_args[0][0] == "/jobs/recommended"
+    call_kwargs = mock_api.get.call_args[1]
+    assert call_kwargs["params"]["q"] == "UPSC"
+    assert call_kwargs["params"]["limit"] == 10
 
 
 # ─── /jobs/<slug> ─────────────────────────────────────────────────────────────
@@ -118,7 +79,7 @@ def test_job_detail_not_found(client, mock_api):
     assert resp.status_code == 404
 
 
-def test_job_detail_shows_track_button_when_logged_in(auth_client):
+def test_job_detail_logged_in(auth_client):
     client, mock_api = auth_client
     mock_api.get.return_value = _ok({
         "id": "job-1", "job_title": "SSC CGL", "slug": "ssc-cgl",
@@ -126,17 +87,15 @@ def test_job_detail_shows_track_button_when_logged_in(auth_client):
     })
     resp = client.get("/jobs/ssc-cgl")
     assert resp.status_code == 200
-    assert b"Track This Job" in resp.data
 
 
-def test_job_detail_shows_login_button_when_logged_out(client, mock_api):
+def test_job_detail_logged_out(client, mock_api):
     mock_api.get.return_value = _ok({
         "id": "job-1", "job_title": "SSC CGL", "slug": "ssc-cgl",
         "organization": "SSC", "status": "active",
     })
     resp = client.get("/jobs/ssc-cgl")
     assert resp.status_code == 200
-    assert b"Login to Track" in resp.data
 
 
 # ─── /login ───────────────────────────────────────────────────────────────────
@@ -171,7 +130,7 @@ def test_firebase_callback_success(client, mock_api):
     )
     assert resp.status_code == 200
     data = resp.get_json()
-    assert data["redirect"] == "/dashboard"
+    assert data["redirect"] == "/"
     mock_api.post.assert_called_once_with(
         "/auth/verify-token",
         json={"id_token": "valid-firebase-id-token", "full_name": None},
@@ -267,10 +226,19 @@ def test_profile_get_api_failure(auth_client):
     assert resp.status_code == 200
 
 
+def _set_csrf(client, token="test-csrf"):
+    """Set a CSRF token in the session so POST forms pass validation."""
+    with client.session_transaction() as sess:
+        sess["csrf_token"] = token
+    return token
+
+
 def test_profile_post_update_profile(auth_client):
     client, mock_api = auth_client
+    csrf = _set_csrf(client)
     mock_api.put.return_value = _ok({})
     resp = client.post("/profile", data={
+        "csrf_token": csrf,
         "action": "profile",
         "gender": "Male",
         "state": "Delhi",
@@ -290,14 +258,15 @@ def test_profile_post_update_profile(auth_client):
 
 def test_profile_post_with_phone(auth_client):
     client, mock_api = auth_client
+    csrf = _set_csrf(client)
     mock_api.put.return_value = _ok({})
     resp = client.post("/profile", data={
+        "csrf_token": csrf,
         "action": "profile",
         "phone": "9876543210",
         "preferred_states": "",
     })
     assert resp.status_code == 302
-    # Both profile PUT and phone PUT should be called
     put_paths = [c[0][0] for c in mock_api.put.call_args_list]
     assert "/users/profile" in put_paths
     assert "/users/profile/phone" in put_paths
@@ -305,8 +274,10 @@ def test_profile_post_with_phone(auth_client):
 
 def test_profile_post_notification_prefs(auth_client):
     client, mock_api = auth_client
+    csrf = _set_csrf(client)
     mock_api.put.return_value = _ok({})
     resp = client.post("/profile", data={
+        "csrf_token": csrf,
         "action": "notification_prefs",
         "email_notif": "on",
     })
@@ -316,45 +287,6 @@ def test_profile_post_notification_prefs(auth_client):
         token="test-token",
         json={"email": True, "push": False},
     )
-
-
-# ─── /profile/follow ──────────────────────────────────────────────────────────
-
-def test_follow_org_no_token(client, mock_api):
-    resp = client.post("/profile/follow", data={"org_name": "UPSC"})
-    assert resp.status_code == 302
-    assert "/login" in resp.headers["Location"]
-
-
-def test_follow_org(auth_client):
-    client, mock_api = auth_client
-    mock_api.post.return_value = _ok({"message": "Now following UPSC"})
-    resp = client.post("/profile/follow", data={"org_name": "UPSC", "next": "/profile"})
-    assert resp.status_code == 302
-    mock_api.post.assert_called_once_with("/organizations/UPSC/follow", token="test-token")
-
-
-def test_follow_org_empty_name_skips_api(auth_client):
-    client, mock_api = auth_client
-    resp = client.post("/profile/follow", data={"org_name": ""})
-    assert resp.status_code == 302
-    mock_api.post.assert_not_called()
-
-
-# ─── /profile/unfollow ────────────────────────────────────────────────────────
-
-def test_unfollow_org_no_token(client, mock_api):
-    resp = client.post("/profile/unfollow", data={"org_name": "UPSC"})
-    assert resp.status_code == 302
-    assert "/login" in resp.headers["Location"]
-
-
-def test_unfollow_org(auth_client):
-    client, mock_api = auth_client
-    mock_api.delete.return_value = _ok()
-    resp = client.post("/profile/unfollow", data={"org_name": "UPSC", "next": "/jobs/test"})
-    assert resp.status_code == 302
-    mock_api.delete.assert_called_once_with("/organizations/UPSC/follow", token="test-token")
 
 
 # ─── /dashboard ───────────────────────────────────────────────────────────────
@@ -367,149 +299,21 @@ def test_dashboard_no_token_shows_login(client, mock_api):
 
 def test_dashboard_with_token(auth_client):
     client, mock_api = auth_client
-    mock_api.get.side_effect = [
-        _ok({"total": 5, "applied": 3}),
-        _ok({"data": [], "pagination": {}}),
-    ]
+    mock_api.get.return_value = _ok({"jobs": [], "exams": [], "total": 0})
     resp = client.get("/dashboard")
     assert resp.status_code == 200
-
-
-def test_dashboard_with_status_filter(auth_client):
-    client, mock_api = auth_client
-    mock_api.get.side_effect = [
-        _ok({"total": 2}),
-        _ok({"data": [], "pagination": {}}),
-    ]
-    resp = client.get("/dashboard?status=applied")
-    assert resp.status_code == 200
-    second_call = mock_api.get.call_args_list[1]
-    assert second_call[1]["params"].get("status") == "applied"
 
 
 def test_dashboard_api_failure(auth_client):
     client, mock_api = auth_client
-    mock_api.get.side_effect = [_fail(), _fail()]
+    mock_api.get.return_value = _fail()
     resp = client.get("/dashboard")
     assert resp.status_code == 200
 
 
-# ─── /dashboard/track ─────────────────────────────────────────────────────────
-
-def test_track_application_no_token(client, mock_api):
-    resp = client.post("/dashboard/track", data={"job_id": "job-1"})
-    assert resp.status_code == 302
-    assert "/login" in resp.headers["Location"]
-
-
-def test_track_application_success(auth_client):
-    client, mock_api = auth_client
-    mock_api.post.return_value = _ok({"id": "app-1", "status": "applied"})
-    resp = client.post("/dashboard/track", data={
-        "job_id": "job-1", "notes": "Preparing", "is_priority": "on", "next": "/dashboard",
-    })
-    assert resp.status_code == 302
-    mock_api.post.assert_called_once_with(
-        "/applications",
-        token="test-token",
-        json={"job_id": "job-1", "notes": "Preparing", "is_priority": True},
-    )
-
-
-def test_track_application_already_tracked(auth_client):
-    client, mock_api = auth_client
-    mock_api.post.return_value = _fail(status_code=409)
-    resp = client.post("/dashboard/track", data={"job_id": "job-1"})
-    assert resp.status_code == 302
-
-
-def test_track_application_no_notes(auth_client):
-    """Empty notes should be sent as None."""
-    client, mock_api = auth_client
-    mock_api.post.return_value = _ok({"id": "app-1"})
-    client.post("/dashboard/track", data={"job_id": "job-1", "notes": ""})
-    call_json = mock_api.post.call_args[1]["json"]
-    assert call_json["notes"] is None
-
-
-# ─── /dashboard/applications/<id>/update ──────────────────────────────────────
-
-def test_update_application_no_token(client, mock_api):
-    resp = client.post("/dashboard/applications/app-1/update", data={"status": "applied"})
-    assert resp.status_code == 401
-
-
-def test_update_application(auth_client):
-    client, mock_api = auth_client
-    mock_api.put.return_value = _ok({"id": "app-1", "status": "admit_card_released"})
-    resp = client.post("/dashboard/applications/app-1/update", data={
-        "status": "admit_card_released",
-        "notes": "Received hall ticket",
-        "application_number": "UPSC-2026-001",
-        "is_priority": "on",
-    })
-    assert resp.status_code == 302
-    assert "/dashboard" in resp.headers["Location"]
-    mock_api.put.assert_called_once()
-    call_json = mock_api.put.call_args[1]["json"]
-    assert call_json["status"] == "admit_card_released"
-    assert call_json["is_priority"] is True
-
-
-def test_update_application_clears_empty_fields(auth_client):
-    """Empty notes and application_number should become None."""
-    client, mock_api = auth_client
-    mock_api.put.return_value = _ok({})
-    client.post("/dashboard/applications/app-1/update", data={
-        "status": "applied", "notes": "", "application_number": "",
-    })
-    call_json = mock_api.put.call_args[1]["json"]
-    assert call_json["notes"] is None
-    assert call_json["application_number"] is None
-
-
-# ─── /dashboard/applications/<id>/delete ──────────────────────────────────────
-
-def test_delete_application_no_token(client, mock_api):
-    resp = client.post("/dashboard/applications/app-1/delete")
-    assert resp.status_code == 401
-
-
-def test_delete_application(auth_client):
-    client, mock_api = auth_client
-    mock_api.delete.return_value = _ok()
-    resp = client.post("/dashboard/applications/app-1/delete")
-    assert resp.status_code == 302
-    assert "/dashboard" in resp.headers["Location"]
-    mock_api.delete.assert_called_once_with("/applications/app-1", token="test-token")
-
-
-# ─── /dashboard/applications (HTMX partial) ───────────────────────────────────
-
-def test_dashboard_applications_no_token(client, mock_api):
-    resp = client.get("/dashboard/applications")
-    assert resp.status_code == 401
-
-
-def test_dashboard_applications_partial(auth_client):
-    client, mock_api = auth_client
-    mock_api.get.return_value = _ok({"data": [], "pagination": {}})
-    resp = client.get("/dashboard/applications?offset=20")
-    assert resp.status_code == 200
-
-
-def test_dashboard_applications_with_status(auth_client):
-    client, mock_api = auth_client
-    mock_api.get.return_value = _ok({"data": [], "pagination": {}})
-    resp = client.get("/dashboard/applications?status=selected")
-    assert resp.status_code == 200
-    call_kwargs = mock_api.get.call_args[1]
-    assert call_kwargs["params"]["status"] == "selected"
-
-
 # ─── /notifications ───────────────────────────────────────────────────────────
 
-def test_notifications_no_token(client, mock_api):
+def test_notifications_no_token_shows_login(client, mock_api):
     resp = client.get("/notifications")
     assert resp.status_code == 200
     assert b"login" in resp.data.lower()
@@ -594,15 +398,16 @@ def test_unread_count_nonzero(auth_client):
 # ─── /notifications/<id>/read ─────────────────────────────────────────────────
 
 def test_mark_notification_read_no_token(client, mock_api):
+    """Without token, CSRF also fails — redirects (to referrer or /)."""
     resp = client.post("/notifications/abc/read")
     assert resp.status_code == 302
-    assert "/login" in resp.headers["Location"]
 
 
 def test_mark_notification_read(auth_client):
     client, mock_api = auth_client
+    csrf = _set_csrf(client)
     mock_api.put.return_value = _ok({})
-    resp = client.post("/notifications/abc/read")
+    resp = client.post("/notifications/abc/read", data={"csrf_token": csrf})
     assert resp.status_code == 302
     mock_api.put.assert_called_once_with("/notifications/abc/read", token="test-token")
 
@@ -616,8 +421,9 @@ def test_mark_all_read_no_token(client, mock_api):
 
 def test_mark_all_read(auth_client):
     client, mock_api = auth_client
+    csrf = _set_csrf(client)
     mock_api.put.return_value = _ok({})
-    resp = client.post("/notifications/read-all")
+    resp = client.post("/notifications/read-all", data={"csrf_token": csrf})
     assert resp.status_code == 302
     mock_api.put.assert_called_once_with("/notifications/read-all", token="test-token")
 
@@ -631,8 +437,9 @@ def test_delete_notification_no_token(client, mock_api):
 
 def test_delete_notification(auth_client):
     client, mock_api = auth_client
+    csrf = _set_csrf(client)
     mock_api.delete.return_value = _ok({})
-    resp = client.post("/notifications/abc/delete")
+    resp = client.post("/notifications/abc/delete", data={"csrf_token": csrf})
     assert resp.status_code == 302
     mock_api.delete.assert_called_once_with("/notifications/abc", token="test-token")
 

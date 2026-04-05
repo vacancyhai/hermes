@@ -26,6 +26,7 @@ Admin endpoints:
 """
 
 import uuid
+from typing import Annotated, Any
 
 from app.dependencies import get_current_user, get_db, require_operator
 from app.models.admit_card import AdmitCard
@@ -95,9 +96,9 @@ results_admin_router = APIRouter(prefix="/api/v1/admin/results", tags=["admin"])
 
 @admit_cards_router.get("")
 async def list_admit_cards(
-    limit: int = Query(20, ge=1, le=100),
-    offset: int = Query(0, ge=0),
-    db: AsyncSession = Depends(get_db),
+    db: Annotated[AsyncSession, Depends(get_db)],
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+    offset: Annotated[int, Query(ge=0)] = 0,
 ):
     """List all admit cards from admit_cards table, ordered by published_at."""
     query = select(AdmitCard).order_by(
@@ -122,10 +123,10 @@ async def list_admit_cards(
 
 @admit_cards_router.get("/recommended")
 async def recommended_admit_cards(
-    limit: int = Query(20, ge=1, le=100),
-    offset: int = Query(0, ge=0),
-    current_user=Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[Any, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+    offset: Annotated[int, Query(ge=0)] = 0,
 ):
     """Personalized admit card recommendations based on user profile."""
     user, _ = current_user
@@ -147,7 +148,7 @@ async def recommended_admit_cards(
 @admit_cards_router.get("/{card_id}")
 async def get_admit_card(
     card_id: uuid.UUID,
-    db: AsyncSession = Depends(get_db),
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Get single admit card by ID with related job/exam."""
     query = (
@@ -187,9 +188,9 @@ async def get_admit_card(
 
 @answer_keys_router.get("")
 async def list_answer_keys(
-    limit: int = Query(20, ge=1, le=100),
-    offset: int = Query(0, ge=0),
-    db: AsyncSession = Depends(get_db),
+    db: Annotated[AsyncSession, Depends(get_db)],
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+    offset: Annotated[int, Query(ge=0)] = 0,
 ):
     """List all answer keys from job_answer_keys table, ordered by published_at."""
     query = select(AnswerKey).order_by(
@@ -214,10 +215,10 @@ async def list_answer_keys(
 
 @answer_keys_router.get("/recommended")
 async def recommended_answer_keys(
-    limit: int = Query(20, ge=1, le=100),
-    offset: int = Query(0, ge=0),
-    current_user=Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[Any, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+    offset: Annotated[int, Query(ge=0)] = 0,
 ):
     """Personalized answer key recommendations based on user profile."""
     user, _ = current_user
@@ -239,7 +240,7 @@ async def recommended_answer_keys(
 @answer_keys_router.get("/{key_id}")
 async def get_answer_key(
     key_id: uuid.UUID,
-    db: AsyncSession = Depends(get_db),
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Get single answer key by ID with related job/exam."""
     query = (
@@ -279,9 +280,9 @@ async def get_answer_key(
 
 @results_router.get("")
 async def list_results(
-    limit: int = Query(20, ge=1, le=100),
-    offset: int = Query(0, ge=0),
-    db: AsyncSession = Depends(get_db),
+    db: Annotated[AsyncSession, Depends(get_db)],
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+    offset: Annotated[int, Query(ge=0)] = 0,
 ):
     """List all results from results table, ordered by published_at."""
     query = select(Result).order_by(
@@ -306,10 +307,10 @@ async def list_results(
 
 @results_router.get("/recommended")
 async def recommended_results(
-    limit: int = Query(20, ge=1, le=100),
-    offset: int = Query(0, ge=0),
-    current_user=Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[Any, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+    offset: Annotated[int, Query(ge=0)] = 0,
 ):
     """Personalized result recommendations based on user profile."""
     user, _ = current_user
@@ -331,7 +332,7 @@ async def recommended_results(
 @results_router.get("/{result_id}")
 async def get_result(
     result_id: uuid.UUID,
-    db: AsyncSession = Depends(get_db),
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Get single result by ID with related job/exam."""
     query = (
@@ -376,10 +377,10 @@ async def get_result(
 
 @admit_cards_admin_router.get("")
 async def admin_list_admit_cards(
-    limit: int = Query(20, ge=1, le=100),
-    offset: int = Query(0, ge=0),
-    db: AsyncSession = Depends(get_db),
-    admin=Depends(require_operator),
+    admin: Annotated[Any, Depends(require_operator)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+    offset: Annotated[int, Query(ge=0)] = 0,
 ):
     """Admin: List all admit cards (no filtering by parent status)."""
     query = select(AdmitCard).order_by(
@@ -407,8 +408,8 @@ async def admin_list_admit_cards(
 )
 async def admin_create_admit_card(
     body: AdmitCardCreateRequest,
-    admin=Depends(require_operator),
-    db: AsyncSession = Depends(get_db),
+    admin: Annotated[Any, Depends(require_operator)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Create a new admit card. Must specify either job_id or exam_id."""
     await _validate_document_parent(body.job_id, body.exam_id, db)
@@ -432,8 +433,8 @@ async def admin_create_admit_card(
 async def admin_update_admit_card(
     card_id: uuid.UUID,
     body: AdmitCardUpdateRequest,
-    admin=Depends(require_operator),
-    db: AsyncSession = Depends(get_db),
+    admin: Annotated[Any, Depends(require_operator)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Update an admit card."""
     result = await db.execute(select(AdmitCard).where(AdmitCard.id == card_id))
@@ -453,8 +454,8 @@ async def admin_update_admit_card(
 @admit_cards_admin_router.delete("/{card_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def admin_delete_admit_card(
     card_id: uuid.UUID,
-    admin=Depends(require_operator),
-    db: AsyncSession = Depends(get_db),
+    admin: Annotated[Any, Depends(require_operator)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Delete an admit card."""
     result = await db.execute(select(AdmitCard).where(AdmitCard.id == card_id))
@@ -473,10 +474,10 @@ async def admin_delete_admit_card(
 
 @answer_keys_admin_router.get("")
 async def admin_list_answer_keys(
-    limit: int = Query(20, ge=1, le=100),
-    offset: int = Query(0, ge=0),
-    db: AsyncSession = Depends(get_db),
-    admin=Depends(require_operator),
+    admin: Annotated[Any, Depends(require_operator)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+    offset: Annotated[int, Query(ge=0)] = 0,
 ):
     """Admin: List all answer keys (no filtering by parent status)."""
     query = select(AnswerKey).order_by(
@@ -504,8 +505,8 @@ async def admin_list_answer_keys(
 )
 async def admin_create_answer_key(
     body: AnswerKeyCreateRequest,
-    admin=Depends(require_operator),
-    db: AsyncSession = Depends(get_db),
+    admin: Annotated[Any, Depends(require_operator)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Create a new answer key. Must specify either job_id or exam_id."""
     await _validate_document_parent(body.job_id, body.exam_id, db)
@@ -529,8 +530,8 @@ async def admin_create_answer_key(
 async def admin_update_answer_key(
     key_id: uuid.UUID,
     body: AnswerKeyUpdateRequest,
-    admin=Depends(require_operator),
-    db: AsyncSession = Depends(get_db),
+    admin: Annotated[Any, Depends(require_operator)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Update an answer key."""
     result = await db.execute(select(AnswerKey).where(AnswerKey.id == key_id))
@@ -550,8 +551,8 @@ async def admin_update_answer_key(
 @answer_keys_admin_router.delete("/{key_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def admin_delete_answer_key(
     key_id: uuid.UUID,
-    admin=Depends(require_operator),
-    db: AsyncSession = Depends(get_db),
+    admin: Annotated[Any, Depends(require_operator)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Delete an answer key."""
     result = await db.execute(select(AnswerKey).where(AnswerKey.id == key_id))
@@ -570,10 +571,10 @@ async def admin_delete_answer_key(
 
 @results_admin_router.get("")
 async def admin_list_results(
-    limit: int = Query(20, ge=1, le=100),
-    offset: int = Query(0, ge=0),
-    db: AsyncSession = Depends(get_db),
-    admin=Depends(require_operator),
+    admin: Annotated[Any, Depends(require_operator)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+    offset: Annotated[int, Query(ge=0)] = 0,
 ):
     """Admin: List all results (no filtering by parent status)."""
     query = select(Result).order_by(
@@ -601,8 +602,8 @@ async def admin_list_results(
 )
 async def admin_create_result(
     body: ResultCreateRequest,
-    admin=Depends(require_operator),
-    db: AsyncSession = Depends(get_db),
+    admin: Annotated[Any, Depends(require_operator)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Create a new result. Must specify either job_id or exam_id."""
     await _validate_document_parent(body.job_id, body.exam_id, db)
@@ -627,8 +628,8 @@ async def admin_create_result(
 async def admin_update_result(
     result_id: uuid.UUID,
     body: ResultUpdateRequest,
-    admin=Depends(require_operator),
-    db: AsyncSession = Depends(get_db),
+    admin: Annotated[Any, Depends(require_operator)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Update a result."""
     result = await db.execute(select(Result).where(Result.id == result_id))
@@ -648,8 +649,8 @@ async def admin_update_result(
 @results_admin_router.delete("/{result_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def admin_delete_result(
     result_id: uuid.UUID,
-    admin=Depends(require_operator),
-    db: AsyncSession = Depends(get_db),
+    admin: Annotated[Any, Depends(require_operator)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Delete a result."""
     result = await db.execute(select(Result).where(Result.id == result_id))

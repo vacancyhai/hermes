@@ -26,6 +26,7 @@ import logging
 import os
 import uuid
 from datetime import datetime, timedelta, timezone
+from typing import Annotated, Any
 
 from app.config import settings
 from app.dependencies import get_db, require_admin, require_operator
@@ -129,8 +130,8 @@ async def _log_action(
 
 @router.get("/stats")
 async def dashboard_stats(
-    admin=Depends(require_operator),
-    db: AsyncSession = Depends(get_db),
+    admin: Annotated[Any, Depends(require_operator)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Dashboard stats: separate counts for jobs, admit cards, answer keys, results, entrance exams."""
     week_ago = datetime.now(timezone.utc) - timedelta(days=7)
@@ -185,11 +186,11 @@ async def dashboard_stats(
 
 @router.get("/jobs")
 async def list_jobs(
-    status_filter: str | None = Query(None, alias="status"),
-    limit: int = Query(20, ge=1, le=100),
-    offset: int = Query(0, ge=0),
-    admin=Depends(require_operator),
-    db: AsyncSession = Depends(get_db),
+    admin: Annotated[Any, Depends(require_operator)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    status_filter: Annotated[str | None, Query(alias="status")] = None,
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+    offset: Annotated[int, Query(ge=0)] = 0,
 ):
     """List all jobs."""
     query = select(Job)
@@ -218,10 +219,10 @@ async def list_jobs(
 
 @router.get("/admit-cards")
 async def list_admit_cards(
-    limit: int = Query(20, ge=1, le=100),
-    offset: int = Query(0, ge=0),
-    admin=Depends(require_operator),
-    db: AsyncSession = Depends(get_db),
+    admin: Annotated[Any, Depends(require_operator)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+    offset: Annotated[int, Query(ge=0)] = 0,
 ):
     """List all admit cards."""
     query = select(AdmitCard).order_by(AdmitCard.created_at.desc())
@@ -244,10 +245,10 @@ async def list_admit_cards(
 
 @router.get("/answer-keys")
 async def list_answer_keys(
-    limit: int = Query(20, ge=1, le=100),
-    offset: int = Query(0, ge=0),
-    admin=Depends(require_operator),
-    db: AsyncSession = Depends(get_db),
+    admin: Annotated[Any, Depends(require_operator)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+    offset: Annotated[int, Query(ge=0)] = 0,
 ):
     """List all answer keys."""
     query = select(AnswerKey).order_by(AnswerKey.created_at.desc())
@@ -270,10 +271,10 @@ async def list_answer_keys(
 
 @router.get("/results")
 async def list_results(
-    limit: int = Query(20, ge=1, le=100),
-    offset: int = Query(0, ge=0),
-    admin=Depends(require_operator),
-    db: AsyncSession = Depends(get_db),
+    admin: Annotated[Any, Depends(require_operator)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+    offset: Annotated[int, Query(ge=0)] = 0,
 ):
     """List all results."""
     query = select(Result).order_by(Result.created_at.desc())
@@ -297,8 +298,8 @@ async def list_results(
 @router.get("/jobs/{job_id}")
 async def get_job(
     job_id: uuid.UUID,
-    admin=Depends(require_operator),
-    db: AsyncSession = Depends(get_db),
+    admin: Annotated[Any, Depends(require_operator)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Get a single job (admin view, any status)."""
     result = await db.execute(select(Job).where(Job.id == job_id))
@@ -314,8 +315,8 @@ async def get_job(
 async def create_job(
     body: JobCreateRequest,
     request: Request,
-    current_admin=Depends(require_operator),
-    db: AsyncSession = Depends(get_db),
+    current_admin: Annotated[Any, Depends(require_operator)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Create a job vacancy."""
     admin = current_admin
@@ -397,8 +398,8 @@ async def create_job(
 async def extract_pdf_data(
     file: UploadFile,
     request: Request,
-    current_admin=Depends(require_operator),
-    db: AsyncSession = Depends(get_db),
+    current_admin: Annotated[Any, Depends(require_operator)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Upload PDF → extract data → return JSON (no job created). For inline form auto-fill."""
     admin = current_admin
@@ -475,8 +476,8 @@ async def update_job(
     job_id: uuid.UUID,
     body: JobUpdateRequest,
     request: Request,
-    current_admin=Depends(require_operator),
-    db: AsyncSession = Depends(get_db),
+    current_admin: Annotated[Any, Depends(require_operator)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Update a job vacancy. Operators can only modify limited fields."""
     admin = current_admin
@@ -528,8 +529,8 @@ async def update_job(
 async def approve_job(
     job_id: uuid.UUID,
     request: Request,
-    current_admin=Depends(require_operator),
-    db: AsyncSession = Depends(get_db),
+    current_admin: Annotated[Any, Depends(require_operator)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Approve a draft job → set status to active."""
     admin = current_admin
@@ -571,8 +572,8 @@ async def approve_job(
 async def delete_job(
     job_id: uuid.UUID,
     request: Request,
-    admin=Depends(require_admin),
-    db: AsyncSession = Depends(get_db),
+    admin: Annotated[Any, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Soft-delete a job vacancy (admin only, not operators)."""
     result = await db.execute(select(Job).where(Job.id == job_id))
@@ -600,12 +601,12 @@ async def delete_job(
 
 @router.get("/users")
 async def list_users(
-    status_filter: str | None = Query(None, alias="status"),
-    q: str | None = Query(None, description="Search by name or email"),
-    limit: int = Query(20, ge=1, le=100),
-    offset: int = Query(0, ge=0),
-    admin=Depends(require_operator),
-    db: AsyncSession = Depends(get_db),
+    admin: Annotated[Any, Depends(require_operator)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    status_filter: Annotated[str | None, Query(alias="status")] = None,
+    q: Annotated[str | None, Query(description="Search by name or email")] = None,
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+    offset: Annotated[int, Query(ge=0)] = 0,
 ):
     """List all users with optional search and status filter."""
     query = select(User)
@@ -642,8 +643,8 @@ async def list_users(
 @router.get("/users/{user_id}")
 async def get_user(
     user_id: uuid.UUID,
-    admin=Depends(require_operator),
-    db: AsyncSession = Depends(get_db),
+    admin: Annotated[Any, Depends(require_operator)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Get user details with profile."""
     result = await db.execute(select(User).where(User.id == user_id))
@@ -679,8 +680,8 @@ async def update_user_status(
     user_id: uuid.UUID,
     body: UserStatusRequest,
     request: Request,
-    admin=Depends(require_admin),
-    db: AsyncSession = Depends(get_db),
+    admin: Annotated[Any, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Suspend or activate a user (admin only). Also disables/enables Firebase account."""
     new_status = body.status
@@ -748,8 +749,8 @@ async def update_user_status(
 async def delete_user_permanently(
     user_id: uuid.UUID,
     request: Request,
-    admin=Depends(require_admin),
-    db: AsyncSession = Depends(get_db),
+    admin: Annotated[Any, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Permanently delete a user from both PostgreSQL and Firebase (admin only)."""
     result = await db.execute(select(User).where(User.id == user_id))
@@ -811,8 +812,8 @@ async def delete_user_permanently(
 async def create_admin_user(
     body: AdminCreateRequest,
     request: Request,
-    admin=Depends(require_admin),
-    db: AsyncSession = Depends(get_db),
+    admin: Annotated[Any, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Create a new admin or operator account. Admin role only.
 
@@ -862,10 +863,10 @@ async def create_admin_user(
 
 @router.get("/logs")
 async def admin_logs(
-    limit: int = Query(20, ge=1, le=100),
-    offset: int = Query(0, ge=0),
-    admin=Depends(require_admin),
-    db: AsyncSession = Depends(get_db),
+    admin: Annotated[Any, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+    offset: Annotated[int, Query(ge=0)] = 0,
 ):
     """Admin activity logs."""
     count_query = select(func.count(AdminLog.id))

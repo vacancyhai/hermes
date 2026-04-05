@@ -222,7 +222,7 @@ hermes/
 │   │   │   ├── database.py       # async engine + async_session + sync_engine (Celery)
 │   │   │   ├── celery_app.py     # Celery config, explicit include list, beat_schedule
 │   │   │   ├── firebase.py       # Firebase Admin SDK — shared init (Auth + FCM)
-│   │   │   ├── dependencies.py   # get_db, get_redis, get_current_user, get_current_admin
+│   │   │   ├── dependencies.py   # get_db, get_redis, get_current_user, get_current_admin, require_admin, require_operator
 │   │   │   ├── routers/          # 9 router modules (see API.md for all endpoints)
 │   │   │   │   ├── auth.py           # /api/v1/auth/*
 │   │   │   │   ├── users.py          # /api/v1/users/*

@@ -297,36 +297,33 @@ async def test_get_current_admin_wrong_token_scope_raises_403():
 # ═══════════════════════════════════════════════════════════════
 
 
-@pytest.mark.asyncio
-async def test_require_admin_with_admin_role_passes():
+def test_require_admin_with_admin_role_passes():
     from app.dependencies import require_admin
 
     admin = MagicMock()
     admin.role = "admin"
-    result = await require_admin(current_admin=(admin, {}))
+    result = require_admin(current_admin=(admin, {}))
     assert result is admin
 
 
-@pytest.mark.asyncio
-async def test_require_admin_with_operator_role_raises_403():
+def test_require_admin_with_operator_role_raises_403():
     from app.dependencies import require_admin
 
     admin = MagicMock()
     admin.role = "operator"
     with pytest.raises(HTTPException) as exc:
-        await require_admin(current_admin=(admin, {}))
+        require_admin(current_admin=(admin, {}))
     assert exc.value.status_code == 403
     assert "admin" in exc.value.detail.lower()
 
 
-@pytest.mark.asyncio
-async def test_require_admin_with_viewer_role_raises_403():
+def test_require_admin_with_viewer_role_raises_403():
     from app.dependencies import require_admin
 
     admin = MagicMock()
     admin.role = "viewer"
     with pytest.raises(HTTPException) as exc:
-        await require_admin(current_admin=(admin, {}))
+        require_admin(current_admin=(admin, {}))
     assert exc.value.status_code == 403
 
 
@@ -335,33 +332,30 @@ async def test_require_admin_with_viewer_role_raises_403():
 # ═══════════════════════════════════════════════════════════════
 
 
-@pytest.mark.asyncio
-async def test_require_operator_with_admin_role_passes():
+def test_require_operator_with_admin_role_passes():
     from app.dependencies import require_operator
 
     admin = MagicMock()
     admin.role = "admin"
-    result = await require_operator(current_admin=(admin, {}))
+    result = require_operator(current_admin=(admin, {}))
     assert result is admin
 
 
-@pytest.mark.asyncio
-async def test_require_operator_with_operator_role_passes():
+def test_require_operator_with_operator_role_passes():
     from app.dependencies import require_operator
 
     admin = MagicMock()
     admin.role = "operator"
-    result = await require_operator(current_admin=(admin, {}))
+    result = require_operator(current_admin=(admin, {}))
     assert result is admin
 
 
-@pytest.mark.asyncio
-async def test_require_operator_with_viewer_role_raises_403():
+def test_require_operator_with_viewer_role_raises_403():
     from app.dependencies import require_operator
 
     admin = MagicMock()
     admin.role = "viewer"
     with pytest.raises(HTTPException) as exc:
-        await require_operator(current_admin=(admin, {}))
+        require_operator(current_admin=(admin, {}))
     assert exc.value.status_code == 403
     assert "operator" in exc.value.detail.lower()

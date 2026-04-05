@@ -8,6 +8,7 @@ GET    /api/v1/users/me/watched               — List all watched jobs + exams
 """
 
 import uuid
+from typing import Annotated, Any
 
 from app.dependencies import get_current_user, get_db
 from app.models.entrance_exam import EntranceExam
@@ -53,8 +54,8 @@ async def _count_watches(user_id: uuid.UUID, db: AsyncSession) -> int:
 @router.post("/api/v1/jobs/{job_id}/watch", status_code=status.HTTP_200_OK)
 async def watch_job(
     job_id: uuid.UUID,
-    current_user=Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[Any, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Watch a job to receive deadline reminders and update notifications. Idempotent."""
     user, _ = current_user
@@ -82,8 +83,8 @@ async def watch_job(
 @router.delete("/api/v1/jobs/{job_id}/watch", status_code=status.HTTP_200_OK)
 async def unwatch_job(
     job_id: uuid.UUID,
-    current_user=Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[Any, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Stop watching a job."""
     user, _ = current_user
@@ -107,8 +108,8 @@ async def unwatch_job(
 @router.post("/api/v1/entrance-exams/{exam_id}/watch", status_code=status.HTTP_200_OK)
 async def watch_exam(
     exam_id: uuid.UUID,
-    current_user=Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[Any, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Watch an entrance exam to receive deadline reminders and update notifications. Idempotent."""
     user, _ = current_user
@@ -136,8 +137,8 @@ async def watch_exam(
 @router.delete("/api/v1/entrance-exams/{exam_id}/watch", status_code=status.HTTP_200_OK)
 async def unwatch_exam(
     exam_id: uuid.UUID,
-    current_user=Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[Any, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Stop watching an entrance exam."""
     user, _ = current_user
@@ -160,8 +161,8 @@ async def unwatch_exam(
 
 @router.get("/api/v1/users/me/watched")
 async def list_watched(
-    current_user=Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[Any, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """List all watched jobs and entrance exams for the current user."""
     user, _ = current_user

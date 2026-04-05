@@ -6,6 +6,7 @@ GET    /api/v1/jobs/:id          — Detail by ID
 """
 
 import uuid
+from typing import Annotated, Any
 
 from app.dependencies import get_current_user, get_db
 from app.models.admit_card import AdmitCard
@@ -29,16 +30,16 @@ router = APIRouter(prefix="/api/v1/jobs", tags=["jobs"])
 
 @router.get("")
 async def list_jobs(
-    q: str | None = Query(None, description="Full-text search query"),
-    qualification_level: str | None = Query(None),
-    organization: str | None = Query(None),
-    department: str | None = Query(None),
-    status_filter: str | None = Query(None, alias="status"),
-    is_featured: bool | None = Query(None),
-    is_urgent: bool | None = Query(None),
-    limit: int = Query(20, ge=1, le=100),
-    offset: int = Query(0, ge=0),
-    db: AsyncSession = Depends(get_db),
+    db: Annotated[AsyncSession, Depends(get_db)],
+    q: Annotated[str | None, Query(description="Full-text search query")] = None,
+    qualification_level: Annotated[str | None, Query()] = None,
+    organization: Annotated[str | None, Query()] = None,
+    department: Annotated[str | None, Query()] = None,
+    status_filter: Annotated[str | None, Query(alias="status")] = None,
+    is_featured: Annotated[bool | None, Query()] = None,
+    is_urgent: Annotated[bool | None, Query()] = None,
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+    offset: Annotated[int, Query(ge=0)] = 0,
 ):
     """List job vacancies (latest_job type only) with filters and full-text search. Returns all jobs."""
     query = select(Job)
@@ -107,10 +108,10 @@ async def list_jobs(
 
 @router.get("/recommended")
 async def recommended_jobs(
-    limit: int = Query(20, ge=1, le=100),
-    offset: int = Query(0, ge=0),
-    current_user=Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[Any, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+    offset: Annotated[int, Query(ge=0)] = 0,
 ):
     """Personalized job recommendations based on user profile preferences."""
     user, _ = current_user
@@ -128,7 +129,7 @@ async def recommended_jobs(
 
 
 @router.get("/{job_id}")
-async def get_job(job_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+async def get_job(job_id: uuid.UUID, db: Annotated[AsyncSession, Depends(get_db)]):
     """Get job detail by ID. Increments view count. Includes all related documents."""
     result = await db.execute(select(Job).where(Job.id == job_id))
     job = result.scalar_one_or_none()

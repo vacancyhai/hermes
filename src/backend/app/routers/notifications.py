@@ -10,6 +10,7 @@ DELETE /api/v1/notifications/:id       — Delete notification
 import logging
 import uuid
 from datetime import datetime, timezone
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select, update
@@ -26,12 +27,12 @@ router = APIRouter(prefix="/api/v1/notifications", tags=["notifications"])
 
 @router.get("")
 async def list_notifications(
-    limit: int = Query(20, ge=1, le=100),
-    offset: int = Query(0, ge=0),
+    current_user: Annotated[Any, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+    offset: Annotated[int, Query(ge=0)] = 0,
     type: str | None = None,
     is_read: bool | None = None,
-    current_user=Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
 ):
     """List user's notifications, newest first."""
     user, _ = current_user
@@ -69,8 +70,8 @@ async def list_notifications(
 
 @router.get("/count")
 async def unread_count(
-    current_user=Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[Any, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Get unread notification count."""
     user, _ = current_user
@@ -87,8 +88,8 @@ async def unread_count(
 
 @router.put("/read-all")
 async def mark_all_read(
-    current_user=Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[Any, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Mark all unread notifications as read for the current user."""
     user, _ = current_user
@@ -113,8 +114,8 @@ async def mark_all_read(
 @router.put("/{notification_id}/read")
 async def mark_read(
     notification_id: uuid.UUID,
-    current_user=Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[Any, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Mark a single notification as read."""
     user, _ = current_user
@@ -147,8 +148,8 @@ async def mark_read(
 @router.delete("/{notification_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_notification(
     notification_id: uuid.UUID,
-    current_user=Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[Any, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Delete a notification."""
     user, _ = current_user

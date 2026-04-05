@@ -26,6 +26,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from jinja2 import Environment, FileSystemLoader
@@ -62,6 +63,8 @@ from app.schemas.auth import (
     UserProvidersResponse,
 )
 from app.utils import ALGORITHM
+
+_FIREBASE_NOT_CONFIGURED = "Firebase not configured"
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
@@ -101,10 +104,90 @@ def create_refresh_token(user_id: str, user_type: str, role: str | None = None) 
 # ─── User Auth (Firebase) ────────────────────────────────────────────────────
 
 
+async def _find_user_by_uid_or_email(
+    db: AsyncSession, firebase_uid: str, email: str | None
+) -> Any:
+    """Look up user by firebase_uid first, then by email for legacy migration."""
+    result = await db.execute(select(User).where(User.firebase_uid == firebase_uid))
+    user = result.scalar_one_or_none()
+    if not user and email:
+        result = await db.execute(select(User).where(User.email == email))
+        user = result.scalar_one_or_none()
+        if user:
+            user.firebase_uid = firebase_uid
+            user.migration_status = "migrated"
+    return user
+
+
+def _validate_user_status(user: Any) -> None:
+    """Raise HTTPException if user account is suspended or deleted."""
+    if user.status == "suspended":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Account suspended"
+        )
+    if user.status == "deleted":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Account not found"
+        )
+
+
+def _update_user_from_firebase(
+    user: Any, email: str | None, email_verified: bool, phone: str | None
+) -> None:
+    """Sync user record fields with latest Firebase auth data."""
+    user.last_login = datetime.now(timezone.utc)
+    if email_verified and not user.is_email_verified:
+        user.is_email_verified = True
+    if phone and not user.phone:
+        user.phone = phone
+        user.is_phone_verified = True
+    if email and not user.email:
+        user.email = email
+
+
+async def _register_new_firebase_user(
+    db: AsyncSession,
+    email: str | None,
+    firebase_uid: str,
+    name: str,
+    email_verified: bool,
+    phone: str | None,
+    provider: str,
+) -> Any:
+    """Create a new User + UserProfile and dispatch a welcome email."""
+    user = User(
+        email=email,
+        firebase_uid=firebase_uid,
+        full_name=name,
+        is_email_verified=email_verified,
+        phone=phone,
+        is_phone_verified=bool(phone),
+        migration_status="native",
+    )
+    db.add(user)
+    await db.flush()
+    db.add(UserProfile(user_id=user.id))
+    if email and provider != "password":
+        from app.tasks.notifications import send_email_notification
+
+        send_email_notification.delay(
+            email,
+            "Welcome to Hermes!",
+            "email/welcome.html",
+            {
+                "name": name,
+                "base_url": settings.FRONTEND_URL or "http://localhost:5000",
+            },
+        )
+    return user
+
+
 @router.post("/verify-token", response_model=TokenResponse)
 @limiter.limit("10/minute")
 async def verify_token(
-    request: Request, body: FirebaseVerifyRequest, db: AsyncSession = Depends(get_db)
+    request: Request,
+    body: FirebaseVerifyRequest,
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Verify Firebase ID token, upsert user, return internal JWT pair.
 
@@ -122,70 +205,19 @@ async def verify_token(
 
     firebase_uid = decoded["uid"]
     email = (decoded.get("email") or "").lower() or None
-    phone = decoded.get("phone_number")  # E.164 format from Firebase phone auth
+    phone = decoded.get("phone_number")
     name = decoded.get("name") or body.full_name or email or phone or "User"
     email_verified = decoded.get("email_verified", False)
     provider = decoded.get("firebase", {}).get("sign_in_provider", "unknown")
 
-    # 1. Find by firebase_uid
-    result = await db.execute(select(User).where(User.firebase_uid == firebase_uid))
-    user = result.scalar_one_or_none()
-
-    if not user and email:
-        # 2. Find by email (legacy user re-authenticating via Firebase)
-        result = await db.execute(select(User).where(User.email == email))
-        user = result.scalar_one_or_none()
-        if user:
-            user.firebase_uid = firebase_uid
-            user.migration_status = "migrated"
-
+    user = await _find_user_by_uid_or_email(db, firebase_uid, email)
     if user:
-        if user.status == "suspended":
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN, detail="Account suspended"
-            )
-        if user.status == "deleted":
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED, detail="Account not found"
-            )
-        user.last_login = datetime.now(timezone.utc)
-        if email_verified and not user.is_email_verified:
-            user.is_email_verified = True
-        # Update phone if from Firebase phone auth and verified
-        if phone and not user.phone:
-            user.phone = phone
-            user.is_phone_verified = True  # Firebase phone auth means verified
-        if email and not user.email:
-            user.email = email
+        _validate_user_status(user)
+        _update_user_from_firebase(user, email, email_verified, phone)
     else:
-        # 3. New user — create account
-        user = User(
-            email=email,
-            firebase_uid=firebase_uid,
-            full_name=name,
-            is_email_verified=email_verified,
-            phone=phone,
-            is_phone_verified=bool(phone),  # If phone from Firebase auth, it's verified
-            migration_status="native",
+        user = await _register_new_firebase_user(
+            db, email, firebase_uid, name, email_verified, phone, provider
         )
-        db.add(user)
-        await db.flush()
-        db.add(UserProfile(user_id=user.id))
-
-        # Send welcome email — skip for email/password provider since
-        # complete_registration already dispatched it before verify_token is called.
-        if email and provider != "password":
-            from app.tasks.notifications import send_email_notification
-
-            send_email_notification.delay(
-                email,
-                "Welcome to Hermes!",
-                "email/welcome.html",
-                {
-                    "name": name,
-                    "base_url": settings.FRONTEND_URL or "http://localhost:5000",
-                },
-            )
 
     ip = request.client.host if request.client else "unknown"
     logger.info(
@@ -200,9 +232,9 @@ async def verify_token(
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
 async def logout(
+    current_user: Annotated[Any, Depends(get_current_user)],
+    redis: Annotated[Any, Depends(get_redis)],
     body: LogoutRequest = LogoutRequest(),
-    current_user=Depends(get_current_user),
-    redis=Depends(get_redis),
 ):
     """Invalidate current user JWT by adding JTI to Redis blocklist.
 
@@ -232,7 +264,9 @@ async def logout(
 
 @router.post("/refresh", response_model=TokenResponse)
 async def refresh(
-    body: RefreshRequest, db: AsyncSession = Depends(get_db), redis=Depends(get_redis)
+    body: RefreshRequest,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    redis: Annotated[Any, Depends(get_redis)],
 ):
     """Refresh user JWT token pair."""
     try:
@@ -282,7 +316,7 @@ async def check_user_providers(request: Request, body: CheckUserProvidersRequest
     if not init_firebase():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Firebase not configured",
+            detail=_FIREBASE_NOT_CONFIGURED,
         )
 
     import firebase_admin
@@ -321,7 +355,7 @@ async def check_user_providers(request: Request, body: CheckUserProvidersRequest
 @router.post("/check-phone-availability", response_model=PhoneAvailabilityResponse)
 async def check_phone_availability(
     body: CheckPhoneRequest,
-    db: AsyncSession = Depends(get_db),
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Check if phone number is already registered and verified."""
     result = await db.execute(
@@ -346,7 +380,7 @@ async def check_phone_availability(
 @router.post("/add-password")
 async def add_password(
     body: AddPasswordRequest,
-    redis=Depends(get_redis),
+    redis: Annotated[Any, Depends(get_redis)],
 ):
     """Add password to an existing social-auth account (requires OTP verification)."""
     # Verify the verification token (same as complete-registration)
@@ -374,7 +408,7 @@ async def add_password(
     if not init_firebase():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Firebase not configured",
+            detail=_FIREBASE_NOT_CONFIGURED,
         )
 
     import firebase_admin
@@ -460,7 +494,7 @@ def _smtp_send_otp(to: str, otp: str) -> None:
 async def send_email_otp(
     request: Request,
     body: EmailOTPRequest,
-    redis=Depends(get_redis),
+    redis: Annotated[Any, Depends(get_redis)],
 ):
     """Generate a 6-digit OTP, store in Redis with full_name (5 min TTL), and email it."""
     if not settings.MAIL_ENABLED:
@@ -498,7 +532,7 @@ async def send_email_otp(
 async def verify_email_otp(
     request: Request,
     body: EmailOTPVerifyRequest,
-    redis=Depends(get_redis),
+    redis: Annotated[Any, Depends(get_redis)],
 ):
     """Verify the 6-digit OTP and return a short-lived verification token."""
     email_lower = body.email.lower()
@@ -531,13 +565,37 @@ async def verify_email_otp(
     return OTPVerifiedResponse(verified=True, verification_token=verification_token)
 
 
+def _get_existing_firebase_uid(email: str, full_name: str | None) -> str:
+    """Retrieve an existing Firebase user; update if unverified. Returns firebase_uid."""
+    import firebase_admin  # noqa: F401
+    from firebase_admin import auth as fb_auth
+
+    try:
+        user_record = fb_auth.get_user_by_email(email)
+        firebase_uid = user_record.uid
+        if not user_record.email_verified:
+            fb_auth.update_user(
+                firebase_uid, email_verified=True, display_name=full_name
+            )
+        logger.info("firebase_user_exists", extra={"email": email, "uid": firebase_uid})
+        return firebase_uid
+    except Exception as exc:
+        logger.error(
+            "firebase_user_lookup_failed", extra={"email": email, "error": str(exc)}
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to create account",
+        )
+
+
 @router.post("/complete-registration", response_model=FirebaseCustomTokenResponse)
 @limiter.limit("5/minute")
 async def complete_registration(
     request: Request,
     body: CompleteRegistrationRequest,
-    redis=Depends(get_redis),
-    db: AsyncSession = Depends(get_db),
+    redis: Annotated[Any, Depends(get_redis)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Create Firebase user server-side after email verification, return custom token for sign-in."""
     # Verify the verification token
@@ -584,15 +642,14 @@ async def complete_registration(
     if not init_firebase():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Firebase not configured",
+            detail=_FIREBASE_NOT_CONFIGURED,
         )
 
     import firebase_admin
     from firebase_admin import auth as fb_auth
 
     try:
-        # Create user with email_verified=True from the start
-        create_params = {
+        create_params: dict = {
             "email": body.email,
             "password": body.password,
             "display_name": full_name,
@@ -600,7 +657,6 @@ async def complete_registration(
         }
         if phone_number:
             create_params["phone_number"] = phone_number
-
         user_record = fb_auth.create_user(**create_params)
         firebase_uid = user_record.uid
         logger.info(
@@ -608,27 +664,7 @@ async def complete_registration(
             extra={"email": body.email, "uid": firebase_uid, "phone": phone_number},
         )
     except firebase_admin.auth.EmailAlreadyExistsError:
-        # Email exists in Firebase — sign in instead and check if verified
-        try:
-            user_record = fb_auth.get_user_by_email(body.email)
-            firebase_uid = user_record.uid
-            if not user_record.email_verified:
-                # Unverified legacy account — update it
-                fb_auth.update_user(
-                    firebase_uid, email_verified=True, display_name=full_name
-                )
-            logger.info(
-                "firebase_user_exists", extra={"email": body.email, "uid": firebase_uid}
-            )
-        except Exception as exc:
-            logger.error(
-                "firebase_user_lookup_failed",
-                extra={"email": body.email, "error": str(exc)},
-            )
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to create account",
-            )
+        firebase_uid = _get_existing_firebase_uid(body.email, full_name)
     except Exception as exc:
         logger.error(
             "firebase_user_creation_failed",
@@ -668,7 +704,9 @@ async def complete_registration(
 @router.post("/admin/login", response_model=TokenResponse)
 @limiter.limit("5/minute")
 async def admin_login(
-    request: Request, body: AdminLoginRequest, db: AsyncSession = Depends(get_db)
+    request: Request,
+    body: AdminLoginRequest,
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Authenticate admin/operator and return JWT token pair."""
     result = await db.execute(select(AdminUser).where(AdminUser.email == body.email))
@@ -718,10 +756,10 @@ async def admin_login(
 @router.post("/admin/logout", status_code=status.HTTP_204_NO_CONTENT)
 async def admin_logout(
     request: Request,
+    current_admin: Annotated[Any, Depends(get_current_admin)],
+    redis: Annotated[Any, Depends(get_redis)],
+    db: Annotated[AsyncSession, Depends(get_db)],
     body: LogoutRequest = LogoutRequest(),
-    current_admin=Depends(get_current_admin),
-    redis=Depends(get_redis),
-    db: AsyncSession = Depends(get_db),
 ):
     """Invalidate current admin JWT by adding JTI to Redis blocklist.
 
@@ -764,8 +802,8 @@ async def admin_logout(
 async def admin_refresh(
     request: Request,
     body: RefreshRequest,
-    db: AsyncSession = Depends(get_db),
-    redis=Depends(get_redis),
+    db: Annotated[AsyncSession, Depends(get_db)],
+    redis: Annotated[Any, Depends(get_redis)],
 ):
     """Refresh admin JWT token pair."""
     try:

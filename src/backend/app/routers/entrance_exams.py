@@ -17,6 +17,7 @@ Note: Admin document CRUD has been moved to top-level endpoints:
 
 import uuid
 from datetime import datetime, timezone
+from typing import Annotated, Any
 
 from app.dependencies import get_current_user, get_db, require_operator
 from app.models.admit_card import AdmitCard
@@ -59,13 +60,13 @@ async def _require_exam(exam_id: uuid.UUID, db: AsyncSession) -> EntranceExam:
 
 @public_router.get("")
 async def list_exams(
-    q: str | None = Query(None),
-    stream: str | None = Query(None),
-    exam_type: str | None = Query(None),
-    is_featured: bool | None = Query(None),
-    limit: int = Query(20, ge=1, le=100),
-    offset: int = Query(0, ge=0),
-    db: AsyncSession = Depends(get_db),
+    db: Annotated[AsyncSession, Depends(get_db)],
+    q: Annotated[str | None, Query()] = None,
+    stream: Annotated[str | None, Query()] = None,
+    exam_type: Annotated[str | None, Query()] = None,
+    is_featured: Annotated[bool | None, Query()] = None,
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+    offset: Annotated[int, Query(ge=0)] = 0,
 ):
     """List entrance exams — all statuses."""
     query = select(EntranceExam)
@@ -113,10 +114,10 @@ async def list_exams(
 
 @public_router.get("/recommended")
 async def recommended_exams(
-    limit: int = Query(20, ge=1, le=100),
-    offset: int = Query(0, ge=0),
-    current_user=Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    current_user: Annotated[Any, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+    offset: Annotated[int, Query(ge=0)] = 0,
 ):
     """Personalized entrance exam recommendations based on user profile."""
     user, _ = current_user
@@ -136,7 +137,7 @@ async def recommended_exams(
 
 
 @public_router.get("/{exam_id}")
-async def get_exam(exam_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+async def get_exam(exam_id: uuid.UUID, db: Annotated[AsyncSession, Depends(get_db)]):
     """Get entrance exam detail by ID. Increments view count. Includes all related documents."""
     result = await db.execute(select(EntranceExam).where(EntranceExam.id == exam_id))
     exam = result.scalar_one_or_none()
@@ -203,13 +204,13 @@ async def get_exam(exam_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
 
 @admin_router.get("")
 async def admin_list_exams(
-    limit: int = Query(20, ge=1, le=100),
-    offset: int = Query(0, ge=0),
-    stream: str | None = Query(None),
-    exam_type: str | None = Query(None),
-    status: str | None = Query(None),
-    admin=Depends(require_operator),
-    db: AsyncSession = Depends(get_db),
+    admin: Annotated[Any, Depends(require_operator)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+    offset: Annotated[int, Query(ge=0)] = 0,
+    stream: Annotated[str | None, Query()] = None,
+    exam_type: Annotated[str | None, Query()] = None,
+    status: Annotated[str | None, Query()] = None,
 ):
     q = select(EntranceExam)
     cq = select(func.count(EntranceExam.id))
@@ -246,8 +247,8 @@ async def admin_list_exams(
 @admin_router.get("/{exam_id}")
 async def admin_get_exam(
     exam_id: uuid.UUID,
-    admin=Depends(require_operator),
-    db: AsyncSession = Depends(get_db),
+    admin: Annotated[Any, Depends(require_operator)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Get a single entrance exam by ID (any status)."""
     exam = await _require_exam(exam_id, db)
@@ -257,8 +258,8 @@ async def admin_get_exam(
 @admin_router.post("", status_code=status.HTTP_201_CREATED)
 async def create_exam(
     body: EntranceExamCreateRequest,
-    admin=Depends(require_operator),
-    db: AsyncSession = Depends(get_db),
+    admin: Annotated[Any, Depends(require_operator)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     base_slug = _slugify(body.exam_name)
     existing = {
@@ -288,8 +289,8 @@ async def create_exam(
 async def update_exam(
     exam_id: uuid.UUID,
     body: EntranceExamUpdateRequest,
-    admin=Depends(require_operator),
-    db: AsyncSession = Depends(get_db),
+    admin: Annotated[Any, Depends(require_operator)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     exam = await _require_exam(exam_id, db)
     for field, value in body.model_dump(exclude_unset=True).items():
@@ -301,8 +302,8 @@ async def update_exam(
 @admin_router.delete("/{exam_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_exam(
     exam_id: uuid.UUID,
-    admin=Depends(require_operator),
-    db: AsyncSession = Depends(get_db),
+    admin: Annotated[Any, Depends(require_operator)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     exam = await _require_exam(exam_id, db)
     await db.delete(exam)
