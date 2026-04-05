@@ -1,5 +1,39 @@
 # Testing
 
+## Feature Development Workflow
+
+Every new feature, fix, or chore follows this sequence:
+
+```bash
+# 1. Create a branch
+git checkout -b feature/your-feature-name   # or fix/ chore/
+
+# 2. One-time setup per machine
+pre-commit install
+
+# 3. Write code + tests, then run locally
+docker exec hermes_backend python -m pytest tests/unit/ -q
+docker exec hermes_frontend python -m pytest tests/ -q
+docker exec hermes_frontend_admin python -m pytest tests/ -q
+
+# 4. Commit — hooks fire automatically (black, isort, flake8, detect-secrets)
+git add .
+git commit -m "feat: describe what you did"
+
+# 5. Push and open a PR targeting main
+git push origin feature/your-feature-name
+
+# 6. CI runs all 3 test jobs + SonarCloud — all must pass before merge
+
+# 7. Squash merge via GitHub, delete the branch
+```
+
+**Commit message prefixes:** `feat:` `fix:` `chore:` `docs:` `style:` `refactor:` `test:`
+
+> Full workflow detail with branch protection rules and commit conventions: [`docs/DESIGN.md → Feature Development Workflow`](DESIGN.md#feature-development-workflow)
+
+---
+
 ## Run Tests
 
 ```bash

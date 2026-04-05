@@ -917,6 +917,69 @@ push to main / any PR
 - Require branches to be up to date before merging
 - No bypassing rules (including admins)
 
+### Feature Development Workflow
+
+Follow these steps every time you implement a new feature, fix, or chore:
+
+**Step 1 — Create a branch**
+```bash
+git checkout -b feature/your-feature-name   # new feature
+git checkout -b fix/bug-description         # bug fix
+git checkout -b chore/update-deps           # maintenance
+```
+
+**Step 2 — Install pre-commit (first time only, per machine)**
+```bash
+pre-commit install   # registers .git/hooks/pre-commit
+```
+
+**Step 3 — Write code + tests**
+- Backend tests → `src/backend/tests/unit/`
+- Frontend tests → `src/frontend/tests/`
+- Admin tests → `src/frontend-admin/tests/`
+- Run tests locally before committing:
+```bash
+docker exec hermes_backend python -m pytest tests/unit/ -q
+```
+
+**Step 4 — Commit (hooks run automatically)**
+```bash
+git add .
+git commit -m "feat: describe what you did"
+# pre-commit runs: black, isort, flake8, detect-secrets
+# Fix anything flagged, then commit again
+```
+
+**Step 5 — Push and open a PR**
+```bash
+git push origin feature/your-feature-name
+# Open PR on GitHub targeting main
+```
+
+**Step 6 — CI runs automatically on the PR**
+
+All 3 test jobs + SonarCloud must go green before merge. If anything fails, fix it on the branch and push again.
+
+**Step 7 — Merge and delete branch**
+
+Squash merge into `main` via GitHub. Delete the feature branch after merge.
+
+---
+
+**Commit message convention:**
+
+| Prefix | When to use |
+|--------|-------------|
+| `feat:` | New feature |
+| `fix:` | Bug fix |
+| `chore:` | Config, deps, tooling |
+| `docs:` | Documentation only |
+| `style:` | Formatting, no logic change |
+| `refactor:` | Code restructure, no new feature |
+| `test:` | Adding or fixing tests |
+
+---
+
 ### Pre-commit Hooks (`.pre-commit-config.yaml`)
 
 Run locally before every `git commit`. Installed once per developer clone:
