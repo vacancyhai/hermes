@@ -1,0 +1,190 @@
+services:
+  postgresql:
+    image: postgres:16-alpine
+    container_name: hermes_postgresql
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-hermes_db}
+      POSTGRES_USER: ${POSTGRES_USER:-hermes_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./src/backend/init-test-db.sh:/docker-entrypoint-initdb.d/init-test-db.sh
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-hermes_user} -d ${POSTGRES_DB:-hermes_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - hermes_network
+
+  redis:
+    image: redis:7-alpine
+    container_name: hermes_redis
+    restart: unless-stopped
+    command: >
+      redis-server
+        --appendonly yes
+        --appendfsync everysec
+        ${REDIS_PASSWORD:+--requirepass ${REDIS_PASSWORD}}
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - hermes_network
+
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    container_name: hermes_pgbouncer
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-hermes_user}:${POSTGRES_PASSWORD}@postgresql:5432/${POSTGRES_DB:-hermes_db}
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: 100
+      DEFAULT_POOL_SIZE: 20
+      AUTH_TYPE: scram-sha-256
+    depends_on:
+      postgresql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h localhost -p 5432"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - hermes_network
+
+  backend:
+    build:
+      context: ./src/backend
+      dockerfile: Dockerfile
+    container_name: hermes_backend
+    restart: unless-stopped
+    env_file:
+      - ./src/backend/.env
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    volumes:
+      - ./src/backend/app:/app/app
+      - ./migrations:/app/migrations
+      - ./alembic.ini:/app/alembic.ini
+      - ./secrets:/app/secrets:ro
+    depends_on:
+      pgbouncer:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    command: >
+      uvicorn app.main:app
+        --host 0.0.0.0
+        --port 8000
+        --reload
+    networks:
+      - hermes_network
+
+  celery_worker:
+    build:
+      context: ./src/backend
+      dockerfile: Dockerfile
+    container_name: hermes_celery_worker
+    restart: unless-stopped
+    env_file:
+      - ./src/backend/.env
+    volumes:
+      - ./src/backend/app:/app/app
+      - ./migrations:/app/migrations
+      - ./alembic.ini:/app/alembic.ini
+      - ./secrets:/app/secrets:ro
+    depends_on:
+      pgbouncer:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: >
+      celery -A app.celery_app:celery worker
+        --loglevel=info
+        --concurrency=2
+    networks:
+      - hermes_network
+
+  frontend:
+    build:
+      context: ./src/frontend
+      dockerfile: Dockerfile
+    container_name: hermes_frontend
+    restart: unless-stopped
+    env_file:
+      - ./src/frontend/.env
+    ports:
+      - "${FRONTEND_PORT:-8080}:8080"
+    volumes:
+      - ./src/frontend/app:/app/app
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    command: flask run --host=0.0.0.0 --port=8080 --reload
+    networks:
+      - hermes_network
+
+  frontend-admin:
+    build:
+      context: ./src/frontend-admin
+      dockerfile: Dockerfile
+    container_name: hermes_frontend_admin
+    restart: unless-stopped
+    env_file:
+      - ./src/frontend-admin/.env
+    ports:
+      - "${FRONTEND_ADMIN_PORT:-8081}:8081"
+    volumes:
+      - ./src/frontend-admin/app:/app/app
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    command: flask run --host=0.0.0.0 --port=8081 --reload
+    networks:
+      - hermes_network
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: hermes_mailpit
+    restart: unless-stopped
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    networks:
+      - hermes_network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  hermes_network:
+    name: hermes_network
