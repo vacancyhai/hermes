@@ -46,9 +46,7 @@ async def _count_watches(user_id: uuid.UUID, db: AsyncSession) -> int:
     return result.scalar()
 
 
-# ══════════════════════════════════════════════════════════════════════════════
 # Job Watch
-# ══════════════════════════════════════════════════════════════════════════════
 
 
 @router.post("/api/v1/jobs/{job_id}/watch", status_code=status.HTTP_200_OK)
@@ -100,9 +98,7 @@ async def unwatch_job(
     return {"message": "Unwatched job", "watching": False}
 
 
-# ══════════════════════════════════════════════════════════════════════════════
 # Entrance Exam Watch
-# ══════════════════════════════════════════════════════════════════════════════
 
 
 @router.post("/api/v1/entrance-exams/{exam_id}/watch", status_code=status.HTTP_200_OK)
@@ -154,9 +150,7 @@ async def unwatch_exam(
     return {"message": "Unwatched exam", "watching": False}
 
 
-# ══════════════════════════════════════════════════════════════════════════════
 # List Watched
-# ══════════════════════════════════════════════════════════════════════════════
 
 
 @router.get("/api/v1/users/me/watched")
