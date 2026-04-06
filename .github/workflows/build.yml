@@ -18,69 +18,26 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Write the minimum env the backend container needs to start.
-      # Template: src/backend/.env.example — copy that and fill in real values locally.
-      # Secrets are injected from GitHub Actions secrets; non-sensitive
-      # defaults are hard-coded for CI (they never reach production).
-      - name: Write CI .env for backend
-        run: |
-          cat > src/backend/.env <<'EOF'
-          APP_ENV=test
-          SECRET_KEY=ci-secret-key
-          DATABASE_URL=postgresql+asyncpg://hermes_user:hermes_ci_pass@pgbouncer:5432/hermes_db
-          POSTGRES_DB=hermes_db
-          POSTGRES_USER=hermes_user
-          POSTGRES_PASSWORD=hermes_ci_pass
-          REDIS_URL=redis://redis:6379/0
-          REDIS_PASSWORD=
-          CELERY_BROKER_URL=redis://redis:6379/0
-          CELERY_RESULT_BACKEND=redis://redis:6379/0
-          JWT_SECRET_KEY=ci-jwt-secret
-          JWT_ACCESS_TOKEN_EXPIRES=900
-          JWT_REFRESH_TOKEN_EXPIRES=604800
-          MAIL_ENABLED=false
-          MAIL_SERVER=localhost
-          MAIL_PORT=1025
-          MAIL_USE_TLS=false
-          MAIL_USERNAME=
-          MAIL_PASSWORD=
-          MAIL_DEFAULT_SENDER=noreply@ci.local
-          FIREBASE_CREDENTIALS_PATH=
-          FIREBASE_WEB_API_KEY=
-          FIREBASE_AUTH_DOMAIN=
-          FIREBASE_PROJECT_ID=
-          ANTHROPIC_API_KEY=
-          CORS_ORIGINS=["http://localhost:8080"]
-          FRONTEND_URL=http://localhost:8080
-          SITE_URL=http://localhost
-          SITEMAP_PATH=/tmp/sitemap.xml
-          TELEGRAM_BOT_TOKEN=
-          PDF_UPLOAD_DIR=/tmp/uploads/pdfs
-          PDF_MAX_SIZE_MB=10
-          REDIS_KEY_PREFIX=hermes
-          EOF
-
-      - name: Start Docker Compose services
-        working-directory: src/backend
-        run: docker compose up -d --build --wait
+      - name: Start backend services
+        run: docker compose -f docker-compose.test.yml up -d --build --wait postgresql redis pgbouncer backend
         env:
           POSTGRES_PASSWORD: hermes_ci_pass
 
       - name: Run database migrations
-        working-directory: src/backend
-        run: docker exec hermes_backend alembic -c /app/alembic.ini upgrade head
+        run: docker exec test_backend alembic -c /app/alembic.ini upgrade head
 
-      - name: Run unit tests with coverage
-        working-directory: src/backend
+      - name: Run backend tests with coverage
         run: |
-          docker exec hermes_backend python -m pytest tests/unit/ \
+          docker exec test_backend python -m pytest \
+            tests/unit/ \
+            tests/integration/ \
             --cov=app \
             --cov-report=xml:/app/coverage.xml \
             --cov-report=term-missing \
             -q
 
       - name: Copy coverage report out of container
-        run: docker cp hermes_backend:/app/coverage.xml coverage.xml
+        run: docker cp test_backend:/app/coverage.xml coverage.xml
 
       - name: Fix coverage XML source paths
         run: sed -i 's|/app/app|src/backend/app|g' coverage.xml
@@ -92,10 +49,9 @@ jobs:
           path: coverage.xml
           retention-days: 1
 
-      - name: Tear down services
+      - name: Tear down backend services
         if: always()
-        working-directory: src/backend
-        run: docker compose down -v
+        run: docker compose -f docker-compose.test.yml down -v
 
   # ── 2. User frontend tests (Flask + MagicMock — no live services needed) ───
   test-frontend:
@@ -108,21 +64,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Write CI .env for user frontend
-        run: |
-          cat > src/frontend/.env <<'EOF'
-          FLASK_APP=app:app
-          FLASK_ENV=test
-          FLASK_DEBUG=0
-          FRONTEND_PORT=8080
-          SECRET_KEY=ci-frontend-secret  # pragma: allowlist secret
-          SESSION_TIMEOUT=3600
-          BACKEND_API_URL=http://backend:8000/api/v1
-          FIREBASE_WEB_API_KEY=
-          FIREBASE_AUTH_DOMAIN=
-          FIREBASE_PROJECT_ID=
-          EOF
-
       - name: Build user frontend image
         working-directory: src/frontend
         run: docker build -t hermes_frontend_ci .
@@ -132,7 +73,7 @@ jobs:
           mkdir -p src/frontend/coverage
           chmod 777 src/frontend/coverage
           docker run --rm \
-            --env-file src/frontend/.env \
+            --env-file src/frontend/.env.test \
             -v ${{ github.workspace }}/src/frontend/coverage:/app/coverage \
             hermes_frontend_ci \
             python -m pytest tests/ \
@@ -162,18 +103,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Write CI .env for admin frontend
-        run: |
-          cat > src/frontend-admin/.env <<'EOF'
-          FLASK_APP=app:app
-          FLASK_ENV=test
-          FLASK_DEBUG=0
-          FRONTEND_ADMIN_PORT=8081
-          SECRET_KEY=ci-admin-frontend-secret  # pragma: allowlist secret
-          SESSION_TIMEOUT=3600
-          BACKEND_API_URL=http://backend:8000/api/v1
-          EOF
-
       - name: Build admin frontend image
         working-directory: src/frontend-admin
         run: docker build -t hermes_frontend_admin_ci .
@@ -183,7 +112,7 @@ jobs:
           mkdir -p src/frontend-admin/coverage
           chmod 777 src/frontend-admin/coverage
           docker run --rm \
-            --env-file src/frontend-admin/.env \
+            --env-file src/frontend-admin/.env.test \
             -v ${{ github.workspace }}/src/frontend-admin/coverage:/app/coverage \
             hermes_frontend_admin_ci \
             python -m pytest tests/ \
@@ -202,11 +131,73 @@ jobs:
           path: src/frontend-admin/coverage/coverage.xml
           retention-days: 1
 
-  # ── 4. SonarCloud — waits for all 3 test jobs, merges all coverage reports ─
+  # ── 4. E2E — all 3 services up together, cross-service flows ─────────────
+  test-e2e:
+    name: E2E Tests (cross-service)
+    runs-on: ubuntu-latest
+    needs: [test, test-frontend, test-frontend-admin]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Start all services
+        run: docker compose -f docker-compose.test.yml up -d --build --wait
+        env:
+          POSTGRES_PASSWORD: hermes_ci_pass
+
+      - name: Run database migrations
+        run: docker exec test_backend alembic -c /app/alembic.ini upgrade head
+
+      - name: Seed CI admin user
+        run: |
+          docker exec test_backend python -c "
+          import asyncio, os
+          from passlib.context import CryptContext
+          from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+          from app.models.admin_user import AdminUser
+          pwd = CryptContext(schemes=['bcrypt'], deprecated='auto')
+          async def seed():
+              engine = create_async_engine(os.environ['DATABASE_URL'])
+              async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+              async with async_session() as s:
+                  s.add(AdminUser(email='admin@ci.local', password_hash=pwd.hash('AdminCI123'), full_name='CI Admin', role='admin', department='CI', status='active'))
+                  await s.commit()
+              await engine.dispose()
+          asyncio.run(seed())
+          "
+
+      - name: Set up Python for e2e runner
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install e2e test dependencies
+        run: pip install -r tests/e2e/requirements.txt
+
+      - name: Run E2E tests
+        run: |
+          pytest tests/e2e/ \
+            --tb=short \
+            -q
+        env:
+          FRONTEND_URL: http://localhost:8080
+          ADMIN_URL: http://localhost:8081
+          BACKEND_URL: http://localhost:8000
+          E2E_ADMIN_EMAIL: admin@ci.local
+          E2E_ADMIN_PASSWORD: AdminCI123  # pragma: allowlist secret
+
+      - name: Tear down e2e services
+        if: always()
+        run: docker compose -f docker-compose.test.yml down -v
+
+  # ── 5. SonarCloud — waits for all 3 test jobs, merges all coverage reports ─
   sonarcloud:
     name: SonarCloud Scan
     runs-on: ubuntu-latest
-    needs: [test, test-frontend, test-frontend-admin]
+    needs: [test, test-frontend, test-frontend-admin, test-e2e]
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
