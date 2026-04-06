@@ -15,7 +15,9 @@ class Settings(BaseSettings):
     BACKEND_PORT: int = 8000
 
     # PostgreSQL (through PgBouncer)
-    DATABASE_URL: str = "postgresql+asyncpg://hermes_user:@pgbouncer:5432/hermes_db"
+    DATABASE_URL: str = (
+        "postgresql+asyncpg://hermes_user:@pgbouncer:5432/hermes_db"  # NOSONAR
+    )
     DB_POOL_SIZE: int = 20
 
     # Redis

@@ -82,6 +82,9 @@ jobs:
       - name: Copy coverage report out of container
         run: docker cp hermes_backend:/app/coverage.xml coverage.xml
 
+      - name: Fix coverage XML source paths
+        run: sed -i 's|/app/app|src/backend/app|g' coverage.xml
+
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v4
         with:
@@ -138,6 +141,9 @@ jobs:
               --cov-report=term-missing \
               -q
 
+      - name: Fix frontend coverage XML source paths
+        run: sed -i 's|/app/app|src/frontend/app|g' src/frontend/coverage/coverage.xml
+
       - name: Upload frontend coverage artifact
         uses: actions/upload-artifact@v4
         with:
@@ -185,6 +191,9 @@ jobs:
               --cov-report=xml:/app/coverage/coverage.xml \
               --cov-report=term-missing \
               -q
+
+      - name: Fix admin frontend coverage XML source paths
+        run: sed -i 's|/app/app|src/frontend-admin/app|g' src/frontend-admin/coverage/coverage.xml
 
       - name: Upload admin frontend coverage artifact
         uses: actions/upload-artifact@v4
