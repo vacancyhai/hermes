@@ -387,9 +387,10 @@ class NotificationService:
             countdown=settings.NOTIFY_WHATSAPP_DELAY,
         )
 
-    def _send_whatsapp_message(self, phone: str, title: str, message: str) -> bool:
+    def _send_whatsapp_message(
+        self, phone: str, title: str, _message: str = ""
+    ) -> bool:
         """Send via WhatsApp Cloud API. Placeholder until configured."""
-        # TODO: Implement when WHATSAPP_API_TOKEN + WHATSAPP_PHONE_NUMBER_ID are in settings
         logger.info("whatsapp_not_configured", phone=phone[:6] + "***", title=title)
         return False
 

@@ -44,13 +44,15 @@ class UserResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+_PHONE_PATTERN = r"^\+\d{10,15}$"
+
 # --- Email OTP verification (email/password registration) ---
 
 
 class EmailOTPRequest(BaseModel):
     email: EmailStr
     full_name: str = Field(min_length=1, max_length=100)
-    phone: str | None = Field(None, pattern=r"^\+\d{10,15}$")  # E.164 format
+    phone: str | None = Field(None, pattern=_PHONE_PATTERN)  # E.164 format
 
 
 class EmailOTPVerifyRequest(BaseModel):
@@ -78,7 +80,7 @@ class CompleteRegistrationRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8)
     verification_token: str
-    phone: str | None = Field(default=None, pattern=r"^\+\d{10,15}$")
+    phone: str | None = Field(default=None, pattern=_PHONE_PATTERN)
 
     @field_validator("password")
     @classmethod
@@ -113,7 +115,7 @@ class AddPasswordRequest(BaseModel):
 
 
 class CheckPhoneRequest(BaseModel):
-    phone: str = Field(pattern=r"^\+\d{10,15}$")  # E.164 format
+    phone: str = Field(pattern=_PHONE_PATTERN)  # E.164 format
 
 
 class PhoneAvailabilityResponse(BaseModel):
@@ -123,7 +125,7 @@ class PhoneAvailabilityResponse(BaseModel):
 
 
 class UpdatePhoneRequest(BaseModel):
-    phone: str = Field(pattern=r"^\+\d{10,15}$")  # E.164 format
+    phone: str = Field(pattern=_PHONE_PATTERN)  # E.164 format
 
 
 class VerifyPhoneRequest(BaseModel):

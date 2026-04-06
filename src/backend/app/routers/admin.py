@@ -100,8 +100,11 @@ class AdminCreateRequest(BaseModel):
 
 _admin_pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
+_ERR_JOB_NOT_FOUND = "Job not found"
+_ERR_USER_NOT_FOUND = "User not found"
 
-async def _log_action(
+
+def _log_action(
     db: AsyncSession,
     admin: AdminUser,
     action: str,
@@ -306,7 +309,7 @@ async def get_job(
     job = result.scalar_one_or_none()
     if not job:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Job not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=_ERR_JOB_NOT_FOUND
         )
     return JobResponse.model_validate(job).model_dump()
 
@@ -427,12 +430,13 @@ async def extract_pdf_data(
     # Extract text from PDF
     import tempfile
 
+    import anyio
     from app.services.ai_extractor import extract_job_data
     from app.services.pdf_extractor import extract_text_from_pdf
 
-    with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
-        tmp.write(content)
-        tmp_path = tmp.name
+    tmp_fd, tmp_path = tempfile.mkstemp(suffix=".pdf")
+    os.close(tmp_fd)
+    await anyio.Path(tmp_path).write_bytes(content)
 
     try:
         pdf_text = extract_text_from_pdf(tmp_path)
@@ -485,7 +489,7 @@ async def update_job(
     job = result.scalar_one_or_none()
     if not job:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Job not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=_ERR_JOB_NOT_FOUND
         )
 
     changes = {}
@@ -538,7 +542,7 @@ async def approve_job(
     job = result.scalar_one_or_none()
     if not job:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Job not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=_ERR_JOB_NOT_FOUND
         )
 
     if job.status != "draft":
@@ -580,7 +584,7 @@ async def delete_job(
     job = result.scalar_one_or_none()
     if not job:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Job not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=_ERR_JOB_NOT_FOUND
         )
 
     job.status = "cancelled"
@@ -651,7 +655,7 @@ async def get_user(
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=_ERR_USER_NOT_FOUND
         )
 
     profile_result = await db.execute(
@@ -695,7 +699,7 @@ async def update_user_status(
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=_ERR_USER_NOT_FOUND
         )
 
     old_status = user.status
@@ -757,7 +761,7 @@ async def delete_user_permanently(
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=_ERR_USER_NOT_FOUND
         )
 
     firebase_uid = user.firebase_uid

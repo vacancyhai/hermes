@@ -27,6 +27,35 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 # ---------------------------------------------------------------------------
+# String constants (avoid duplicate literals)
+# ---------------------------------------------------------------------------
+
+_SSC = "Staff Selection Commission"
+_UPSC = "Union Public Service Commission"
+_RRB = "Railway Recruitment Board"
+_MOR = "Ministry of Railways"
+_IBPS = "Institute of Banking Personnel Selection"
+_IBPS_APPLY = "https://ibps.in/apply"
+_NTA = "National Testing Agency"
+_MCC = "Medical Counselling Committee (MCC)"
+_ARMY_URL = "https://joinindianarmy.nic.in"
+_APPLY_ONLINE = "Apply Online"
+_OFFICIAL_NOTIF = "Official Notification"
+_CATEGORY_CERT = "Category Certificate"
+_DEGREE_CERT = "Degree Certificate"
+_GEN_AWARENESS = "General Awareness"
+_GEN_INTEL = "General Intelligence & Reasoning"
+_MED_EXAM = "Medical Examination"
+_DOC_VERIFY = "Document Verification"
+_DOC_VERIFY_MED = "Document Verification & Medical"
+_ENG_LANG = "English Language"
+_QUANT_APT = "Quantitative Aptitude"
+_REASONING = "Reasoning Ability"
+_ONLINE_CBT = "Online CBT"
+_GROUP_A = "Group A"
+_PAPER1_BTECH = "Paper 1 (B.Tech)"
+
+# ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
@@ -84,7 +113,7 @@ JOBS = [
     {
         "job_title": "SSC GD Constable Recruitment 2025",
         "slug": "ssc-gd-constable-recruitment-2025",
-        "organization": "Staff Selection Commission",
+        "organization": _SSC,
         "department": "SSC",
         "employment_type": "permanent",
         "qualification_level": "10th",
@@ -168,7 +197,7 @@ JOBS = [
             "important_links": [
                 {
                     "type": "apply_online",
-                    "text": "Apply Online",
+                    "text": _APPLY_ONLINE,
                     "url": "https://ssc.nic.in/apply",
                 },
                 {
@@ -204,7 +233,7 @@ JOBS = [
                 "max_size_kb": 50,
             },
             {
-                "name": "Category Certificate",
+                "name": _CATEGORY_CERT,
                 "mandatory": False,
                 "format": "PDF",
                 "max_size_kb": 300,
@@ -222,7 +251,7 @@ JOBS = [
                     "phase": "CBT",
                     "subjects": [
                         {"name": "General Intelligence", "questions": 40, "marks": 40},
-                        {"name": "General Awareness", "questions": 40, "marks": 40},
+                        {"name": _GEN_AWARENESS, "questions": 40, "marks": 40},
                         {"name": "Mathematics", "questions": 40, "marks": 40},
                         {"name": "English", "questions": 40, "marks": 40},
                     ],
@@ -254,8 +283,8 @@ JOBS = [
             {"phase": 1, "name": "Computer Based Test (CBT)", "qualifying": False},
             {"phase": 2, "name": "Physical Efficiency Test (PET)", "qualifying": True},
             {"phase": 3, "name": "Physical Standard Test (PST)", "qualifying": True},
-            {"phase": 4, "name": "Medical Examination", "qualifying": True},
-            {"phase": 5, "name": "Document Verification", "qualifying": True},
+            {"phase": 4, "name": _MED_EXAM, "qualifying": True},
+            {"phase": 5, "name": _DOC_VERIFY, "qualifying": True},
         ],
         "fee_general": 100,
         "fee_obc": 100,
@@ -272,7 +301,7 @@ JOBS = [
     {
         "job_title": "UPSC Civil Services Examination 2026",
         "slug": "upsc-civil-services-examination-2026",
-        "organization": "Union Public Service Commission",
+        "organization": _UPSC,
         "department": "UPSC",
         "employment_type": "permanent",
         "qualification_level": "graduate",
@@ -327,12 +356,12 @@ JOBS = [
             "important_links": [
                 {
                     "type": "apply_online",
-                    "text": "Apply Online",
+                    "text": _APPLY_ONLINE,
                     "url": "https://upsconline.nic.in",
                 },
                 {
                     "type": "download_notification",
-                    "text": "Official Notification",
+                    "text": _OFFICIAL_NOTIF,
                     "url": "https://upsc.gov.in/notification",
                 },
                 {
@@ -344,7 +373,7 @@ JOBS = [
         },
         "documents": [
             {
-                "name": "Degree Certificate",
+                "name": _DEGREE_CERT,
                 "mandatory": True,
                 "format": "PDF",
                 "max_size_kb": 500,
@@ -357,7 +386,7 @@ JOBS = [
                 "max_size_kb": 100,
             },
             {
-                "name": "Category Certificate",
+                "name": _CATEGORY_CERT,
                 "mandatory": False,
                 "format": "PDF",
                 "max_size_kb": 500,
@@ -431,8 +460,8 @@ JOBS = [
     {
         "job_title": "RRB NTPC Graduate Level Recruitment 2025",
         "slug": "rrb-ntpc-graduate-level-recruitment-2025",
-        "organization": "Railway Recruitment Board",
-        "department": "Ministry of Railways",
+        "organization": _RRB,
+        "department": _MOR,
         "employment_type": "permanent",
         "qualification_level": "graduate",
         "total_vacancies": 11558,
@@ -513,19 +542,19 @@ JOBS = [
             "important_links": [
                 {
                     "type": "apply_online",
-                    "text": "Apply Online",
+                    "text": _APPLY_ONLINE,
                     "url": "https://rrbonlinereg.co.in",
                 },
                 {
                     "type": "download_notification",
-                    "text": "Official Notification",
+                    "text": _OFFICIAL_NOTIF,
                     "url": "https://rrbapply.gov.in/notification.pdf",
                 },
             ],
         },
         "documents": [
             {
-                "name": "Degree Certificate",
+                "name": _DEGREE_CERT,
                 "mandatory": True,
                 "format": "PDF",
                 "max_size_kb": 500,
@@ -544,7 +573,7 @@ JOBS = [
                 "max_size_kb": 20,
             },
             {
-                "name": "Category Certificate",
+                "name": _CATEGORY_CERT,
                 "mandatory": False,
                 "format": "PDF",
                 "max_size_kb": 300,
@@ -562,11 +591,11 @@ JOBS = [
                     "subjects": [
                         {"name": "Mathematics", "questions": 30, "marks": 30},
                         {
-                            "name": "General Intelligence & Reasoning",
+                            "name": _GEN_INTEL,
                             "questions": 30,
                             "marks": 30,
                         },
-                        {"name": "General Awareness", "questions": 40, "marks": 40},
+                        {"name": _GEN_AWARENESS, "questions": 40, "marks": 40},
                     ],
                     "total_marks": 100,
                     "duration_minutes": 90,
@@ -578,11 +607,11 @@ JOBS = [
                     "subjects": [
                         {"name": "Mathematics", "questions": 35, "marks": 35},
                         {
-                            "name": "General Intelligence & Reasoning",
+                            "name": _GEN_INTEL,
                             "questions": 35,
                             "marks": 35,
                         },
-                        {"name": "General Awareness", "questions": 50, "marks": 50},
+                        {"name": _GEN_AWARENESS, "questions": 50, "marks": 50},
                     ],
                     "total_marks": 120,
                     "duration_minutes": 90,
@@ -616,7 +645,7 @@ JOBS = [
                 "qualifying": False,
             },
             {"phase": 3, "name": "Skill Test / Typing Test", "qualifying": True},
-            {"phase": 4, "name": "Document Verification & Medical", "qualifying": True},
+            {"phase": 4, "name": _DOC_VERIFY_MED, "qualifying": True},
         ],
         "fee_general": 500,
         "fee_obc": 500,
@@ -633,7 +662,7 @@ JOBS = [
     {
         "job_title": "IBPS PO (Probationary Officer) Recruitment 2025",
         "slug": "ibps-po-recruitment-2025",
-        "organization": "Institute of Banking Personnel Selection",
+        "organization": _IBPS,
         "department": "IBPS",
         "employment_type": "permanent",
         "qualification_level": "graduate",
@@ -674,19 +703,19 @@ JOBS = [
         },
         "application_details": {
             "application_mode": "Online",
-            "application_link": "https://ibps.in/apply",
+            "application_link": _IBPS_APPLY,
             "official_website": "https://ibps.in",
             "notification_pdf": "https://ibps.in/wp-content/uploads/2025/08/CRP-PO-MT-XV-Notification.pdf",
             "fee_payment_mode": "Online (Debit/Credit Card, Net Banking, UPI)",
             "important_links": [
                 {
                     "type": "apply_online",
-                    "text": "Apply Online",
-                    "url": "https://ibps.in/apply",
+                    "text": _APPLY_ONLINE,
+                    "url": _IBPS_APPLY,
                 },
                 {
                     "type": "download_notification",
-                    "text": "Official Notification",
+                    "text": _OFFICIAL_NOTIF,
                     "url": "https://ibps.in/notification",
                 },
                 {
@@ -698,7 +727,7 @@ JOBS = [
         },
         "documents": [
             {
-                "name": "Degree Certificate",
+                "name": _DEGREE_CERT,
                 "mandatory": True,
                 "format": "PDF",
                 "max_size_kb": 500,
@@ -723,7 +752,7 @@ JOBS = [
                 "max_size_kb": 50,
             },
             {
-                "name": "Category Certificate",
+                "name": _CATEGORY_CERT,
                 "mandatory": False,
                 "format": "PDF",
                 "max_size_kb": 500,
@@ -739,9 +768,9 @@ JOBS = [
                 {
                     "phase": "Prelims",
                     "subjects": [
-                        {"name": "English Language", "questions": 30, "marks": 30},
-                        {"name": "Quantitative Aptitude", "questions": 35, "marks": 35},
-                        {"name": "Reasoning Ability", "questions": 35, "marks": 35},
+                        {"name": _ENG_LANG, "questions": 30, "marks": 30},
+                        {"name": _QUANT_APT, "questions": 35, "marks": 35},
+                        {"name": _REASONING, "questions": 35, "marks": 35},
                     ],
                     "total_marks": 100,
                     "duration_minutes": 60,
@@ -755,7 +784,7 @@ JOBS = [
                             "questions": 45,
                             "marks": 60,
                         },
-                        {"name": "English Language", "questions": 35, "marks": 40},
+                        {"name": _ENG_LANG, "questions": 35, "marks": 40},
                         {
                             "name": "Data Analysis & Interpretation",
                             "questions": 35,
@@ -793,7 +822,7 @@ JOBS = [
             },
             {"phase": 2, "name": "Main Examination (Online)", "qualifying": False},
             {"phase": 3, "name": "Interview", "qualifying": False},
-            {"phase": 4, "name": "Document Verification", "qualifying": True},
+            {"phase": 4, "name": _DOC_VERIFY, "qualifying": True},
         ],
         "fee_general": 850,
         "fee_obc": 850,
@@ -811,7 +840,7 @@ JOBS = [
     {
         "job_title": "SSC CGL (Combined Graduate Level) Examination 2025",
         "slug": "ssc-cgl-combined-graduate-level-2025",
-        "organization": "Staff Selection Commission",
+        "organization": _SSC,
         "department": "SSC",
         "employment_type": "permanent",
         "qualification_level": "graduate",
@@ -895,7 +924,7 @@ JOBS = [
             "important_links": [
                 {
                     "type": "apply_online",
-                    "text": "Apply Online",
+                    "text": _APPLY_ONLINE,
                     "url": "https://ssc.nic.in/portal/apply",
                 },
                 {
@@ -949,18 +978,18 @@ JOBS = [
                     "phase": "Tier-I",
                     "subjects": [
                         {
-                            "name": "General Intelligence & Reasoning",
+                            "name": _GEN_INTEL,
                             "questions": 25,
                             "marks": 50,
                         },
-                        {"name": "General Awareness", "questions": 25, "marks": 50},
-                        {"name": "Quantitative Aptitude", "questions": 25, "marks": 50},
+                        {"name": _GEN_AWARENESS, "questions": 25, "marks": 50},
+                        {"name": _QUANT_APT, "questions": 25, "marks": 50},
                         {"name": "English Comprehension", "questions": 25, "marks": 50},
                     ],
                     "total_marks": 200,
                     "duration_minutes": 60,
                     "negative_marking": 0.5,
-                    "exam_mode": "Online CBT",
+                    "exam_mode": _ONLINE_CBT,
                 },
                 {
                     "phase": "Tier-II",
@@ -971,7 +1000,7 @@ JOBS = [
                                 "Mathematical Abilities",
                                 "Reasoning & General Intelligence",
                                 "English Language & Comprehension",
-                                "General Awareness",
+                                _GEN_AWARENESS,
                                 "Computer Knowledge",
                             ],
                             "total_marks": 390,
@@ -987,7 +1016,7 @@ JOBS = [
                             "total_marks": 200,
                         },
                     ],
-                    "exam_mode": "Online CBT",
+                    "exam_mode": _ONLINE_CBT,
                 },
             ],
             "exam_language": ["Hindi", "English"],
@@ -1003,7 +1032,7 @@ JOBS = [
         "selection_process": [
             {"phase": 1, "name": "Tier-I (Online CBT)", "qualifying": True},
             {"phase": 2, "name": "Tier-II (Online CBT)", "qualifying": False},
-            {"phase": 3, "name": "Document Verification & Medical", "qualifying": True},
+            {"phase": 3, "name": _DOC_VERIFY_MED, "qualifying": True},
         ],
         "fee_general": 100,
         "fee_obc": 100,
@@ -1053,19 +1082,19 @@ JOBS = [
         },
         "application_details": {
             "application_mode": "Online",
-            "application_link": "https://joinindianarmy.nic.in",
-            "official_website": "https://joinindianarmy.nic.in",
+            "application_link": _ARMY_URL,
+            "official_website": _ARMY_URL,
             "notification_pdf": "https://joinindianarmy.nic.in/tes-2026-notification.pdf",
             "fee_payment_mode": "No application fee",
             "important_links": [
                 {
                     "type": "apply_online",
-                    "text": "Apply Online",
-                    "url": "https://joinindianarmy.nic.in",
+                    "text": _APPLY_ONLINE,
+                    "url": _ARMY_URL,
                 },
                 {
                     "type": "download_notification",
-                    "text": "Official Notification",
+                    "text": _OFFICIAL_NOTIF,
                     "url": "https://joinindianarmy.nic.in/notification",
                 },
             ],
@@ -1098,7 +1127,7 @@ JOBS = [
                     "description": "5-day Service Selection Board interview at Allahabad/Bhopal/Bangalore/Capthalla",
                     "marks": 900,
                 },
-                {"phase": "Medical Examination", "qualifying": True},
+                {"phase": _MED_EXAM, "qualifying": True},
             ],
             "shortlisting": "Shortlisting based on JEE Mains score and 10+2 PCM marks",
             "total_phases": 2,
@@ -1120,7 +1149,7 @@ JOBS = [
         "selection_process": [
             {"phase": 1, "name": "JEE Mains Shortlisting", "qualifying": True},
             {"phase": 2, "name": "SSB Interview (5-day)", "qualifying": False},
-            {"phase": 3, "name": "Medical Examination", "qualifying": True},
+            {"phase": 3, "name": _MED_EXAM, "qualifying": True},
             {"phase": 4, "name": "Merit List & Allotment", "qualifying": False},
         ],
         "fee_general": 0,
@@ -1154,16 +1183,16 @@ JOBS = [
                 "EWS": 34,
             },
             "by_post": [
-                {"post_name": "Deputy Collector", "total": 22, "pay_level": "Group A"},
+                {"post_name": "Deputy Collector", "total": 22, "pay_level": _GROUP_A},
                 {
                     "post_name": "Deputy Superintendent of Police",
                     "total": 16,
-                    "pay_level": "Group A",
+                    "pay_level": _GROUP_A,
                 },
                 {
                     "post_name": "Assistant Commissioner Sales Tax",
                     "total": 26,
-                    "pay_level": "Group A",
+                    "pay_level": _GROUP_A,
                 },
                 {"post_name": "Tehsildar", "total": 68, "pay_level": "Group B"},
                 {
@@ -1206,12 +1235,12 @@ JOBS = [
             "important_links": [
                 {
                     "type": "apply_online",
-                    "text": "Apply Online",
+                    "text": _APPLY_ONLINE,
                     "url": "https://mpsconline.gov.in",
                 },
                 {
                     "type": "download_notification",
-                    "text": "Official Notification",
+                    "text": _OFFICIAL_NOTIF,
                     "url": "https://mpsc.gov.in/notification",
                 },
             ],
@@ -1275,7 +1304,7 @@ JOBS = [
             {"phase": 1, "name": "Preliminary Examination", "qualifying": True},
             {"phase": 2, "name": "Main Examination (Written)", "qualifying": False},
             {"phase": 3, "name": "Interview / Personality Test", "qualifying": False},
-            {"phase": 4, "name": "Document Verification & Medical", "qualifying": True},
+            {"phase": 4, "name": _DOC_VERIFY_MED, "qualifying": True},
         ],
         "fee_general": 524,
         "fee_obc": 324,
@@ -1366,7 +1395,7 @@ JOBS = [
                 },
                 {
                     "type": "download_notification",
-                    "text": "Official Notification",
+                    "text": _OFFICIAL_NOTIF,
                     "url": "https://rac.gov.in/notification",
                 },
                 {
@@ -1390,7 +1419,7 @@ JOBS = [
                 "format": "JPG",
                 "max_size_kb": 50,
             },
-            {"name": "Category Certificate", "mandatory": False, "format": "PDF"},
+            {"name": _CATEGORY_CERT, "mandatory": False, "format": "PDF"},
         ],
         "notification_date": date(2025, 11, 1),
         "application_start": date(2025, 11, 1),
@@ -1427,8 +1456,8 @@ JOBS = [
         "selection_process": [
             {"phase": 1, "name": "GATE 2025 Score Shortlisting", "qualifying": True},
             {"phase": 2, "name": "Personal Interview", "qualifying": False},
-            {"phase": 3, "name": "Medical Examination", "qualifying": True},
-            {"phase": 4, "name": "Document Verification", "qualifying": True},
+            {"phase": 3, "name": _MED_EXAM, "qualifying": True},
+            {"phase": 4, "name": _DOC_VERIFY, "qualifying": True},
         ],
         "fee_general": 100,
         "fee_obc": 100,
@@ -1445,7 +1474,7 @@ JOBS = [
     {
         "job_title": "IBPS Clerk (CRP Clerk XV) Recruitment 2025",
         "slug": "ibps-clerk-crp-xv-2025",
-        "organization": "Institute of Banking Personnel Selection",
+        "organization": _IBPS,
         "department": "IBPS",
         "employment_type": "permanent",
         "qualification_level": "graduate",
@@ -1480,13 +1509,13 @@ JOBS = [
         },
         "application_details": {
             "application_mode": "Online",
-            "application_link": "https://ibps.in/apply",
+            "application_link": _IBPS_APPLY,
             "official_website": "https://ibps.in",
             "fee_payment_mode": "Online (Debit/Credit Card, Net Banking, UPI)",
         },
         "documents": [
             {
-                "name": "Degree Certificate",
+                "name": _DEGREE_CERT,
                 "mandatory": True,
                 "format": "PDF",
                 "max_size_kb": 500,
@@ -1509,9 +1538,9 @@ JOBS = [
                 {
                     "phase": "Prelims",
                     "subjects": [
-                        {"name": "English Language", "questions": 30, "marks": 30},
+                        {"name": _ENG_LANG, "questions": 30, "marks": 30},
                         {"name": "Numerical Ability", "questions": 35, "marks": 35},
-                        {"name": "Reasoning Ability", "questions": 35, "marks": 35},
+                        {"name": _REASONING, "questions": 35, "marks": 35},
                     ],
                     "total_marks": 100,
                     "duration_minutes": 60,
@@ -1531,7 +1560,7 @@ JOBS = [
                             "questions": 50,
                             "marks": 60,
                         },
-                        {"name": "Quantitative Aptitude", "questions": 50, "marks": 50},
+                        {"name": _QUANT_APT, "questions": 50, "marks": 50},
                     ],
                     "total_marks": 200,
                     "duration_minutes": 160,
@@ -1577,8 +1606,8 @@ ADMISSIONS = [
     {
         "slug": "nta-neet-pg-2026",
         "exam_name": "NTA NEET PG 2026 — Medical PG Entrance Examination",
-        "conducting_body": "National Testing Agency",
-        "counselling_body": "Medical Counselling Committee (MCC)",
+        "conducting_body": _NTA,
+        "counselling_body": _MCC,
         "exam_type": "pg",
         "stream": "medical",
         "short_description": "NEET PG 2026: National entrance for MD/MS/PG Diploma admissions. MBBS with completed internship eligible. 300 MCQs, 3.5 hrs.",
@@ -1614,7 +1643,7 @@ ADMISSIONS = [
                     "total_marks": 1200,
                     "duration_minutes": 210,
                     "negative_marking": 1.0,
-                    "exam_mode": "Online CBT",
+                    "exam_mode": _ONLINE_CBT,
                 },
             ],
             "exam_language": ["English"],
@@ -1649,8 +1678,8 @@ ADMISSIONS = [
     {
         "slug": "nta-neet-ug-2026",
         "exam_name": "NTA NEET UG 2026 — Medical UG Entrance Examination",
-        "conducting_body": "National Testing Agency",
-        "counselling_body": "Medical Counselling Committee (MCC)",
+        "conducting_body": _NTA,
+        "counselling_body": _MCC,
         "exam_type": "ug",
         "stream": "medical",
         "short_description": "NEET UG 2026: National entrance for MBBS/BDS/BAMS/BHMS admissions. 12th (PCB) eligible. 720 marks, 3.5 hrs.",
@@ -1730,7 +1759,7 @@ ADMISSIONS = [
     {
         "slug": "jee-mains-2026",
         "exam_name": "JEE Main 2026 — Joint Entrance Examination",
-        "conducting_body": "National Testing Agency",
+        "conducting_body": _NTA,
         "counselling_body": "Joint Seat Allocation Authority (JoSAA)",
         "exam_type": "ug",
         "stream": "engineering",
@@ -1744,7 +1773,7 @@ ADMISSIONS = [
         "exam_details": {
             "exam_pattern": [
                 {
-                    "phase": "Paper 1 (B.Tech)",
+                    "phase": _PAPER1_BTECH,
                     "subjects": [
                         {"name": "Physics", "questions": 30, "marks": 100},
                         {"name": "Chemistry", "questions": 30, "marks": 100},
@@ -1851,7 +1880,7 @@ ADMISSIONS = [
                 {
                     "phase": "CLAT UG",
                     "subjects": [
-                        {"name": "English Language", "questions": 28},
+                        {"name": _ENG_LANG, "questions": 28},
                         {"name": "Current Affairs & GK", "questions": 35},
                         {"name": "Legal Reasoning", "questions": 35},
                         {"name": "Logical Reasoning", "questions": 28},
@@ -1950,7 +1979,7 @@ ADMISSIONS = [
     {
         "slug": "cuet-ug-2026",
         "exam_name": "CUET UG 2026 — Common University Entrance Test",
-        "conducting_body": "National Testing Agency",
+        "conducting_body": _NTA,
         "counselling_body": "Individual Central Universities",
         "exam_type": "ug",
         "stream": "general",
@@ -2010,7 +2039,7 @@ ADMISSIONS = [
         "slug": "neet-ss-2025",
         "exam_name": "NEET SS 2025 — Super Speciality Medical Entrance",
         "conducting_body": "National Board of Examinations in Medical Sciences (NBEMS)",
-        "counselling_body": "Medical Counselling Committee (MCC)",
+        "counselling_body": _MCC,
         "exam_type": "doctoral",
         "stream": "medical",
         "short_description": "NEET SS 2025: Entrance for DM/M.Ch (Super Speciality) courses. MD/MS in relevant speciality eligible.",
@@ -2169,7 +2198,7 @@ EXAM_PHASE_DOCS = {
                 "answer_key_type": "provisional",
                 "files": [
                     {
-                        "label": "Paper 1 (B.Tech)",
+                        "label": _PAPER1_BTECH,
                         "url": "https://jeemain.nta.ac.in/ak-s1-paper1.pdf",
                     },
                     {
@@ -2199,7 +2228,7 @@ EXAM_PHASE_DOCS = {
                 "answer_key_type": "provisional",
                 "files": [
                     {
-                        "label": "Paper 1 (B.Tech)",
+                        "label": _PAPER1_BTECH,
                         "url": "https://jeemain.nta.ac.in/ak-s2-paper1.pdf",
                     },
                 ],
@@ -2726,7 +2755,7 @@ ADMIT_CARD_POSTS = [
     {
         "job_title": "SSC CGL Tier-1 2025 Admit Card Released",
         "slug": "ssc-cgl-tier1-2025-admit-card",
-        "organization": "Staff Selection Commission",
+        "organization": _SSC,
         "department": "SSC",
         "job_type": "admit_card",
         "short_description": "SSC CGL Tier-1 2025 admit card available for download. Carry printout to exam centre with valid photo ID.",
@@ -2747,7 +2776,7 @@ ADMIT_CARD_POSTS = [
     {
         "job_title": "SSC GD Constable CBT 2025 Admit Card",
         "slug": "ssc-gd-cbt-2025-admit-card",
-        "organization": "Staff Selection Commission",
+        "organization": _SSC,
         "department": "SSC",
         "job_type": "admit_card",
         "short_description": "SSC GD Constable CBT Admit Card 2025 released. Download from ssc.nic.in using registration number and DOB.",
@@ -2768,8 +2797,8 @@ ADMIT_CARD_POSTS = [
     {
         "job_title": "RRB NTPC CBT-1 2026 Admit Card",
         "slug": "rrb-ntpc-cbt1-2026-admit-card",
-        "organization": "Railway Recruitment Board",
-        "department": "Ministry of Railways",
+        "organization": _RRB,
+        "department": _MOR,
         "job_type": "admit_card",
         "short_description": "RRB NTPC CBT-1 2026 Admit Card released on RRB regional websites. Download using Registration No. & DOB.",
         "source_url": "https://rrbapply.gov.in/admit-card",
@@ -2789,7 +2818,7 @@ ADMIT_CARD_POSTS = [
     {
         "job_title": "IBPS PO Prelims 2025 Admit Card",
         "slug": "ibps-po-prelims-2025-admit-card",
-        "organization": "Institute of Banking Personnel Selection",
+        "organization": _IBPS,
         "department": "IBPS",
         "job_type": "admit_card",
         "short_description": "IBPS PO Prelims 2025 Call Letter released. Download from ibps.in. Exam scheduled across multiple dates.",
@@ -2810,7 +2839,7 @@ ADMIT_CARD_POSTS = [
     {
         "job_title": "UPSC CSE Prelims 2026 Admit Card",
         "slug": "upsc-cse-prelims-2026-admit-card",
-        "organization": "Union Public Service Commission",
+        "organization": _UPSC,
         "department": "UPSC",
         "job_type": "admit_card",
         "short_description": "UPSC Civil Services Prelims 2026 e-Admit Card available on upsc.gov.in. Carry printout to IFoS exam hall.",
@@ -2831,7 +2860,7 @@ ADMIT_CARD_POSTS = [
     {
         "job_title": "SSC CHSL Tier-1 2025 Admit Card Released",
         "slug": "ssc-chsl-tier1-2025-admit-card",
-        "organization": "Staff Selection Commission",
+        "organization": _SSC,
         "department": "SSC",
         "job_type": "admit_card",
         "short_description": "SSC CHSL Tier-1 2025 Hall Ticket available. Download from ssc.nic.in. Exam for LDC/DEO/JSA posts.",
@@ -2852,7 +2881,7 @@ ADMIT_CARD_POSTS = [
     {
         "job_title": "IBPS RRB PO Prelims 2025 Admit Card",
         "slug": "ibps-rrb-po-prelims-2025-admit-card",
-        "organization": "Institute of Banking Personnel Selection",
+        "organization": _IBPS,
         "department": "IBPS",
         "job_type": "admit_card",
         "short_description": "IBPS RRB Officer Scale-I Prelims 2025 Admit Card available on ibps.in. Download using Reg. No. & DOB.",
@@ -2873,7 +2902,7 @@ ADMIT_CARD_POSTS = [
     {
         "job_title": "NTA NEET PG 2026 Admit Card",
         "slug": "nta-neet-pg-2026-hall-ticket",
-        "organization": "National Testing Agency",
+        "organization": _NTA,
         "department": "Ministry of Health & Family Welfare",
         "job_type": "admit_card",
         "short_description": "NEET PG 2026 Admit Card released on nta.ac.in. Candidates must carry printout with valid photo ID to exam centre.",
@@ -2924,7 +2953,7 @@ ANSWER_KEY_POSTS = [
     {
         "job_title": "SSC CGL Tier-1 2025 Provisional Answer Key",
         "slug": "ssc-cgl-tier1-2025-answer-key-provisional",
-        "organization": "Staff Selection Commission",
+        "organization": _SSC,
         "department": "SSC",
         "job_type": "answer_key",
         "short_description": "SSC CGL Tier-1 2025 Provisional Answer Key released. Check all sets (A/B/C/D). Raise objections by 18 Jan 2026.",
@@ -2945,7 +2974,7 @@ ANSWER_KEY_POSTS = [
     {
         "job_title": "SSC CGL Tier-1 2025 Final Answer Key",
         "slug": "ssc-cgl-tier1-2025-answer-key-final",
-        "organization": "Staff Selection Commission",
+        "organization": _SSC,
         "department": "SSC",
         "job_type": "answer_key",
         "short_description": "SSC CGL Tier-1 2025 Final Answer Key published after objection review. Download PDF from ssc.nic.in.",
@@ -2966,8 +2995,8 @@ ANSWER_KEY_POSTS = [
     {
         "job_title": "RRB NTPC CBT-1 2025 Provisional Answer Key",
         "slug": "rrb-ntpc-cbt1-2025-answer-key",
-        "organization": "Railway Recruitment Board",
-        "department": "Ministry of Railways",
+        "organization": _RRB,
+        "department": _MOR,
         "job_type": "answer_key",
         "short_description": "RRB NTPC CBT-1 2025 Provisional Answer Key available. Download question paper + answer key. Objections open till 5 Dec.",
         "source_url": "https://rrbapply.gov.in/answer-key",
@@ -2987,7 +3016,7 @@ ANSWER_KEY_POSTS = [
     {
         "job_title": "IBPS PO Prelims 2025 Answer Key",
         "slug": "ibps-po-prelims-2025-answer-key",
-        "organization": "Institute of Banking Personnel Selection",
+        "organization": _IBPS,
         "department": "IBPS",
         "job_type": "answer_key",
         "short_description": "IBPS PO Prelims 2025 Answer Key with question paper available on ibps.in. Check your provisional score.",
@@ -3008,7 +3037,7 @@ ANSWER_KEY_POSTS = [
     {
         "job_title": "UPSC CAPF AC 2025 Provisional Answer Key",
         "slug": "upsc-capf-ac-2025-answer-key",
-        "organization": "Union Public Service Commission",
+        "organization": _UPSC,
         "department": "UPSC",
         "job_type": "answer_key",
         "short_description": "UPSC CAPF Assistant Commandant 2025 Provisional Answer Key for Paper I & II. Representation window open.",
@@ -3029,7 +3058,7 @@ ANSWER_KEY_POSTS = [
     {
         "job_title": "NTA NEET UG 2025 Final Answer Key",
         "slug": "nta-neet-ug-2025-answer-key-final",
-        "organization": "National Testing Agency",
+        "organization": _NTA,
         "department": "NTA",
         "job_type": "answer_key",
         "short_description": "NEET UG 2025 Final Answer Key released on nta.ac.in. All objections resolved. Result based on final key.",
@@ -3050,7 +3079,7 @@ ANSWER_KEY_POSTS = [
     {
         "job_title": "SSC CHSL Tier-1 2024 Final Answer Key",
         "slug": "ssc-chsl-tier1-2024-answer-key-final",
-        "organization": "Staff Selection Commission",
+        "organization": _SSC,
         "department": "SSC",
         "job_type": "answer_key",
         "short_description": "SSC CHSL Tier-1 2024 Final Answer Key published. Download all shift PDFs from ssc.nic.in.",
@@ -3071,7 +3100,7 @@ ANSWER_KEY_POSTS = [
     {
         "job_title": "IBPS RRB PO Prelims 2025 Answer Key",
         "slug": "ibps-rrb-po-prelims-2025-answer-key",
-        "organization": "Institute of Banking Personnel Selection",
+        "organization": _IBPS,
         "department": "IBPS",
         "job_type": "answer_key",
         "short_description": "IBPS RRB Officer Scale-I Prelims 2025 Answer Key released. Download question paper and answer key from ibps.in.",
@@ -3092,7 +3121,7 @@ ANSWER_KEY_POSTS = [
     {
         "job_title": "SSC MTS Tier-1 2024 Final Answer Key",
         "slug": "ssc-mts-tier1-2024-answer-key-final",
-        "organization": "Staff Selection Commission",
+        "organization": _SSC,
         "department": "SSC",
         "job_type": "answer_key",
         "short_description": "SSC MTS & Havaldar Tier-1 2024 Final Answer Key published. All 20 shifts PDFs available on ssc.nic.in.",
@@ -3122,7 +3151,7 @@ RESULT_POSTS = [
     {
         "job_title": "SSC CGL 2024 Final Result Declared",
         "slug": "ssc-cgl-2024-final-result",
-        "organization": "Staff Selection Commission",
+        "organization": _SSC,
         "department": "SSC",
         "job_type": "result",
         "short_description": "SSC CGL 2024 Final Result declared. Check merit list, cut-off marks and post-wise allocation on ssc.nic.in.",
@@ -3143,7 +3172,7 @@ RESULT_POSTS = [
     {
         "job_title": "IBPS PO 2024 Final Result Announced",
         "slug": "ibps-po-2024-final-result",
-        "organization": "Institute of Banking Personnel Selection",
+        "organization": _IBPS,
         "department": "IBPS",
         "job_type": "result",
         "short_description": "IBPS PO 2024 Final Result released. Provisionally selected candidates called for document verification by participating banks.",
@@ -3164,8 +3193,8 @@ RESULT_POSTS = [
     {
         "job_title": "RRB NTPC CBT-1 2025 Shortlist Result",
         "slug": "rrb-ntpc-cbt1-2025-result",
-        "organization": "Railway Recruitment Board",
-        "department": "Ministry of Railways",
+        "organization": _RRB,
+        "department": _MOR,
         "job_type": "result",
         "short_description": "RRB NTPC CBT-1 2025 shortlisting result declared. Check category-wise cut-off and candidates shortlisted for CBT-2.",
         "source_url": "https://rrbapply.gov.in/result",
@@ -3185,7 +3214,7 @@ RESULT_POSTS = [
     {
         "job_title": "UPSC Civil Services 2025 Final Result",
         "slug": "upsc-cse-2025-final-result",
-        "organization": "Union Public Service Commission",
+        "organization": _UPSC,
         "department": "UPSC",
         "job_type": "result",
         "short_description": "UPSC IAS/IPS 2025 Final Result declared. 1016 candidates recommended for various civil services. Check complete merit list.",
@@ -3206,7 +3235,7 @@ RESULT_POSTS = [
     {
         "job_title": "SSC CHSL 2024 Final Result Declared",
         "slug": "ssc-chsl-2024-final-result",
-        "organization": "Staff Selection Commission",
+        "organization": _SSC,
         "department": "SSC",
         "job_type": "result",
         "short_description": "SSC CHSL 2024 Final Result for LDC/DEO/JSA posts declared. Cut-off marks and post-wise allocation available.",
@@ -3227,7 +3256,7 @@ RESULT_POSTS = [
     {
         "job_title": "NTA NEET PG 2025 Result Declared",
         "slug": "nta-neet-pg-2025-result",
-        "organization": "National Testing Agency",
+        "organization": _NTA,
         "department": "Ministry of Health & Family Welfare",
         "job_type": "result",
         "short_description": "NEET PG 2025 Result and score card available on nta.ac.in. AIR-wise score and percentile published.",
@@ -3248,7 +3277,7 @@ RESULT_POSTS = [
     {
         "job_title": "IBPS Clerk 2024 Prelims Result Out",
         "slug": "ibps-clerk-2024-prelims-result",
-        "organization": "Institute of Banking Personnel Selection",
+        "organization": _IBPS,
         "department": "IBPS",
         "job_type": "result",
         "short_description": "IBPS Clerk XIV Prelims 2024 Result declared. Shortlisted candidates proceed to Main Examination. Check ibps.in.",
@@ -3269,7 +3298,7 @@ RESULT_POSTS = [
     {
         "job_title": "SSC GD Constable 2024 Final Result",
         "slug": "ssc-gd-constable-2024-final-result",
-        "organization": "Staff Selection Commission",
+        "organization": _SSC,
         "department": "SSC",
         "job_type": "result",
         "short_description": "SSC GD Constable 2024 Final Result declared. Category-wise cut-off and merit list published on ssc.nic.in.",
@@ -3290,8 +3319,8 @@ RESULT_POSTS = [
     {
         "job_title": "Railway ALP & Technician 2024 Final Result",
         "slug": "rrb-alp-technician-2024-final-result",
-        "organization": "Railway Recruitment Board",
-        "department": "Ministry of Railways",
+        "organization": _RRB,
+        "department": _MOR,
         "job_type": "result",
         "short_description": "RRB ALP & Technician 2024 Final Result declared. Selected candidates called for document verification. Check rrb regional website.",
         "source_url": "https://rrbapply.gov.in/alp-result",
@@ -3415,15 +3444,15 @@ PHASE_DOCS = {
                 "answer_key_type": "provisional",
                 "files": [
                     {
-                        "label": "English Language",
+                        "label": _ENG_LANG,
                         "url": "https://ibps.in/ak/po-eng.pdf",
                     },
                     {
-                        "label": "Quantitative Aptitude",
+                        "label": _QUANT_APT,
                         "url": "https://ibps.in/ak/po-qa.pdf",
                     },
                     {
-                        "label": "Reasoning Ability",
+                        "label": _REASONING,
                         "url": "https://ibps.in/ak/po-ra.pdf",
                     },
                 ],
@@ -3560,7 +3589,6 @@ def _insert_phase_docs(
         if not parent_id:
             print(f"  PHASE DOCS SKIP (parent not found): {slug}")
             continue
-        kw_job = {} if use_exam_id else {}
 
         for ac in docs.get("admit_cards", []):
             kwargs = {"exam_id": parent_id} if use_exam_id else {"job_id": parent_id}
@@ -3666,7 +3694,7 @@ def seed():
             exam = EntranceExam(
                 id=uuid.uuid4(),
                 published_at=datetime.now(timezone.utc),
-                **{k: v for k, v in data.items()},
+                **dict(data.items()),
             )
             session.add(exam)
             exam_id_by_slug[data["slug"]] = exam.id

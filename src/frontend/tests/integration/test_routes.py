@@ -680,7 +680,7 @@ def test_update_user_phone_no_token(client, mock_api):
 
 
 def test_update_user_phone_missing(auth_client):
-    client, mock_api = auth_client
+    client, _ = auth_client
     resp = client.put(
         "/users/me/phone",
         json={},
@@ -746,7 +746,7 @@ def test_verify_phone_otp_no_token(client, mock_api):
 
 
 def test_verify_phone_otp_missing(auth_client):
-    client, mock_api = auth_client
+    client, _ = auth_client
     resp = client.post(
         "/users/me/verify-phone-otp",
         json={},
@@ -790,7 +790,7 @@ def test_set_password_no_token(client, mock_api):
 
 
 def test_set_password_too_short(auth_client):
-    client, mock_api = auth_client
+    client, _ = auth_client
     resp = client.post(
         "/users/me/set-password",
         json={"new_password": "short"},  # pragma: allowlist secret
@@ -822,7 +822,7 @@ def test_change_password_no_token(client, mock_api):
 
 
 def test_change_password_missing(auth_client):
-    client, mock_api = auth_client
+    client, _ = auth_client
     resp = client.post(
         "/users/me/change-password",
         json={},
@@ -832,7 +832,7 @@ def test_change_password_missing(auth_client):
 
 
 def test_change_password_too_short(auth_client):
-    client, mock_api = auth_client
+    client, _ = auth_client
     resp = client.post(
         "/users/me/change-password",
         json={"new_password": "short"},  # pragma: allowlist secret
@@ -864,7 +864,7 @@ def test_link_email_password_no_token(client, mock_api):
 
 
 def test_link_email_password_missing(auth_client):
-    client, mock_api = auth_client
+    client, _ = auth_client
     resp = client.post(
         "/users/me/link-email-password",
         json={"email": "u@example.com"},
@@ -874,7 +874,7 @@ def test_link_email_password_missing(auth_client):
 
 
 def test_link_email_password_too_short(auth_client):
-    client, mock_api = auth_client
+    client, _ = auth_client
     resp = client.post(
         "/users/me/link-email-password",
         json={"email": "u@example.com", "password": "short"},  # pragma: allowlist secret

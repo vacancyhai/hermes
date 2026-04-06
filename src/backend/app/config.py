@@ -4,6 +4,7 @@ from pydantic import model_validator
 from pydantic_settings import BaseSettings
 
 _DEFAULT_REDIS_URL = "redis://redis:6379/0"
+_DEFAULT_LOCAL_URL = "http://localhost:8080"
 
 
 class Settings(BaseSettings):
@@ -59,10 +60,10 @@ class Settings(BaseSettings):
     FIREBASE_PROJECT_ID: str = ""
 
     # Frontend
-    FRONTEND_URL: str = "http://localhost:8080"
+    FRONTEND_URL: str = _DEFAULT_LOCAL_URL
 
     # SEO
-    SITE_URL: str = "http://localhost:8080"
+    SITE_URL: str = _DEFAULT_LOCAL_URL
     SITEMAP_PATH: str = "/app/sitemap.xml"
 
     # Telegram Bot API

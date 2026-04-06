@@ -385,7 +385,7 @@ def notify_watchers_on_update(entity_type: str, entity_id: str):
             ).fetchone()
             if not row:
                 return
-            name, slug, org, app_end = row
+            name, slug, org, _ = row
             action_url = f"/jobs/{slug}"
             title = f"Update: {name}"
             msg = f"{name} by {org} has been updated."
@@ -398,7 +398,7 @@ def notify_watchers_on_update(entity_type: str, entity_id: str):
             ).fetchone()
             if not row:
                 return
-            name, slug, org, app_end = row
+            name, slug, org, _ = row
             action_url = f"/entrance-exams/{slug}"
             title = f"Update: {name}"
             msg = f"{name} by {org} has been updated."

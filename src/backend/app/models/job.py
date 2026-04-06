@@ -8,6 +8,8 @@ from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, String, Tex
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+_CASCADE_ALL_DELETE = "all, delete-orphan"
+
 
 class Job(Base):
     __tablename__ = "jobs"
@@ -79,18 +81,18 @@ class Job(Base):
     admit_cards = relationship(
         "AdmitCard",
         back_populates="job",
-        cascade="all, delete-orphan",
+        cascade=_CASCADE_ALL_DELETE,
         order_by="AdmitCard.phase_number",
     )
     answer_keys = relationship(
         "AnswerKey",
         back_populates="job",
-        cascade="all, delete-orphan",
+        cascade=_CASCADE_ALL_DELETE,
         order_by="AnswerKey.phase_number",
     )
     results = relationship(
         "Result",
         back_populates="job",
-        cascade="all, delete-orphan",
+        cascade=_CASCADE_ALL_DELETE,
         order_by="Result.phase_number",
     )

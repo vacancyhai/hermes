@@ -55,6 +55,10 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
+_ERR_ADMIT_CARD_NOT_FOUND = "Admit card not found"
+_ERR_ANSWER_KEY_NOT_FOUND = "Answer key not found"
+_ERR_RESULT_NOT_FOUND = "Result not found"
+
 
 async def _validate_document_parent(
     job_id: uuid.UUID | None,
@@ -162,7 +166,7 @@ async def get_admit_card(
 
     if not card:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Admit card not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=_ERR_ADMIT_CARD_NOT_FOUND
         )
 
     card_data = AdmitCardResponse.model_validate(card).model_dump()
@@ -254,7 +258,7 @@ async def get_answer_key(
 
     if not key:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Answer key not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=_ERR_ANSWER_KEY_NOT_FOUND
         )
 
     key_data = AnswerKeyResponse.model_validate(key).model_dump()
@@ -346,7 +350,7 @@ async def get_result(
 
     if not result_obj:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Result not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=_ERR_RESULT_NOT_FOUND
         )
 
     result_data = ResultResponse.model_validate(result_obj).model_dump()
@@ -441,7 +445,7 @@ async def admin_update_admit_card(
     doc = result.scalar_one_or_none()
     if not doc:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Admit card not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=_ERR_ADMIT_CARD_NOT_FOUND
         )
 
     for field, value in body.model_dump(exclude_unset=True).items():
@@ -462,7 +466,7 @@ async def admin_delete_admit_card(
     doc = result.scalar_one_or_none()
     if not doc:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Admit card not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=_ERR_ADMIT_CARD_NOT_FOUND
         )
     await db.delete(doc)
 
@@ -538,7 +542,7 @@ async def admin_update_answer_key(
     doc = result.scalar_one_or_none()
     if not doc:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Answer key not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=_ERR_ANSWER_KEY_NOT_FOUND
         )
 
     for field, value in body.model_dump(exclude_unset=True).items():
@@ -559,7 +563,7 @@ async def admin_delete_answer_key(
     doc = result.scalar_one_or_none()
     if not doc:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Answer key not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=_ERR_ANSWER_KEY_NOT_FOUND
         )
     await db.delete(doc)
 
@@ -636,7 +640,7 @@ async def admin_update_result(
     doc = result.scalar_one_or_none()
     if not doc:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Result not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=_ERR_RESULT_NOT_FOUND
         )
 
     for field, value in body.model_dump(exclude_unset=True).items():
@@ -657,6 +661,6 @@ async def admin_delete_result(
     doc = result.scalar_one_or_none()
     if not doc:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Result not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=_ERR_RESULT_NOT_FOUND
         )
     await db.delete(doc)

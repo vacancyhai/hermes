@@ -53,9 +53,7 @@ async def _require_exam(exam_id: uuid.UUID, db: AsyncSession) -> EntranceExam:
     return exam
 
 
-# ══════════════════════════════════════════════════════════════════════════════
 # PUBLIC
-# ══════════════════════════════════════════════════════════════════════════════
 
 
 @public_router.get("")
@@ -197,9 +195,7 @@ async def get_exam(exam_id: uuid.UUID, db: Annotated[AsyncSession, Depends(get_d
     return exam_data
 
 
-# ══════════════════════════════════════════════════════════════════════════════
 # ADMIN — exam CRUD
-# ══════════════════════════════════════════════════════════════════════════════
 
 
 @admin_router.get("")
