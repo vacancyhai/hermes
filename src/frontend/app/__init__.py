@@ -5,6 +5,7 @@ import secrets
 
 from flask import Blueprint, Flask, current_app, flash, redirect, render_template, request, send_from_directory, session
 
+from app._flask_utils import _int_arg
 from app.api_client import ApiClient
 
 _TEMPLATE_404 = "shared/404.html"
@@ -78,13 +79,6 @@ def _try_with_refresh(api_fn):
         resp = api_fn(token)
     return resp, True
 
-
-def _int_arg(name: str, default: int) -> int:
-    """Parse an integer query parameter safely."""
-    try:
-        return int(request.args.get(name, default))
-    except (ValueError, TypeError):
-        return default
 
 
 def _handle_profile_update(token: str, form) -> None:
