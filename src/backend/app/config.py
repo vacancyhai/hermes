@@ -14,10 +14,8 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "change-me-in-production"
     BACKEND_PORT: int = 8000
 
-    # PostgreSQL (through PgBouncer)
-    DATABASE_URL: str = (
-        "postgresql+asyncpg://hermes_user:@pgbouncer:5432/hermes_db"  # NOSONAR
-    )
+    # PostgreSQL (through PgBouncer) — must be set via DATABASE_URL env var
+    DATABASE_URL: str = "postgresql+asyncpg://pgbouncer:5432/hermes_db"
     DB_POOL_SIZE: int = 20
 
     # Redis
