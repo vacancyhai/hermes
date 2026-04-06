@@ -104,7 +104,7 @@ _ERR_JOB_NOT_FOUND = "Job not found"
 _ERR_USER_NOT_FOUND = "User not found"
 
 
-def _log_action(
+async def _log_action(
     db: AsyncSession,
     admin: AdminUser,
     action: str,
