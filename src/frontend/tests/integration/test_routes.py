@@ -917,3 +917,182 @@ def test_try_refresh_on_401(app, mock_api):
 
         resp = c.get("/users/me/profile")
         assert resp.status_code == 200
+
+
+# ─── /jobs/<id>/watch and /unwatch ────────────────────────────────────────────
+
+def test_watch_job_redirects_to_login_when_unauthenticated(client, mock_api):
+    with client.session_transaction() as sess:
+        sess["csrf_token"] = "test-csrf"
+    resp = client.post("/jobs/job-1/watch", data={"csrf_token": "test-csrf"})
+    assert resp.status_code == 302
+    assert "/login" in resp.headers["Location"]
+
+
+def test_watch_job_redirects_after_success(auth_client):
+    client, mock_api = auth_client
+    mock_api.post.return_value = _ok({"watching": True})
+    resp = client.post("/jobs/job-1/watch")
+    assert resp.status_code == 302
+
+
+def test_unwatch_job_redirects_to_login_when_unauthenticated(client, mock_api):
+    with client.session_transaction() as sess:
+        sess["csrf_token"] = "test-csrf"
+    resp = client.post("/jobs/job-1/unwatch", data={"csrf_token": "test-csrf"})
+    assert resp.status_code == 302
+    assert "/login" in resp.headers["Location"]
+
+
+def test_unwatch_job_redirects_after_success(auth_client):
+    client, mock_api = auth_client
+    mock_api.delete.return_value = _ok({"watching": False})
+    resp = client.post("/jobs/job-1/unwatch")
+    assert resp.status_code == 302
+
+
+# ─── /entrance-exams ──────────────────────────────────────────────────────────
+
+def test_entrance_exams_list(client, mock_api):
+    mock_api.get.return_value = _ok({"data": [], "pagination": {}})
+    resp = client.get("/entrance-exams")
+    assert resp.status_code == 200
+
+
+def test_entrance_exams_list_with_filters(client, mock_api):
+    mock_api.get.return_value = _ok({"data": [], "pagination": {}})
+    resp = client.get("/entrance-exams?q=JEE&stream=engineering")
+    assert resp.status_code == 200
+    call_kwargs = mock_api.get.call_args[1]
+    assert call_kwargs["params"]["q"] == "JEE"
+    assert call_kwargs["params"]["stream"] == "engineering"
+
+
+def test_entrance_exam_detail_found(client, mock_api):
+    mock_api.get.return_value = _ok({
+        "id": "exam-1", "exam_name": "JEE Main", "slug": "jee-main",
+        "conducting_body": "NTA", "status": "active",
+        "admit_cards": [], "answer_keys": [], "results": [],
+    })
+    resp = client.get("/entrance-exams/exam-1")
+    assert resp.status_code == 200
+
+
+def test_entrance_exam_detail_not_found(client, mock_api):
+    mock_api.get.return_value = _fail()
+    resp = client.get("/entrance-exams/nonexistent")
+    assert resp.status_code == 404
+
+
+def test_watch_exam_redirects_to_login_when_unauthenticated(client, mock_api):
+    with client.session_transaction() as sess:
+        sess["csrf_token"] = "test-csrf"
+    resp = client.post("/entrance-exams/exam-1/watch", data={"csrf_token": "test-csrf"})
+    assert resp.status_code == 302
+    assert "/login" in resp.headers["Location"]
+
+
+def test_watch_exam_redirects_after_success(auth_client):
+    client, mock_api = auth_client
+    mock_api.post.return_value = _ok({"watching": True})
+    resp = client.post("/entrance-exams/exam-1/watch")
+    assert resp.status_code == 302
+
+
+def test_unwatch_exam_redirects_to_login_when_unauthenticated(client, mock_api):
+    with client.session_transaction() as sess:
+        sess["csrf_token"] = "test-csrf"
+    resp = client.post("/entrance-exams/exam-1/unwatch", data={"csrf_token": "test-csrf"})
+    assert resp.status_code == 302
+    assert "/login" in resp.headers["Location"]
+
+
+def test_unwatch_exam_redirects_after_success(auth_client):
+    client, mock_api = auth_client
+    mock_api.delete.return_value = _ok({"watching": False})
+    resp = client.post("/entrance-exams/exam-1/unwatch")
+    assert resp.status_code == 302
+
+
+# ─── /admit-cards ─────────────────────────────────────────────────────────────
+
+def test_admit_cards_list(client, mock_api):
+    mock_api.get.return_value = _ok({"data": [], "pagination": {}})
+    resp = client.get("/admit-cards")
+    assert resp.status_code == 200
+
+
+def test_admit_card_detail_found(client, mock_api):
+    mock_api.get.return_value = _ok({
+        "id": "ac-1", "title": "SSC CGL Admit Card",
+    })
+    resp = client.get("/admit-cards/ac-1")
+    assert resp.status_code == 200
+
+
+def test_admit_card_detail_not_found(client, mock_api):
+    mock_api.get.return_value = _fail()
+    resp = client.get("/admit-cards/nonexistent")
+    assert resp.status_code == 404
+
+
+def test_admit_cards_partial(client, mock_api):
+    mock_api.get.return_value = _ok({"data": [], "pagination": {"has_more": False}})
+    resp = client.get("/partials/admit-cards")
+    assert resp.status_code == 200
+
+
+# ─── /answer-keys ─────────────────────────────────────────────────────────────
+
+def test_answer_keys_list(client, mock_api):
+    mock_api.get.return_value = _ok({"data": [], "pagination": {}})
+    resp = client.get("/answer-keys")
+    assert resp.status_code == 200
+
+
+def test_answer_key_detail_found(client, mock_api):
+    mock_api.get.return_value = _ok({
+        "id": "ak-1", "title": "JEE Main Answer Key",
+    })
+    resp = client.get("/answer-keys/ak-1")
+    assert resp.status_code == 200
+
+
+def test_answer_key_detail_not_found(client, mock_api):
+    mock_api.get.return_value = _fail()
+    resp = client.get("/answer-keys/nonexistent")
+    assert resp.status_code == 404
+
+
+def test_answer_keys_partial(client, mock_api):
+    mock_api.get.return_value = _ok({"data": [], "pagination": {"has_more": False}})
+    resp = client.get("/partials/answer-keys")
+    assert resp.status_code == 200
+
+
+# ─── /results ─────────────────────────────────────────────────────────────────
+
+def test_results_list(client, mock_api):
+    mock_api.get.return_value = _ok({"data": [], "pagination": {}})
+    resp = client.get("/results")
+    assert resp.status_code == 200
+
+
+def test_result_detail_found(client, mock_api):
+    mock_api.get.return_value = _ok({
+        "id": "res-1", "title": "SSC CGL Result",
+    })
+    resp = client.get("/results/res-1")
+    assert resp.status_code == 200
+
+
+def test_result_detail_not_found(client, mock_api):
+    mock_api.get.return_value = _fail()
+    resp = client.get("/results/nonexistent")
+    assert resp.status_code == 404
+
+
+def test_results_partial(client, mock_api):
+    mock_api.get.return_value = _ok({"data": [], "pagination": {"has_more": False}})
+    resp = client.get("/partials/results")
+    assert resp.status_code == 200
