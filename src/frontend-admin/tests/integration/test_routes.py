@@ -54,7 +54,7 @@ def test_login_get_sets_csrf_in_session(client):
 
 def test_login_post_no_csrf_redirects(client, mock_api):
     """POST without CSRF token should redirect back to /login."""
-    resp = client.post("/login", data={"email": "admin@test.com", "password": "pass"})
+    resp = client.post("/login", data={"email": "admin@test.com", "password": "pass"})  # pragma: allowlist secret
     assert resp.status_code == 302
     assert "/login" in resp.headers["Location"]
     mock_api.post.assert_not_called()
@@ -64,7 +64,7 @@ def test_login_post_wrong_csrf_redirects(client, mock_api):
     """POST with wrong CSRF token should redirect back to /login."""
     _set_csrf(client, "correct-token")
     resp = client.post("/login", data={
-        "email": "admin@test.com", "password": "pass", "csrf_token": "wrong-token"
+        "email": "admin@test.com", "password": "pass", "csrf_token": "wrong-token"  # pragma: allowlist secret
     })
     assert resp.status_code == 302
     assert "/login" in resp.headers["Location"]
@@ -78,7 +78,7 @@ def test_login_post_success(client, mock_api):
         "refresh_token": "refresh-tok",
     })
     resp = client.post("/login", data={
-        "email": "admin@test.com", "password": "pass", "csrf_token": "tok"
+        "email": "admin@test.com", "password": "pass", "csrf_token": "tok"  # pragma: allowlist secret
     })
     assert resp.status_code == 302
     loc = resp.headers["Location"]
@@ -89,7 +89,7 @@ def test_login_post_failure(client, mock_api):
     _set_csrf(client, "tok")
     mock_api.post.return_value = _fail()
     resp = client.post("/login", data={
-        "email": "bad@test.com", "password": "wrong", "csrf_token": "tok"
+        "email": "bad@test.com", "password": "wrong", "csrf_token": "tok"  # pragma: allowlist secret
     }, follow_redirects=True)
     assert resp.status_code == 200
     assert b"Invalid" in resp.data
@@ -103,7 +103,7 @@ def test_login_stores_role_in_session(client, mock_api, app):
     })
     with app.test_client() as c:
         _set_csrf(c, "tok")
-        c.post("/login", data={"email": "op@test.com", "password": "pass", "csrf_token": "tok"})
+        c.post("/login", data={"email": "op@test.com", "password": "pass", "csrf_token": "tok"})  # pragma: allowlist secret
         with c.session_transaction() as sess:
             assert sess.get("admin_role") == "operator"
 
@@ -118,7 +118,7 @@ def test_login_stores_admin_role_from_jwt(client, mock_api, app):
     })
     with app.test_client() as c:
         _set_csrf(c, "tok")
-        c.post("/login", data={"email": "admin@test.com", "password": "pass", "csrf_token": "tok"})
+        c.post("/login", data={"email": "admin@test.com", "password": "pass", "csrf_token": "tok"})  # pragma: allowlist secret
         with c.session_transaction() as sess:
             assert sess.get("admin_role") == "admin"
 
@@ -508,3 +508,508 @@ def test_logs_calls_backend(auth_client):
     mock_api.get.return_value = _ok({"data": [], "pagination": {}})
     client.get("/logs")
     assert mock_api.get.called
+
+
+# ─── helper functions coverage ────────────────────────────────────────────────
+
+def test_int_arg_invalid_falls_back_to_default(auth_client):
+    """Non-integer offset falls back to default (0) without crashing."""
+    client, mock_api = auth_client
+    mock_api.get.return_value = _ok({"data": [], "pagination": {}})
+    resp = client.get("/jobs/list?offset=notanumber")
+    assert resp.status_code == 200
+    assert mock_api.get.call_args[1]["params"]["offset"] == 0
+
+
+def test_try_refresh_no_refresh_token_redirects(app, mock_api):
+    """When there's no refresh_token in session, a 401 response redirects to login."""
+    with app.test_client() as c:
+        with c.session_transaction() as sess:
+            sess["token"] = "expired-token"
+            # No refresh_token set
+
+        expired = MagicMock()
+        expired.ok = False
+        expired.status_code = 401
+        mock_api.get.return_value = expired
+
+        resp = c.get("/")
+        assert resp.status_code == 302
+        assert "/login" in resp.headers["Location"]
+
+
+def test_try_refresh_failed_refresh_redirects(app, mock_api):
+    """When token refresh fails, request is redirected to login."""
+    with app.test_client() as c:
+        with c.session_transaction() as sess:
+            sess["token"] = "expired-token"
+            sess["refresh_token"] = "bad-refresh"
+
+        expired = MagicMock()
+        expired.ok = False
+        expired.status_code = 401
+
+        failed_refresh = MagicMock()
+        failed_refresh.ok = False
+
+        mock_api.get.return_value = expired
+        mock_api.post.return_value = failed_refresh
+
+        resp = c.get("/")
+        assert resp.status_code == 302
+        assert "/login" in resp.headers["Location"]
+
+
+# ─── /admit-cards ─────────────────────────────────────────────────────────────
+
+def test_admit_cards_no_token(client, mock_api):
+    resp = client.get("/admit-cards")
+    assert resp.status_code == 302
+    assert "/login" in resp.headers["Location"]
+
+
+def test_admit_cards_list(auth_client):
+    client, mock_api = auth_client
+    mock_api.get.return_value = _ok({"data": [], "pagination": {}})
+    resp = client.get("/admit-cards")
+    assert resp.status_code == 200
+
+
+def test_admit_cards_api_failure(auth_client):
+    client, mock_api = auth_client
+    mock_api.get.return_value = _fail()
+    resp = client.get("/admit-cards")
+    assert resp.status_code == 200
+
+
+def test_admit_cards_list_partial_no_token(client, mock_api):
+    resp = client.get("/admit-cards/list")
+    assert resp.status_code == 401
+
+
+def test_admit_cards_list_partial(auth_client):
+    client, mock_api = auth_client
+    mock_api.get.return_value = _ok({"data": [], "pagination": {}})
+    resp = client.get("/admit-cards/list?offset=20")
+    assert resp.status_code == 200
+    assert mock_api.get.call_args[1]["params"]["offset"] == 20
+
+
+# ─── /admit-cards/new ─────────────────────────────────────────────────────────
+
+def test_new_admit_card_get_no_token(client, mock_api):
+    resp = client.get("/admit-cards/new")
+    assert resp.status_code == 302
+
+
+def test_new_admit_card_get(auth_client):
+    client, mock_api = auth_client
+    resp = client.get("/admit-cards/new")
+    assert resp.status_code == 200
+
+
+def test_new_admit_card_post_success(auth_client):
+    client, mock_api = auth_client
+    mock_api.post.return_value = _ok({"id": "ac-1"})
+    resp = client.post("/admit-cards/new", data={
+        "title": "SSC CGL Admit Card", "download_url": "http://example.com/ac.pdf",
+    })
+    assert resp.status_code == 302
+    assert "/admit-cards" in resp.headers["Location"]
+
+
+def test_new_admit_card_post_failure(auth_client):
+    client, mock_api = auth_client
+    mock_api.post.return_value = _fail({"detail": "Bad request"})
+    resp = client.post("/admit-cards/new", data={"title": "AC"})
+    assert resp.status_code == 200
+
+
+# ─── /admit-cards/<id>/edit ───────────────────────────────────────────────────
+
+def test_edit_admit_card_get_no_token(client, mock_api):
+    resp = client.get("/admit-cards/ac-1/edit")
+    assert resp.status_code == 302
+
+
+def test_edit_admit_card_get(auth_client):
+    client, mock_api = auth_client
+    mock_api.get.return_value = _ok({"id": "ac-1", "title": "SSC Admit Card"})
+    resp = client.get("/admit-cards/ac-1/edit")
+    assert resp.status_code == 200
+
+
+def test_edit_admit_card_get_not_found(auth_client):
+    client, mock_api = auth_client
+    mock_api.get.return_value = _fail()
+    resp = client.get("/admit-cards/missing/edit")
+    assert resp.status_code == 302
+    assert "/admit-cards" in resp.headers["Location"]
+
+
+def test_edit_admit_card_post(auth_client):
+    client, mock_api = auth_client
+    mock_api.put.return_value = _ok({})
+    mock_api.get.return_value = _ok({"id": "ac-1", "title": "Updated"})
+    resp = client.post("/admit-cards/ac-1/edit", data={"title": "Updated"})
+    assert resp.status_code == 302
+    mock_api.put.assert_called_once()
+
+
+# ─── /answer-keys ─────────────────────────────────────────────────────────────
+
+def test_answer_keys_no_token(client, mock_api):
+    resp = client.get("/answer-keys")
+    assert resp.status_code == 302
+
+
+def test_answer_keys_list(auth_client):
+    client, mock_api = auth_client
+    mock_api.get.return_value = _ok({"data": [], "pagination": {}})
+    resp = client.get("/answer-keys")
+    assert resp.status_code == 200
+
+
+def test_answer_keys_list_partial_no_token(client, mock_api):
+    resp = client.get("/answer-keys/list")
+    assert resp.status_code == 401
+
+
+def test_answer_keys_list_partial(auth_client):
+    client, mock_api = auth_client
+    mock_api.get.return_value = _ok({"data": [], "pagination": {}})
+    resp = client.get("/answer-keys/list")
+    assert resp.status_code == 200
+
+
+# ─── /answer-keys/new ─────────────────────────────────────────────────────────
+
+def test_new_answer_key_get_no_token(client, mock_api):
+    resp = client.get("/answer-keys/new")
+    assert resp.status_code == 302
+
+
+def test_new_answer_key_get(auth_client):
+    client, mock_api = auth_client
+    resp = client.get("/answer-keys/new")
+    assert resp.status_code == 200
+
+
+def test_new_answer_key_post_success(auth_client):
+    client, mock_api = auth_client
+    mock_api.post.return_value = _ok({"id": "ak-1"})
+    resp = client.post("/answer-keys/new", data={
+        "title": "SSC CGL Answer Key", "answer_key_type": "final",
+    })
+    assert resp.status_code == 302
+
+
+def test_new_answer_key_post_failure(auth_client):
+    client, mock_api = auth_client
+    mock_api.post.return_value = _fail({"detail": "Error"})
+    resp = client.post("/answer-keys/new", data={"title": "AK"})
+    assert resp.status_code == 200
+
+
+# ─── /answer-keys/<id>/edit ───────────────────────────────────────────────────
+
+def test_edit_answer_key_get(auth_client):
+    client, mock_api = auth_client
+    mock_api.get.return_value = _ok({"id": "ak-1", "title": "AK"})
+    resp = client.get("/answer-keys/ak-1/edit")
+    assert resp.status_code == 200
+
+
+def test_edit_answer_key_get_not_found(auth_client):
+    client, mock_api = auth_client
+    mock_api.get.return_value = _fail()
+    resp = client.get("/answer-keys/missing/edit")
+    assert resp.status_code == 302
+
+
+def test_edit_answer_key_post(auth_client):
+    client, mock_api = auth_client
+    mock_api.put.return_value = _ok({})
+    mock_api.get.return_value = _ok({"id": "ak-1", "title": "Updated"})
+    resp = client.post("/answer-keys/ak-1/edit", data={"title": "Updated"})
+    assert resp.status_code == 302
+    mock_api.put.assert_called_once()
+
+
+# ─── /results ─────────────────────────────────────────────────────────────────
+
+def test_results_no_token(client, mock_api):
+    resp = client.get("/results")
+    assert resp.status_code == 302
+
+
+def test_results_list(auth_client):
+    client, mock_api = auth_client
+    mock_api.get.return_value = _ok({"data": [], "pagination": {}})
+    resp = client.get("/results")
+    assert resp.status_code == 200
+
+
+def test_results_list_partial_no_token(client, mock_api):
+    resp = client.get("/results/list")
+    assert resp.status_code == 401
+
+
+def test_results_list_partial(auth_client):
+    client, mock_api = auth_client
+    mock_api.get.return_value = _ok({"data": [], "pagination": {}})
+    resp = client.get("/results/list")
+    assert resp.status_code == 200
+
+
+# ─── /results/new ─────────────────────────────────────────────────────────────
+
+def test_new_result_get_no_token(client, mock_api):
+    resp = client.get("/results/new")
+    assert resp.status_code == 302
+
+
+def test_new_result_get(auth_client):
+    client, mock_api = auth_client
+    resp = client.get("/results/new")
+    assert resp.status_code == 200
+
+
+def test_new_result_post_success(auth_client):
+    client, mock_api = auth_client
+    mock_api.post.return_value = _ok({"id": "res-1"})
+    resp = client.post("/results/new", data={"title": "SSC CGL Result", "result_type": "final"})
+    assert resp.status_code == 302
+
+
+def test_new_result_post_failure(auth_client):
+    client, mock_api = auth_client
+    mock_api.post.return_value = _fail({"detail": "Error"})
+    resp = client.post("/results/new", data={"title": "Res"})
+    assert resp.status_code == 200
+
+
+# ─── /results/<id>/edit ───────────────────────────────────────────────────────
+
+def test_edit_result_get(auth_client):
+    client, mock_api = auth_client
+    mock_api.get.return_value = _ok({"id": "res-1", "title": "Result"})
+    resp = client.get("/results/res-1/edit")
+    assert resp.status_code == 200
+
+
+def test_edit_result_get_not_found(auth_client):
+    client, mock_api = auth_client
+    mock_api.get.return_value = _fail()
+    resp = client.get("/results/missing/edit")
+    assert resp.status_code == 302
+
+
+def test_edit_result_post(auth_client):
+    client, mock_api = auth_client
+    mock_api.put.return_value = _ok({})
+    mock_api.get.return_value = _ok({"id": "res-1", "title": "Updated"})
+    resp = client.post("/results/res-1/edit", data={"title": "Updated"})
+    assert resp.status_code == 302
+    mock_api.put.assert_called_once()
+
+
+# ─── /entrance-exams ──────────────────────────────────────────────────────────
+
+def test_entrance_exams_no_token(client, mock_api):
+    resp = client.get("/entrance-exams")
+    assert resp.status_code == 302
+
+
+def test_entrance_exams_list(auth_client):
+    client, mock_api = auth_client
+    mock_api.get.return_value = _ok({"data": [], "pagination": {}})
+    resp = client.get("/entrance-exams")
+    assert resp.status_code == 200
+
+
+def test_entrance_exams_api_failure(auth_client):
+    client, mock_api = auth_client
+    mock_api.get.return_value = _fail()
+    resp = client.get("/entrance-exams")
+    assert resp.status_code == 200
+
+
+def test_entrance_exams_list_partial_no_token(client, mock_api):
+    resp = client.get("/entrance-exams/list")
+    assert resp.status_code == 401
+
+
+def test_entrance_exams_list_partial(auth_client):
+    client, mock_api = auth_client
+    mock_api.get.return_value = _ok({"data": [], "pagination": {}})
+    resp = client.get("/entrance-exams/list?offset=20")
+    assert resp.status_code == 200
+
+
+# ─── /entrance-exams/new ──────────────────────────────────────────────────────
+
+def test_new_entrance_exam_get_no_token(client, mock_api):
+    resp = client.get("/entrance-exams/new")
+    assert resp.status_code == 302
+
+
+def test_new_entrance_exam_get(auth_client):
+    client, mock_api = auth_client
+    resp = client.get("/entrance-exams/new")
+    assert resp.status_code == 200
+
+
+def test_new_entrance_exam_post_success(auth_client):
+    client, mock_api = auth_client
+    mock_api.post.return_value = _ok({"id": "exam-1"})
+    resp = client.post("/entrance-exams/new", data={
+        "exam_name": "JEE Main", "conducting_body": "NTA", "status": "active",
+    })
+    assert resp.status_code == 302
+    assert "exam-1" in resp.headers["Location"]
+
+
+def test_new_entrance_exam_post_failure(auth_client):
+    client, mock_api = auth_client
+    mock_api.post.return_value = _fail({"detail": "Error"})
+    resp = client.post("/entrance-exams/new", data={"exam_name": "Exam"})
+    assert resp.status_code == 200
+
+
+# ─── /entrance-exams/<id>/edit ────────────────────────────────────────────────
+
+def test_edit_entrance_exam_get_no_token(client, mock_api):
+    resp = client.get("/entrance-exams/exam-1/edit")
+    assert resp.status_code == 302
+
+
+def test_edit_entrance_exam_get(auth_client):
+    client, mock_api = auth_client
+    mock_api.get.return_value = _ok({"id": "exam-1", "exam_name": "JEE Main"})
+    resp = client.get("/entrance-exams/exam-1/edit")
+    assert resp.status_code == 200
+
+
+def test_edit_entrance_exam_get_not_found(auth_client):
+    client, mock_api = auth_client
+    mock_api.get.return_value = _fail()
+    resp = client.get("/entrance-exams/missing/edit")
+    assert resp.status_code == 302
+    assert "/entrance-exams" in resp.headers["Location"]
+
+
+def test_edit_entrance_exam_post(auth_client):
+    client, mock_api = auth_client
+    mock_api.put.return_value = _ok({})
+    mock_api.get.return_value = _ok({"id": "exam-1", "exam_name": "JEE Main Updated"})
+    resp = client.post("/entrance-exams/exam-1/edit", data={"exam_name": "JEE Main Updated"})
+    assert resp.status_code == 302
+    mock_api.put.assert_called_once()
+
+
+# ─── /users/<id>/delete ───────────────────────────────────────────────────────
+
+def test_delete_user_no_token(client, mock_api):
+    resp = client.post("/users/user-1/delete")
+    assert resp.status_code == 302
+    assert "/login" in resp.headers["Location"]
+
+
+def test_delete_user_success(auth_client):
+    client, mock_api = auth_client
+    mock_api.delete.return_value = _ok()
+    resp = client.post("/users/user-1/delete")
+    assert resp.status_code == 302
+    mock_api.delete.assert_called_once_with("/admin/users/user-1", token="admin-token")
+
+
+def test_delete_user_failure(auth_client):
+    client, mock_api = auth_client
+    mock_api.delete.return_value = _fail()
+    resp = client.post("/users/user-1/delete")
+    assert resp.status_code == 302
+
+
+# ─── /jobs/<id>/edit ──────────────────────────────────────────────────────────
+
+def test_edit_job_get_no_token(client, mock_api):
+    resp = client.get("/jobs/job-1/edit")
+    assert resp.status_code == 302
+
+
+def test_edit_job_get(auth_client):
+    client, mock_api = auth_client
+    mock_api.get.side_effect = [
+        _ok({"id": "job-1", "job_title": "SSC CGL", "slug": "ssc-cgl",
+             "organization": "SSC", "status": "draft", "admit_cards": [],
+             "answer_keys": [], "results": []}),
+        _ok({"data": [], "pagination": {}}),
+        _ok({"data": [], "pagination": {}}),
+        _ok({"data": [], "pagination": {}}),
+    ]
+    resp = client.get("/jobs/job-1/edit")
+    assert resp.status_code == 200
+
+
+def test_edit_job_get_not_found(auth_client):
+    client, mock_api = auth_client
+    mock_api.get.return_value = _fail()
+    resp = client.get("/jobs/missing/edit")
+    assert resp.status_code == 302
+    assert "/jobs" in resp.headers["Location"]
+
+
+def test_edit_job_post(auth_client):
+    client, mock_api = auth_client
+    mock_api.put.return_value = _ok({})
+    mock_api.get.side_effect = [
+        _ok({"id": "job-1", "job_title": "Updated Job", "slug": "updated-job",
+             "organization": "SSC", "status": "active", "admit_cards": [],
+             "answer_keys": [], "results": []}),
+        _ok({"data": [], "pagination": {}}),
+        _ok({"data": [], "pagination": {}}),
+        _ok({"data": [], "pagination": {}}),
+    ]
+    resp = client.post("/jobs/job-1/edit", data={
+        "job_title": "Updated Job", "organization": "SSC", "status": "active",
+    })
+    assert resp.status_code == 302
+    mock_api.put.assert_called()
+
+
+# ─── /api/extract-pdf ─────────────────────────────────────────────────────────
+
+def test_extract_pdf_no_token(client, mock_api):
+    resp = client.post("/api/extract-pdf")
+    assert resp.status_code == 401
+
+
+def test_extract_pdf_no_file(auth_client):
+    client, mock_api = auth_client
+    resp = client.post("/api/extract-pdf")
+    assert resp.status_code == 400
+
+
+def test_extract_pdf_success(auth_client):
+    client, mock_api = auth_client
+    mock_api.post_file = MagicMock(return_value=_ok({"job_title": "Extracted Job"}))
+    resp = client.post(
+        "/api/extract-pdf",
+        data={"file": (io.BytesIO(b"fake pdf content"), "test.pdf")},
+        content_type="multipart/form-data",
+    )
+    assert resp.status_code == 200
+
+
+def test_extract_pdf_failure(auth_client):
+    client, mock_api = auth_client
+    fail_resp = _fail({"detail": "Extraction failed"})
+    fail_resp.status_code = 422
+    mock_api.post_file = MagicMock(return_value=fail_resp)
+    resp = client.post(
+        "/api/extract-pdf",
+        data={"file": (io.BytesIO(b"bad content"), "bad.pdf")},
+        content_type="multipart/form-data",
+    )
+    assert resp.status_code == 422

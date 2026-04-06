@@ -449,3 +449,469 @@ def test_delete_notification(auth_client):
 def test_offline_page(client):
     resp = client.get("/offline")
     assert resp.status_code == 200
+
+
+# ─── /auth/send-email-otp ─────────────────────────────────────────────────────
+
+def test_send_email_otp_success(client, mock_api):
+    mock_api.post.return_value = _ok({"message": "OTP sent to your email"})
+    resp = client.post(
+        "/auth/send-email-otp",
+        json={"email": "user@example.com", "full_name": "Test User"},
+        content_type="application/json",
+    )
+    assert resp.status_code == 200
+    assert resp.get_json()["message"] == "OTP sent to your email"
+
+
+def test_send_email_otp_missing_fields(client, mock_api):
+    resp = client.post(
+        "/auth/send-email-otp",
+        json={"email": "user@example.com"},
+        content_type="application/json",
+    )
+    assert resp.status_code == 400
+
+
+def test_send_email_otp_backend_failure(client, mock_api):
+    mock_api.post.return_value = _fail(503, {"detail": "Email service not configured"})
+    resp = client.post(
+        "/auth/send-email-otp",
+        json={"email": "user@example.com", "full_name": "Test"},
+        content_type="application/json",
+    )
+    assert resp.status_code == 503
+    assert "error" in resp.get_json()
+
+
+# ─── /auth/verify-email-otp ───────────────────────────────────────────────────
+
+def test_verify_email_otp_success(client, mock_api):
+    mock_api.post.return_value = _ok({"verified": True, "verification_token": "tok123"})
+    resp = client.post(
+        "/auth/verify-email-otp",
+        json={"email": "user@example.com", "otp": "123456"},
+        content_type="application/json",
+    )
+    assert resp.status_code == 200
+    assert resp.get_json()["verified"] is True
+
+
+def test_verify_email_otp_missing_fields(client, mock_api):
+    resp = client.post(
+        "/auth/verify-email-otp",
+        json={"email": "user@example.com"},
+        content_type="application/json",
+    )
+    assert resp.status_code == 400
+
+
+def test_verify_email_otp_backend_failure(client, mock_api):
+    mock_api.post.return_value = _fail(400, {"detail": "Invalid OTP"})
+    resp = client.post(
+        "/auth/verify-email-otp",
+        json={"email": "user@example.com", "otp": "000000"},
+        content_type="application/json",
+    )
+    assert resp.status_code == 400
+    assert "error" in resp.get_json()
+
+
+# ─── /auth/complete-registration ──────────────────────────────────────────────
+
+def test_complete_registration_success(client, mock_api):
+    mock_api.post.return_value = _ok({"custom_token": "firebase-custom-token"})
+    resp = client.post(
+        "/auth/complete-registration",
+        json={"email": "u@example.com", "password": "pass1234", "verification_token": "vtok"},  # pragma: allowlist secret
+        content_type="application/json",
+    )
+    assert resp.status_code == 200
+    assert "custom_token" in resp.get_json()
+
+
+def test_complete_registration_missing_fields(client, mock_api):
+    resp = client.post(
+        "/auth/complete-registration",
+        json={"email": "u@example.com"},
+        content_type="application/json",
+    )
+    assert resp.status_code == 400
+
+
+def test_complete_registration_backend_failure(client, mock_api):
+    mock_api.post.return_value = _fail(401, {"detail": "Invalid verification token"})
+    resp = client.post(
+        "/auth/complete-registration",
+        json={"email": "u@example.com", "password": "pass1234", "verification_token": "bad"},  # pragma: allowlist secret
+        content_type="application/json",
+    )
+    assert resp.status_code == 401
+    assert "error" in resp.get_json()
+
+
+# ─── /auth/check-user-providers ───────────────────────────────────────────────
+
+def test_check_user_providers_success(client, mock_api):
+    mock_api.post.return_value = _ok({"exists": True, "has_password": False})
+    resp = client.post(
+        "/auth/check-user-providers",
+        json={"email": "user@example.com"},
+        content_type="application/json",
+    )
+    assert resp.status_code == 200
+    assert resp.get_json()["exists"] is True
+
+
+def test_check_user_providers_missing_email(client, mock_api):
+    resp = client.post(
+        "/auth/check-user-providers",
+        json={},
+        content_type="application/json",
+    )
+    assert resp.status_code == 400
+
+
+def test_check_user_providers_backend_failure(client, mock_api):
+    mock_api.post.return_value = _fail(500)
+    resp = client.post(
+        "/auth/check-user-providers",
+        json={"email": "user@example.com"},
+        content_type="application/json",
+    )
+    assert resp.status_code == 500
+
+
+# ─── /auth/add-password ───────────────────────────────────────────────────────
+
+def test_add_password_success(client, mock_api):
+    mock_api.post.return_value = _ok({"custom_token": "ctoken"})
+    resp = client.post(
+        "/auth/add-password",
+        json={"email": "u@example.com", "password": "pass1234", "verification_token": "vtok"},  # pragma: allowlist secret
+        content_type="application/json",
+    )
+    assert resp.status_code == 200
+
+
+def test_add_password_missing_fields(client, mock_api):
+    resp = client.post(
+        "/auth/add-password",
+        json={"email": "u@example.com"},
+        content_type="application/json",
+    )
+    assert resp.status_code == 400
+
+
+def test_add_password_backend_failure(client, mock_api):
+    mock_api.post.return_value = _fail(400, {"detail": "Password already set"})
+    resp = client.post(
+        "/auth/add-password",
+        json={"email": "u@example.com", "password": "pass1234", "verification_token": "vtok"},  # pragma: allowlist secret
+        content_type="application/json",
+    )
+    assert resp.status_code == 400
+    assert "error" in resp.get_json()
+
+
+# ─── /auth/check-phone-availability ──────────────────────────────────────────
+
+def test_check_phone_availability_success(client, mock_api):
+    mock_api.post.return_value = _ok({"available": True})
+    resp = client.post(
+        "/auth/check-phone-availability",
+        json={"phone": "+911234567890"},
+        content_type="application/json",
+    )
+    assert resp.status_code == 200
+    assert resp.get_json()["available"] is True
+
+
+def test_check_phone_availability_missing(client, mock_api):
+    resp = client.post(
+        "/auth/check-phone-availability",
+        json={},
+        content_type="application/json",
+    )
+    assert resp.status_code == 400
+
+
+def test_check_phone_availability_backend_failure(client, mock_api):
+    mock_api.post.return_value = _fail(500)
+    resp = client.post(
+        "/auth/check-phone-availability",
+        json={"phone": "+911234567890"},
+        content_type="application/json",
+    )
+    assert resp.status_code == 500
+
+
+# ─── /users/me/profile ────────────────────────────────────────────────────────
+
+def test_get_user_profile_no_token(client, mock_api):
+    resp = client.get("/users/me/profile")
+    assert resp.status_code == 302
+
+
+def test_get_user_profile_success(auth_client):
+    client, mock_api = auth_client
+    mock_api.get.return_value = _ok({"id": "u1", "full_name": "Test"})
+    resp = client.get("/users/me/profile")
+    assert resp.status_code == 200
+    assert resp.get_json()["full_name"] == "Test"
+
+
+def test_get_user_profile_api_failure(auth_client):
+    client, mock_api = auth_client
+    mock_api.get.return_value = _fail(404)
+    resp = client.get("/users/me/profile")
+    assert resp.status_code == 404
+
+
+# ─── /users/me/phone ──────────────────────────────────────────────────────────
+
+def test_update_user_phone_no_token(client, mock_api):
+    resp = client.put(
+        "/users/me/phone",
+        json={"phone": "+911234567890"},
+        content_type="application/json",
+    )
+    assert resp.status_code == 401
+
+
+def test_update_user_phone_missing(auth_client):
+    client, mock_api = auth_client
+    resp = client.put(
+        "/users/me/phone",
+        json={},
+        content_type="application/json",
+    )
+    assert resp.status_code == 400
+
+
+def test_update_user_phone_success(auth_client):
+    client, mock_api = auth_client
+    mock_api.put.return_value = _ok({"phone": "+911234567890"})
+    resp = client.put(
+        "/users/me/phone",
+        json={"phone": "+911234567890"},
+        content_type="application/json",
+    )
+    assert resp.status_code == 200
+
+
+def test_update_user_phone_backend_failure(auth_client):
+    client, mock_api = auth_client
+    mock_api.put.return_value = _fail(400, {"detail": "Invalid phone"})
+    resp = client.put(
+        "/users/me/phone",
+        json={"phone": "bad"},
+        content_type="application/json",
+    )
+    assert resp.status_code == 400
+    assert "error" in resp.get_json()
+
+
+# ─── /users/me/send-phone-otp ─────────────────────────────────────────────────
+
+def test_send_phone_otp_no_token(client, mock_api):
+    resp = client.post("/users/me/send-phone-otp")
+    assert resp.status_code == 401
+
+
+def test_send_phone_otp_success(auth_client):
+    client, mock_api = auth_client
+    mock_api.post.return_value = _ok({"message": "OTP sent"})
+    resp = client.post("/users/me/send-phone-otp")
+    assert resp.status_code == 200
+
+
+def test_send_phone_otp_backend_failure(auth_client):
+    client, mock_api = auth_client
+    mock_api.post.return_value = _fail(502, {"detail": "Failed to send OTP"})
+    resp = client.post("/users/me/send-phone-otp")
+    assert resp.status_code == 502
+    assert "error" in resp.get_json()
+
+
+# ─── /users/me/verify-phone-otp ───────────────────────────────────────────────
+
+def test_verify_phone_otp_no_token(client, mock_api):
+    resp = client.post(
+        "/users/me/verify-phone-otp",
+        json={"otp": "123456"},
+        content_type="application/json",
+    )
+    assert resp.status_code == 401
+
+
+def test_verify_phone_otp_missing(auth_client):
+    client, mock_api = auth_client
+    resp = client.post(
+        "/users/me/verify-phone-otp",
+        json={},
+        content_type="application/json",
+    )
+    assert resp.status_code == 400
+
+
+def test_verify_phone_otp_success(auth_client):
+    client, mock_api = auth_client
+    mock_api.post.return_value = _ok({"verified": True})
+    resp = client.post(
+        "/users/me/verify-phone-otp",
+        json={"otp": "123456"},
+        content_type="application/json",
+    )
+    assert resp.status_code == 200
+
+
+def test_verify_phone_otp_backend_failure(auth_client):
+    client, mock_api = auth_client
+    mock_api.post.return_value = _fail(400, {"detail": "Invalid OTP"})
+    resp = client.post(
+        "/users/me/verify-phone-otp",
+        json={"otp": "000000"},
+        content_type="application/json",
+    )
+    assert resp.status_code == 400
+    assert "error" in resp.get_json()
+
+
+# ─── /users/me/set-password ───────────────────────────────────────────────────
+
+def test_set_password_no_token(client, mock_api):
+    resp = client.post(
+        "/users/me/set-password",
+        json={"new_password": "pass1234"},  # pragma: allowlist secret
+        content_type="application/json",
+    )
+    assert resp.status_code == 401
+
+
+def test_set_password_too_short(auth_client):
+    client, mock_api = auth_client
+    resp = client.post(
+        "/users/me/set-password",
+        json={"new_password": "short"},  # pragma: allowlist secret
+        content_type="application/json",
+    )
+    assert resp.status_code == 400
+
+
+def test_set_password_success(auth_client):
+    client, mock_api = auth_client
+    mock_api.post.return_value = _ok({"message": "Password set"})
+    resp = client.post(
+        "/users/me/set-password",
+        json={"new_password": "newpass123"},  # pragma: allowlist secret
+        content_type="application/json",
+    )
+    assert resp.status_code == 200
+
+
+# ─── /users/me/change-password ────────────────────────────────────────────────
+
+def test_change_password_no_token(client, mock_api):
+    resp = client.post(
+        "/users/me/change-password",
+        json={"new_password": "pass1234"},  # pragma: allowlist secret
+        content_type="application/json",
+    )
+    assert resp.status_code == 401
+
+
+def test_change_password_missing(auth_client):
+    client, mock_api = auth_client
+    resp = client.post(
+        "/users/me/change-password",
+        json={},
+        content_type="application/json",
+    )
+    assert resp.status_code == 400
+
+
+def test_change_password_too_short(auth_client):
+    client, mock_api = auth_client
+    resp = client.post(
+        "/users/me/change-password",
+        json={"new_password": "short"},  # pragma: allowlist secret
+        content_type="application/json",
+    )
+    assert resp.status_code == 400
+
+
+def test_change_password_success(auth_client):
+    client, mock_api = auth_client
+    mock_api.post.return_value = _ok({"message": "Password changed"})
+    resp = client.post(
+        "/users/me/change-password",
+        json={"new_password": "newpass123"},  # pragma: allowlist secret
+        content_type="application/json",
+    )
+    assert resp.status_code == 200
+
+
+# ─── /users/me/link-email-password ────────────────────────────────────────────
+
+def test_link_email_password_no_token(client, mock_api):
+    resp = client.post(
+        "/users/me/link-email-password",
+        json={"email": "u@example.com", "password": "pass1234"},  # pragma: allowlist secret
+        content_type="application/json",
+    )
+    assert resp.status_code == 401
+
+
+def test_link_email_password_missing(auth_client):
+    client, mock_api = auth_client
+    resp = client.post(
+        "/users/me/link-email-password",
+        json={"email": "u@example.com"},
+        content_type="application/json",
+    )
+    assert resp.status_code == 400
+
+
+def test_link_email_password_too_short(auth_client):
+    client, mock_api = auth_client
+    resp = client.post(
+        "/users/me/link-email-password",
+        json={"email": "u@example.com", "password": "short"},  # pragma: allowlist secret
+        content_type="application/json",
+    )
+    assert resp.status_code == 400
+
+
+def test_link_email_password_success(auth_client):
+    client, mock_api = auth_client
+    mock_api.post.return_value = _ok({"message": "Linked"})
+    resp = client.post(
+        "/users/me/link-email-password",
+        json={"email": "u@example.com", "password": "pass1234"},  # pragma: allowlist secret
+        content_type="application/json",
+    )
+    assert resp.status_code == 200
+
+
+# ─── token refresh path (_try_with_refresh) ───────────────────────────────────
+
+def test_try_refresh_on_401(app, mock_api):
+    """When API returns 401, token refresh is attempted and request retried."""
+    with app.test_client() as c:
+        with c.session_transaction() as sess:
+            sess["token"] = "expired-token"
+            sess["refresh_token"] = "valid-refresh"
+
+        # First get returns 401, refresh succeeds, second get succeeds
+        fresh_resp = _ok({"data": [], "pagination": {}})
+        fresh_resp.status_code = 200
+        expired_resp = MagicMock()
+        expired_resp.status_code = 401
+        expired_resp.ok = False
+
+        mock_api.get.side_effect = [expired_resp, fresh_resp]
+        mock_api.post.return_value = _ok({"access_token": "new-token", "refresh_token": "new-refresh"})
+
+        resp = c.get("/jobs")
+        assert resp.status_code == 200
