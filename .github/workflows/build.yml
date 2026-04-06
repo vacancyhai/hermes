@@ -221,8 +221,10 @@ jobs:
         uses: SonarSource/sonarqube-scan-action@v7.1.0
         with:
           args: >
-            -Dsonar.qualitygate.wait=false
-            -Dsonar.python.coverage.reportPaths=coverage/backend/coverage.xml,coverage/frontend/coverage.xml,coverage/frontend-admin/coverage.xml
+            -Dsonar.verbose=true
+            -Dsonar.branch.name=${{ github.head_ref || github.ref_name }}
+            -Dsonar.qualitygate.wait=true
+            -Dsonar.qualitygate.timeout=300
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
