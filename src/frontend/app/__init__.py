@@ -29,6 +29,12 @@ _CSRF_EXEMPT = {
     "/auth/check-user-providers",
     "/auth/add-password",
     "/auth/check-phone-availability",
+    "/users/me/phone",
+    "/users/me/send-phone-otp",
+    "/users/me/verify-phone-otp",
+    "/users/me/set-password",
+    "/users/me/change-password",
+    "/users/me/link-email-password",
 }
 
 

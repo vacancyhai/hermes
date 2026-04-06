@@ -903,15 +903,17 @@ def test_try_refresh_on_401(app, mock_api):
             sess["token"] = "expired-token"
             sess["refresh_token"] = "valid-refresh"
 
-        # First get returns 401, refresh succeeds, second get succeeds
-        fresh_resp = _ok({"data": [], "pagination": {}})
-        fresh_resp.status_code = 200
         expired_resp = MagicMock()
         expired_resp.status_code = 401
         expired_resp.ok = False
 
+        fresh_resp = MagicMock()
+        fresh_resp.status_code = 200
+        fresh_resp.ok = True
+        fresh_resp.json.return_value = {"id": "u1", "full_name": "Test"}
+
         mock_api.get.side_effect = [expired_resp, fresh_resp]
         mock_api.post.return_value = _ok({"access_token": "new-token", "refresh_token": "new-refresh"})
 
-        resp = c.get("/jobs")
+        resp = c.get("/users/me/profile")
         assert resp.status_code == 200
