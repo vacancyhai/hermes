@@ -163,7 +163,7 @@ jobs:
               engine = create_async_engine(os.environ['DATABASE_URL'])
               async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
               async with async_session() as s:
-                  s.add(AdminUser(email='admin@ci.local', password_hash=pwd.hash('AdminCI123'), full_name='CI Admin', role='admin', department='CI', status='active'))
+                  s.add(AdminUser(email='admin@ci-test.com', password_hash=pwd.hash('AdminCI123'), full_name='CI Admin', role='admin', department='CI', status='active'))
                   await s.commit()
               await engine.dispose()
           asyncio.run(seed())
@@ -186,7 +186,7 @@ jobs:
           FRONTEND_URL: http://localhost:8080
           ADMIN_URL: http://localhost:8081
           BACKEND_URL: http://localhost:8000
-          E2E_ADMIN_EMAIL: admin@ci.local
+          E2E_ADMIN_EMAIL: admin@ci-test.com
           E2E_ADMIN_PASSWORD: AdminCI123  # pragma: allowlist secret
 
       - name: Tear down e2e services

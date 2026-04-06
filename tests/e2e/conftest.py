@@ -32,6 +32,6 @@ def backend_url() -> str:
 @pytest.fixture(scope="session")
 def admin_credentials() -> dict:
     return {
-        "email": os.getenv("E2E_ADMIN_EMAIL", "admin@ci.local"),
+        "email": os.getenv("E2E_ADMIN_EMAIL", "admin@ci-test.com"),
         "password": os.getenv("E2E_ADMIN_PASSWORD", "AdminCI123"),
     }
