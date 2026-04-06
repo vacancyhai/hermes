@@ -18,7 +18,11 @@ def auth_header(token: str) -> dict:
 async def _create_admit_card(client, admin_token, active_job):
     resp = await client.post(
         "/api/v1/admin/admit-cards",
-        json={"title": f"AC {uuid.uuid4().hex[:4]}", "job_id": active_job["id"]},
+        json={
+            "title": f"AC {uuid.uuid4().hex[:4]}",
+            "job_id": active_job["id"],
+            "download_url": "https://example.com/admit.pdf",
+        },
         headers=auth_header(admin_token),
     )
     assert resp.status_code == 201
@@ -38,7 +42,11 @@ async def _create_answer_key(client, admin_token, active_job):
 async def _create_result(client, admin_token, active_job):
     resp = await client.post(
         "/api/v1/admin/results",
-        json={"title": f"Res {uuid.uuid4().hex[:4]}", "job_id": active_job["id"]},
+        json={
+            "title": f"Res {uuid.uuid4().hex[:4]}",
+            "job_id": active_job["id"],
+            "result_type": "final",
+        },
         headers=auth_header(admin_token),
     )
     assert resp.status_code == 201
@@ -86,7 +94,11 @@ async def test_admin_create_admit_card(
 ):
     resp = await client.post(
         "/api/v1/admin/admit-cards",
-        json={"title": "SSC CGL Admit Card", "job_id": active_job["id"]},
+        json={
+            "title": "SSC CGL Admit Card",
+            "job_id": active_job["id"],
+            "download_url": "https://example.com/admit.pdf",
+        },
         headers=auth_header(admin_token),
     )
     assert resp.status_code == 201
@@ -98,7 +110,7 @@ async def test_admin_create_admit_card_no_parent_fails(
 ):
     resp = await client.post(
         "/api/v1/admin/admit-cards",
-        json={"title": "No Parent"},
+        json={"title": "No Parent", "download_url": "https://example.com/admit.pdf"},
         headers=auth_header(admin_token),
     )
     assert resp.status_code == 400
@@ -113,6 +125,7 @@ async def test_admin_create_admit_card_both_parents_fails(
             "title": "Both Parents",
             "job_id": active_job["id"],
             "exam_id": active_exam["id"],
+            "download_url": "https://example.com/admit.pdf",
         },
         headers=auth_header(admin_token),
     )
@@ -282,7 +295,11 @@ async def test_get_result_not_found(client: AsyncClient):
 async def test_admin_create_result(client: AsyncClient, admin_token: str, active_job):
     resp = await client.post(
         "/api/v1/admin/results",
-        json={"title": "SSC CGL Result", "job_id": active_job["id"]},
+        json={
+            "title": "SSC CGL Result",
+            "job_id": active_job["id"],
+            "result_type": "final",
+        },
         headers=auth_header(admin_token),
     )
     assert resp.status_code == 201
@@ -328,6 +345,7 @@ async def test_admin_delete_result_not_found(client: AsyncClient, admin_token: s
 
 async def test_results_admin_requires_auth(client: AsyncClient, active_job):
     resp = await client.post(
-        "/api/v1/admin/results", json={"title": "X", "job_id": active_job["id"]}
+        "/api/v1/admin/results",
+        json={"title": "X", "job_id": active_job["id"], "result_type": "final"},
     )
     assert resp.status_code in (401, 403)

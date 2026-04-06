@@ -371,6 +371,7 @@ async def admin_update_admit_card(
         setattr(doc, field, value)
 
     await db.flush()
+    await db.refresh(doc)
     return AdmitCardResponse.model_validate(doc)
 
 
@@ -457,6 +458,7 @@ async def admin_update_answer_key(
         setattr(doc, field, value)
 
     await db.flush()
+    await db.refresh(doc)
     return AnswerKeyResponse.model_validate(doc)
 
 
@@ -544,6 +546,7 @@ async def admin_update_result(
         setattr(doc, field, value)
 
     await db.flush()
+    await db.refresh(doc)
     return ResultResponse.model_validate(doc)
 
 

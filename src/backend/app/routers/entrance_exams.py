@@ -292,6 +292,7 @@ async def update_exam(
     for field, value in body.model_dump(exclude_unset=True).items():
         setattr(exam, field, value)
     await db.flush()
+    await db.refresh(exam)
     return EntranceExamResponse.model_validate(exam).model_dump()
 
 

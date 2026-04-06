@@ -527,6 +527,7 @@ async def update_job(
 
         notify_watchers_on_update.delay("job", str(job.id))
 
+    await db.refresh(job)
     return JobResponse.model_validate(job).model_dump()
 
 
@@ -570,6 +571,7 @@ async def approve_job(
 
     notify_watchers_on_update.delay("job", str(job.id))
 
+    await db.refresh(job)
     return JobResponse.model_validate(job).model_dump()
 
 
