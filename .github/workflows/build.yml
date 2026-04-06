@@ -220,6 +220,7 @@ jobs:
       - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@v7.1.0
         with:
+          projectBaseDir: ${{ github.workspace }}
           args: >
             -Dsonar.verbose=true
             -Dsonar.branch.name=${{ github.head_ref || github.ref_name }}
