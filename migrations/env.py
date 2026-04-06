@@ -1,13 +1,15 @@
 """Alembic env.py — async migration runner."""
 
 import asyncio
+import os
+import sys
 from logging.config import fileConfig
 
 from alembic import context
 from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import async_engine_from_config, create_async_engine
 
-import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from app.config import settings
 from app.models.base import Base
