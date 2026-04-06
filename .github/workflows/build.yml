@@ -9,7 +9,7 @@ on:
 jobs:
   # ── 1. Run unit tests inside the backend Docker container ──────────────────
   test:
-    name: Unit Tests (pytest + coverage)
+    name: Backend Tests (pytest + coverage)
     runs-on: ubuntu-latest
 
     steps:
