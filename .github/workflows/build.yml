@@ -66,6 +66,10 @@ jobs:
         env:
           POSTGRES_PASSWORD: hermes_ci_pass
 
+      - name: Run database migrations
+        working-directory: src/backend
+        run: docker exec hermes_backend alembic -c /app/alembic.ini upgrade head
+
       - name: Run unit tests with coverage
         working-directory: src/backend
         run: |
@@ -122,6 +126,8 @@ jobs:
 
       - name: Run frontend tests with coverage
         run: |
+          mkdir -p src/frontend/coverage
+          chmod 777 src/frontend/coverage
           docker run --rm \
             --env-file src/frontend/.env \
             -v ${{ github.workspace }}/src/frontend/coverage:/app/coverage \
@@ -168,6 +174,8 @@ jobs:
 
       - name: Run admin frontend tests with coverage
         run: |
+          mkdir -p src/frontend-admin/coverage
+          chmod 777 src/frontend-admin/coverage
           docker run --rm \
             --env-file src/frontend-admin/.env \
             -v ${{ github.workspace }}/src/frontend-admin/coverage:/app/coverage \
