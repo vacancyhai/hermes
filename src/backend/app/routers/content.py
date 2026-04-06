@@ -60,6 +60,40 @@ _ERR_ANSWER_KEY_NOT_FOUND = "Answer key not found"
 _ERR_RESULT_NOT_FOUND = "Result not found"
 
 
+def _paginated_response(
+    items: list, schema, limit: int, offset: int, total: int
+) -> dict:
+    """Wrap a list of ORM objects into the standard paginated API envelope."""
+    return {
+        "data": [schema.model_validate(i).model_dump() for i in items],
+        "pagination": {
+            "limit": limit,
+            "offset": offset,
+            "total": total,
+            "has_more": (offset + limit) < total,
+        },
+    }
+
+
+def _enrich_with_parent(data: dict, obj) -> dict:
+    """Attach a minimal job or exam context dict to a document response."""
+    if getattr(obj, "job", None):
+        data["job"] = {
+            "id": str(obj.job.id),
+            "slug": obj.job.slug,
+            "job_title": obj.job.job_title,
+            "organization": obj.job.organization,
+        }
+    elif getattr(obj, "exam", None):
+        data["exam"] = {
+            "id": str(obj.exam.id),
+            "slug": obj.exam.slug,
+            "exam_name": obj.exam.exam_name,
+            "conducting_body": obj.exam.conducting_body,
+        }
+    return data
+
+
 async def _validate_document_parent(
     job_id: uuid.UUID | None,
     exam_id: uuid.UUID | None,
@@ -113,16 +147,7 @@ async def list_admit_cards(
     total = (await db.execute(count_query)).scalar()
     result = await db.execute(query.offset(offset).limit(limit))
     cards = result.scalars().all()
-
-    return {
-        "data": [AdmitCardResponse.model_validate(c).model_dump() for c in cards],
-        "pagination": {
-            "limit": limit,
-            "offset": offset,
-            "total": total,
-            "has_more": (offset + limit) < total,
-        },
-    }
+    return _paginated_response(cards, AdmitCardResponse, limit, offset, total)
 
 
 @admit_cards_router.get("/recommended")
@@ -137,16 +162,7 @@ async def recommended_admit_cards(
     cards, total = await get_recommended_admit_cards(
         user.id, db, limit=limit, offset=offset
     )
-
-    return {
-        "data": [AdmitCardResponse.model_validate(c).model_dump() for c in cards],
-        "pagination": {
-            "limit": limit,
-            "offset": offset,
-            "total": total,
-            "has_more": (offset + limit) < total,
-        },
-    }
+    return _paginated_response(cards, AdmitCardResponse, limit, offset, total)
 
 
 @admit_cards_router.get("/{card_id}")
@@ -169,25 +185,9 @@ async def get_admit_card(
             status_code=status.HTTP_404_NOT_FOUND, detail=_ERR_ADMIT_CARD_NOT_FOUND
         )
 
-    card_data = AdmitCardResponse.model_validate(card).model_dump()
-
-    # Add job/exam context
-    if card.job:
-        card_data["job"] = {
-            "id": str(card.job.id),
-            "slug": card.job.slug,
-            "job_title": card.job.job_title,
-            "organization": card.job.organization,
-        }
-    elif card.exam:
-        card_data["exam"] = {
-            "id": str(card.exam.id),
-            "slug": card.exam.slug,
-            "exam_name": card.exam.exam_name,
-            "conducting_body": card.exam.conducting_body,
-        }
-
-    return card_data
+    return _enrich_with_parent(
+        AdmitCardResponse.model_validate(card).model_dump(), card
+    )
 
 
 @answer_keys_router.get("")
@@ -205,16 +205,7 @@ async def list_answer_keys(
     total = (await db.execute(count_query)).scalar()
     result = await db.execute(query.offset(offset).limit(limit))
     keys = result.scalars().all()
-
-    return {
-        "data": [AnswerKeyResponse.model_validate(k).model_dump() for k in keys],
-        "pagination": {
-            "limit": limit,
-            "offset": offset,
-            "total": total,
-            "has_more": (offset + limit) < total,
-        },
-    }
+    return _paginated_response(keys, AnswerKeyResponse, limit, offset, total)
 
 
 @answer_keys_router.get("/recommended")
@@ -229,16 +220,7 @@ async def recommended_answer_keys(
     keys, total = await get_recommended_answer_keys(
         user.id, db, limit=limit, offset=offset
     )
-
-    return {
-        "data": [AnswerKeyResponse.model_validate(k).model_dump() for k in keys],
-        "pagination": {
-            "limit": limit,
-            "offset": offset,
-            "total": total,
-            "has_more": (offset + limit) < total,
-        },
-    }
+    return _paginated_response(keys, AnswerKeyResponse, limit, offset, total)
 
 
 @answer_keys_router.get("/{key_id}")
@@ -261,25 +243,7 @@ async def get_answer_key(
             status_code=status.HTTP_404_NOT_FOUND, detail=_ERR_ANSWER_KEY_NOT_FOUND
         )
 
-    key_data = AnswerKeyResponse.model_validate(key).model_dump()
-
-    # Add job/exam context
-    if key.job:
-        key_data["job"] = {
-            "id": str(key.job.id),
-            "slug": key.job.slug,
-            "job_title": key.job.job_title,
-            "organization": key.job.organization,
-        }
-    elif key.exam:
-        key_data["exam"] = {
-            "id": str(key.exam.id),
-            "slug": key.exam.slug,
-            "exam_name": key.exam.exam_name,
-            "conducting_body": key.exam.conducting_body,
-        }
-
-    return key_data
+    return _enrich_with_parent(AnswerKeyResponse.model_validate(key).model_dump(), key)
 
 
 @results_router.get("")
@@ -297,16 +261,7 @@ async def list_results(
     total = (await db.execute(count_query)).scalar()
     result = await db.execute(query.offset(offset).limit(limit))
     results_list = result.scalars().all()
-
-    return {
-        "data": [ResultResponse.model_validate(r).model_dump() for r in results_list],
-        "pagination": {
-            "limit": limit,
-            "offset": offset,
-            "total": total,
-            "has_more": (offset + limit) < total,
-        },
-    }
+    return _paginated_response(results_list, ResultResponse, limit, offset, total)
 
 
 @results_router.get("/recommended")
@@ -321,16 +276,7 @@ async def recommended_results(
     results_list, total = await get_recommended_results(
         user.id, db, limit=limit, offset=offset
     )
-
-    return {
-        "data": [ResultResponse.model_validate(r).model_dump() for r in results_list],
-        "pagination": {
-            "limit": limit,
-            "offset": offset,
-            "total": total,
-            "has_more": (offset + limit) < total,
-        },
-    }
+    return _paginated_response(results_list, ResultResponse, limit, offset, total)
 
 
 @results_router.get("/{result_id}")
@@ -353,25 +299,9 @@ async def get_result(
             status_code=status.HTTP_404_NOT_FOUND, detail=_ERR_RESULT_NOT_FOUND
         )
 
-    result_data = ResultResponse.model_validate(result_obj).model_dump()
-
-    # Add job/exam context
-    if result_obj.job:
-        result_data["job"] = {
-            "id": str(result_obj.job.id),
-            "slug": result_obj.job.slug,
-            "job_title": result_obj.job.job_title,
-            "organization": result_obj.job.organization,
-        }
-    elif result_obj.exam:
-        result_data["exam"] = {
-            "id": str(result_obj.exam.id),
-            "slug": result_obj.exam.slug,
-            "exam_name": result_obj.exam.exam_name,
-            "conducting_body": result_obj.exam.conducting_body,
-        }
-
-    return result_data
+    return _enrich_with_parent(
+        ResultResponse.model_validate(result_obj).model_dump(), result_obj
+    )
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -395,16 +325,7 @@ async def admin_list_admit_cards(
     total = (await db.execute(count_query)).scalar()
     result = await db.execute(query.offset(offset).limit(limit))
     cards = result.scalars().all()
-
-    return {
-        "data": [AdmitCardResponse.model_validate(c).model_dump() for c in cards],
-        "pagination": {
-            "limit": limit,
-            "offset": offset,
-            "total": total,
-            "has_more": (offset + limit) < total,
-        },
-    }
+    return _paginated_response(cards, AdmitCardResponse, limit, offset, total)
 
 
 @admit_cards_admin_router.post(
@@ -492,16 +413,7 @@ async def admin_list_answer_keys(
     total = (await db.execute(count_query)).scalar()
     result = await db.execute(query.offset(offset).limit(limit))
     keys = result.scalars().all()
-
-    return {
-        "data": [AnswerKeyResponse.model_validate(k).model_dump() for k in keys],
-        "pagination": {
-            "limit": limit,
-            "offset": offset,
-            "total": total,
-            "has_more": (offset + limit) < total,
-        },
-    }
+    return _paginated_response(keys, AnswerKeyResponse, limit, offset, total)
 
 
 @answer_keys_admin_router.post(
@@ -589,16 +501,7 @@ async def admin_list_results(
     total = (await db.execute(count_query)).scalar()
     result = await db.execute(query.offset(offset).limit(limit))
     results = result.scalars().all()
-
-    return {
-        "data": [ResultResponse.model_validate(r).model_dump() for r in results],
-        "pagination": {
-            "limit": limit,
-            "offset": offset,
-            "total": total,
-            "has_more": (offset + limit) < total,
-        },
-    }
+    return _paginated_response(results, ResultResponse, limit, offset, total)
 
 
 @results_admin_router.post(
