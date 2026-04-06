@@ -126,6 +126,7 @@ async def _log_action(
         user_agent=request.headers.get("user-agent") if request else None,
     )
     db.add(log)
+    await db.flush()
 
 
 # ─── Dashboard ───────────────────────────────────────────────────────────────
