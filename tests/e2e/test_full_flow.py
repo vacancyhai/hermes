@@ -143,9 +143,9 @@ def test_admin_frontend_login_flow(admin_url, admin_credentials):
 # ── Flow 3: Watch a job, verify in watched list, unwatch ──────────────────────
 
 
-def test_watch_job_flow(backend_url, admin_api_token):
-    """Admin creates job → user watches it → appears in watched list → unwatch removes it."""
-    # Create an active job
+def test_watch_job_flow(backend_url, admin_api_token, user_api_token):
+    """Admin creates job → regular user watches it → appears in watched list → unwatch."""
+    # Create an active job (admin)
     resp = requests.post(
         f"{backend_url}/api/v1/admin/jobs",
         json={
@@ -162,10 +162,10 @@ def test_watch_job_flow(backend_url, admin_api_token):
     assert resp.status_code == 201
     job_id = resp.json()["id"]
 
-    # Watch the job using the admin token (admin is also a valid authenticated user here)
+    # Watch the job (regular user)
     resp = requests.post(
         f"{backend_url}/api/v1/jobs/{job_id}/watch",
-        headers=_auth(admin_api_token),
+        headers=_auth(user_api_token),
         timeout=10,
     )
     assert resp.status_code == 200
@@ -174,7 +174,7 @@ def test_watch_job_flow(backend_url, admin_api_token):
     # Idempotency: watching again must not error
     resp = requests.post(
         f"{backend_url}/api/v1/jobs/{job_id}/watch",
-        headers=_auth(admin_api_token),
+        headers=_auth(user_api_token),
         timeout=10,
     )
     assert resp.status_code == 200
@@ -183,7 +183,7 @@ def test_watch_job_flow(backend_url, admin_api_token):
     # Job must appear in /users/me/watched
     resp = requests.get(
         f"{backend_url}/api/v1/users/me/watched",
-        headers=_auth(admin_api_token),
+        headers=_auth(user_api_token),
         timeout=10,
     )
     assert resp.status_code == 200
@@ -193,7 +193,7 @@ def test_watch_job_flow(backend_url, admin_api_token):
     # Unwatch
     resp = requests.delete(
         f"{backend_url}/api/v1/jobs/{job_id}/watch",
-        headers=_auth(admin_api_token),
+        headers=_auth(user_api_token),
         timeout=10,
     )
     assert resp.status_code == 200
@@ -202,14 +202,14 @@ def test_watch_job_flow(backend_url, admin_api_token):
     # Must no longer appear in watched list
     resp = requests.get(
         f"{backend_url}/api/v1/users/me/watched",
-        headers=_auth(admin_api_token),
+        headers=_auth(user_api_token),
         timeout=10,
     )
     assert resp.status_code == 200
     watched_ids = [j["id"] for j in resp.json().get("jobs", [])]
     assert job_id not in watched_ids
 
-    # Cleanup
+    # Cleanup (admin)
     requests.delete(
         f"{backend_url}/api/v1/admin/jobs/{job_id}",
         headers=_auth(admin_api_token),
@@ -220,8 +220,8 @@ def test_watch_job_flow(backend_url, admin_api_token):
 # ── Flow 4: Entrance exam lifecycle ───────────────────────────────────────────
 
 
-def test_entrance_exam_lifecycle(backend_url, admin_api_token):
-    """Admin creates exam → appears in public list → update → watch → delete."""
+def test_entrance_exam_lifecycle(backend_url, admin_api_token, user_api_token):
+    """Admin creates exam → appears in public list → update → user watches → delete."""
     exam_name = f"E2E Exam {uuid.uuid4().hex[:8]}"
 
     # Create exam
@@ -261,10 +261,10 @@ def test_entrance_exam_lifecycle(backend_url, admin_api_token):
     assert resp.status_code == 200
     assert resp.json()["is_featured"] is True
 
-    # Watch the exam
+    # Watch the exam (regular user)
     resp = requests.post(
         f"{backend_url}/api/v1/entrance-exams/{exam_id}/watch",
-        headers=_auth(admin_api_token),
+        headers=_auth(user_api_token),
         timeout=10,
     )
     assert resp.status_code == 200
@@ -273,7 +273,7 @@ def test_entrance_exam_lifecycle(backend_url, admin_api_token):
     # Verify in watched list
     resp = requests.get(
         f"{backend_url}/api/v1/users/me/watched",
-        headers=_auth(admin_api_token),
+        headers=_auth(user_api_token),
         timeout=10,
     )
     assert resp.status_code == 200

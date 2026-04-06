@@ -151,23 +151,31 @@ jobs:
       - name: Run database migrations
         run: docker exec test_backend alembic -c /app/alembic.ini upgrade head
 
-      - name: Seed CI admin user
+      - name: Seed CI admin user and regular user; emit user token
         run: |
-          docker exec test_backend python -c "
-          import asyncio, os
+          E2E_USER_TOKEN=$(docker exec test_backend python -c "
+          import asyncio, os, uuid
           from passlib.context import CryptContext
           from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
           from app.models.admin_user import AdminUser
+          from app.models.user import User
+          from app.routers.auth import create_access_token
           pwd = CryptContext(schemes=['bcrypt'], deprecated='auto')
           async def seed():
               engine = create_async_engine(os.environ['DATABASE_URL'])
               async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
               async with async_session() as s:
-                  s.add(AdminUser(email='admin@ci-test.com', password_hash=pwd.hash('AdminCI123'), full_name='CI Admin', role='admin', department='CI', status='active'))
+                  s.add(AdminUser(email='admin@ci-test.com', password_hash=pwd.hash('AdminCI123'), full_name='CI Admin', role='admin', department='CI', status='active'))  # pragma: allowlist secret
+                  user = User(email='user@ci-test.com', full_name='CI User', status='active', is_verified=True, is_email_verified=True)
+                  s.add(user)
+                  await s.flush()
+                  token = create_access_token(str(user.id), 'user')
                   await s.commit()
               await engine.dispose()
+              print(token, end='')
           asyncio.run(seed())
-          "
+          ")
+          echo "E2E_USER_TOKEN=$E2E_USER_TOKEN" >> $GITHUB_ENV
 
       - name: Set up Python for e2e runner
         uses: actions/setup-python@v5
