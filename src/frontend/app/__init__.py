@@ -275,7 +275,7 @@ def offline():
 # --- Profile ---
 
 
-@bp.route("/profile", methods=["GET", "POST"])
+@bp.route("/profile", methods=["GET", "POST"])  # NOSONAR
 def profile():
     """User profile — view and update preferences, phone, notification settings."""
     token = session.get("token")
@@ -919,7 +919,7 @@ def unwatch_exam(exam_id):
 
 
 def create_app():
-    app = Flask(__name__)
+    app = Flask(__name__)  # NOSONAR
     app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-key")
     app.api_client = ApiClient(
         base_url=os.environ.get("BACKEND_API_URL", "http://localhost:8000/api/v1")

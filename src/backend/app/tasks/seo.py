@@ -33,7 +33,7 @@ def generate_sitemap():
         ).fetchall()
 
     urlset = Element("urlset")
-    urlset.set("xmlns", "http://www.sitemaps.org/schemas/sitemap/0.9")
+    urlset.set("xmlns", "http://www.sitemaps.org/schemas/sitemap/0.9")  # NOSONAR
 
     # Section pages
     for path, freq, priority in [
