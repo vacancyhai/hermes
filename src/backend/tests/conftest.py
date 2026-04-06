@@ -267,5 +267,22 @@ async def draft_job(client: AsyncClient, admin_token: str):
     return resp.json()
 
 
+@pytest_asyncio.fixture
+async def active_exam(client: AsyncClient, admin_token: str):
+    """Create an active entrance exam and return the full response dict."""
+    resp = await client.post(
+        "/api/v1/admin/entrance-exams",
+        json={
+            "exam_name": f"Test Exam {uuid.uuid4().hex[:6]}",
+            "conducting_body": "NTA",
+            "stream": "engineering",
+            "status": "active",
+        },
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert resp.status_code == 201
+    return resp.json()
+
+
 def auth_header(token: str) -> dict:
     return {"Authorization": f"Bearer {token}"}
