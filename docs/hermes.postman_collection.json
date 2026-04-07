@@ -716,7 +716,8 @@
       ]
     },
     {
-      "name": "Content (Public)",
+      "name": "Admit Cards (Public)",
+      "description": "Admit cards are always linked to either a Job or an Entrance Exam (never standalone). Each row has exactly one of job_id or exam_id set. The full list of admit cards for a specific job/exam is embedded in GET /jobs/{id} and GET /entrance-exams/{id} responses.",
       "item": [
         {
           "name": "List Admit Cards",
@@ -732,7 +733,25 @@
                 { "key": "offset", "value": "0" }
               ]
             },
-            "description": "List all admit cards across jobs and entrance exams."
+            "description": "List all admit cards across all jobs and entrance exams, ordered by published_at desc. Each item includes job_id or exam_id indicating the parent."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Recommended Admit Cards",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{user_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/admit-cards/recommended?limit=20&offset=0",
+              "host": ["{{base_url}}"],
+              "path": ["admit-cards", "recommended"],
+              "query": [
+                { "key": "limit", "value": "20" },
+                { "key": "offset", "value": "0" }
+              ]
+            },
+            "description": "Personalized admit card recommendations based on user profile (category, state, education, org follows)."
           },
           "response": []
         },
@@ -746,10 +765,16 @@
               "host": ["{{base_url}}"],
               "path": ["admit-cards", "{{admit_card_id}}"]
             },
-            "description": "Get a single admit card by UUID."
+            "description": "Get a single admit card by UUID. Response includes a 'job' or 'exam' context object showing the parent."
           },
           "response": []
-        },
+        }
+      ]
+    },
+    {
+      "name": "Answer Keys (Public)",
+      "description": "Answer keys are always linked to either a Job or an Entrance Exam. Each row has exactly one of job_id or exam_id set.",
+      "item": [
         {
           "name": "List Answer Keys",
           "request": {
@@ -764,7 +789,25 @@
                 { "key": "offset", "value": "0" }
               ]
             },
-            "description": "List all answer keys across jobs and entrance exams."
+            "description": "List all answer keys across all jobs and entrance exams, ordered by published_at desc."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Recommended Answer Keys",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{user_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/answer-keys/recommended?limit=20&offset=0",
+              "host": ["{{base_url}}"],
+              "path": ["answer-keys", "recommended"],
+              "query": [
+                { "key": "limit", "value": "20" },
+                { "key": "offset", "value": "0" }
+              ]
+            },
+            "description": "Personalized answer key recommendations based on user profile."
           },
           "response": []
         },
@@ -778,10 +821,16 @@
               "host": ["{{base_url}}"],
               "path": ["answer-keys", "{{answer_key_id}}"]
             },
-            "description": "Get a single answer key by UUID."
+            "description": "Get a single answer key by UUID. Response includes a 'job' or 'exam' context object showing the parent."
           },
           "response": []
-        },
+        }
+      ]
+    },
+    {
+      "name": "Results (Public)",
+      "description": "Results are always linked to either a Job or an Entrance Exam. Each row has exactly one of job_id or exam_id set.",
+      "item": [
         {
           "name": "List Results",
           "request": {
@@ -796,7 +845,25 @@
                 { "key": "offset", "value": "0" }
               ]
             },
-            "description": "List all results across jobs and entrance exams."
+            "description": "List all results across all jobs and entrance exams, ordered by published_at desc."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Recommended Results",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{user_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/results/recommended?limit=20&offset=0",
+              "host": ["{{base_url}}"],
+              "path": ["results", "recommended"],
+              "query": [
+                { "key": "limit", "value": "20" },
+                { "key": "offset", "value": "0" }
+              ]
+            },
+            "description": "Personalized result recommendations based on user profile."
           },
           "response": []
         },
@@ -810,7 +877,7 @@
               "host": ["{{base_url}}"],
               "path": ["results", "{{result_id}}"]
             },
-            "description": "Get a single result by UUID."
+            "description": "Get a single result by UUID. Response includes a 'job' or 'exam' context object showing the parent."
           },
           "response": []
         }
@@ -1163,6 +1230,28 @@
           "response": []
         },
         {
+          "name": "Update Admit Card",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"download_url\": \"https://ssc.nic.in/admit-card/updated\",\n  \"notes\": \"Updated download link\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/admit-cards/{{admit_card_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "admit-cards", "{{admit_card_id}}"]
+            },
+            "description": "Update an admit card. All fields optional (partial update). Requires Operator+ role."
+          },
+          "response": []
+        },
+        {
           "name": "Delete Admit Card",
           "request": {
             "method": "DELETE",
@@ -1172,7 +1261,7 @@
               "host": ["{{base_url}}"],
               "path": ["admin", "admit-cards", "{{admit_card_id}}"]
             },
-            "description": "Delete an admit card. Requires Admin role."
+            "description": "Delete an admit card. Requires Operator+ role."
           },
           "response": []
         },
@@ -1231,6 +1320,28 @@
           "response": []
         },
         {
+          "name": "Update Answer Key",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"answer_key_type\": \"final\",\n  \"objection_deadline\": \"2026-09-20\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/answer-keys/{{answer_key_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "answer-keys", "{{answer_key_id}}"]
+            },
+            "description": "Update an answer key. All fields optional (partial update). Requires Operator+ role."
+          },
+          "response": []
+        },
+        {
           "name": "Delete Answer Key",
           "request": {
             "method": "DELETE",
@@ -1240,7 +1351,7 @@
               "host": ["{{base_url}}"],
               "path": ["admin", "answer-keys", "{{answer_key_id}}"]
             },
-            "description": "Delete an answer key. Requires Admin role."
+            "description": "Delete an answer key. Requires Operator+ role."
           },
           "response": []
         },
@@ -1299,6 +1410,28 @@
           "response": []
         },
         {
+          "name": "Update Result",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"total_qualified\": 90000,\n  \"notes\": \"Updated merit list — revised cutoffs\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/results/{{result_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "results", "{{result_id}}"]
+            },
+            "description": "Update a result. All fields optional (partial update). Requires Operator+ role."
+          },
+          "response": []
+        },
+        {
           "name": "Delete Result",
           "request": {
             "method": "DELETE",
@@ -1308,7 +1441,7 @@
               "host": ["{{base_url}}"],
               "path": ["admin", "results", "{{result_id}}"]
             },
-            "description": "Delete a result. Requires Admin role."
+            "description": "Delete a result. Requires Operator+ role."
           },
           "response": []
         }
