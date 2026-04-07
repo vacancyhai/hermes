@@ -52,7 +52,7 @@ services:
       dockerfile: Dockerfile
     container_name: test_backend
     env_file:
-      - ./src/backend/.env.test
+      - ./config/test/.env.backend
     volumes:
       - ./src/backend/tests:/app/tests
       - ./src/backend/pytest.ini:/app/pytest.ini
@@ -85,7 +85,7 @@ services:
       dockerfile: Dockerfile
     container_name: test_frontend
     env_file:
-      - ./src/frontend/.env.test
+      - ./config/test/.env.frontend
     depends_on:
       backend:
         condition: service_healthy
@@ -106,7 +106,7 @@ services:
       dockerfile: Dockerfile
     container_name: test_frontend_admin
     env_file:
-      - ./src/frontend-admin/.env.test
+      - ./config/test/.env.frontend-admin
     depends_on:
       backend:
         condition: service_healthy
