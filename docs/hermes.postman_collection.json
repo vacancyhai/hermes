@@ -1173,7 +1173,7 @@
       ]
     },
     {
-      "name": "Admin — Content Docs",
+      "name": "Admin — Admit Cards",
       "item": [
         {
           "name": "List Admit Cards (Admin)",
@@ -1264,7 +1264,12 @@
             "description": "Delete an admit card. Requires Operator+ role."
           },
           "response": []
-        },
+        }
+      ]
+    },
+    {
+      "name": "Admin — Answer Keys",
+      "item": [
         {
           "name": "List Answer Keys (Admin)",
           "request": {
@@ -1354,7 +1359,12 @@
             "description": "Delete an answer key. Requires Operator+ role."
           },
           "response": []
-        },
+        }
+      ]
+    },
+    {
+      "name": "Admin — Results",
+      "item": [
         {
           "name": "List Results (Admin)",
           "request": {
