@@ -254,12 +254,12 @@ def test_entrance_exam_lifecycle(backend_url, admin_api_token, user_api_token):
     # Update
     resp = requests.put(
         f"{backend_url}/api/v1/admin/entrance-exams/{exam_id}",
-        json={"is_featured": True},
+        json={"status": "active"},
         headers=_auth(admin_api_token),
         timeout=10,
     )
     assert resp.status_code == 200
-    assert resp.json()["is_featured"] is True
+    assert resp.json()["status"] == "active"
 
     # Watch the exam (regular user)
     resp = requests.post(
