@@ -186,7 +186,7 @@ React Native App (Android + iOS)
 | `firebase_uid` on `users` | ✅ Done | Migration 0009 — unique index |
 | `is_phone_verified` on `users` | ✅ Done | Migration 0005 — phone verification status |
 | Phone-only users | ✅ Done | Migration 0010 — `email` nullable |
-| Android config | ✅ Done | `src/mobile-app/google-services.json` (project: hermes-7) |
+| Android config | ✅ Done | `src/mobile-app/google-services.json` (project: vacancy-hai-7) |
 | iOS config | ✅ Done | `src/mobile-app/GoogleService-Info.plist` |
 | Test phone | ✅ Done | `+917777777777` / OTP `123456` in Firebase Console |
 

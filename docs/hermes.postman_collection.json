@@ -18,7 +18,7 @@
     { "key": "answer_key_id", "value": "155e287c-3a5f-418e-ad27-28ca12cb9c84", "type": "string" },
     { "key": "result_id", "value": "4bf76f8d-1eaa-4119-95f3-2a9b74def81b", "type": "string" },
     { "key": "user_id", "value": "7fde23ed-cec3-449f-8305-7f1f868f2c02", "type": "string" },
-    { "key": "firebase_web_api_key", "value": "AIzaSyDClfqvF36CGBKr_HF0t2NV6oK1kDLD1rc", "type": "string" },
+    { "key": "firebase_web_api_key", "value": "AIzaSyB1SFuDU1XcXQdN8liOPBAaXhLkpbj5ot0", "type": "string" },
     { "key": "firebase_id_token", "value": "", "type": "string" }
   ],
   "item": [
