@@ -2,13 +2,13 @@
   "info": {
     "_postman_id": "hermes-api-collection-v1",
     "name": "Hermes API",
-    "description": "Government Job Vacancy Portal — Backend API\n\nBase URL: http://localhost:8000/api/v1\n\nAll list endpoints return: { \"data\": [...], \"pagination\": { \"limit\", \"offset\", \"total\", \"has_more\" } }\n\nAuth:\n- User endpoints use {{user_token}} (Firebase → JWT via /auth/verify-token)\n- Admin endpoints use {{admin_token}} (local bcrypt via /auth/admin/login)\n\nVariables pre-set:\n- base_url: http://localhost:8000/api/v1\n- admin_email: admin@hermes.com\n- admin_password: Admin@1234\n\nSet after calling the relevant login/create endpoints:\n- user_token, admin_token, job_id, exam_id, user_id, notification_id, admit_card_id, answer_key_id, result_id",
+    "description": "Government Job Vacancy Portal — Backend API\n\nBase URL: http://localhost:8000/api/v1\n\nAll list endpoints return: { \"data\": [...], \"pagination\": { \"limit\", \"offset\", \"total\", \"has_more\" } }\n\nAuth:\n- User endpoints use {{user_token}} (Firebase → JWT via /auth/verify-token)\n- Admin endpoints use {{admin_token}} (local bcrypt via /auth/admin/login)\n\nVariables pre-set:\n- base_url: http://localhost:8000/api/v1\n- admin_email: admin@example.com\n- admin_password: AdminPass123!\n\nSet after calling the relevant login/create endpoints:\n- user_token, admin_token, job_id, exam_id, user_id, notification_id, admit_card_id, answer_key_id, result_id",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
     { "key": "base_url", "value": "http://localhost:8000/api/v1", "type": "string" },
-    { "key": "admin_email", "value": "admin@hermes.com", "type": "string" },
-    { "key": "admin_password", "value": "Admin@1234", "type": "string" },
+    { "key": "admin_email", "value": "admin@example.com", "type": "string" },
+    { "key": "admin_password", "value": "AdminPass123!", "type": "string" },
     { "key": "user_token", "value": "", "type": "string" },
     { "key": "admin_token", "value": "", "type": "string" },
     { "key": "job_id", "value": "74dface5-074d-45a9-b481-405be4c4ae9a", "type": "string" },
@@ -489,6 +489,28 @@
           "response": []
         },
         {
+          "name": "Send Phone OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{user_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+919876543210\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/users/me/send-phone-otp",
+              "host": ["{{base_url}}"],
+              "path": ["users", "me", "send-phone-otp"]
+            },
+            "description": "Send OTP to user's registered phone number for verification. Requires phone to be set on profile first. Rate limited: 3/minute."
+          },
+          "response": []
+        },
+        {
           "name": "Register FCM Token",
           "request": {
             "method": "POST",
@@ -646,7 +668,6 @@
               "path": ["jobs"],
               "query": [
                 { "key": "q", "value": "SSC CGL", "disabled": true, "description": "Full-text search" },
-                { "key": "job_type", "value": "latest_job", "disabled": true, "description": "latest_job | admit_card | answer_key | result" },
                 { "key": "qualification_level", "value": "graduate", "disabled": true, "description": "10th | 12th | diploma | graduate | postgraduate | phd" },
                 { "key": "organization", "value": "SSC", "disabled": true, "description": "Partial match (ILIKE)" },
                 { "key": "department", "value": "", "disabled": true },
@@ -981,7 +1002,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"job_title\": \"SSC CGL 2026\",\n  \"organization\": \"Staff Selection Commission\",\n  \"job_type\": \"latest_job\",\n  \"qualification_level\": \"graduate\",\n  \"total_vacancies\": 8000,\n  \"description\": \"Combined Graduate Level Examination 2026. Applications invited for various Group B and C posts.\",\n  \"short_description\": \"SSC CGL 2026 — 8000 posts across multiple departments.\",\n  \"department\": \"Multiple Departments\",\n  \"application_start\": \"2026-04-01\",\n  \"application_end\": \"2026-05-31\",\n  \"exam_start\": \"2026-08-01\",\n  \"result_date\": \"2026-12-01\",\n  \"fee_general\": 100,\n  \"fee_obc\": 100,\n  \"fee_sc_st\": 0,\n  \"fee_ews\": 0,\n  \"fee_female\": 0,\n  \"salary_min\": 25500,\n  \"salary_max\": 151100,\n  \"eligibility\": {\n    \"age_min\": 18,\n    \"age_max\": 32,\n    \"states\": [\"All India\"]\n  },\n  \"vacancy_breakdown\": {\n    \"General\": 3200,\n    \"OBC\": 2160,\n    \"SC\": 1200,\n    \"ST\": 600,\n    \"EWS\": 840\n  },\n  \"is_featured\": true,\n  \"is_urgent\": false,\n  \"status\": \"draft\",\n  \"source_url\": \"https://ssc.nic.in\"\n}",
+              "raw": "{\n  \"job_title\": \"SSC CGL 2026\",\n  \"organization\": \"Staff Selection Commission\",\n  \"qualification_level\": \"graduate\",\n  \"total_vacancies\": 8000,\n  \"description\": \"Combined Graduate Level Examination 2026. Applications invited for various Group B and C posts.\",\n  \"short_description\": \"SSC CGL 2026 — 8000 posts across multiple departments.\",\n  \"department\": \"Multiple Departments\",\n  \"application_start\": \"2026-04-01\",\n  \"application_end\": \"2026-05-31\",\n  \"exam_start\": \"2026-08-01\",\n  \"result_date\": \"2026-12-01\",\n  \"fee_general\": 100,\n  \"fee_obc\": 100,\n  \"fee_sc_st\": 0,\n  \"fee_ews\": 0,\n  \"fee_female\": 0,\n  \"salary_initial\": 25500,\n  \"salary_max\": 151100,\n  \"eligibility\": {\n    \"age_min\": 18,\n    \"age_max\": 32,\n    \"states\": [\"All India\"]\n  },\n  \"vacancy_breakdown\": {\n    \"General\": 3200,\n    \"OBC\": 2160,\n    \"SC\": 1200,\n    \"ST\": 600,\n    \"EWS\": 840\n  },\n  \"is_featured\": true,\n  \"is_urgent\": false,\n  \"status\": \"draft\",\n  \"source_url\": \"https://ssc.nic.in\"\n}",
               "options": { "raw": { "language": "json" } }
             },
             "url": {
