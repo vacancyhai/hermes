@@ -272,24 +272,6 @@ hermes/
 └── README.md
 ```
 
-## Development Roadmap
-
-| Phase | Scope | Status |
-| ----- | ----- | ------ |
-| 1     | Database schema, user auth (JWT, logout, refresh, Redis blocklist, admin bcrypt login), PgBouncer setup | Done |
-| 2     | Job vacancy CRUD, full-text search, user profile, admin dashboard, frontend job listing | Done |
-| 3     | Job matching algorithm, recommendations, org follow + alerts | Done |
-| 4     | Watch-based deadline reminders (user_watches), user dashboard | Done |
-| 5     | Notification engine (in-app, FCM push, email, WhatsApp placeholder, Telegram) | Done |
-| 6     | Admin frontend (dashboard, job/user mgmt, logs), SEO (sitemap, meta, JSON-LD), fee display | Done |
-| 7     | PDF ingestion (AI extraction + operator review), PWA | Done |
-| 7.5   | Testing (481 tests — 93/91/97% coverage), security audit (JWT, RBAC, OWASP) | Done |
-| 10    | Complete user frontend: profile, org follow, recommended tab, watch flow | Done |
-| 11    | Complete admin frontend: new job form, job delete, user detail, user status management | Done |
-| 12    | Job document tables (admit cards / answer keys / results), 5-section nav, entrance_exams DB design, 9 exams seeded, type-aware UI redesign | Done |
-| 8     | Production deployment to OCI ARM VM | Deferred — future |
-| 9     | React Native mobile app (Android + iOS) | Deferred — future |
-
 ## License
 
 MIT
