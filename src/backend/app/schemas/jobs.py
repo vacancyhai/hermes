@@ -47,8 +47,6 @@ class JobCreateRequest(BaseModel):
     fee_ews: int | None = None
     fee_female: int | None = None
     status: JOB_STATUSES = "draft"
-    is_featured: bool = False
-    is_urgent: bool = False
 
     @model_validator(mode="after")
     def validate_dates(self) -> "JobCreateRequest":
@@ -89,8 +87,6 @@ class JobUpdateRequest(BaseModel):
     fee_ews: int | None = None
     fee_female: int | None = None
     status: JOB_STATUSES | None = None
-    is_featured: bool | None = None
-    is_urgent: bool | None = None
 
     @model_validator(mode="after")
     def validate_dates(self) -> "JobUpdateRequest":
@@ -136,9 +132,6 @@ class JobResponse(BaseModel):
     fee_ews: int | None
     fee_female: int | None
     status: str
-    is_featured: bool
-    is_urgent: bool
-    views: int
     source: str
     source_pdf_path: str | None = None
     published_at: datetime | None
@@ -168,9 +161,6 @@ class JobListItem(BaseModel):
     fee_ews: int | None = None
     fee_female: int | None = None
     status: str
-    is_featured: bool
-    is_urgent: bool
-    views: int
     created_at: datetime
 
     model_config = {"from_attributes": True}

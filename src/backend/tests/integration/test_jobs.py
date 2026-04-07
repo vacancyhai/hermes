@@ -48,14 +48,6 @@ async def test_get_job_by_id(client: AsyncClient, active_job):
     assert data["job_title"] == active_job["job_title"]
 
 
-async def test_get_job_increments_views(client: AsyncClient, active_job):
-    job_id = active_job["id"]
-    initial = active_job["views"]
-    await client.get(f"/api/v1/jobs/{job_id}")
-    resp = await client.get(f"/api/v1/jobs/{job_id}")
-    assert resp.json()["views"] >= initial + 1
-
-
 async def test_get_job_not_found(client: AsyncClient):
     fake_id = str(uuid.uuid4())
     resp = await client.get(f"/api/v1/jobs/{fake_id}")
@@ -108,13 +100,12 @@ async def test_admin_update_job(client: AsyncClient, admin_token: str, draft_job
     job_id = draft_job["id"]
     resp = await client.put(
         f"/api/v1/admin/jobs/{job_id}",
-        json={"total_vacancies": 500, "is_featured": True},
+        json={"total_vacancies": 500},
         headers=auth_header(admin_token),
     )
     assert resp.status_code == 200
     data = resp.json()
     assert data["total_vacancies"] == 500
-    assert data["is_featured"] is True
 
 
 async def test_admin_approve_draft(client: AsyncClient, admin_token: str, draft_job):

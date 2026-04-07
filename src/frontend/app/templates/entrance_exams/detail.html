@@ -12,7 +12,6 @@
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.75rem;flex-wrap:wrap">
         <div style="flex:1;min-width:0">
             <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.5rem">
-                {% if exam.is_featured %}<span class="badge badge-featured">Featured</span>{% endif %}
                 <span style="background:rgba(255,255,255,.2);color:#fff;padding:.15rem .55rem;border-radius:9999px;font-size:.75rem;font-weight:600">{{ exam.exam_type|upper }}</span>
                 <span style="background:rgba(255,255,255,.2);color:#fff;padding:.15rem .55rem;border-radius:9999px;font-size:.75rem;font-weight:600">{{ exam.stream|replace('_',' ')|title }}</span>
             </div>

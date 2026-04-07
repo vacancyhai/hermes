@@ -22,7 +22,7 @@ from app.schemas.jobs import (
 )
 from app.services.matching import get_recommended_jobs
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import func, select, text, update
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/api/v1/jobs", tags=["jobs"])
@@ -36,8 +36,6 @@ async def list_jobs(
     organization: Annotated[str | None, Query()] = None,
     department: Annotated[str | None, Query()] = None,
     status_filter: Annotated[str | None, Query(alias="status")] = None,
-    is_featured: Annotated[bool | None, Query()] = None,
-    is_urgent: Annotated[bool | None, Query()] = None,
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
     offset: Annotated[int, Query(ge=0)] = 0,
 ):
@@ -75,13 +73,6 @@ async def list_jobs(
     if department:
         query = query.where(Job.department.ilike(f"%{department}%"))
         count_query = count_query.where(Job.department.ilike(f"%{department}%"))
-    if is_featured is not None:
-        query = query.where(Job.is_featured == is_featured)
-        count_query = count_query.where(Job.is_featured == is_featured)
-    if is_urgent is not None:
-        query = query.where(Job.is_urgent == is_urgent)
-        count_query = count_query.where(Job.is_urgent == is_urgent)
-
     # Default ordering (newest first) when not searching
     if not q:
         query = query.order_by(Job.created_at.desc())
@@ -130,16 +121,13 @@ async def recommended_jobs(
 
 @router.get("/{job_id}")
 async def get_job(job_id: uuid.UUID, db: Annotated[AsyncSession, Depends(get_db)]):
-    """Get job detail by ID. Increments view count. Includes all related documents."""
+    """Get job detail by ID. Includes all related documents."""
     result = await db.execute(select(Job).where(Job.id == job_id))
     job = result.scalar_one_or_none()
     if not job:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Job not found"
         )
-
-    # Atomic view counter increment (avoids lost-update under concurrent reads)
-    await db.execute(update(Job).where(Job.id == job.id).values(views=Job.views + 1))
 
     # Fetch related documents
     admit_cards_result = await db.execute(

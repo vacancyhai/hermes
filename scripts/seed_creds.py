@@ -1,35 +1,42 @@
-"""Seed script — creates admin users and test users with profiles.
+"""Seed script — creates admin users, test users with profiles, and Firebase Auth users.
 
 Admins seeded (admin_users table):
-  - admin@example.com   / AdminPass123!  (role: admin)
-  - operator@example.com / OperPass123!  (role: operator)
+  - admin@example.com    / AdminPass123!  (role: admin)
+  - operator@example.com / OperPass123!   (role: operator)
 
 Test users seeded (users + user_profiles tables):
-  - user1@example.com / UserPass123!  (Graduate, UR, Maharashtra)
+  - user1@example.com / UserPass123!  (Graduate, General, Maharashtra)
   - user2@example.com / UserPass123!  (Graduate, OBC, Delhi)
   - user3@example.com / UserPass123!  (Post-graduate, SC, Tamil Nadu)
+
+Firebase Auth users are also created for the 3 test users and their firebase_uid
+is linked back to the PostgreSQL users row.
 
 Usage:
     docker cp scripts/seed_creds.py hermes_backend:/app/seed_creds.py
     docker exec hermes_backend python seed_creds.py
 
-Re-runnable: existing emails are skipped.
+Re-runnable: existing emails are skipped in both PostgreSQL and Firebase.
 """
 
 import os
 import uuid
 from datetime import date, datetime, timezone
 
+import firebase_admin
+from firebase_admin import auth as firebase_auth
+from firebase_admin import credentials
 from app.models.admin_user import AdminUser
 from app.models.user import User
 from app.models.user_profile import UserProfile
 from passlib.context import CryptContext
-from sqlalchemy import create_engine, select
+from sqlalchemy import create_engine, select, text
 from sqlalchemy.orm import Session
 
 _pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 _DB_URL = os.environ["DATABASE_URL"].replace("+asyncpg", "+psycopg2")
+_CREDS_PATH = os.environ.get("FIREBASE_CREDENTIALS_PATH", "/app/secrets/firebase-credentials.json")
 _engine = create_engine(_DB_URL)
 
 # ---------------------------------------------------------------------------
@@ -184,6 +191,53 @@ def _user_exists(session: Session, email: str) -> bool:
     )
 
 
+# ---------------------------------------------------------------------------
+# Firebase helpers
+# ---------------------------------------------------------------------------
+
+
+def _init_firebase():
+    if not firebase_admin._apps:
+        cred = credentials.Certificate(_CREDS_PATH)
+        firebase_admin.initialize_app(cred)
+
+
+def _seed_firebase_users():
+    """Create Firebase Auth users for test users and link firebase_uid to PostgreSQL."""
+    _init_firebase()
+    inserted = 0
+    skipped = 0
+
+    with _engine.connect() as conn:
+        for data in USERS:
+            try:
+                fb_user = firebase_auth.get_user_by_email(data["email"])
+                print(f"  SKIP  (Firebase user exists): {data['email']}  uid={fb_user.uid}")
+                skipped += 1
+            except firebase_auth.UserNotFoundError:
+                fb_user = firebase_auth.create_user(
+                    email=data["email"],
+                    password=data["password"],
+                    display_name=data["full_name"],
+                    email_verified=True,
+                )
+                print(f"  CREATE Firebase user: {data['email']}  uid={fb_user.uid}")
+                inserted += 1
+
+            result = conn.execute(
+                text("UPDATE users SET firebase_uid = :uid WHERE email = :email RETURNING id"),
+                {"uid": fb_user.uid, "email": data["email"]},
+            )
+            if result.rowcount:
+                print(f"    LINKED firebase_uid → users.email={data['email']}")
+            else:
+                print(f"    WARN: No PostgreSQL user found for {data['email']}")
+
+        conn.commit()
+
+    print(f"\nFirebase — {inserted} users created, {skipped} skipped.")
+
+
 def seed():
     admin_inserted = 0
     admin_skipped = 0
@@ -264,15 +318,24 @@ def seed():
         session.commit()
 
     print(
-        f"\nDone — {admin_inserted} admins + {user_inserted} users inserted, "
+        f"\nPostgreSQL — {admin_inserted} admins + {user_inserted} users inserted, "
         f"{admin_skipped + user_skipped} skipped."
     )
+
+    # --- Firebase users ---
+    print("\nSeeding Firebase Auth users...")
+    _seed_firebase_users()
+
     print("\nCredentials:")
     print("  Admin:    admin@example.com    / AdminPass123!")
     print("  Operator: operator@example.com / OperPass123!")
     print("  User 1:   user1@example.com    / UserPass123!")
     print("  User 2:   user2@example.com    / UserPass123!")
     print("  User 3:   user3@example.com    / UserPass123!")
+    print("\nPostman test flow:")
+    print("  1. Set {{firebase_web_api_key}} in collection variables")
+    print("  2. Run 'Step 1 — Get Firebase ID Token' with user1@example.com / UserPass123!")
+    print("  3. Run 'Step 2 — Verify Firebase Token' → sets {{user_token}}")
 
 
 if __name__ == "__main__":

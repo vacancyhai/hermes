@@ -4,7 +4,7 @@ import uuid
 from datetime import date, datetime
 
 from app.models.base import Base
-from sqlalchemy import Boolean, Date, DateTime, Integer, String, Text, func
+from sqlalchemy import Date, DateTime, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -47,8 +47,6 @@ class EntranceExam(Base):
     short_description: Mapped[str | None] = mapped_column(Text, nullable=True)
     source_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="active")
-    is_featured: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    views: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     published_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )

@@ -369,8 +369,6 @@ async def create_job(
         fee_ews=body.fee_ews,
         fee_female=body.fee_female,
         status=body.status,
-        is_featured=body.is_featured,
-        is_urgent=body.is_urgent,
         created_by=admin.id,
         source="manual",
         published_at=datetime.now(timezone.utc) if body.status == "active" else None,

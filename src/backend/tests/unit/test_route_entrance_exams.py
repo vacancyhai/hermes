@@ -36,8 +36,6 @@ def _make_exam(**kwargs):
     e.short_description = None
     e.source_url = None
     e.status = kwargs.get("status", "upcoming")
-    e.is_featured = False
-    e.views = 0
     e.published_at = None
     e.created_at = datetime.now(timezone.utc)
     e.updated_at = datetime.now(timezone.utc)
@@ -81,7 +79,6 @@ async def test_list_exams_empty():
         q=None,
         stream=None,
         exam_type=None,
-        is_featured=None,
         limit=20,
         offset=0,
         db=_db_list([], count=0),
@@ -104,7 +101,6 @@ async def test_list_exams_returns_items():
             q=None,
             stream=None,
             exam_type=None,
-            is_featured=None,
             limit=20,
             offset=0,
             db=_db_list([exam]),
@@ -126,7 +122,6 @@ async def test_list_exams_pagination_has_more():
             q=None,
             stream=None,
             exam_type=None,
-            is_featured=None,
             limit=1,
             offset=0,
             db=_db_list([exam], count=3),
@@ -142,7 +137,6 @@ async def test_list_exams_with_search_query():
         q="NEET",
         stream=None,
         exam_type=None,
-        is_featured=None,
         limit=20,
         offset=0,
         db=_db_list([], count=0),
@@ -158,7 +152,6 @@ async def test_list_exams_with_stream_filter():
         q=None,
         stream="medical",
         exam_type=None,
-        is_featured=None,
         limit=20,
         offset=0,
         db=_db_list([], count=0),
@@ -174,7 +167,6 @@ async def test_list_exams_with_all_filters():
         q=None,
         stream="engineering",
         exam_type="national",
-        is_featured=True,
         limit=10,
         offset=0,
         db=_db_list([], count=0),
@@ -214,7 +206,6 @@ async def test_get_exam_found_increments_views_and_returns_docs():
     db.execute = AsyncMock(
         side_effect=[
             select_res,  # select exam
-            MagicMock(),  # update views
             empty_res,  # admit_cards
             empty_res,  # answer_keys
             empty_res,  # results
@@ -227,7 +218,6 @@ async def test_get_exam_found_increments_views_and_returns_docs():
     with patch.object(EntranceExamResponse, "model_validate", return_value=mock_resp):
         result = await get_exam(exam_id=exam.id, db=db)
 
-    db.commit.assert_called_once()
     assert result["admit_cards"] == []
     assert result["answer_keys"] == []
     assert result["results"] == []

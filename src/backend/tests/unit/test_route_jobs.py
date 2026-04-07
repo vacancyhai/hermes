@@ -16,10 +16,7 @@ def _make_job(**kwargs):
     j.status = kwargs.get("status", "active")
     j.qualification_level = kwargs.get("qualification_level", None)
     j.department = kwargs.get("department", None)
-    j.is_featured = kwargs.get("is_featured", False)
-    j.is_urgent = kwargs.get("is_urgent", False)
     j.created_at = datetime.now(timezone.utc)
-    j.views = 0
     # Additional fields for JobListItem
     j.total_vacancies = None
     j.application_end = None
@@ -48,8 +45,6 @@ async def test_list_jobs_with_qualification_filter():
         qualification_level="graduate",
         organization=None,
         department=None,
-        is_featured=None,
-        is_urgent=None,
         limit=20,
         offset=0,
         db=db,
@@ -73,58 +68,6 @@ async def test_list_jobs_with_department_filter():
         qualification_level=None,
         organization=None,
         department="Engineering",
-        is_featured=None,
-        is_urgent=None,
-        limit=20,
-        offset=0,
-        db=db,
-    )
-    assert output["data"] == []
-
-
-@pytest.mark.asyncio
-async def test_list_jobs_with_featured_filter():
-    from app.routers.jobs import list_jobs
-
-    db = AsyncMock()
-    count_result = MagicMock()
-    count_result.scalar.return_value = 0
-    data_result = MagicMock()
-    data_result.scalars.return_value.all.return_value = []
-    db.execute.side_effect = [count_result, data_result]
-
-    output = await list_jobs(
-        q=None,
-        qualification_level=None,
-        organization=None,
-        department=None,
-        is_featured=True,
-        is_urgent=None,
-        limit=20,
-        offset=0,
-        db=db,
-    )
-    assert output["pagination"]["total"] == 0
-
-
-@pytest.mark.asyncio
-async def test_list_jobs_with_urgent_filter():
-    from app.routers.jobs import list_jobs
-
-    db = AsyncMock()
-    count_result = MagicMock()
-    count_result.scalar.return_value = 0
-    data_result = MagicMock()
-    data_result.scalars.return_value.all.return_value = []
-    db.execute.side_effect = [count_result, data_result]
-
-    output = await list_jobs(
-        q=None,
-        qualification_level=None,
-        organization=None,
-        department=None,
-        is_featured=None,
-        is_urgent=True,
         limit=20,
         offset=0,
         db=db,

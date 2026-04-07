@@ -61,7 +61,6 @@
     <div class="exam-card">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem;margin-bottom:.35rem">
             <h3><a href="/entrance-exams/{{ exam.id }}">{{ exam.exam_name }}</a></h3>
-            {% if exam.is_featured %}<span class="badge badge-featured" style="flex-shrink:0">Featured</span>{% endif %}
         </div>
         <div class="exam-card-meta">
             <span>🏛 {{ exam.conducting_body }}</span>

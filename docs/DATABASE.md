@@ -165,9 +165,6 @@ Government job vacancies. Document releases (admit cards, answer keys, results) 
 | `fee_ews` | Integer | Yes | Application fee — EWS (INR) |
 | `fee_female` | Integer | Yes | Application fee — Female/PwBD (INR) |
 | `status` | String(20) | No | `ck_jobs_status`: `draft` \| `active` \| `expired` \| `cancelled` \| `upcoming`; default `draft` |
-| `is_featured` | Boolean | No | Show in homepage carousel; default `false` |
-| `is_urgent` | Boolean | No | Close to deadline flag; default `false` |
-| `views` | Integer | No | View counter; default `0` |
 | `created_by` | UUID (FK → `admin_users.id`) | Yes | Admin who created the job |
 | `source` | String(20) | No | `ck_jobs_source`: `manual` \| `pdf_upload`; default `manual` |
 | `source_pdf_path` | Text | Yes | Path to uploaded PDF (if source = `pdf_upload`) |
@@ -368,8 +365,6 @@ These are educational entrance examinations, not government job recruitments.
 | `short_description` | Text | Yes | One-liner for listing cards |
 | `source_url` | Text | Yes | Official website URL |
 | `status` | String(20) | No | `ck_entrance_exam_status`: `upcoming` \| `active` \| `completed` \| `cancelled`; default `active` |
-| `is_featured` | Boolean | No | Highlight in listings; default `false` |
-| `views` | Integer | No | View counter; default `0` |
 | `published_at` | DateTime | Yes | When first published |
 | `created_at` | DateTime | No | Creation timestamp |
 | `updated_at` | DateTime | No | Last update timestamp |

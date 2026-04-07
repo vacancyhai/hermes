@@ -67,10 +67,6 @@
     <div class="job-card">
         <div class="job-card-header">
             <h3><a href="/jobs/{{ job.id }}">{{ job.job_title }}</a></h3>
-            <div style="display:flex;gap:.35rem;flex-shrink:0">
-                {% if job.is_featured %}<span class="badge badge-featured">Featured</span>{% endif %}
-                {% if job.is_urgent %}<span class="badge badge-urgent">Urgent</span>{% endif %}
-            </div>
         </div>
         <div class="job-card-meta">
             <span>🏛 {{ job.organization }}</span>

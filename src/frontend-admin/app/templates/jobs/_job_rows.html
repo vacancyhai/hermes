@@ -2,8 +2,6 @@
 <tr>
     <td>
         <strong>{{ job.job_title }}</strong>
-        {% if job.is_featured %}<span class="badge badge-active" style="margin-left:.25rem;">Featured</span>{% endif %}
-        {% if job.is_urgent %}<span class="badge" style="background:#fee2e2;color:#991b1b;margin-left:.25rem;">Urgent</span>{% endif %}
     </td>
     <td>{{ job.organization }}</td>
     <td>
@@ -13,7 +11,6 @@
         {% else %}<span class="badge">{{ job.status }}</span>{% endif %}
     </td>
     <td>{{ job.total_vacancies or '—' }}</td>
-    <td>{{ job.views }}</td>
     <td>{{ job.application_end or '—' }}</td>
     <td>
         <a href="/jobs/{{ job.id }}/edit" class="btn btn-outline btn-sm">Edit</a>
@@ -27,12 +24,12 @@
 {% endfor %}
 
 {% if not jobs %}
-<tr><td colspan="7" style="text-align:center;color:#64748b;padding:2rem;">No jobs found.</td></tr>
+<tr><td colspan="6" style="text-align:center;color:#64748b;padding:2rem;">No jobs found.</td></tr>
 {% endif %}
 
 {% if pagination.get('has_more') %}
 <tr>
-    <td colspan="7" style="text-align:center;padding:1rem;">
+    <td colspan="6" style="text-align:center;padding:1rem;">
         <button class="btn btn-outline"
                 hx-get="/jobs/list?offset={{ pagination.get('offset', 0) + pagination.get('limit', 20) }}"
                 hx-target="#job-list"

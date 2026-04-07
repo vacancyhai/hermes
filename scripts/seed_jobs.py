@@ -293,8 +293,6 @@ JOBS = [
         "fee_ews": 100,
         "fee_female": 0,
         "status": "active",
-        "is_featured": True,
-        "is_urgent": False,
     },
     # ------------------------------------------------------------------
     # 2. UPSC Civil Services 2026
@@ -452,8 +450,6 @@ JOBS = [
         "fee_ews": 100,
         "fee_female": 0,
         "status": "active",
-        "is_featured": True,
-        "is_urgent": False,
     },
     # ------------------------------------------------------------------
     # 3. Railway RRB NTPC 2025
@@ -654,8 +650,6 @@ JOBS = [
         "fee_ews": 500,
         "fee_female": 250,
         "status": "active",
-        "is_featured": True,
-        "is_urgent": False,
     },
     # ------------------------------------------------------------------
     # 4. IBPS PO 2025
@@ -831,8 +825,6 @@ JOBS = [
         "fee_ews": 850,
         "fee_female": 175,
         "status": "active",
-        "is_featured": True,
-        "is_urgent": False,
     },
     # ------------------------------------------------------------------
     # 5. SSC CGL 2025  (NEET PG moved to entrance_exams table)
@@ -1041,8 +1033,6 @@ JOBS = [
         "fee_ews": 100,
         "fee_female": 0,
         "status": "active",
-        "is_featured": True,
-        "is_urgent": False,
     },
     # ------------------------------------------------------------------
     # 7. Army Technical Entry Scheme 2026
@@ -1159,8 +1149,6 @@ JOBS = [
         "fee_ews": 0,
         "fee_female": 0,
         "status": "active",
-        "is_featured": False,
-        "is_urgent": False,
     },
     # ------------------------------------------------------------------
     # 8. MPSC State Services 2025
@@ -1299,7 +1287,7 @@ JOBS = [
             "allowances": ["DA", "HRA", "TA", "Medical Allowance"],
             "other_benefits": "Government Quarters, Medical, Pension, LTC",
         },
-        "salary_initial": 56100,
+        "salary_initial": 15600,
         "salary_max": 177500,
         "selection_process": [
             {"phase": 1, "name": "Preliminary Examination", "qualifying": True},
@@ -1313,11 +1301,9 @@ JOBS = [
         "fee_ews": 524,
         "fee_female": 324,
         "status": "active",
-        "is_featured": False,
-        "is_urgent": False,
     },
     # ------------------------------------------------------------------
-    # 9. DRDO Scientist 'B' 2025
+    # 6. DRDO Scientist 'B' 2025
     # ------------------------------------------------------------------
     {
         "job_title": "DRDO Scientist 'B' Recruitment through GATE 2025",
@@ -1466,11 +1452,9 @@ JOBS = [
         "fee_ews": 100,
         "fee_female": 0,
         "status": "active",
-        "is_featured": False,
-        "is_urgent": False,
     },
     # ------------------------------------------------------------------
-    # 9. IBPS RRB Officer Scale-I 2025
+    # 7. IBPS RRB Officer Scale-I 2025
     # ------------------------------------------------------------------
     {
         "job_title": "IBPS RRB Officer Scale-I (Assistant Manager) Recruitment 2025",
@@ -1582,8 +1566,6 @@ JOBS = [
         "fee_ews": 850,
         "fee_female": 175,
         "status": "active",
-        "is_featured": False,
-        "is_urgent": False,
     },
 ]
 
@@ -1664,7 +1646,6 @@ ENTRANCE_EXAMS = [
         "fee_female": 4250,
         "source_url": "https://nta.ac.in/neet-pg",
         "status": "active",
-        "is_featured": True,
     },
     {
         "slug": "nta-neet-ug-2026",
@@ -1674,6 +1655,7 @@ ENTRANCE_EXAMS = [
         "exam_type": "ug",
         "stream": "medical",
         "short_description": "NEET UG 2026: National entrance for MBBS/BDS/BAMS/BHMS admissions. 12th (PCB) eligible. 720 marks, 3.5 hrs.",
+        "description": "<p>NTA conducts <strong>NEET UG 2026</strong> for admission to MBBS/BDS/BAMS/BHMS courses at government and private medical colleges across India. Candidates who have passed 10+2 with PCB (Physics, Chemistry, Biology) from any recognised board are eligible. A single pen-and-paper test with 720 marks covers Physics, Chemistry, and Biology.</p>",
         "eligibility": {
             "min_qualification": "12th",
             "qualification_details": "10+2 with Physics, Chemistry, Biology/Biotechnology — minimum 50% aggregate (40% for SC/ST/OBC/PwBD)",
@@ -1745,7 +1727,6 @@ ENTRANCE_EXAMS = [
         "fee_female": 1600,
         "source_url": "https://nta.ac.in/neet",
         "status": "active",
-        "is_featured": True,
     },
     {
         "slug": "jee-mains-2026",
@@ -1755,6 +1736,7 @@ ENTRANCE_EXAMS = [
         "exam_type": "ug",
         "stream": "engineering",
         "short_description": "JEE Main 2026: Session 1 & 2 for B.Tech/B.Arch admissions in NITs, IIITs & CFTIs. 12th (PCM) eligible.",
+        "description": "<p>NTA conducts <strong>JEE Main 2026</strong> for admissions to B.Tech/B.Arch/B.Planning programmes at NITs, IIITs, CFTIs and other centrally-funded institutions. The exam is held in two sessions (January and April); best NTA score across sessions is considered. Top 2.5 lakh rank-holders qualify for JEE Advanced (IITs).</p>",
         "eligibility": {
             "min_qualification": "12th",
             "qualification_details": "10+2 with Physics, Chemistry, Mathematics from any recognised board",
@@ -1803,7 +1785,6 @@ ENTRANCE_EXAMS = [
         "fee_female": 800,
         "source_url": "https://jeemain.nta.ac.in",
         "status": "active",
-        "is_featured": True,
     },
     {
         "slug": "jee-advanced-2026",
@@ -1813,6 +1794,7 @@ ENTRANCE_EXAMS = [
         "exam_type": "ug",
         "stream": "engineering",
         "short_description": "JEE Advanced 2026: Gateway to B.Tech at 23 IITs. Top 2.5 lakh JEE Main qualifiers eligible. 2 papers, 6 hrs.",
+        "description": "<p><strong>JEE Advanced 2026</strong> is the gateway to B.Tech/B.Arch admissions at 23 IITs across India. Only the top 2.5 lakh candidates from JEE Main 2026 are eligible. The exam consists of two papers held on the same day, each of 3 hours, covering Physics, Chemistry and Mathematics.</p>",
         "eligibility": {
             "min_qualification": "12th",
             "qualification_details": "Must qualify JEE Main 2026 (top 2.5 lakh rank). 12th with PCM, 75% aggregate (65% for SC/ST/PwD)",
@@ -1841,6 +1823,8 @@ ENTRANCE_EXAMS = [
             {"phase": 2, "name": "JoSAA IIT Seat Allotment", "qualifying": True},
         ],
         "seats_info": {"iit_seats": 17385, "note": "23 IITs across India"},
+        "application_start": date(2026, 4, 24),
+        "application_end": date(2026, 5, 4),
         "exam_date": date(2026, 5, 25),
         "result_date": date(2026, 6, 9),
         "counselling_start": date(2026, 7, 1),
@@ -1851,7 +1835,6 @@ ENTRANCE_EXAMS = [
         "fee_female": 1600,
         "source_url": "https://jeeadv.ac.in",
         "status": "active",
-        "is_featured": True,
     },
     {
         "slug": "clat-2026",
@@ -1861,6 +1844,7 @@ ENTRANCE_EXAMS = [
         "exam_type": "ug",
         "stream": "law",
         "short_description": "CLAT 2026: Entrance for LLB (5-yr) at 24 NLUs. 12th pass eligible. 120 MCQs, 2 hrs. Score valid for all NLUs.",
+        "description": "<p>The <strong>Common Law Admission Test (CLAT) 2026</strong> is a centralised national entrance test for admission to 5-year integrated LLB programmes at 24 National Law Universities (NLUs). The consortium of NLUs conducts this offline pen-and-paper exam. A single score is used for counselling across all participating NLUs.</p>",
         "eligibility": {
             "min_qualification": "12th",
             "qualification_details": "10+2 or equivalent — 45% marks (40% for SC/ST). No age limit from 2023.",
@@ -1901,11 +1885,10 @@ ENTRANCE_EXAMS = [
         "fee_general": 4000,
         "fee_sc_st": 3500,
         "fee_obc": 4000,
-        "fee_ews": 4000,
-        "fee_female": 4000,
+        "fee_ews": 3500,
+        "fee_female": 3500,
         "source_url": "https://consortiumofnlus.ac.in",
         "status": "active",
-        "is_featured": False,
     },
     {
         "slug": "cat-2025",
@@ -1915,6 +1898,7 @@ ENTRANCE_EXAMS = [
         "exam_type": "pg",
         "stream": "management",
         "short_description": "CAT 2025: Gateway to PGP/MBA at 20 IIMs and 1,200+ B-schools. Any graduate eligible. 3 slots, CBT mode.",
+        "description": "<p>The <strong>Common Admission Test (CAT) 2025</strong> is India's premier MBA entrance examination, conducted by IIM Calcutta on behalf of the IIM consortium. The CBT exam is held in three slots across multiple cities. The score is accepted by all 20 IIMs and over 1,200 participating B-schools for PGP/MBA/PGDM admissions.</p>",
         "eligibility": {
             "min_qualification": "graduate",
             "qualification_details": "Bachelor's Degree with 50% (45% for SC/ST/PwD) from any recognised university",
@@ -1965,7 +1949,6 @@ ENTRANCE_EXAMS = [
         "fee_female": 1200,
         "source_url": "https://iimcat.ac.in",
         "status": "active",
-        "is_featured": False,
     },
     {
         "slug": "cuet-ug-2026",
@@ -1975,6 +1958,7 @@ ENTRANCE_EXAMS = [
         "exam_type": "ug",
         "stream": "general",
         "short_description": "CUET UG 2026: Central admission test for 280+ universities including DU, BHU, JNU, Hyderabad. 12th pass eligible.",
+        "description": "<p><strong>CUET UG 2026</strong> (Common University Entrance Test) is conducted by NTA for admissions to undergraduate programmes at 280+ central, state and private universities, including Delhi University, BHU, JNU and University of Hyderabad. A single score replaces individual university entrance exams for most participating institutions.</p>",
         "eligibility": {
             "min_qualification": "12th",
             "qualification_details": "10+2 from any recognised board. Minimum percentage varies by university and course.",
@@ -2024,7 +2008,6 @@ ENTRANCE_EXAMS = [
         "fee_female": 650,
         "source_url": "https://cuet.nta.nic.in",
         "status": "upcoming",
-        "is_featured": False,
     },
     {
         "slug": "neet-ss-2025",
@@ -2034,6 +2017,7 @@ ENTRANCE_EXAMS = [
         "exam_type": "doctoral",
         "stream": "medical",
         "short_description": "NEET SS 2025: Entrance for DM/M.Ch (Super Speciality) courses. MD/MS in relevant speciality eligible.",
+        "description": "<p><strong>NEET SS 2025</strong> is a national-level entrance examination conducted by NBEMS for admission to DM (Doctorate of Medicine) and M.Ch (Master of Chirurgiae) super-speciality courses at medical colleges across India. Candidates with MD/MS in the relevant broad speciality are eligible. MCC conducts centralised counselling for AIQ seats.</p>",
         "eligibility": {
             "min_qualification": "MD/MS",
             "qualification_details": "MD/MS degree in the relevant broad speciality from NMC-recognised institution",
@@ -2059,10 +2043,12 @@ ENTRANCE_EXAMS = [
         "exam_date": date(2025, 9, 1),
         "result_date": date(2025, 10, 1),
         "fee_general": 4000,
+        "fee_obc": 3000,
         "fee_sc_st": 2500,
+        "fee_ews": 3000,
+        "fee_female": 3000,
         "source_url": "https://natboard.edu.in",
         "status": "active",
-        "is_featured": False,
     },
     {
         "slug": "gate-2026",
@@ -2072,6 +2058,7 @@ ENTRANCE_EXAMS = [
         "exam_type": "pg",
         "stream": "engineering",
         "short_description": "GATE 2026: M.Tech/Ph.D admissions at IITs/IISc + PSU recruitment. B.E./B.Tech or equivalent eligible. Score valid 3 years.",
+        "description": "<p>The <strong>Graduate Aptitude Test in Engineering (GATE) 2026</strong> is conducted by IIT Roorkee on behalf of the GATE Committee (IITs + IISc). The score is used for admission to M.Tech/Ph.D programmes at IITs, IISc, NITs and other institutes, and for direct recruitment by major PSUs including DRDO, ONGC, IOCL, NTPC and BHEL. GATE score is valid for 3 years.</p>",
         "eligibility": {
             "min_qualification": "graduate",
             "qualification_details": "B.E./B.Tech/B.Sc.(Research)/B.S. or 3rd year students of these programmes",
@@ -2111,7 +2098,6 @@ ENTRANCE_EXAMS = [
         "fee_female": 900,
         "source_url": "https://gate2026.iitr.ac.in",
         "status": "active",
-        "is_featured": False,
     },
 ]
 
@@ -3383,9 +3369,6 @@ def _make_job(data: dict, admin_id) -> Job:
         fee_ews=data.get("fee_ews"),
         fee_female=data.get("fee_female"),
         status=data.get("status", "active"),
-        is_featured=data.get("is_featured", False),
-        is_urgent=data.get("is_urgent", False),
-        views=0,
         source="manual",
         created_by=admin_id,
         published_at=datetime.now(timezone.utc),

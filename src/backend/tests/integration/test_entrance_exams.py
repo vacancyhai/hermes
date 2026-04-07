@@ -61,14 +61,6 @@ async def test_get_exam_by_id(client: AsyncClient, active_exam):
     assert "results" in data
 
 
-async def test_get_exam_increments_views(client: AsyncClient, active_exam):
-    exam_id = active_exam["id"]
-    initial_views = active_exam.get("views", 0)
-    await client.get(f"/api/v1/entrance-exams/{exam_id}")
-    resp = await client.get(f"/api/v1/entrance-exams/{exam_id}")
-    assert resp.json()["views"] >= initial_views + 1
-
-
 async def test_get_exam_not_found(client: AsyncClient):
     fake_id = uuid.uuid4()
     resp = await client.get(f"/api/v1/entrance-exams/{fake_id}")
@@ -160,18 +152,18 @@ async def test_admin_update_exam(client: AsyncClient, admin_token: str, active_e
     exam_id = active_exam["id"]
     resp = await client.put(
         f"/api/v1/admin/entrance-exams/{exam_id}",
-        json={"is_featured": True},
+        json={"status": "completed"},
         headers=auth_header(admin_token),
     )
     assert resp.status_code == 200
-    assert resp.json()["is_featured"] is True
+    assert resp.json()["status"] == "completed"
 
 
 async def test_admin_update_exam_not_found(client: AsyncClient, admin_token: str):
     fake_id = uuid.uuid4()
     resp = await client.put(
         f"/api/v1/admin/entrance-exams/{fake_id}",
-        json={"is_featured": True},
+        json={"status": "completed"},
         headers=auth_header(admin_token),
     )
     assert resp.status_code == 404

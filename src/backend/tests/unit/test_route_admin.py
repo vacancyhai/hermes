@@ -36,10 +36,7 @@ def _make_job(**kwargs):
     j.status = kwargs.get("status", "draft")
     j.qualification_level = None
     j.department = None
-    j.is_featured = False
-    j.is_urgent = False
     j.created_at = datetime.now(timezone.utc)
-    j.views = 0
     j.total_vacancies = None
     j.application_end = None
     j.short_description = None

@@ -34,7 +34,7 @@ from app.schemas.jobs import AdmitCardResponse, AnswerKeyResponse, ResultRespons
 from app.services.matching import get_recommended_entrance_exams
 from app.utils import slugify as _slugify
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import func, select, text, update
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 public_router = APIRouter(prefix="/api/v1/entrance-exams", tags=["entrance-exams"])
@@ -62,7 +62,6 @@ async def list_exams(
     q: Annotated[str | None, Query()] = None,
     stream: Annotated[str | None, Query()] = None,
     exam_type: Annotated[str | None, Query()] = None,
-    is_featured: Annotated[bool | None, Query()] = None,
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
     offset: Annotated[int, Query(ge=0)] = 0,
 ):
@@ -91,14 +90,9 @@ async def list_exams(
     if exam_type:
         query = query.where(EntranceExam.exam_type == exam_type)
         count_query = count_query.where(EntranceExam.exam_type == exam_type)
-    if is_featured is not None:
-        query = query.where(EntranceExam.is_featured == is_featured)
-        count_query = count_query.where(EntranceExam.is_featured == is_featured)
-
     total = (await db.execute(count_query)).scalar()
     rows = (await db.execute(query.offset(offset).limit(limit))).scalars().all()
 
-    # Increment views asynchronously (fire-and-forget style via bulk update)
     return {
         "data": [EntranceExamListItem.model_validate(r).model_dump() for r in rows],
         "pagination": {
@@ -136,21 +130,13 @@ async def recommended_exams(
 
 @public_router.get("/{exam_id}")
 async def get_exam(exam_id: uuid.UUID, db: Annotated[AsyncSession, Depends(get_db)]):
-    """Get entrance exam detail by ID. Increments view count. Includes all related documents."""
+    """Get entrance exam detail by ID. Includes all related documents."""
     result = await db.execute(select(EntranceExam).where(EntranceExam.id == exam_id))
     exam = result.scalar_one_or_none()
     if not exam:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Exam not found"
         )
-    # Increment view count (inline, committed with the response)
-    await db.execute(
-        update(EntranceExam)
-        .where(EntranceExam.id == exam.id)
-        .values(views=EntranceExam.views + 1)
-    )
-    await db.commit()
-
     # Fetch related documents
     admit_cards_result = await db.execute(
         select(AdmitCard)

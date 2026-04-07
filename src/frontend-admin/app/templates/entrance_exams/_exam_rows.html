@@ -16,7 +16,6 @@
     <tr>
         <td>
             <strong>{{ exam.exam_name }}</strong>
-            {% if exam.is_featured %}<span class="badge badge-featured" style="margin-left:.35rem">Featured</span>{% endif %}
         </td>
         <td><span style="text-transform:capitalize">{{ exam.stream | replace('_',' ') }}</span></td>
         <td><span style="text-transform:uppercase;font-size:.8rem">{{ exam.exam_type }}</span></td>

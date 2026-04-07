@@ -37,7 +37,6 @@ class EntranceExamCreateRequest(BaseModel):
     short_description: str | None = None
     source_url: str | None = None
     status: EXAM_STATUSES = "active"
-    is_featured: bool = False
 
 
 class EntranceExamUpdateRequest(BaseModel):
@@ -64,7 +63,6 @@ class EntranceExamUpdateRequest(BaseModel):
     short_description: str | None = None
     source_url: str | None = None
     status: EXAM_STATUSES | None = None
-    is_featured: bool | None = None
 
 
 class EntranceExamResponse(BaseModel):
@@ -93,8 +91,6 @@ class EntranceExamResponse(BaseModel):
     short_description: str | None
     source_url: str | None
     status: str
-    is_featured: bool
-    views: int
     published_at: datetime | None
     created_at: datetime
     updated_at: datetime
@@ -116,8 +112,6 @@ class EntranceExamListItem(BaseModel):
     result_date: date | None
     fee_general: int | None
     status: str
-    is_featured: bool
-    views: int
     created_at: datetime
 
     model_config = {"from_attributes": True}

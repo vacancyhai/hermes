@@ -331,9 +331,6 @@ def new_job():
         _pick_date_fields(form, ["notification_date", "application_start", "application_end",
                                   "exam_start", "exam_end", "result_date"], payload)
         payload["status"] = form.get("status", "draft")
-        payload["is_featured"] = form.get("is_featured") == "true"
-        payload["is_urgent"] = form.get("is_urgent") == "true"
-
         resp = current_app.api_client.post(_API_ADMIN_JOBS, token=token, json=payload)
         if resp.ok:
             job_id = resp.json().get("id")
@@ -567,8 +564,6 @@ def edit_job(job_id):
                                  "fee_ews", "fee_female", "salary_initial", "salary_max"], update)
         _pick_date_fields(form, ["notification_date", "application_start",
                                   "application_end", "exam_start"], update)
-        update["is_featured"] = form.get("is_featured") == "on"
-        update["is_urgent"] = form.get("is_urgent") == "on"
         if update:
             current_app.api_client.put(f"/admin/jobs/{job_id}", token=token, json=update)
         flash("Job saved.", "success")
@@ -785,7 +780,6 @@ def new_entrance_exam():
         _set_int_fields(form, ["fee_general", "fee_obc", "fee_sc_st", "fee_ews", "fee_female"], payload)
         _set_optional(form, ["application_start", "application_end", "exam_date",
                               "result_date", "counselling_start"], payload)
-        payload["is_featured"] = form.get("is_featured") == "on"
         payload.setdefault("status", "active")
         resp = current_app.api_client.post(_API_ADMIN_ENTRANCE_EXAMS, token=token, json=payload)
         if resp.ok:
@@ -811,7 +805,6 @@ def edit_entrance_exam(exam_id):
         _set_int_fields(form, ["fee_general", "fee_obc", "fee_sc_st", "fee_ews", "fee_female"], update)
         _set_optional(form, ["application_start", "application_end", "exam_date",
                               "result_date", "counselling_start"], update)
-        update["is_featured"] = form.get("is_featured") == "on"
         resp = current_app.api_client.put(f"/admin/entrance-exams/{exam_id}", token=token, json=update)
         if resp.ok:
             flash("Exam updated.", "success")

@@ -4,7 +4,7 @@ import uuid
 from datetime import date, datetime
 
 from app.models.base import Base
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import Date, DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -58,9 +58,6 @@ class Job(Base):
     fee_ews: Mapped[int | None] = mapped_column(Integer)
     fee_female: Mapped[int | None] = mapped_column(Integer)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="active")
-    is_featured: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    is_urgent: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    views: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     created_by: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("admin_users.id")
     )

@@ -18,7 +18,7 @@
     { "key": "answer_key_id", "value": "155e287c-3a5f-418e-ad27-28ca12cb9c84", "type": "string" },
     { "key": "result_id", "value": "4bf76f8d-1eaa-4119-95f3-2a9b74def81b", "type": "string" },
     { "key": "user_id", "value": "7fde23ed-cec3-449f-8305-7f1f868f2c02", "type": "string" },
-    { "key": "firebase_web_api_key", "value": "<your-firebase-web-api-key>", "type": "string" },
+    { "key": "firebase_web_api_key", "value": "AIzaSyDClfqvF36CGBKr_HF0t2NV6oK1kDLD1rc", "type": "string" },
     { "key": "firebase_id_token", "value": "", "type": "string" }
   ],
   "item": [
@@ -43,245 +43,341 @@
     },
     {
       "name": "Auth — User (Firebase)",
-      "description": "Step 1: Call 'Get Firebase ID Token' to sign in via Firebase REST API and get an id_token.\nStep 2: Pass that id_token to 'Verify Firebase Token' — your backend issues an internal JWT stored as {{user_token}}.",
+      "description": "User authentication via Firebase. Three flows:\n1. Login: Get Firebase ID token → Verify with backend → get internal JWT\n2. Register: Send OTP → Verify OTP → Complete Registration\n3. Account: Provider checks, phone availability, add password",
       "item": [
         {
-          "name": "Step 1 — Get Firebase ID Token (Email+Password)",
-          "event": [
+          "name": "Login — Email + Password",
+          "description": "Email+Password login via Firebase REST API.\nStep 1: POST credentials to Firebase → get idToken.\nStep 2: Send idToken to backend → get internal JWT ({{user_token}}).",
+          "item": [
             {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "var json = pm.response.json();",
-                  "if (json.idToken) {",
-                  "    pm.collectionVariables.set('firebase_id_token', json.idToken);",
-                  "    console.log('Firebase ID token saved. Now run Step 2.');",
-                  "}"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"user1@example.com\",\n  \"password\": \"UserPass123!\",\n  \"returnSecureToken\": true\n}",
-              "options": { "raw": { "language": "json" } }
+              "name": "Step 1 — Sign In (Firebase REST)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "var json = pm.response.json();",
+                      "if (json.idToken) {",
+                      "    pm.collectionVariables.set('firebase_id_token', json.idToken);",
+                      "    console.log('Firebase ID token saved. Now run Step 2.');",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"user1@example.com\",\n  \"password\": \"UserPass123!\",\n  \"returnSecureToken\": true\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": {
+                  "raw": "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={{firebase_web_api_key}}",
+                  "protocol": "https",
+                  "host": ["identitytoolkit", "googleapis", "com"],
+                  "path": ["v1", "accounts:signInWithPassword"],
+                  "query": [{ "key": "key", "value": "{{firebase_web_api_key}}" }]
+                },
+                "description": "Sign in with Email+Password via Firebase REST API. Saves the idToken as {{firebase_id_token}}.\n\nPrerequisite: Set {{firebase_web_api_key}} in collection variables (Firebase Console → Project Settings → Web API Key).\n\nThis hits Firebase directly — NOT your backend."
+              },
+              "response": []
             },
-            "url": {
-              "raw": "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={{firebase_web_api_key}}",
-              "protocol": "https",
-              "host": ["identitytoolkit", "googleapis", "com"],
-              "path": ["v1", "accounts:signInWithPassword"],
-              "query": [{ "key": "key", "value": "{{firebase_web_api_key}}" }]
-            },
-            "description": "Sign in with Email+Password via Firebase REST API. Saves the idToken as {{firebase_id_token}}.\n\nPrerequisite: Set {{firebase_web_api_key}} in collection variables (from Firebase Console → Project Settings → Web API Key).\n\nThis hits Firebase directly — NOT your backend."
-          },
-          "response": []
-        },
-        {
-          "name": "Step 2 — Verify Firebase Token (Login / Register)",
-          "event": [
             {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "var json = pm.response.json();",
-                  "if (json.access_token) {",
-                  "    pm.collectionVariables.set('user_token', json.access_token);",
-                  "}"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"id_token\": \"{{firebase_id_token}}\",\n  \"full_name\": \"Test User\"\n}",
-              "options": { "raw": { "language": "json" } }
+              "name": "Step 2 — Verify Token (Backend)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "var json = pm.response.json();",
+                      "if (json.access_token) {",
+                      "    pm.collectionVariables.set('user_token', json.access_token);",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"id_token\": \"{{firebase_id_token}}\",\n  \"full_name\": \"Test User\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/verify-token",
+                  "host": ["{{base_url}}"],
+                  "path": ["auth", "verify-token"]
+                },
+                "description": "Send Firebase ID token to YOUR backend. Backend verifies it with Firebase Admin SDK, upserts the user, and returns internal JWT pair. Sets {{user_token}}.\n\nRun Step 1 first to populate {{firebase_id_token}}.\n\nRate limited: 10/minute."
+              },
+              "response": []
             },
-            "url": {
-              "raw": "{{base_url}}/auth/verify-token",
-              "host": ["{{base_url}}"],
-              "path": ["auth", "verify-token"]
-            },
-            "description": "Send Firebase ID token to YOUR backend. Backend verifies it with Firebase Admin SDK, upserts the user, and returns internal JWT pair. Sets {{user_token}}.\n\nRun Step 1 first to populate {{firebase_id_token}}.\n\nRate limited: 10/minute."
-          },
-          "response": []
-        },
-        {
-          "name": "Logout",
-          "request": {
-            "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{user_token}}" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"refresh_token\": \"<optional-refresh-token>\"\n}",
-              "options": { "raw": { "language": "json" } }
-            },
-            "url": {
-              "raw": "{{base_url}}/auth/logout",
-              "host": ["{{base_url}}"],
-              "path": ["auth", "logout"]
-            },
-            "description": "Blocklists the access token JTI in Redis. Optionally also blocklists the refresh token. Returns 204 No Content."
-          },
-          "response": []
-        },
-        {
-          "name": "Refresh Token",
-          "event": [
             {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "var json = pm.response.json();",
-                  "if (json.access_token) {",
-                  "    pm.collectionVariables.set('user_token', json.access_token);",
-                  "}"
+              "name": "Refresh Token",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "var json = pm.response.json();",
+                      "if (json.access_token) {",
+                      "    pm.collectionVariables.set('user_token', json.access_token);",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"refresh_token\": \"<refresh-jwt>\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/refresh",
+                  "host": ["{{base_url}}"],
+                  "path": ["auth", "refresh"]
+                },
+                "description": "Rotate user JWT token pair. Old refresh token is blocklisted. Returns new access + refresh tokens."
+              },
+              "response": []
+            },
+            {
+              "name": "Logout",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Authorization", "value": "Bearer {{user_token}}" }
                 ],
-                "type": "text/javascript"
-              }
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"refresh_token\": \"<optional-refresh-token>\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/logout",
+                  "host": ["{{base_url}}"],
+                  "path": ["auth", "logout"]
+                },
+                "description": "Blocklists the access token JTI in Redis. Optionally also blocklists the refresh token. Returns 204 No Content."
+              },
+              "response": []
             }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"refresh_token\": \"<refresh-jwt>\"\n}",
-              "options": { "raw": { "language": "json" } }
-            },
-            "url": {
-              "raw": "{{base_url}}/auth/refresh",
-              "host": ["{{base_url}}"],
-              "path": ["auth", "refresh"]
-            },
-            "description": "Rotate user JWT token pair. Old refresh token is blocklisted. Returns new access + refresh tokens."
-          },
-          "response": []
+          ]
         },
         {
-          "name": "Check User Providers",
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"user@example.com\"\n}",
-              "options": { "raw": { "language": "json" } }
-            },
-            "url": {
-              "raw": "{{base_url}}/auth/check-user-providers",
-              "host": ["{{base_url}}"],
-              "path": ["auth", "check-user-providers"]
-            },
-            "description": "Check which Firebase authentication providers (google, password) a user has set up. Returns whether user can add a password."
-          },
-          "response": []
+          "name": "Login — Google OAuth",
+          "description": "Google OAuth login.\nStep 1: Client-side only — handled by Firebase JS/mobile SDK (signInWithPopup / signInWithRedirect). No Postman step needed.\nStep 2: After sign-in, SDK returns an idToken. Pass it to the backend /auth/verify-token to get an internal JWT.",
+          "item": [
+            {
+              "name": "Step 2 — Verify Google Token (Backend)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "var json = pm.response.json();",
+                      "if (json.access_token) {",
+                      "    pm.collectionVariables.set('user_token', json.access_token);",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"id_token\": \"{{firebase_id_token}}\",\n  \"full_name\": \"Test User\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/verify-token",
+                  "host": ["{{base_url}}"],
+                  "path": ["auth", "verify-token"]
+                },
+                "description": "Step 1 (Google sign-in) is client-side only — use Firebase JS SDK signInWithPopup/Redirect in your app.\n\nOnce the SDK gives you an idToken, paste it into {{firebase_id_token}} and run this request.\n\nBackend upserts user, returns internal JWT. Sets {{user_token}}.\n\nRate limited: 10/minute."
+              },
+              "response": []
+            }
+          ]
         },
         {
-          "name": "Check Phone Availability",
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"phone\": \"+919876543210\"\n}",
-              "options": { "raw": { "language": "json" } }
-            },
-            "url": {
-              "raw": "{{base_url}}/auth/check-phone-availability",
-              "host": ["{{base_url}}"],
-              "path": ["auth", "check-phone-availability"]
-            },
-            "description": "Check if a phone number is already registered and verified. Returns available/registered status."
-          },
-          "response": []
+          "name": "Login — Phone OTP",
+          "description": "Phone OTP login.\nStep 1: Client-side only — handled by Firebase JS/mobile SDK (signInWithPhoneNumber + OTP confirmation). No Postman step needed.\nStep 2: After sign-in, SDK returns an idToken. Pass it to the backend /auth/verify-token to get an internal JWT.",
+          "item": [
+            {
+              "name": "Step 2 — Verify Phone Token (Backend)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "var json = pm.response.json();",
+                      "if (json.access_token) {",
+                      "    pm.collectionVariables.set('user_token', json.access_token);",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"id_token\": \"{{firebase_id_token}}\",\n  \"full_name\": \"Test User\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/verify-token",
+                  "host": ["{{base_url}}"],
+                  "path": ["auth", "verify-token"]
+                },
+                "description": "Step 1 (Phone OTP) is client-side only — use Firebase JS SDK signInWithPhoneNumber in your app.\n\nOnce the SDK gives you an idToken after OTP confirmation, paste it into {{firebase_id_token}} and run this request.\n\nBackend upserts user, returns internal JWT. Sets {{user_token}}.\n\nRate limited: 10/minute."
+              },
+              "response": []
+            }
+          ]
         },
         {
-          "name": "Send Email OTP",
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"user@example.com\",\n  \"full_name\": \"Test User\",\n  \"phone\": \"+919876543210\"\n}",
-              "options": { "raw": { "language": "json" } }
+          "name": "Register",
+          "description": "Email+Password registration flow.\nStep 1: Send OTP to email.\nStep 2: Verify OTP → get verification_token.\nStep 3: Complete registration with password.",
+          "item": [
+            {
+              "name": "Send Email OTP",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"user@example.com\",\n  \"full_name\": \"Test User\",\n  \"phone\": \"+919876543210\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/send-email-otp",
+                  "host": ["{{base_url}}"],
+                  "path": ["auth", "send-email-otp"]
+                },
+                "description": "Generate a 6-digit OTP, store in Redis with full_name (5 min TTL), and email it. Requires MAIL_ENABLED=true.\n\nRate limited: 3/minute."
+              },
+              "response": []
             },
-            "url": {
-              "raw": "{{base_url}}/auth/send-email-otp",
-              "host": ["{{base_url}}"],
-              "path": ["auth", "send-email-otp"]
+            {
+              "name": "Verify Email OTP",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"user@example.com\",\n  \"otp\": \"123456\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/verify-email-otp",
+                  "host": ["{{base_url}}"],
+                  "path": ["auth", "verify-email-otp"]
+                },
+                "description": "Verify the 6-digit OTP. Returns a short-lived verification_token (JWT, 5 min TTL) for use in /complete-registration.\n\nRate limited: 5/minute."
+              },
+              "response": []
             },
-            "description": "Generate a 6-digit OTP, store in Redis with full_name (5 min TTL), and email it. Requires MAIL_ENABLED=true.\n\nRate limited: 3/minute."
-          },
-          "response": []
+            {
+              "name": "Complete Registration",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"SecurePass1!\",\n  \"verification_token\": \"<token-from-verify-email-otp>\",\n  \"phone\": \"+919876543210\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/complete-registration",
+                  "host": ["{{base_url}}"],
+                  "path": ["auth", "complete-registration"]
+                },
+                "description": "Create Firebase user server-side after email OTP verification. Returns a Firebase custom token for client-side sign-in.\n\nPassword requirements: min 8 chars, 1 uppercase, 1 special char.\n\nRate limited: 5/minute."
+              },
+              "response": []
+            }
+          ]
         },
         {
-          "name": "Verify Email OTP",
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"user@example.com\",\n  \"otp\": \"123456\"\n}",
-              "options": { "raw": { "language": "json" } }
+          "name": "Account",
+          "description": "Account management: check auth providers, phone availability, add password to social-auth account.",
+          "item": [
+            {
+              "name": "Check User Providers",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"user@example.com\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/check-user-providers",
+                  "host": ["{{base_url}}"],
+                  "path": ["auth", "check-user-providers"]
+                },
+                "description": "Check which Firebase authentication providers (google, password) a user has set up. Returns whether user can add a password."
+              },
+              "response": []
             },
-            "url": {
-              "raw": "{{base_url}}/auth/verify-email-otp",
-              "host": ["{{base_url}}"],
-              "path": ["auth", "verify-email-otp"]
+            {
+              "name": "Check Phone Availability",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"phone\": \"+919876543210\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/check-phone-availability",
+                  "host": ["{{base_url}}"],
+                  "path": ["auth", "check-phone-availability"]
+                },
+                "description": "Check if a phone number is already registered and verified. Returns available/registered status."
+              },
+              "response": []
             },
-            "description": "Verify the 6-digit OTP. Returns a short-lived verification_token (JWT, 5 min TTL) for use in /complete-registration.\n\nRate limited: 5/minute."
-          },
-          "response": []
-        },
-        {
-          "name": "Complete Registration",
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"SecurePass1!\",\n  \"verification_token\": \"<token-from-verify-email-otp>\",\n  \"phone\": \"+919876543210\"\n}",
-              "options": { "raw": { "language": "json" } }
-            },
-            "url": {
-              "raw": "{{base_url}}/auth/complete-registration",
-              "host": ["{{base_url}}"],
-              "path": ["auth", "complete-registration"]
-            },
-            "description": "Create Firebase user server-side after email OTP verification. Returns a Firebase custom token for client-side sign-in.\n\nPassword requirements: min 8 chars, 1 uppercase, 1 special char.\n\nRate limited: 5/minute."
-          },
-          "response": []
-        },
-        {
-          "name": "Add Password (to social-auth account)",
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"NewPass1!\",\n  \"verification_token\": \"<token-from-verify-email-otp>\"\n}",
-              "options": { "raw": { "language": "json" } }
-            },
-            "url": {
-              "raw": "{{base_url}}/auth/add-password",
-              "host": ["{{base_url}}"],
-              "path": ["auth", "add-password"]
-            },
-            "description": "Add a password to an existing Google OAuth account. Requires an email OTP verification_token. Returns Firebase custom token."
-          },
-          "response": []
+            {
+              "name": "Add Password (to social-auth account)",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"NewPass1!\",\n  \"verification_token\": \"<token-from-verify-email-otp>\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/add-password",
+                  "host": ["{{base_url}}"],
+                  "path": ["auth", "add-password"]
+                },
+                "description": "Add a password to an existing Google OAuth account. Requires an email OTP verification_token. Returns Firebase custom token."
+              },
+              "response": []
+            }
+          ]
         }
       ]
     },
@@ -710,8 +806,6 @@
                 { "key": "qualification_level", "value": "graduate", "disabled": true, "description": "10th | 12th | diploma | graduate | postgraduate | phd" },
                 { "key": "organization", "value": "SSC", "disabled": true, "description": "Partial match (ILIKE)" },
                 { "key": "department", "value": "", "disabled": true },
-                { "key": "is_featured", "value": "true", "disabled": true },
-                { "key": "is_urgent", "value": "true", "disabled": true },
                 { "key": "limit", "value": "20" },
                 { "key": "offset", "value": "0" }
               ]
@@ -938,7 +1032,6 @@
                 { "key": "q", "value": "JEE", "disabled": true, "description": "Full-text search" },
                 { "key": "stream", "value": "engineering", "disabled": true, "description": "Filter by stream" },
                 { "key": "status", "value": "active", "disabled": true },
-                { "key": "is_featured", "value": "true", "disabled": true },
                 { "key": "limit", "value": "20" },
                 { "key": "offset", "value": "0" }
               ]
@@ -1108,7 +1201,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"job_title\": \"SSC CGL 2026\",\n  \"organization\": \"Staff Selection Commission\",\n  \"qualification_level\": \"graduate\",\n  \"total_vacancies\": 8000,\n  \"description\": \"Combined Graduate Level Examination 2026. Applications invited for various Group B and C posts.\",\n  \"short_description\": \"SSC CGL 2026 — 8000 posts across multiple departments.\",\n  \"department\": \"Multiple Departments\",\n  \"application_start\": \"2026-04-01\",\n  \"application_end\": \"2026-05-31\",\n  \"exam_start\": \"2026-08-01\",\n  \"result_date\": \"2026-12-01\",\n  \"fee_general\": 100,\n  \"fee_obc\": 100,\n  \"fee_sc_st\": 0,\n  \"fee_ews\": 0,\n  \"fee_female\": 0,\n  \"salary_initial\": 25500,\n  \"salary_max\": 151100,\n  \"eligibility\": {\n    \"age_min\": 18,\n    \"age_max\": 32,\n    \"states\": [\"All India\"]\n  },\n  \"vacancy_breakdown\": {\n    \"General\": 3200,\n    \"OBC\": 2160,\n    \"SC\": 1200,\n    \"ST\": 600,\n    \"EWS\": 840\n  },\n  \"is_featured\": true,\n  \"is_urgent\": false,\n  \"status\": \"draft\",\n  \"source_url\": \"https://ssc.nic.in\"\n}",
+              "raw": "{\n  \"job_title\": \"SSC CGL 2026\",\n  \"organization\": \"Staff Selection Commission\",\n  \"qualification_level\": \"graduate\",\n  \"total_vacancies\": 8000,\n  \"description\": \"Combined Graduate Level Examination 2026. Applications invited for various Group B and C posts.\",\n  \"short_description\": \"SSC CGL 2026 — 8000 posts across multiple departments.\",\n  \"department\": \"Multiple Departments\",\n  \"application_start\": \"2026-04-01\",\n  \"application_end\": \"2026-05-31\",\n  \"exam_start\": \"2026-08-01\",\n  \"result_date\": \"2026-12-01\",\n  \"fee_general\": 100,\n  \"fee_obc\": 100,\n  \"fee_sc_st\": 0,\n  \"fee_ews\": 0,\n  \"fee_female\": 0,\n  \"salary_initial\": 25500,\n  \"salary_max\": 151100,\n  \"eligibility\": {\n    \"age_min\": 18,\n    \"age_max\": 32,\n    \"states\": [\"All India\"]\n  },\n  \"vacancy_breakdown\": {\n    \"General\": 3200,\n    \"OBC\": 2160,\n    \"SC\": 1200,\n    \"ST\": 600,\n    \"EWS\": 840\n  },\n  \"status\": \"draft\",\n  \"source_url\": \"https://ssc.nic.in\"\n}",
               "options": { "raw": { "language": "json" } }
             },
             "url": {
@@ -1144,7 +1237,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"job_title\": \"SSC CGL 2026 (Updated)\",\n  \"total_vacancies\": 8500,\n  \"application_end\": \"2026-06-15\",\n  \"is_featured\": true\n}",
+              "raw": "{\n  \"job_title\": \"SSC CGL 2026 (Updated)\",\n  \"total_vacancies\": 8500,\n  \"application_end\": \"2026-06-15\"\n}",
               "options": { "raw": { "language": "json" } }
             },
             "url": {
@@ -1542,7 +1635,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"exam_name\": \"JEE Main 2026\",\n  \"conducting_body\": \"National Testing Agency\",\n  \"counselling_body\": \"JoSAA\",\n  \"exam_type\": \"national\",\n  \"stream\": \"engineering\",\n  \"description\": \"Joint Entrance Examination (Main) for admission to NITs, IIITs, and CFTIs.\",\n  \"short_description\": \"JEE Main 2026 — Engineering entrance for NITs and IIITs.\",\n  \"application_start\": \"2025-11-01\",\n  \"application_end\": \"2025-11-30\",\n  \"exam_date\": \"2026-01-22\",\n  \"result_date\": \"2026-02-12\",\n  \"counselling_start\": \"2026-06-01\",\n  \"fee_general\": 1000,\n  \"fee_obc\": 1000,\n  \"fee_sc_st\": 500,\n  \"fee_ews\": 1000,\n  \"fee_female\": 800,\n  \"eligibility\": {\n    \"age_min\": 17,\n    \"qualification\": \"12th\"\n  },\n  \"is_featured\": true,\n  \"status\": \"active\",\n  \"source_url\": \"https://jeemain.nta.nic.in\"\n}",
+              "raw": "{\n  \"exam_name\": \"JEE Main 2026\",\n  \"conducting_body\": \"National Testing Agency\",\n  \"counselling_body\": \"JoSAA\",\n  \"exam_type\": \"national\",\n  \"stream\": \"engineering\",\n  \"description\": \"Joint Entrance Examination (Main) for admission to NITs, IIITs, and CFTIs.\",\n  \"short_description\": \"JEE Main 2026 — Engineering entrance for NITs and IIITs.\",\n  \"application_start\": \"2025-11-01\",\n  \"application_end\": \"2025-11-30\",\n  \"exam_date\": \"2026-01-22\",\n  \"result_date\": \"2026-02-12\",\n  \"counselling_start\": \"2026-06-01\",\n  \"fee_general\": 1000,\n  \"fee_obc\": 1000,\n  \"fee_sc_st\": 500,\n  \"fee_ews\": 1000,\n  \"fee_female\": 800,\n  \"eligibility\": {\n    \"age_min\": 17,\n    \"qualification\": \"12th\"\n  },\n  \"status\": \"active\",\n  \"source_url\": \"https://jeemain.nta.nic.in\"\n}",
               "options": { "raw": { "language": "json" } }
             },
             "url": {
@@ -1578,7 +1671,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"exam_date\": \"2026-01-28\",\n  \"total_seats\": 1100000,\n  \"is_featured\": true,\n  \"status\": \"active\"\n}",
+              "raw": "{\n  \"exam_date\": \"2026-01-28\",\n  \"total_seats\": 1100000,\n  \"status\": \"active\"\n}",
               "options": { "raw": { "language": "json" } }
             },
             "url": {

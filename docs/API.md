@@ -119,7 +119,7 @@ Users can watch specific jobs or entrance exams to receive automatic notificatio
 |--------|----------|------|-------------|
 | GET | `/jobs` | Public | List active jobs (filtered, paginated, FTS) |
 | GET | `/jobs/recommended` | User JWT | Personalized recommendations by profile match |
-| GET | `/jobs/:slug` | Public | Job detail by slug (increments views) |
+| GET | `/jobs/:slug` | Public | Job detail by slug |
 
 **Query Parameters for `GET /jobs`:**
 
@@ -130,8 +130,6 @@ Users can watch specific jobs or entrance exams to receive automatic notificatio
 | `organization` | string | Partial match (ILIKE) |
 | `department` | string | Partial match (ILIKE) |
 | `status` | string | Default: `active` |
-| `is_featured` | boolean | Filter featured jobs |
-| `is_urgent` | boolean | Filter urgent jobs |
 | `limit` | int | 1-100, default: 20 |
 | `offset` | int | Default: 0 |
 
@@ -690,7 +688,7 @@ They have exam-specific fields: `stream`, `exam_type`, `counselling_body`, `seat
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/entrance-exams` | List active entrance exams (stream/exam_type/search filters) |
-| GET | `/entrance-exams/{slug}` | Exam detail by slug (increments views) |
+| GET | `/entrance-exams/{slug}` | Exam detail by slug |
 | GET | `/entrance-exams/{exam_id}/admit-cards` | Per-phase admit cards (exam status must not be `cancelled`) |
 | GET | `/entrance-exams/{exam_id}/answer-keys` | Per-phase answer keys (exam status must not be `cancelled`) |
 | GET | `/entrance-exams/{exam_id}/results` | Per-phase results (exam status must not be `cancelled`) |
@@ -702,7 +700,6 @@ They have exam-specific fields: `stream`, `exam_type`, `counselling_body`, `seat
 | `q` | string | Full-text search on exam name, conducting body, description |
 | `stream` | string | `medical`, `engineering`, `law`, `management`, `arts_science`, `general` |
 | `exam_type` | string | `ug`, `pg`, `doctoral`, `lateral` |
-| `is_featured` | boolean | Filter featured exams |
 | `limit` | int | 1-100, default: 20 |
 | `offset` | int | Default: 0 |
 
@@ -741,8 +738,7 @@ GET /api/v1/entrance-exams?stream=medical&limit=10
       "stream": "medical",
       "application_end": "2025-11-30",
       "exam_date": "2026-03-09",
-      "fee_general": 4250,
-      "is_featured": true
+      "fee_general": 4250
     },
     ...
   ],
