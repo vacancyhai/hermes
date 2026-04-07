@@ -73,7 +73,7 @@ jobs:
           mkdir -p src/frontend/coverage
           chmod 777 src/frontend/coverage
           docker run --rm \
-            --env-file src/frontend/.env.test \
+            --env-file config/test/.env.frontend \
             -v ${{ github.workspace }}/src/frontend/coverage:/app/coverage \
             hermes_frontend_ci \
             python -m pytest tests/ \
@@ -112,7 +112,7 @@ jobs:
           mkdir -p src/frontend-admin/coverage
           chmod 777 src/frontend-admin/coverage
           docker run --rm \
-            --env-file src/frontend-admin/.env.test \
+            --env-file config/test/.env.frontend-admin \
             -v ${{ github.workspace }}/src/frontend-admin/coverage:/app/coverage \
             hermes_frontend_admin_ci \
             python -m pytest tests/ \
