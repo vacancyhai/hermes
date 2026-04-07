@@ -6,7 +6,7 @@
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
-    { "key": "base_url", "value": "http://localhost:8000/api/v1", "type": "string" },
+    { "key": "base_url", "value": "http://80.225.232.103:8000/api/v1", "type": "string" },
     { "key": "admin_email", "value": "admin@example.com", "type": "string" },
     { "key": "admin_password", "value": "AdminPass123!", "type": "string" },
     { "key": "user_token", "value": "", "type": "string" },
@@ -17,7 +17,9 @@
     { "key": "admit_card_id", "value": "6fe55fd9-76ad-44a6-9cf1-24b46f099d39", "type": "string" },
     { "key": "answer_key_id", "value": "155e287c-3a5f-418e-ad27-28ca12cb9c84", "type": "string" },
     { "key": "result_id", "value": "4bf76f8d-1eaa-4119-95f3-2a9b74def81b", "type": "string" },
-    { "key": "user_id", "value": "7fde23ed-cec3-449f-8305-7f1f868f2c02", "type": "string" }
+    { "key": "user_id", "value": "7fde23ed-cec3-449f-8305-7f1f868f2c02", "type": "string" },
+    { "key": "firebase_web_api_key", "value": "<your-firebase-web-api-key>", "type": "string" },
+    { "key": "firebase_id_token", "value": "", "type": "string" }
   ],
   "item": [
     {
@@ -41,9 +43,46 @@
     },
     {
       "name": "Auth — User (Firebase)",
+      "description": "Step 1: Call 'Get Firebase ID Token' to sign in via Firebase REST API and get an id_token.\nStep 2: Pass that id_token to 'Verify Firebase Token' — your backend issues an internal JWT stored as {{user_token}}.",
       "item": [
         {
-          "name": "Verify Firebase Token (Login / Register)",
+          "name": "Step 1 — Get Firebase ID Token (Email+Password)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json.idToken) {",
+                  "    pm.collectionVariables.set('firebase_id_token', json.idToken);",
+                  "    console.log('Firebase ID token saved. Now run Step 2.');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user1@example.com\",\n  \"password\": \"UserPass123!\",\n  \"returnSecureToken\": true\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={{firebase_web_api_key}}",
+              "protocol": "https",
+              "host": ["identitytoolkit", "googleapis", "com"],
+              "path": ["v1", "accounts:signInWithPassword"],
+              "query": [{ "key": "key", "value": "{{firebase_web_api_key}}" }]
+            },
+            "description": "Sign in with Email+Password via Firebase REST API. Saves the idToken as {{firebase_id_token}}.\n\nPrerequisite: Set {{firebase_web_api_key}} in collection variables (from Firebase Console → Project Settings → Web API Key).\n\nThis hits Firebase directly — NOT your backend."
+          },
+          "response": []
+        },
+        {
+          "name": "Step 2 — Verify Firebase Token (Login / Register)",
           "event": [
             {
               "listen": "test",
@@ -63,7 +102,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"id_token\": \"<firebase-id-token>\",\n  \"full_name\": \"Test User\"\n}",
+              "raw": "{\n  \"id_token\": \"{{firebase_id_token}}\",\n  \"full_name\": \"Test User\"\n}",
               "options": { "raw": { "language": "json" } }
             },
             "url": {
@@ -71,7 +110,7 @@
               "host": ["{{base_url}}"],
               "path": ["auth", "verify-token"]
             },
-            "description": "Verify Firebase ID token → upsert user → return internal JWT pair.\n\nLookup order: firebase_uid → email → create new user.\nSets {{user_token}} collection variable on success.\n\nRate limited: 10/minute."
+            "description": "Send Firebase ID token to YOUR backend. Backend verifies it with Firebase Admin SDK, upserts the user, and returns internal JWT pair. Sets {{user_token}}.\n\nRun Step 1 first to populate {{firebase_id_token}}.\n\nRate limited: 10/minute."
           },
           "response": []
         },
