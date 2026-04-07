@@ -155,7 +155,11 @@ def dashboard():
     """Watched items dashboard — shows jobs and exams the user is watching."""
     token = session.get("token")
     if not token:
-        return render_template(_TEMPLATE_LOGIN, next="/dashboard")
+        return render_template(_TEMPLATE_LOGIN, next="/dashboard",
+            firebase_api_key=os.environ.get("FIREBASE_WEB_API_KEY", ""),
+            firebase_auth_domain=os.environ.get("FIREBASE_AUTH_DOMAIN", ""),
+            firebase_project_id=os.environ.get("FIREBASE_PROJECT_ID", ""),
+        )
 
     resp, authed = _try_with_refresh(lambda t: current_app.api_client.get(_API_WATCHED, token=t))
     if not authed:
@@ -178,7 +182,11 @@ def notifications():
     """Notifications page — requires login."""
     token = session.get("token")
     if not token:
-        return render_template(_TEMPLATE_LOGIN, next=_URL_NOTIFICATIONS)
+        return render_template(_TEMPLATE_LOGIN, next=_URL_NOTIFICATIONS,
+            firebase_api_key=os.environ.get("FIREBASE_WEB_API_KEY", ""),
+            firebase_auth_domain=os.environ.get("FIREBASE_AUTH_DOMAIN", ""),
+            firebase_project_id=os.environ.get("FIREBASE_PROJECT_ID", ""),
+        )
 
     # Fetch unread count (refresh token on 401)
     count_resp = current_app.api_client.get(_API_NOTIFICATIONS_COUNT, token=token)
