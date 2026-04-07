@@ -31,9 +31,9 @@
 
 ### Three-Service Architecture
 
-Backend, User Frontend, and Admin Frontend are independent services with
-separate Docker Compose files and Docker networks. They communicate via HTTP
-REST API.
+Backend, User Frontend, and Admin Frontend are independent services defined
+in a single root `docker-compose.yml` and sharing one Docker network. They
+communicate via HTTP REST API.
 
 ```
 ┌────────────────────────────────────────────────────────────┐
@@ -61,50 +61,51 @@ REST API.
 │ Port: 8000       │  │ Port: 8080       │  │ Port: 8081       │
 └────────┬─────────┘  └──────────────────┘  └──────────────────┘
          │
-         ├──────────────┬──────────────┬─────────────┐
-         ↓              ↓              ↓             ↓
-┌─────────────┐  ┌─────────────┐  ┌──────────┐  ┌──────────┐
-│ PostgreSQL  │  │   Redis     │  │ Celery   │  │ Celery   │
-│  Container  │  │  Container  │  │ Worker   │  │  Beat    │
-│ Port: 5432  │  │ Port: 6379  │  │          │  │          │
-└─────────────┘  └─────────────┘  └──────────┘  └──────────┘
+         ├──────────────┬──────────────┐
+         ↓              ↓              ↓
+┌─────────────┐  ┌─────────────┐  ┌──────────┐
+│ PostgreSQL  │  │   Redis     │  │ Celery   │
+│  Container  │  │  Container  │  │ Worker   │
+│ Port: 5432  │  │ Port: 6379  │  │          │
+└─────────────┘  └─────────────┘  └──────────┘
 ```
 
 ### Docker Networks
 
-| Network                       | Services                                              |
-| ----------------------------- | ----------------------------------------------------- |
-| `src_backend_network`         | backend, celery_worker, celery_beat, postgresql, pgbouncer, redis, nginx |
-| `src_frontend_network`        | frontend, nginx                                       |
-| `src_frontend_admin_network`  | frontend-admin, nginx                                 |
+| Network           | Services                                                                         |
+| ----------------- | -------------------------------------------------------------------------------- |
+| `hermes_network`  | backend, celery_worker, postgresql, pgbouncer, redis, frontend, frontend-admin, mailpit |
 
 Frontends **cannot** reach the database or Redis directly — all persistence goes
 through the backend REST API via `BACKEND_API_URL`.
 
 ### Services
 
-| Service          | Image / Build      | Port   | Compose file                            |
-| ---------------- | ------------------ | ------ | --------------------------------------- |
-| `postgresql`     | postgres:16-alpine | `5432` | `src/backend/docker-compose.yml`        |
-| `redis`          | redis:7-alpine     | `6379` | `src/backend/docker-compose.yml`        |
-| `pgbouncer`      | edoburu/pgbouncer  | `6432` | `src/backend/docker-compose.yml`        |
-| `backend`        | local build        | `8000` | `src/backend/docker-compose.yml`        |
-| `celery_worker`  | local build        | —      | `src/backend/docker-compose.yml`        |
-| `celery_beat`    | local build        | —      | `src/backend/docker-compose.yml`        |
-| `frontend`       | local build        | `8080` | `src/frontend/docker-compose.yml`       |
-| `frontend-admin` | local build        | `8081` | `src/frontend-admin/docker-compose.yml` |
-| `nginx`          | nginx:alpine       | `80/443` | `src/nginx/docker-compose.yml`        |
+All services are defined in the single root **`docker-compose.yml`** (development) or **`docker-compose.test.yml`** (CI).
+
+| Service          | Image / Build      | Port     | Env file                            |
+| ---------------- | ------------------ | -------- | ----------------------------------- |
+| `postgresql`     | postgres:16-alpine | `5432`   | shared via compose env vars         |
+| `redis`          | redis:7-alpine     | `6379`   | shared via compose env vars         |
+| `pgbouncer`      | edoburu/pgbouncer  | `5432`   | shared via compose env vars         |
+| `backend`        | local build        | `8000`   | `src/backend/.env`                  |
+| `celery_worker`  | local build        | —        | `src/backend/.env`                  |
+| `frontend`       | local build        | `8080`   | `src/frontend/.env`                 |
+| `frontend-admin` | local build        | `8081`   | `src/frontend-admin/.env`           |
+| `mailpit`        | axllent/mailpit    | `1025/8025` | — (dev only)                     |
+
+> **CI (`docker-compose.test.yml`)** omits `celery_worker` and `mailpit`. Backend uses `.env.test`.
 
 ### Health Checks
 
 | Service        | Interval | Endpoint / Command                          |
 | -------------- | -------- | ------------------------------------------- |
-| PostgreSQL     | 10s      | `pg_isready`                                |
-| PgBouncer      | 10s      | `PGPASSWORD=$DB_PASS psql -h pgbouncer -p 6432 -U hermes_user -c 'SELECT 1'` |
+| PostgreSQL     | 10s      | `pg_isready -U hermes_user -d hermes_db`    |
+| PgBouncer      | 10s      | `nc -z localhost 5432`                      |
 | Redis          | 10s      | `redis-cli ping`                            |
-| Backend        | 30s      | `GET /api/v1/health` (port 8000)            |
-| User Frontend  | 30s      | `GET /health`                               |
-| Admin Frontend | 30s      | `GET /health`                               |
+| Backend        | 30s/15s  | `GET /api/v1/health` (port 8000)            |
+| User Frontend  | 30s/15s  | `GET /health` (port 8080)                   |
+| Admin Frontend | 30s/15s  | `GET /health` (port 8081)                   |
 | Nginx          | 30s      | `GET /health`                               |
 
 **Startup order:** PostgreSQL → Redis → Backend → Frontends → Nginx.
@@ -211,13 +212,13 @@ a native-like experience on Android and limited support on iOS Safari.
 
 See **[DATABASE.md](DATABASE.md)** for the complete schema — ERD, all 14 tables, column definitions, indexes, and CHECK constraints.
 
-**14 tables (4 Alembic migrations, `0001` → `0004`):**
-`users`, `admin_users`, `user_profiles`, `user_devices`, `job_vacancies`,
-`user_job_applications`, `notifications`, `notification_delivery_log`, `admin_logs`,
-`job_admit_cards`, `job_answer_keys`, `job_results`, `entrance_exams`, `alembic_version`.
+**2 Alembic migrations (`0001` → `0002`). Tables:**
+`users`, `admin_users`, `user_profiles`, `user_devices`, `jobs`,
+`notifications`, `notification_delivery_log`, `admin_logs`, `user_watches`,
+`admit_cards`, `answer_keys`, `results`, `entrance_exams`.
 
-**Polymorphic document tables:** `job_admit_cards`, `job_answer_keys`, `job_results` each
-link to either a `job_vacancies` row (`job_id`) or an `entrance_exams` row (`exam_id`)
+**Polymorphic document tables:** `admit_cards`, `answer_keys`, `results` each
+link to either a `jobs` row (`job_id`) or an `entrance_exams` row (`exam_id`)
 via a DB-level `CHECK` constraint — exactly one FK per row, never both, never neither.
 
 ---
@@ -230,13 +231,13 @@ All endpoints versioned under `/api/v1/`. List responses: `{ "data": [...], "pag
 
 | Router | Prefix | Description |
 |--------|--------|-------------|
-| `auth.py` | `/api/v1/auth` | Firebase verify-token, logout, refresh; admin login/logout/refresh |
-| `users.py` | `/api/v1/users`, `/api/v1/organizations` | Profile CRUD, FCM tokens, org follow |
+| `auth.py` | `/api/v1/auth` | Firebase verify-token, logout, refresh; admin login/logout/refresh; email OTP registration |
+| `users.py` | `/api/v1/users` | Profile CRUD, FCM tokens, phone, password management |
 | `jobs.py` | `/api/v1/jobs` | Public listing (FTS + filters), recommended, detail by slug |
-| `applications.py` | `/api/v1/applications` | Application tracking CRUD |
+| `watches.py` | `/api/v1/jobs/{id}/watch`, `/api/v1/entrance-exams/{id}/watch` | Watch/unwatch jobs and exams; list watched |
 | `notifications.py` | `/api/v1/notifications` | List, count, mark read, delete |
-| `admin.py` | `/api/v1/admin` | Job CRUD + approve, user mgmt, analytics, audit logs, admin-user creation |
-| `job_documents.py` | `/api/v1/jobs/{id}`, `/api/v1/admin/jobs/{id}` | Per-job admit cards, answer keys, results |
+| `admin.py` | `/api/v1/admin` | Job CRUD + approve, user mgmt, stats, audit logs, admin-user creation |
+| `content.py` | `/api/v1/admit-cards`, `/api/v1/answer-keys`, `/api/v1/results` | Public + admin CRUD for admit cards, answer keys, results |
 | `entrance_exams.py` | `/api/v1/entrance-exams`, `/api/v1/admin/entrance-exams` | Public exam listing + detail; admin exam CRUD + per-exam docs |
 | `health.py` | `/api/v1/health` | Service health check |
 
@@ -275,7 +276,7 @@ All errors follow a consistent structure:
 | 403  | `FORBIDDEN_ADMIN_ONLY`        | Admin access required                |
 | 404  | `NOT_FOUND_USER`              | User doesn't exist                   |
 | 404  | `NOT_FOUND_JOB`               | Job doesn't exist                    |
-| 404  | `NOT_FOUND_APPLICATION`       | Application not found                |
+| 404  | `NOT_FOUND_EXAM`              | Exam not found                       |
 | 429  | `RATE_LIMIT_EXCEEDED`         | Too many requests                    |
 | 500  | `SERVER_ERROR`                | Internal server error                |
 
@@ -302,18 +303,19 @@ client) that propagates through all services and into logs for tracing.
 
 ### Permission Matrix
 
-| Endpoint                         | User | Operator       | Admin |
-| -------------------------------- | ---- | -------------- | ----- |
-| `GET /api/v1/jobs`               | ✅   | ✅             | ✅    |
-| `POST /api/v1/admin/jobs`        | ❌   | ✅             | ✅    |
-| `PUT /api/v1/admin/jobs/:id`     | ❌   | ✅ (limited)   | ✅    |
-| `DELETE /api/v1/admin/jobs/:id`  | ❌   | ❌             | ✅    |
-| `GET /api/v1/users/profile`      | ✅   | ✅             | ✅    |
-| `GET /api/v1/admin/users`        | ❌   | ✅             | ✅    |
-| `PUT /api/v1/admin/users/:id/role` | ❌ | ❌             | ✅    |
-| `GET /api/v1/admin/analytics`    | ❌   | ❌             | ✅    |
+| Endpoint                           | User | Operator       | Admin |
+| ---------------------------------- | ---- | -------------- | ----- |
+| `GET /api/v1/jobs`                 | ✅   | ✅             | ✅    |
+| `POST /api/v1/admin/jobs`          | ❌   | ✅             | ✅    |
+| `PUT /api/v1/admin/jobs/:id`       | ❌   | ✅ (limited)   | ✅    |
+| `DELETE /api/v1/admin/jobs/:id`    | ❌   | ❌             | ✅    |
+| `GET /api/v1/users/profile`        | ✅   | ✅             | ✅    |
+| `GET /api/v1/admin/users`          | ❌   | ✅             | ✅    |
+| `PUT /api/v1/admin/users/:id/status` | ❌ | ❌             | ✅    |
+| `GET /api/v1/admin/stats`          | ❌   | ✅             | ✅    |
+| `GET /api/v1/admin/logs`           | ❌   | ❌             | ✅    |
 
-**Operator restrictions on `PUT /api/v1/admin/jobs/:id`:** Can only modify these fields: `status`, `description`, `short_description`, `notification_date`, `application_start`, `application_end`, `exam_start`, `exam_end`, `result_date`. Cannot modify salary, vacancies, eligibility, or job_type — those require admin role. Operators also cannot delete jobs or access analytics.
+**Operator restrictions on `PUT /api/v1/admin/jobs/:id`:** Can only modify these fields: `status`, `description`, `short_description`, `notification_date`, `application_start`, `application_end`, `exam_start`, `exam_end`, `result_date`. Cannot modify salary, vacancies, eligibility, or job_type — those require admin role. Operators also cannot delete jobs or access audit logs.
 
 ### Initial Admin Setup
 
@@ -321,12 +323,12 @@ No self-registration for admin accounts. Admin auth uses local bcrypt + JWT
 (not Firebase). The first admin must be seeded directly in the database:
 
 ```bash
-docker compose exec backend python -c "
+docker exec hermes_backend python -c "
 from passlib.context import CryptContext
 from sqlalchemy import create_engine, text
 import os, uuid
 ctx = CryptContext(schemes=['bcrypt'])
-engine = create_engine(os.environ['DATABASE_URL'].replace('+asyncpg', ''))
+engine = create_engine(os.environ['DATABASE_URL'].replace('+asyncpg', '+psycopg2'))
 with engine.connect() as conn:
     conn.execute(text(\"INSERT INTO admin_users (id, email, password_hash, full_name, role, status, is_email_verified) VALUES (:id, :email, :pw, :name, 'admin', 'active', TRUE)\"),
         {'id': str(uuid.uuid4()), 'email': 'admin@example.com', 'pw': ctx.hash('ChangeMe123!'), 'name': 'Admin'})
@@ -337,7 +339,7 @@ with engine.connect() as conn:
 After the first admin exists, subsequent admin/operator accounts are created via the API:
 ```
 POST /api/v1/admin/admin-users  (admin role only)
-{ "email": "operator@example.com", "password": "Operator@123", "full_name": "Operator", "role": "operator" }
+{ "email": "operator@example.com", "password": "Operator@123", "full_name": "Operator", "role": "operator" }  # pragma: allowlist secret
 ```
 
 **Password Requirements (enforced for all users and admins):**
@@ -345,7 +347,7 @@ POST /api/v1/admin/admin-users  (admin role only)
 - At least 1 uppercase letter
 - At least 1 special character (!@#$%^&*(),.?":{}|<>)
 
-Roles can be changed via `PUT /api/v1/admin/users/:id/role` (admin only).
+User status (suspend/activate) can be changed via `PUT /api/v1/admin/users/:id/status` (admin only).
 
 ---
 
@@ -365,14 +367,15 @@ Roles can be changed via `PUT /api/v1/admin/users/:id/role` (admin only).
 
 ### Event-Triggered Tasks
 
-| Trigger                  | Task                           | Description                            |
-| ------------------------ | ------------------------------ | -------------------------------------- |
-| Any notification needed  | `smart_notify`                 | Unified entry — instant or staggered delivery to all 5 channels |
-| New job created (active) | `send_new_job_notifications`   | Match org followers → `smart_notify(staggered)` per user |
-| Admin updates a job      | `notify_priority_subscribers`  | Notify priority trackers → `smart_notify(staggered)` per user |
-| Staggered email delivery | `deliver_delayed_email`        | Fires after `NOTIFY_EMAIL_DELAY` — sends the email |
-| Staggered WhatsApp       | `deliver_delayed_whatsapp`     | Fires after `NOTIFY_WHATSAPP_DELAY` — sends the WhatsApp |
-| Staggered Telegram       | `deliver_delayed_telegram`     | Fires after `NOTIFY_TELEGRAM_DELAY` — sends the Telegram message |
+| Trigger                       | Task                           | Description                            |
+| ----------------------------- | ------------------------------ | -------------------------------------- |
+| Any notification needed       | `smart_notify`                 | Unified entry — instant or staggered delivery to all 5 channels |
+| Job/exam approved or updated  | `notify_watchers_on_update`    | Notify all users watching that job/exam via `smart_notify(staggered)` |
+| Staggered email delivery      | `deliver_delayed_email`        | Fires after `NOTIFY_EMAIL_DELAY` — sends the email |
+| Staggered WhatsApp            | `deliver_delayed_whatsapp`     | Fires after `NOTIFY_WHATSAPP_DELAY` — sends the WhatsApp |
+| Staggered Telegram            | `deliver_delayed_telegram`     | Fires after `NOTIFY_TELEGRAM_DELAY` — sends the Telegram message |
+
+> **Note:** `send_new_job_notifications` (org-follow alerts) and `notify_priority_subscribers` (priority-tracker alerts) are registered Celery tasks but are currently **no-op stubs** (`pass` body). The infrastructure is in place but the matching/dispatch logic is not yet implemented.
 
 ---
 
@@ -444,7 +447,7 @@ Admin/Operator on creation page (/jobs/new, /admit-cards/new, etc.)
 | Storage | Temporary files only | Immediate cleanup after extraction |
 | Processing | Synchronous (no queue) | Instant response to frontend |
 
-The AI extraction prompt maps PDF text to the `job_vacancies` schema
+The AI extraction prompt maps PDF text to the `jobs` schema
 fields. The creation form shows the extracted data inline, allowing
 immediate review and editing before submission.
 
@@ -571,15 +574,10 @@ The `sent_via` array on each notification row tracks which channels were used
 Users can follow specific organizations (SSC, UPSC, Railway, etc.) to get
 notified whenever that org posts *any* job — regardless of profile match.
 
-Followed organizations are stored in `user_profiles.followed_organizations` (JSONB array).
-When a job is approved (draft → active), `send_new_job_notifications` notifies all
-followers of that organization via `smart_notify(staggered)`.
+Followed organizations are stored in `user_profiles.followed_organizations` (JSONB array, added by migration 0002).
+Users manage this list by updating their profile via `PUT /api/v1/users/profile` — there are no dedicated follow/unfollow endpoints.
 
-| Method | Endpoint                              | Description            | Access |
-| ------ | ------------------------------------- | ---------------------- | ------ |
-| POST   | `/api/v1/organizations/{name}/follow`  | Follow an organization (idempotent, max 50) | User |
-| DELETE | `/api/v1/organizations/{name}/follow`  | Unfollow               | User   |
-| GET    | `/api/v1/users/me/following`           | List followed orgs     | User   |
+> **Note:** Dedicated org-follow endpoints (`/organizations/{name}/follow`) and new-job alert dispatch (`send_new_job_notifications`) are **not yet implemented**. The `followed_organizations` field is stored and displayed, but watcher notifications for new org jobs are a no-op stub.
 
 ### Share Button (Web Share API)
 
@@ -618,27 +616,21 @@ hard-coding specific platforms.
 
 ### Application Fee by Category
 
-Government jobs charge different application fees by category (General ₹100,
-OBC ₹100, SC/ST ₹0, Female ₹0, etc.). When a logged-in user views a job,
-the frontend reads the `eligibility.fee` object from the job and the user's
-`category` from their profile, then displays: **"Your application fee: ₹0"**.
+Government jobs charge different application fees by category. When a logged-in user views a job,
+the frontend reads the fee columns from the job and the user's `category` from their profile,
+then displays: **"Your application fee: ₹0"**.
 
-This is pure Jinja2 template logic — no API changes needed. The `eligibility`
-JSONB already supports storing fee breakdowns:
+Fees are stored as **top-level integer columns** on the `jobs` table (not inside JSONB):
 
-```json
-{
-  "fee": {
-    "general": 100,
-    "obc": 100,
-    "sc": 0,
-    "st": 0,
-    "ews": 0,
-    "female": 0,
-    "pwd": 0
-  }
-}
-```
+| Column | Description |
+|--------|-------------|
+| `fee_general` | Fee for General/UR category (INR) |
+| `fee_obc` | Fee for OBC-NCL category (INR) |
+| `fee_sc_st` | Fee for SC/ST category (INR) |
+| `fee_ews` | Fee for EWS category (INR) |
+| `fee_female` | Fee for Female/PwBD candidates (INR) |
+
+`0` = free. `null` = fee not specified (hidden in UI). This is pure Jinja2 template logic — no API changes needed.
 
 ---
 
@@ -648,10 +640,10 @@ The user frontend is organized into 5 main sections, each with its own page, sea
 
 | Section | URL Path | Content Type | Hero Color | Data Source |
 |---------|----------|--------------|------------|-------------|
-| Jobs | `/` | Government job vacancies | Navy → Blue | `job_vacancies` |
-| Admit Cards | `/admit-cards` | Exam admit cards | Sky Blue | `job_admit_cards` |
-| Answer Keys | `/answer-keys` | Answer keys | Brown → Amber | `job_answer_keys` |
-| Results | `/results` | Exam results | Dark Green → Green | `job_results` |
+| Jobs | `/` | Government job vacancies | Navy → Blue | `jobs` |
+| Admit Cards | `/admit-cards` | Exam admit cards | Sky Blue | `admit_cards` |
+| Answer Keys | `/answer-keys` | Answer keys | Brown → Amber | `answer_keys` |
+| Results | `/results` | Exam results | Dark Green → Green | `results` |
 | Entrance Exams | `/entrance-exams` | Entrance exams | Dark Purple → Purple | `entrance_exams` |
 
 ### Type-Aware Design System
@@ -673,7 +665,7 @@ Each section uses a gradient hero and consistent card design:
 
 ### Polymorphic Document Tables
 
-The three document tables (`job_admit_cards`, `job_answer_keys`, `job_results`) are **polymorphic** — each row links to either:
+The three document tables (`admit_cards`, `answer_keys`, `results`) are **polymorphic** — each row links to either:
 
 - A job vacancy via `job_id` (traditional recruitment docs)
 - An entrance exam via `exam_id` (educational admission docs)
@@ -712,19 +704,20 @@ These work for both jobs and exams using the same backend endpoints.
 
 Row expiry is handled via an `expires_at` column and nightly Celery purge tasks.
 
-| Data             | Retention | Mechanism                     |
-| ---------------- | --------- | ----------------------------- |
-| Notifications    | 90 days   | `expires_at` + Celery purge   |
-| Admin logs       | 30 days   | `expires_at` + Celery purge   |
-| Redis sessions   | 15 min    | Redis TTL                     |
-| Job cache        | 1 hour    | Redis TTL                     |
-| Preferences cache| 24 hours  | Redis TTL                     |
+| Data              | Retention | Mechanism                     |
+| ----------------- | --------- | ----------------------------- |
+| Notifications     | 90 days   | `expires_at` + Celery purge   |
+| Admin logs        | 30 days   | `expires_at` + Celery purge   |
+| JWT blocklist     | Token TTL | Redis TTL (auto-expires with token) |
+| Email OTP         | 5 minutes | Redis TTL (`setex` 300s)      |
+
+> Redis is used only for the JWT blocklist and OTP storage — there is no application-level caching layer.
 
 ### PgBouncer (Connection Pooling)
 
 PgBouncer runs as a sidecar container (~10 MB RAM) between the application
-and PostgreSQL. FastAPI backend, Celery workers, and Celery Beat all connect
-to PgBouncer on port `6432` instead of PostgreSQL directly on `5432`.
+and PostgreSQL. The FastAPI backend and Celery worker connect to PgBouncer
+on port `5432` (container-internal) instead of PostgreSQL directly.
 
 This matters because:
 - PostgreSQL on ARM with limited memory shouldn't hold too many connections
@@ -732,7 +725,7 @@ This matters because:
 - PgBouncer multiplexes many app connections over fewer PostgreSQL connections
 
 Configuration: transaction pooling mode, `max_client_conn=100`,
-`default_pool_size=20`. Set in `pgbouncer.ini` mounted as a Docker volume.
+`default_pool_size=20`. Set via environment variables in `docker-compose.yml` (not a mounted ini file).
 
 ### Structured JSON Logging
 
@@ -785,13 +778,12 @@ RAM so builds are fast enough in production.
 | Volumes  | Hot-reload mounts for code                             |
 
 ```bash
-cp config/development/.env.backend.development       src/backend/.env
-cp config/development/.env.frontend.development      src/frontend/.env
+cp config/development/.env.backend.development        src/backend/.env
+cp config/development/.env.frontend.development       src/frontend/.env
 cp config/development/.env.frontend-admin.development src/frontend-admin/.env
 
-cd src/backend        && docker compose up -d
-cd ../frontend        && docker compose up -d
-cd ../frontend-admin  && docker compose up -d
+# All services are in the single root docker-compose.yml
+docker compose up -d --build
 ```
 
 ### Staging
@@ -842,7 +834,6 @@ All containers run via Docker Compose on this single VM.
 | PgBouncer        | ~10 MB   |
 | Backend (FastAPI) | ~512 MB  |
 | Celery Worker    | ~512 MB  |
-| Celery Beat      | ~128 MB  |
 | User Frontend    | ~256 MB  |
 | Admin Frontend   | ~256 MB  |
 | Nginx            | ~64 MB   |
@@ -867,30 +858,38 @@ All containers run via Docker Compose on this single VM.
 
 ### GitHub Actions Workflow (`.github/workflows/build.yml`)
 
-Three test jobs run **in parallel**; SonarCloud waits for all three to pass:
+Jobs 1–3 run **in parallel**; job 4 (E2E) waits for all three; job 5 (SonarCloud) waits for all four:
 
 ```
 push to main / any PR
-  ├─► job: test  (ubuntu-latest)
-  │     1. Write CI .env → src/backend/.env
-  │     2. docker compose up -d --build --wait  (PostgreSQL + Redis + PgBouncer + backend)
-  │     3. docker exec hermes_backend python -m pytest tests/unit/ --cov=app -q
-  │     4. docker cp coverage.xml out → upload artifact: coverage/backend/coverage.xml
+  ├─► job 1: test  (ubuntu-latest)
+  │     1. docker-compose.test.yml up --build --wait (PG + Redis + PgBouncer + backend)
+  │     2. docker exec test_backend alembic upgrade head
+  │     3. docker exec test_backend pytest tests/unit/ tests/integration/ --cov=app
+  │     4. docker cp test_backend:/app/coverage.xml → fix paths → upload artifact
   │     5. docker compose down -v  (always)
   │
-  ├─► job: test-frontend  (ubuntu-latest)
-  │     1. Write CI .env → src/frontend/.env
-  │     2. docker build -t hermes_frontend_ci .
-  │     3. docker run pytest --cov=app → upload artifact: coverage/frontend/coverage.xml
+  ├─► job 2: test-frontend  (ubuntu-latest)
+  │     1. docker build -t hermes_frontend_ci  (src/frontend/)
+  │     2. docker run --env-file .env.test -v coverage:/app/coverage pytest tests/ --cov=app
+  │     3. fix coverage paths → upload artifact: coverage/frontend/coverage.xml
   │     (no live services — Flask test client + MagicMock)
   │
-  ├─► job: test-frontend-admin  (ubuntu-latest)
-  │     1. Write CI .env → src/frontend-admin/.env
-  │     2. docker build -t hermes_frontend_admin_ci .
-  │     3. docker run pytest --cov=app → upload artifact: coverage/frontend-admin/coverage.xml
+  ├─► job 3: test-frontend-admin  (ubuntu-latest)
+  │     1. docker build -t hermes_frontend_admin_ci  (src/frontend-admin/)
+  │     2. docker run --env-file .env.test -v coverage:/app/coverage pytest tests/ --cov=app
+  │     3. fix coverage paths → upload artifact: coverage/frontend-admin/coverage.xml
   │     (no live services — Flask test client + MagicMock)
   │
-  └─► job: sonarcloud  (needs: [test, test-frontend, test-frontend-admin])
+  ├─► job 4: test-e2e  (ubuntu-latest, needs: [1, 2, 3])
+  │     1. docker-compose.test.yml up --build --wait (all services)
+  │     2. docker exec test_backend alembic upgrade head
+  │     3. seed CI admin + regular user; capture user JWT → E2E_USER_TOKEN
+  │     4. pip install tests/e2e/requirements.txt
+  │     5. pytest tests/e2e/
+  │     6. docker compose down -v  (always)
+  │
+  └─► job 5: sonarcloud  (needs: [1, 2, 3, 4])
         1. Download all 3 coverage artifacts
         2. SonarCloud scan with all 3 XMLs in sonar.python.coverage.reportPaths
 ```
@@ -900,7 +899,8 @@ push to main / any PR
 | `test` | Backend (FastAPI) | PostgreSQL + Redis + PgBouncer | `coverage/backend/coverage.xml` |
 | `test-frontend` | User frontend (Flask) | None | `coverage/frontend/coverage.xml` |
 | `test-frontend-admin` | Admin frontend (Flask) | None | `coverage/frontend-admin/coverage.xml` |
-| `sonarcloud` | — | Needs all 3 | Merges all 3 reports |
+| `test-e2e` | Cross-service | All 3 services | None |
+| `sonarcloud` | — | Needs all 4 | Merges all 3 reports |
 
 ### Branch Strategy
 
@@ -1052,9 +1052,6 @@ All items below are implemented.
   | Notification marked read | `user_id`, `notification_id` |
   | All notifications marked read | `user_id`, count |
   | Notification deleted | `user_id`, `notification_id` |
-  | Application tracked | `user_id`, `job_id` |
-  | Application updated | `user_id`, changed fields |
-  | Application removed | `user_id`, `application_id` |
 
 ---
 
@@ -1193,7 +1190,7 @@ Internet
 │  │ PostgreSQL 16  │  Redis 7               │  │
 │  │ (Docker volume) │ (password protected)  │  │
 │  ├─────────────────────────────────────────┤  │
-│  │ Celery Worker  │  Celery Beat           │  │
+│  │ Celery Worker                           │  │
 │  └─────────────────────────────────────────┘  │
 │                                               │
 │  Cron: pg_dump daily                          │
@@ -1246,10 +1243,8 @@ cp config/development/.env.frontend-admin.development src/frontend-admin/.env
 # Validate config before starting
 ./scripts/deployment/check_config.sh development
 
-cd src/backend        && docker compose up -d --build
-cd ../frontend        && docker compose up -d --build
-cd ../frontend-admin  && docker compose up -d --build
-cd ../nginx           && docker compose up -d   # must be last
+# All services in single root docker-compose.yml
+docker compose up -d --build
 ```
 
 Or use the deploy script: `./scripts/deployment/deploy_all.sh development`
@@ -1272,13 +1267,10 @@ cp config/production/.env.frontend-admin.production src/frontend-admin/.env
 ./scripts/deployment/deploy_all.sh production
 ```
 
-Or start each service individually (in order):
+Or start all services directly with the root compose file:
 
 ```bash
-cd src/backend        && docker compose up -d --build
-cd ../frontend        && docker compose up -d --build
-cd ../frontend-admin  && docker compose up -d --build
-cd ../nginx           && docker compose up -d   # must be last
+docker compose up -d --build
 ```
 
 ### Backup and Restore
@@ -1300,4 +1292,4 @@ cd ../nginx           && docker compose up -d   # must be last
 
 ## Related Documentation
 
-- [Workflow Diagrams](DIAGRAMS.md) — ASCII diagrams for user registration, job creation, matching, application tracking, admin dashboard, RBAC enforcement, and JWT token flows.
+- [Workflow Diagrams](DIAGRAMS.md) — ASCII diagrams for user registration, job creation, watch flow, deadline reminders, admin dashboard, RBAC enforcement, and JWT token flows.

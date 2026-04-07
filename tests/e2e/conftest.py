@@ -1,7 +1,7 @@
-"""Playwright E2E test configuration.
+"""E2E test configuration — HTTP-level cross-service tests using requests.
 
 All three services must be running before these tests execute.
-In CI, the e2e job starts all services via docker-compose before running pytest-playwright.
+In CI, the e2e job starts all services via docker-compose before running pytest.
 
 Service URLs are read from environment variables with sensible CI defaults:
   FRONTEND_URL       — user frontend  (default: http://localhost:8080)

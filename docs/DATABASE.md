@@ -8,12 +8,12 @@ Schema is managed with Alembic:
 
 | File | Description |
 |------|-------------|
-| `migrations/versions/0001_initial.py` | Complete initial schema — all 13 tables |
+| `migrations/versions/0001_initial.py` | Complete initial schema — all 13 user tables |
 | `migrations/versions/0002_add_followed_organizations.py` | Adds `followed_organizations JSONB NOT NULL DEFAULT '[]'` to `user_profiles` |
 
 **Apply migrations:**
 ```bash
-docker exec -w /app hermes_backend alembic upgrade head
+docker exec hermes_backend alembic -c /app/alembic.ini upgrade head
 ```
 
 ---
@@ -26,6 +26,7 @@ erDiagram
     USERS ||--o{ USER_WATCHES : tracks
     USERS ||--o{ NOTIFICATIONS : receives
     USERS ||--o{ USER_DEVICES : registers
+    USERS ||--o{ NOTIFICATION_DELIVERY_LOG : "is notified"
 
     ADMIN_USERS ||--o{ JOBS : creates
     ADMIN_USERS ||--o{ ADMIN_LOGS : performs
@@ -42,7 +43,6 @@ erDiagram
 
     NOTIFICATIONS ||--o{ NOTIFICATION_DELIVERY_LOG : attempts
     USER_DEVICES ||--o{ NOTIFICATION_DELIVERY_LOG : targets
-    USERS ||--o{ NOTIFICATION_DELIVERY_LOG : "is notified"
 ```
 
 > **Polymorphic constraint:** `admit_cards`, `answer_keys`, and `results` each have a DB-level
@@ -56,253 +56,326 @@ erDiagram
 ### 1. `users`
 Core user account table. Integrated with Firebase Auth.
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | UUID (PK) | Unique identifier |
-| `email` | String(255) | User email (nullable, unique, indexed) |
-| `password_hash` | String(255) | Legacy/Native password hash (nullable) |
-| `full_name` | String(255) | Full name of the user |
-| `phone` | String(20) | Contact number |
-| `firebase_uid` | String(128) | Firebase Auth UID (unique, indexed) |
-| `migration_status`| String(20) | `native`, `migrated`, or `legacy` |
-| `status` | String(20) | `active`, `suspended`, `deleted` |
-| `is_verified` | Boolean | Identity verification status |
-| `is_email_verified`| Boolean | Email verification status |
-| `is_phone_verified`| Boolean | Phone verification status (via OTP) |
-| `last_login` | DateTime | Timestamp of last activity |
-| `created_at` | DateTime | Account creation timestamp |
+| Column | Type | Nullable | Description |
+|--------|------|----------|-------------|
+| `id` | UUID (PK) | No | Auto-generated via `gen_random_uuid()` |
+| `email` | String(255) | Yes | User email (unique, indexed) |
+| `password_hash` | String(255) | Yes | Legacy/native password hash |
+| `full_name` | String(255) | No | Full name |
+| `phone` | String(20) | Yes | Contact number |
+| `firebase_uid` | String(128) | Yes | Firebase Auth UID (unique, indexed) |
+| `migration_status` | String(20) | No | `native` \| `migrated` \| `legacy`; default `native` |
+| `status` | String(20) | No | `ck_users_status`: `active` \| `suspended` \| `deleted`; default `active` |
+| `is_verified` | Boolean | No | Identity verification status; default `false` |
+| `is_email_verified` | Boolean | No | Email OTP verified; default `false` |
+| `is_phone_verified` | Boolean | No | Phone OTP verified; default `false` |
+| `last_login` | DateTime | Yes | Timestamp of last login |
+| `created_at` | DateTime | No | Account creation timestamp |
+| `updated_at` | DateTime | No | Last update timestamp |
+
+**Indexes:** `idx_users_email`, `idx_users_status`, `ix_users_firebase_uid` (unique)
+
+---
 
 ### 2. `user_profiles`
-Detailed profile information and preferences.
+Detailed profile information and preferences. One row per user (UNIQUE on `user_id`).
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | UUID (PK) | Unique identifier |
-| `user_id` | UUID (FK) | Reference to `users.id` (unique) |
-| `date_of_birth` | Date | Birth date |
-| `gender` | String(20) | Gender |
-| `category` | String(20) | Reservation category: `General`, `OBC`, `SC`, `ST`, `EWS`, `EBC`. Used for eligibility scoring in job recommendations. |
-| `is_pwd` | Boolean | Person with Disability status |
-| `is_ex_serviceman` | Boolean | Ex-serviceman status |
-| `state` | String(100) | Current state |
-| `city` | String(100) | Current city |
-| `pincode` | String(10) | Postal code |
-| `highest_qualification`| String(50) | Degree name |
-| `education` | JSONB | Detailed education history |
-| `notification_preferences` | JSONB | Channel toggles: `email`, `push`, `in_app`, `whatsapp` (each bool, default enabled) |
-| `preferred_states` | JSONB (List)| States of interest for jobs |
-| `preferred_categories` | JSONB (List)| Categories of interest |
-| `followed_organizations` | JSONB (List)| Organizations the user follows |
-| `fcm_tokens` | JSONB (List)| FCM device tokens — format: `[{"token": "...", "device_name": "...", "registered_at": "..."}]`. Read by NotificationService at push-send time. Invalid tokens auto-removed after send failure. |
+| Column | Type | Nullable | Description |
+|--------|------|----------|-------------|
+| `id` | UUID (PK) | No | Auto-generated |
+| `user_id` | UUID (FK → `users.id`) | No | CASCADE delete; UNIQUE |
+| `date_of_birth` | Date | Yes | Birth date |
+| `gender` | String(20) | Yes | `ck_profiles_gender`: `Male` \| `Female` \| `Other` |
+| `category` | String(20) | Yes | `ck_profiles_category`: `General` \| `OBC` \| `SC` \| `ST` \| `EWS` \| `EBC` |
+| `is_pwd` | Boolean | No | Person with Disability; default `false` |
+| `is_ex_serviceman` | Boolean | No | Ex-serviceman; default `false` |
+| `state` | String(100) | Yes | Current state |
+| `city` | String(100) | Yes | Current city |
+| `pincode` | String(10) | Yes | Postal code |
+| `highest_qualification` | String(50) | Yes | Degree name |
+| `education` | JSONB | No | Detailed education history; default `{}` |
+| `notification_preferences` | JSONB | No | Channel toggles (`email`, `push`, `in_app`, `whatsapp`); default `{}` |
+| `preferred_states` | JSONB | No | States of interest for jobs; default `[]` |
+| `preferred_categories` | JSONB | No | Categories of interest; default `[]` |
+| `fcm_tokens` | JSONB | No | FCM tokens: `[{"token":"…","device_name":"…","registered_at":"…"}]`; default `[]` |
+| `followed_organizations` | JSONB | No | Org names user follows; default `[]` *(added in migration 0002)* |
+| `updated_at` | DateTime | No | Last update timestamp |
+
+**Indexes:** GIN on `education`, GIN on `notification_preferences`
+
+---
 
 ### 3. `admin_users`
 Internal staff accounts (Admin/Operator).
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | UUID (PK) | Unique identifier |
-| `email` | String(255) | Admin email (unique) |
-| `password_hash` | String(255) | Bcrypt hash |
-| `full_name` | String(255) | Full name |
-| `role` | String(20) | `admin`, `operator` |
-| `department` | String(255) | Internal department |
-| `permissions` | JSONB | Granular permission flags |
-| `status` | String(20) | `active`, `suspended` |
+| Column | Type | Nullable | Description |
+|--------|------|----------|-------------|
+| `id` | UUID (PK) | No | Auto-generated |
+| `email` | String(255) | No | Admin email (unique) |
+| `password_hash` | String(255) | No | Bcrypt hash |
+| `full_name` | String(255) | No | Full name |
+| `phone` | String(20) | Yes | Contact number |
+| `role` | String(20) | No | `ck_admin_users_role`: `admin` \| `operator`; default `operator` |
+| `department` | String(255) | Yes | Internal department |
+| `permissions` | JSONB | No | Granular permission flags; default `{}` |
+| `status` | String(20) | No | `ck_admin_users_status`: `active` \| `suspended` \| `deleted`; default `active` |
+| `is_email_verified` | Boolean | No | Email verified status; default `false` |
+| `last_login` | DateTime | Yes | Timestamp of last login |
+| `created_at` | DateTime | No | Creation timestamp |
+| `updated_at` | DateTime | No | Last update timestamp |
+
+**Indexes:** `idx_admin_users_email`, `idx_admin_users_status`
+
+---
 
 ### 4. `jobs`
-Government job vacancies and employment opportunities. Document releases (admit cards, answer keys, results) are stored in their own tables (`admit_cards`, `answer_keys`, `results`) which link back via `job_id`.
+Government job vacancies. Document releases (admit cards, answer keys, results) are stored in their own tables and link back via `job_id`.
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | UUID (PK) | Unique identifier |
-| `job_title` | String(500) | Full title of the recruitment |
-| `slug` | String(500) | URL slug (unique) |
-| `organization` | String(255) | Hiring authority (SSC, UPSC, etc.) |
-| `department` | String(255) | Specific department |
-| `employment_type` | String(50) | `permanent`, `contract`, etc. |
-| `qualification_level`| String(50) | `10th`, `graduate`, etc. |
-| `total_vacancies` | Integer | Total seat count |
-| `vacancy_breakdown` | JSONB | Seat distribution by category/state |
-| `description` | Text | Full HTML description |
-| `eligibility` | JSONB | Age limits, physical standards, medical |
-| `application_details`| JSONB | Links, fees, instruction links |
-| `documents` | JSONB | Required docs (format, size) |
-| `salary` | JSONB | Pay scale, level, allowances |
-| `notification_date` | Date | Date of official notice |
-| `application_start` | Date | Start date for applying |
-| `application_end` | Date | Deadline for applying |
-| `exam_start` | Date | Date of first phase exam |
-| `status` | String(20) | `draft`, `active`, `expired`, `cancelled` |
-| `is_featured` | Boolean | Show in homepage carousel |
-| `is_urgent` | Boolean | Close to deadline |
-| `created_by` | UUID (FK) | Reference to `admin_users.id` |
+| Column | Type | Nullable | Description |
+|--------|------|----------|-------------|
+| `id` | UUID (PK) | No | Auto-generated |
+| `job_title` | String(500) | No | Full title of the recruitment |
+| `slug` | String(500) | No | URL slug (unique) |
+| `organization` | String(255) | No | Hiring authority (SSC, UPSC, etc.), indexed |
+| `department` | String(255) | Yes | Specific department |
+| `employment_type` | String(50) | Yes | `ck_jobs_employment_type`: `permanent` \| `temporary` \| `contract` \| `apprentice`; default `permanent` |
+| `qualification_level` | String(50) | Yes | `10th`, `graduate`, etc., indexed |
+| `total_vacancies` | Integer | Yes | Total seat count |
+| `vacancy_breakdown` | JSONB | No | Seat distribution by category/state; default `{}` |
+| `description` | Text | Yes | Full HTML description |
+| `short_description` | Text | Yes | One-liner for listing cards |
+| `eligibility` | JSONB | No | Age limits, physical standards, medical; default `{}` |
+| `application_details` | JSONB | No | Links, fees, instruction links; default `{}` |
+| `documents` | JSONB | No | Required docs (format, size); default `[]` |
+| `source_url` | Text | Yes | Official notification URL |
+| `notification_date` | Date | Yes | Date of official notice |
+| `application_start` | Date | Yes | Start date for applying |
+| `application_end` | Date | Yes | Deadline for applying, indexed |
+| `exam_start` | Date | Yes | Date of first phase exam |
+| `exam_end` | Date | Yes | Date of last phase exam |
+| `result_date` | Date | Yes | Expected result date |
+| `exam_details` | JSONB | No | Exam pattern, phases; default `{}` |
+| `salary_initial` | Integer | Yes | Minimum pay (INR) |
+| `salary_max` | Integer | Yes | Maximum pay (INR) |
+| `salary` | JSONB | No | Pay scale, level, allowances; default `{}` |
+| `selection_process` | JSONB | No | List of selection stages; default `[]` |
+| `fee_general` | Integer | Yes | Application fee — General/UR (INR) |
+| `fee_obc` | Integer | Yes | Application fee — OBC-NCL (INR) |
+| `fee_sc_st` | Integer | Yes | Application fee — SC/ST (INR) |
+| `fee_ews` | Integer | Yes | Application fee — EWS (INR) |
+| `fee_female` | Integer | Yes | Application fee — Female/PwBD (INR) |
+| `status` | String(20) | No | `ck_jobs_status`: `draft` \| `active` \| `expired` \| `cancelled` \| `upcoming`; default `draft` |
+| `is_featured` | Boolean | No | Show in homepage carousel; default `false` |
+| `is_urgent` | Boolean | No | Close to deadline flag; default `false` |
+| `views` | Integer | No | View counter; default `0` |
+| `created_by` | UUID (FK → `admin_users.id`) | Yes | Admin who created the job |
+| `source` | String(20) | No | `ck_jobs_source`: `manual` \| `pdf_upload`; default `manual` |
+| `source_pdf_path` | Text | Yes | Path to uploaded PDF (if source = `pdf_upload`) |
+| `published_at` | DateTime | Yes | When job was approved and published |
+| `created_at` | DateTime | No | Creation timestamp |
+| `updated_at` | DateTime | No | Last update timestamp |
+| `search_vector` | tsvector | — | GENERATED ALWAYS (job_title A, organization B, description C) — GIN indexed |
 
-### 5. `user_watches`
-Tracks which jobs or exams a user is watching for notification delivery.
+**Indexes:** `idx_jobs_organization`, `idx_jobs_status_created`, `idx_jobs_qual_level`, `idx_jobs_application_end`, `idx_jobs_org_status`, GIN on `eligibility`, GIN on `search_vector`
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | UUID (PK) | Unique identifier |
-| `user_id` | UUID (FK) | Reference to `users.id` |
-| `entity_type` | String(10) | `job` or `exam` |
-| `entity_id` | UUID | ID of the watched job or entrance exam |
+---
 
-> UNIQUE constraint on `(user_id, entity_type, entity_id)`. Max 100 watches per user.
-
-### 6. `notifications`
+### 5. `notifications`
 Master records for all system notifications.
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | UUID (PK) | Unique identifier |
-| `user_id` | UUID (FK) | Target user |
-| `type` | String(60) | `job_alert`, `application_update`, `system` |
-| `title` | String(500) | Short title |
-| `message` | Text | Body content |
-| `action_url` | Text | Click-through link |
-| `is_read` | Boolean | Read status (in_app) |
-| `sent_via` | ARRAY(String) | Channels used (`push`, `email`, `sms`) |
-| `priority` | String(10) | `low`, `medium`, `high` |
+| Column | Type | Nullable | Description |
+|--------|------|----------|-------------|
+| `id` | UUID (PK) | No | Auto-generated |
+| `user_id` | UUID (FK → `users.id`) | No | Target user; CASCADE delete |
+| `entity_type` | String(50) | Yes | Type of entity that triggered this (`job`, `exam`, etc.) |
+| `entity_id` | UUID | Yes | ID of the triggering entity |
+| `type` | String(60) | No | Notification type (`job_alert`, `system`, etc.) |
+| `title` | String(500) | No | Short title |
+| `message` | Text | No | Body content |
+| `action_url` | Text | Yes | Click-through link |
+| `is_read` | Boolean | No | In-app read status; default `false` |
+| `sent_via` | ARRAY(String) | Yes | Channels actually used (e.g. `['push', 'email']`) |
+| `priority` | String(10) | No | `ck_notifications_priority`: `low` \| `medium` \| `high`; default `medium` |
+| `created_at` | DateTime | No | Creation timestamp |
+| `read_at` | DateTime | Yes | When notification was read |
+| `expires_at` | DateTime | No | Auto-delete after 90 days; default `NOW() + 90 days` |
+
+**Indexes:** `idx_notifications_user_read`, `idx_notifications_user_created`, `idx_notifications_expires`
+
+---
+
+### 6. `admin_logs`
+Audit logs for staff actions. Auto-expire after 30 days.
+
+| Column | Type | Nullable | Description |
+|--------|------|----------|-------------|
+| `id` | UUID (PK) | No | Auto-generated |
+| `admin_id` | UUID (FK → `admin_users.id`) | No | Admin who performed the action |
+| `action` | String(100) | No | `create_job`, `suspend_user`, `admin_login`, etc. |
+| `resource_type` | String(100) | Yes | `job`, `user`, `entrance_exam`, etc. |
+| `resource_id` | UUID | Yes | Affected resource ID |
+| `details` | Text | Yes | Human-readable summary |
+| `changes` | JSONB | No | Before/after snapshot; default `{}` |
+| `ip_address` | INET | Yes | Source IP address |
+| `user_agent` | Text | Yes | Browser/client user-agent |
+| `timestamp` | DateTime | No | When the action occurred; default `NOW()` |
+| `expires_at` | DateTime | No | Auto-delete after 30 days; default `NOW() + 30 days` |
+
+**Indexes:** `idx_admin_logs_admin_ts`, `idx_admin_logs_expires`
+
+---
 
 ### 7. `user_devices`
 Device registry — stores device metadata. **Push notifications read FCM tokens from `user_profiles.fcm_tokens`, not this table.** `user_devices` exists for future use (device-level fingerprint deduplication, device management UI) but is not populated by the current FCM token registration API.
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | UUID (PK) | Unique identifier |
-| `user_id` | UUID (FK) | Owner of the device |
-| `fcm_token` | String(500) | FCM token (not used for push delivery — see `user_profiles.fcm_tokens`) |
-| `device_name` | String(255) | "Chrome on Windows", "iPhone 13" |
-| `device_type` | String(20) | `web`, `pwa`, `ios`, `android` |
-| `device_fingerprint`| String(255) | Browser fingerprint (future use for deduplication) |
-| `is_active` | Boolean | Token validity status |
+| Column | Type | Nullable | Description |
+|--------|------|----------|-------------|
+| `id` | UUID (PK) | No | Auto-generated |
+| `user_id` | UUID (FK → `users.id`) | No | Device owner; CASCADE delete |
+| `fcm_token` | String(500) | Yes | FCM token (nullable; unique partial index where not null) |
+| `device_name` | String(255) | No | "Chrome on Windows", "iPhone 13"; default `Unknown` |
+| `device_type` | String(20) | No | `ck_devices_device_type`: `web` \| `pwa` \| `android` \| `ios`; default `web` |
+| `device_fingerprint` | String(255) | Yes | Browser fingerprint |
+| `is_active` | Boolean | No | Token validity; default `true` |
+| `last_active_at` | DateTime | No | Last seen timestamp; default `NOW()` |
+| `created_at` | DateTime | No | Registration timestamp |
 
-### 8. `admin_logs`
-Audit logs for staff actions.
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | UUID (PK) | Unique identifier |
-| `admin_id` | UUID (FK) | Admin who took the action |
-| `action` | String(100) | `create_job`, `suspend_user`, etc. |
-| `resource_type` | String(100) | `job`, `user`, `entrance_exam`, etc. |
-| `resource_id` | UUID | Affected resource ID |
-| `details` | Text | Human-readable summary |
-| `changes` | JSONB | Before/After snapshot |
-| `ip_address` | INET | Source IP |
-
-### 9. `notification_delivery_log`
-Channel-level delivery tracking.
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | UUID (PK) | Unique identifier |
-| `notification_id` | UUID (FK) | Parent notification |
-| `channel` | String(20) | `ck_delivery_channel`: `in_app`, `push`, `email`, `whatsapp`, `telegram` |
-| `status` | String(20) | `ck_delivery_status`: `pending`, `queued`, `sent`, `delivered`, `failed`, `skipped`. Email is set to `queued` when the Celery task is dispatched. |
-| `device_id` | UUID (FK) | Targeted device (for push) |
-| `error_message` | Text | Failure reason (from OCI/FCM) |
-| `delivered_at` | DateTime | Verified delivery time |
+**Indexes:** `idx_devices_user_id`, `idx_devices_fcm_token` (unique partial), `idx_devices_fingerprint`
 
 ---
 
-### 10. `admit_cards`
+### 8. `notification_delivery_log`
+Channel-level delivery tracking per notification attempt.
+
+| Column | Type | Nullable | Description |
+|--------|------|----------|-------------|
+| `id` | UUID (PK) | No | Auto-generated |
+| `notification_id` | UUID (FK → `notifications.id`) | No | Parent notification; CASCADE delete |
+| `user_id` | UUID (FK → `users.id`) | No | Target user; CASCADE delete |
+| `channel` | String(20) | No | `ck_delivery_channel`: `in_app` \| `push` \| `email` \| `whatsapp` \| `telegram` |
+| `status` | String(20) | No | `ck_delivery_status`: `pending` \| `sent` \| `delivered` \| `failed`; default `pending` |
+| `device_id` | UUID (FK → `user_devices.id`) | Yes | Targeted device (push only); SET NULL on delete |
+| `error_message` | Text | Yes | Failure reason (from OCI/FCM) |
+| `attempted_at` | DateTime | Yes | When delivery was attempted |
+| `delivered_at` | DateTime | Yes | Verified delivery time |
+| `created_at` | DateTime | No | Record creation timestamp |
+
+**Indexes:** `idx_delivery_log_notif`, `idx_delivery_log_user`
+
+---
+
+### 9. `admit_cards`
 Per-phase admit card links. Linked to either a **job** or an **entrance exam** (polymorphic).
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | UUID (PK) | Unique identifier |
-| `job_id` | UUID (FK, nullable) | Reference to `jobs.id` |
-| `exam_id` | UUID (FK, nullable) | Reference to `entrance_exams.id` |
-| `phase_number` | SmallInteger | Exam phase (1, 2, …) |
-| `title` | String(255) | E.g. "SSC CGL Tier-1 2025 Admit Card" |
-| `download_url` | Text | Link to download the admit card |
-| `valid_from` | Date | Validity start (exam start date) |
-| `valid_until` | Date | Validity end (exam end date) |
-| `notes` | Text | Important instructions for candidates |
-| `published_at` | DateTime | When this admit card was released |
+| Column | Type | Nullable | Description |
+|--------|------|----------|-------------|
+| `id` | UUID (PK) | No | Auto-generated |
+| `job_id` | UUID (FK → `jobs.id`, nullable) | Yes | CASCADE delete |
+| `exam_id` | UUID (FK → `entrance_exams.id`, nullable) | Yes | CASCADE delete |
+| `phase_number` | SmallInteger | Yes | Exam phase (1, 2, …) |
+| `title` | String(255) | No | E.g. "SSC CGL Tier-1 2025 Admit Card" |
+| `download_url` | Text | No | Link to download the admit card |
+| `valid_from` | Date | Yes | Validity start (exam start date) |
+| `valid_until` | Date | Yes | Validity end (exam end date) |
+| `notes` | Text | Yes | Important instructions for candidates |
+| `published_at` | DateTime | Yes | When this admit card was released |
+| `created_at` | DateTime | No | Creation timestamp |
+| `updated_at` | DateTime | No | Last update timestamp |
 
-> CHECK: `(job_id IS NOT NULL AND exam_id IS NULL) OR (job_id IS NULL AND exam_id IS NOT NULL)`
+> `ck_admit_cards_source`: `(job_id IS NOT NULL AND exam_id IS NULL) OR (job_id IS NULL AND exam_id IS NOT NULL)`
+
+**Indexes:** `idx_admit_cards_job`, `idx_admit_cards_exam`, `idx_admit_cards_pub`
 
 ---
 
-### 11. `answer_keys`
+### 10. `answer_keys`
 Per-phase answer keys (provisional or final). Polymorphic.
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | UUID (PK) | Unique identifier |
-| `job_id` | UUID (FK, nullable) | Reference to `jobs.id` |
-| `exam_id` | UUID (FK, nullable) | Reference to `entrance_exams.id` |
-| `phase_number` | SmallInteger | Exam phase |
-| `title` | String(255) | E.g. "JEE Main Session 1 Provisional Answer Key" |
-| `answer_key_type` | String(20) | `ck_answer_key_type`: `provisional`, `final` |
-| `files` | JSONB | Array of `{label, url}` — one entry per paper/set |
-| `objection_url` | Text | URL to raise objections (provisional keys only) |
-| `objection_deadline` | Date | Deadline for filing objections |
-| `published_at` | DateTime | Release timestamp |
+| Column | Type | Nullable | Description |
+|--------|------|----------|-------------|
+| `id` | UUID (PK) | No | Auto-generated |
+| `job_id` | UUID (FK → `jobs.id`, nullable) | Yes | CASCADE delete |
+| `exam_id` | UUID (FK → `entrance_exams.id`, nullable) | Yes | CASCADE delete |
+| `phase_number` | SmallInteger | Yes | Exam phase |
+| `title` | String(255) | No | E.g. "JEE Main Session 1 Provisional Answer Key" |
+| `answer_key_type` | String(20) | No | `ck_answer_key_type`: `provisional` \| `final`; default `provisional` |
+| `files` | JSONB | No | Array of `{label, url}` — one entry per paper/set; default `[]` |
+| `objection_url` | Text | Yes | URL to raise objections (provisional keys only) |
+| `objection_deadline` | Date | Yes | Deadline for filing objections |
+| `published_at` | DateTime | Yes | Release timestamp |
+| `created_at` | DateTime | No | Creation timestamp |
+| `updated_at` | DateTime | No | Last update timestamp |
+
+> `ck_answer_keys_source`: `(job_id IS NOT NULL AND exam_id IS NULL) OR (job_id IS NULL AND exam_id IS NOT NULL)`
+
+**Indexes:** `idx_answer_keys_job`, `idx_answer_keys_exam`, `idx_answer_keys_type`
 
 ---
 
-### 12. `results`
+### 11. `results`
 Per-phase results (shortlist, cutoff, merit list, final). Polymorphic.
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | UUID (PK) | Unique identifier |
-| `job_id` | UUID (FK, nullable) | Reference to `jobs.id` |
-| `exam_id` | UUID (FK, nullable) | Reference to `entrance_exams.id` |
-| `phase_number` | SmallInteger | Exam phase |
-| `title` | String(255) | E.g. "NEET PG 2026 Result & Score Card" |
-| `result_type` | String(20) | `ck_result_type`: `shortlist`, `cutoff`, `merit_list`, `final` |
-| `download_url` | Text | Link to view/download the result |
-| `cutoff_marks` | JSONB | Category-wise cutoff marks `{UR: 138, OBC: 108, ...}` |
-| `total_qualified` | Integer | Number of candidates who qualified |
-| `notes` | Text | Additional notes |
-| `published_at` | DateTime | Release timestamp |
+| Column | Type | Nullable | Description |
+|--------|------|----------|-------------|
+| `id` | UUID (PK) | No | Auto-generated |
+| `job_id` | UUID (FK → `jobs.id`, nullable) | Yes | CASCADE delete |
+| `exam_id` | UUID (FK → `entrance_exams.id`, nullable) | Yes | CASCADE delete |
+| `phase_number` | SmallInteger | Yes | Exam phase |
+| `title` | String(255) | No | E.g. "NEET PG 2026 Result & Score Card" |
+| `result_type` | String(20) | No | `ck_result_type`: `shortlist` \| `cutoff` \| `merit_list` \| `final` |
+| `download_url` | Text | Yes | Link to view/download the result |
+| `cutoff_marks` | JSONB | Yes | Category-wise cutoff marks `{"UR": 138, "OBC": 108, ...}` |
+| `total_qualified` | Integer | Yes | Number of candidates who qualified |
+| `notes` | Text | Yes | Additional notes |
+| `published_at` | DateTime | Yes | Release timestamp |
+| `created_at` | DateTime | No | Creation timestamp |
+| `updated_at` | DateTime | No | Last update timestamp |
+
+> `ck_results_source`: `(job_id IS NOT NULL AND exam_id IS NULL) OR (job_id IS NULL AND exam_id IS NOT NULL)`
+
+**Indexes:** `idx_results_job`, `idx_results_exam`, `idx_results_pub`
 
 ---
 
-### 13. `entrance_exams`
-Admission / entrance exams (NEET, JEE, CLAT, CAT, GATE, CUET etc.) — **separate from `job_vacancies`**.
+### 12. `entrance_exams`
+Admission / entrance exams (NEET, JEE, CLAT, CAT, GATE, CUET etc.) — separate from `jobs`.
 These are educational admissions, not government job recruitments.
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | UUID (PK) | Unique identifier |
-| `slug` | String(500) | URL slug (unique) |
-| `exam_name` | String(500) | E.g. "NTA NEET PG 2026 — Medical PG Entrance" |
-| `conducting_body` | String(255) | E.g. "National Testing Agency" |
-| `counselling_body` | String(255) | E.g. "MCC", "JoSAA", "CLAT Consortium" |
-| `exam_type` | String(20) | `ck_entrance_exam_type`: `ug`, `pg`, `doctoral`, `lateral` |
-| `stream` | String(30) | `ck_entrance_exam_stream`: `medical`, `engineering`, `law`, `management`, `arts_science`, `general` |
-| `eligibility` | JSONB | `{min_qualification, attempts_limit, age_limit, registration, ...}` |
-| `exam_details` | JSONB | `{exam_pattern: [{phase, subjects, total_marks, duration_minutes, negative_marking, exam_mode}]}` |
-| `selection_process` | JSONB | `[{phase, name, qualifying}]` |
-| `seats_info` | JSONB | `{total_seats, by_category, note}` — institution/seat counts |
-| `application_start` | Date | Registration opens |
-| `application_end` | Date | Registration deadline |
-| `exam_date` | Date | Date of main exam |
-| `result_date` | Date | Expected result date |
-| `counselling_start` | Date | Counselling round start |
-| `fee_general` | Integer | Application fee — General/UR (INR) |
-| `fee_obc` | Integer | Application fee — OBC-NCL (INR) |
-| `fee_sc_st` | Integer | Application fee — SC/ST (INR) |
-| `fee_ews` | Integer | Application fee — EWS (INR) |
-| `fee_female` | Integer | Application fee — Female/PwBD (INR) |
-| `description` | Text | Full HTML description |
-| `short_description` | Text | One-liner for listing cards |
-| `source_url` | Text | Official website URL |
-| `status` | String(20) | `ck_entrance_exam_status`: `upcoming`, `active`, `completed`, `cancelled` |
-| `is_featured` | Boolean | Highlight in listings |
-| `views` | Integer | View count (incremented on detail page load) |
-| `published_at` | DateTime | When first published |
-| `search_vector` | tsvector | GENERATED ALWAYS — GIN-indexed FTS on exam_name + conducting_body + description |
+| Column | Type | Nullable | Description |
+|--------|------|----------|-------------|
+| `id` | UUID (PK) | No | Auto-generated |
+| `slug` | String(500) | No | URL slug (unique) |
+| `exam_name` | String(500) | No | E.g. "NTA NEET PG 2026 — Medical PG Entrance" |
+| `conducting_body` | String(255) | No | E.g. "National Testing Agency" |
+| `counselling_body` | String(255) | Yes | E.g. "MCC", "JoSAA", "CLAT Consortium" |
+| `exam_type` | String(20) | No | `ck_entrance_exam_type`: `ug` \| `pg` \| `doctoral` \| `lateral`; default `pg` |
+| `stream` | String(30) | No | `ck_entrance_exam_stream`: `medical` \| `engineering` \| `law` \| `management` \| `arts_science` \| `general`; default `general` |
+| `eligibility` | JSONB | No | `{min_qualification, attempts_limit, age_limit, ...}`; default `{}` |
+| `exam_details` | JSONB | No | `{exam_pattern: [{phase, subjects, total_marks, duration_minutes, negative_marking, exam_mode}]}`; default `{}` |
+| `selection_process` | JSONB | No | `[{phase, name, qualifying}]`; default `[]` |
+| `seats_info` | JSONB | Yes | `{total_seats, by_category, note}` — institution/seat counts |
+| `application_start` | Date | Yes | Registration opens |
+| `application_end` | Date | Yes | Registration deadline |
+| `exam_date` | Date | Yes | Date of main exam |
+| `result_date` | Date | Yes | Expected result date |
+| `counselling_start` | Date | Yes | Counselling round start |
+| `fee_general` | Integer | Yes | Application fee — General/UR (INR) |
+| `fee_obc` | Integer | Yes | Application fee — OBC-NCL (INR) |
+| `fee_sc_st` | Integer | Yes | Application fee — SC/ST (INR) |
+| `fee_ews` | Integer | Yes | Application fee — EWS (INR) |
+| `fee_female` | Integer | Yes | Application fee — Female/PwBD (INR) |
+| `description` | Text | Yes | Full HTML description |
+| `short_description` | Text | Yes | One-liner for listing cards |
+| `source_url` | Text | Yes | Official website URL |
+| `status` | String(20) | No | `ck_entrance_exam_status`: `upcoming` \| `active` \| `completed` \| `cancelled`; default `active` |
+| `is_featured` | Boolean | No | Highlight in listings; default `false` |
+| `views` | Integer | No | View counter; default `0` |
+| `published_at` | DateTime | Yes | When first published |
+| `created_at` | DateTime | No | Creation timestamp |
+| `updated_at` | DateTime | No | Last update timestamp |
+| `search_vector` | tsvector | — | GENERATED ALWAYS (exam_name A, conducting_body B, description C) — GIN indexed |
 
-**Indexes:**
-- `idx_entrance_exams_search` — GIN index on `search_vector` for full-text search
-- `idx_entrance_exams_slug` — UNIQUE index on `slug`
-- `idx_entrance_exams_stream_status` — Composite index on `(stream, status, created_at)` for filtered listings
+**Indexes:** `idx_entrance_exams_slug` (unique), `idx_entrance_exams_stream_status`, `idx_entrance_exams_search` (GIN)
 
 **Key design difference from `jobs`:**
 
@@ -311,10 +384,26 @@ These are educational admissions, not government job recruitments.
 | Outcome | Employment (govt job) | Education (college/IIT/NLU seat) |
 | Vacancies | `total_vacancies` + `vacancy_breakdown` | `seats_info` (seats by institution) |
 | Salary | `salary_initial`, `salary_max` | — (not applicable) |
-| Counselling | — | `counselling_body` |
+| Counselling | — | `counselling_body`, `counselling_start` |
 | Attempts | — | `eligibility.attempts_limit` |
 
 ---
 
-### 13. `alembic_version`
-Alembic migration state tracker. Single row with the current revision ID.
+### 13. `user_watches`
+Tracks which jobs or exams a user is watching for notification delivery.
+
+| Column | Type | Nullable | Description |
+|--------|------|----------|-------------|
+| `id` | UUID (PK) | No | Auto-generated |
+| `user_id` | UUID (FK → `users.id`) | No | CASCADE delete |
+| `entity_type` | String(10) | No | `ck_user_watches_entity_type`: `job` \| `exam` |
+| `entity_id` | UUID | No | ID of the watched job or entrance exam |
+| `created_at` | DateTime | No | When the watch was created |
+
+> UNIQUE constraint `uq_user_watch` on `(user_id, entity_type, entity_id)`. Max 100 watches per user (enforced in application layer).
+
+**Indexes:** `ix_user_watches_user_id`, `ix_user_watches_entity`
+
+---
+
+> **`alembic_version`** — Alembic-managed table, single row tracking the current migration revision. Not a user-defined table.

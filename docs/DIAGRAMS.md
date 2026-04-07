@@ -2,8 +2,7 @@
 
 ## 1. System Architecture
 
-Backend, User Frontend, and Admin Frontend are independent services with
-separate Docker Compose files. They communicate via HTTP REST API.
+All services run from a single root `docker-compose.yml`. They communicate via HTTP REST API.
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────┐
@@ -37,37 +36,35 @@ separate Docker Compose files. They communicate via HTTP REST API.
 │  USER FRONTEND      │  │  ADMIN FRONTEND     │  │  BACKEND SERVICE       │
 │  src/frontend/      │  │  src/frontend-admin/│  │  src/backend/          │
 │                     │  │                     │  │                        │
-│  1 container        │  │  1 container        │  │  5 containers:         │
+│  1 container        │  │  1 container        │  │  4 containers:         │
 │  Port: 8080         │  │  Port: 8081         │  │  1. PostgreSQL (5432)  │
 │  Flask/Jinja2       │  │  Flask/Jinja2       │  │  2. Redis (6379)       │
 │                     │  │                     │  │  3. Backend API (8000) │
 │  Public users:      │  │  Staff only:        │  │  4. Celery Worker      │
-│  - Register         │  │  - Admin login      │  │  5. Celery Beat        │
-│  - Login            │  │  - Operator login   │  │                        │
-│  - Browse jobs      │  │  - Manage jobs      │  │  JWT Auth + RBAC       │
-│                     │  │  - Manage users     │  │  /api/v1/* endpoints   │
-│  Calls backend via  │  │                     │  │                        │
-│  BACKEND_API_URL    │  │  Calls backend via  │  │  Persistent storage:   │
-│                     │  │  BACKEND_API_URL    │  │  PostgreSQL + Redis    │
-│  Network:           │  │                     │  │  AOF persistence       │
-│  src_frontend_      │  │  Network:           │  └──────────┬─────────────┘
-│  network            │  │  src_frontend_      │             │
-└─────────────────────┘  │  admin_network      │             ▼
-                         │                     │  ┌──────────────────────┐
-         Deploy          │  Firewall port 8081 │  │  External Services   │
-         Separately!     │  from public        │  │  - OCI Email Delivery│
-         Can scale       │  internet!          │  │  - Firebase FCM      │
-         independently!  └─────────────────────┘  └──────────────────────┘
+│  - Register         │  │  - Admin login      │  │                        │
+│  - Login            │  │  - Operator login   │  │  JWT Auth + RBAC       │
+│  - Browse jobs      │  │  - Manage jobs      │  │  /api/v1/* endpoints   │
+│                     │  │  - Manage users     │  │                        │
+│  Calls backend via  │  │                     │  │  Persistent storage:   │
+│  BACKEND_API_URL    │  │  Calls backend via  │  │  PostgreSQL + Redis    │
+│                     │  │  BACKEND_API_URL    │  │  AOF persistence       │
+│  Network:           │  │                     │  └──────────┬─────────────┘
+│  hermes_network     │  │  Network:           │             │
+│                     │  │  hermes_network     │             ▼
+└─────────────────────┘  │                     │  ┌──────────────────────┐
+                         │  Firewall port 8081 │  │  External Services   │
+                         │  from public        │  │  - OCI Email Delivery│
+                         │  internet!          │  │  - Firebase FCM      │
+                         └─────────────────────┘  └──────────────────────┘
 
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│  Can deploy on same server (dev) or different servers (prod)                 │
-│  Frontends: Server 1                   Backend: Server 2                     │
-│  Each service has independent docker-compose.yml                             │
+│  All services defined in root docker-compose.yml (dev)                       │
+│  and docker-compose.test.yml (CI). Single hermes_network.                    │
 └──────────────────────────────────────────────────────────────────────────────┘
 
 Architecture properties:
-- Three separated services: User Frontend (8080), Admin Frontend (8081), Backend (8000)
-- Each service has its own docker-compose.yml and Docker network
+- Three services: User Frontend (8080), Admin Frontend (8081), Backend (8000)
+- All share one Docker network (hermes_network) defined in root docker-compose.yml
 - Both frontends call Backend via HTTP REST API
 - Admin Frontend at port 8081 — can be firewalled from public internet
 - Any frontend can be replaced (Flask → React → React Native) without touching Backend
@@ -237,7 +234,8 @@ Admin/Operator → Admin Frontend (port 8081)
      ▼
 ┌────────────────────────┐
 │ 🔒 PERMISSION CHECK    │
-│ Is user.role = admin?  │
+│ Is user.role = admin   │
+│ or operator?           │
 └────┬───────────────────┘
      │
      ├─ NO → 403 Forbidden
@@ -312,8 +310,9 @@ Admin/Operator → Admin Frontend (port 8081)
      ▼                                           │
 ┌──────────────────────────────────┐             │
 │ 🔒 PERMISSION CHECK              │             │
-│ @require_role('admin')           │             │
-│ Is user.role == 'admin'?         │             │
+│ @require_operator                │             │
+│ Is user.role == 'admin'          │             │
+│ or 'operator'?                   │             │
 └────┬───────────────────────────────┘           │
      │                                           │
      ├─ NO (403 Forbidden) → Return error        │
@@ -332,8 +331,8 @@ Admin/Operator → Admin Frontend (port 8081)
      ▼
 ┌──────────────────────┐
 │ Save to PostgreSQL   │
-│ (job_vacancies       │
-│  table)              │
+│ (`jobs` table)       │
+│                      │
 └────┬─────────────────┘
      │
      ▼
@@ -343,33 +342,31 @@ Admin/Operator → Admin Frontend (port 8081)
 └────┬─────────────────┘
      │
      ▼
-┌──────────────────────┐
-│ Trigger Celery Task: │
-│ "match_new_job_      │
-│  with_users"         │
-└────┬─────────────────┘
+┌──────────────────────────────────┐
+│ If status == 'active':           │
+│ Trigger Celery Task:             │
+│ notify_watchers_on_update        │
+│ (entity_type='job', entity_id)   │
+└────┬─────────────────────────────┘
      │
      ▼
-┌─────────────────────────────────┐
-│ Celery Task Execution:          │
-│                                 │
-│ 1. Fetch all active users       │
-│ 2. For each user:               │
-│    ├─► Check profile eligibility│
-│    ├─► Check preferences match  │
-│    └─► Calculate match score    │
-│ 3. If eligible & preferences    │
-│    match:                       │
-│    └─► Create notification      │
-└────┬────────────────────────────┘
+┌──────────────────────────────────┐
+│ Celery Task Execution:           │
+│                                  │
+│ 1. Find all user_watches rows    │
+│    WHERE entity_type='job'       │
+│    AND entity_id=job.id          │
+│ 2. For each watcher:             │
+│    └─► smart_notify(staggered)   │
+└────┬─────────────────────────────┘
      │
      ▼
 ┌──────────────────────┐
 │ Send notifications   │
-│ to matched users via │
+│ to watchers via      │
 │ smart_notify (5ch):  │
-│ - In-app             │
-│ - Push (FCM)         │
+│ - In-app (T+0)       │
+│ - Push (T+0)         │
 │ - Email (T+15min)    │
 │ - Telegram (T+15min) │
 │ - WhatsApp (T+1hr)   │
@@ -388,13 +385,13 @@ Admin/Operator → Admin Frontend (port 8081)
 └─────────┘
 ```
 
-## 4. Job Matching & Notification Flow
+## 4. Deadline Reminder & Watcher Notification Flow
 
 ```
 ┌─────────────────────┐
-│ Trigger: New Job    │
-│ Created or Daily    │
-│ Scheduled Task      │
+│ Trigger: Daily Beat  │
+│ Task at 08:00 UTC    │
+│ OR: Job/Exam updated │
 └─────────┬───────────┘
           │
           ▼
@@ -404,13 +401,14 @@ Admin/Operator → Admin Frontend (port 8081)
           │
           ▼
 ┌─────────────────────┐
-│ Get All Active      │
-│ Users from DB       │
+│ Fetch user_watches  │
+│ WHERE entity_type=  │
+│ 'job' or 'exam'     │
 └─────────┬───────────┘
           │
           ▼
      ┌────────────────────────────────┐
-     │  FOR EACH USER:                │
+     │  FOR EACH WATCHER:             │
      │  ┌──────────────────────────┐  │
      │  │ Fetch User Profile       │  │
      │  └────────────┬─────────────┘  │
@@ -562,9 +560,8 @@ Admin/Operator → Admin Frontend (port 8081)
                       ┌────────────────┐
                       │ END            │
                       └────────────────┘
-```
 
-## 5. User Job Application & Tracking Flow
+## 5. Watch Job / Exam Flow
 
 ```
 ┌─────────┐
@@ -573,175 +570,60 @@ Admin/Operator → Admin Frontend (port 8081)
      │
      ▼
 ┌────────────────────────────────────┐
-│ User browses jobs                  │
-│ (Dashboard/Search)                 │
+│ User views job or exam detail page │
 └────┬───────────────────────────────┘
      │
      ▼
 ┌────────────────────────────────────┐
-│ Click on job to view               │◄────────┐
-│ full details                       │         │
-└────┬───────────────────────────────┘         │
-     │                                         │
-     ▼                                         │
-┌────────────────────────────────────┐         │
-│ Job Details Page Shows:            │         │
-│ - Job Title & Organization         │         │
-│ - Eligibility Criteria             │         │
-│ - Important Dates                  │         │
-│ - Application Fee                  │         │
-│ - Selection Process                │         │
-│ - Official Website Link            │         │
-│                                    │         │
-│ ┌────────────────────────────────┐ │         │
-│ │ [Apply Now] [Add to Tracker]   │ │         │
-│ │ [Mark as Priority]             │ │         │
-│ └────────────────────────────────┘ │         │
-└────┬───────────────────────────────┘         │
-     │                                         │
-     ▼                                         │
-┌──────────────────────┐                       │
-│ User clicks          │                       │
-│ "Add to Tracker"     │                       │
-└────┬─────────────────┘                       │
-     │                                         │
-     ▼                                         │
-┌──────────────────────┐                       │
-│ Check if already     │                       │
-│ tracked              │                       │
-└────┬─────────────────┘                       │
-     │                                         │
-     ▼                                         │
-┌──────────────────────┐      ┌────────────────┴┐
-│ Already tracked?     │─────►│ Show message:   │
-└────┬─────────────────┘ YES  │ "Already in     │
-     │                        │  tracker"       │
-     │ NO                     └─────────────────┘
+│ Click [Watch] button               │
+│ POST /api/v1/jobs/{id}/watch       │
+│   OR                               │
+│ POST /api/v1/entrance-exams/       │
+│      {id}/watch                    │
+└────┬───────────────────────────────┘
+     │
+     ▼
+┌──────────────────────┐      ┌─────────────────┐
+│ Already watching?    │─────►│ 200: "Already   │
+└────┬─────────────────┘ YES  │  watching"      │
+     │                        └─────────────────┘
+     │ NO
+     ▼
+┌──────────────────────┐      ┌─────────────────┐
+│ Watch count ≥ 100?   │─────►│ 400: max 100    │
+└────┬─────────────────┘ YES  │  watches allowed│
+     │                        └─────────────────┘
+     │ NO
      ▼
 ┌────────────────────────────────────┐
-│ Show Application Form:             │
-│                                    │
-│ ┌────────────────────────────────┐ │
-│ │ Application Number (optional)  │ │
-│ │ ┌────────────────────────────┐ │ │
-│ │ │ [________________]         │ │ │
-│ │ └────────────────────────────┘ │ │
-│ │                                │ │
-│ │ Mark as Priority? [✓]          │ │
-│ │                                │ │
-│ │ Personal Notes:                │ │
-│ │ ┌────────────────────────────┐ │ │
-│ │ │                            │ │ │
-│ │ │ (Text area for notes)      │ │ │
-│ │ │                            │ │ │
-│ │ └────────────────────────────┘ │ │
-│ │                                │ │
-│ │ Enable Reminders:              │ │
-│ │ [✓] Application Deadline       │ │
-│ │ [✓] Admit Card Release         │ │
-│ │ [✓] Exam Date                  │ │
-│ │ [✓] Result Declaration         │ │
-│ │                                │ │
-│ │ [ Submit ]  [ Cancel ]         │ │
-│ └────────────────────────────────┘ │
+│ Insert user_watches row:           │
+│ { user_id, entity_type, entity_id} │
+│ UNIQUE(user_id, entity_type,       │
+│        entity_id) enforced in DB   │
 └────┬───────────────────────────────┘
      │
      ▼
 ┌────────────────────────────────────┐
-│ Create application                 │
-│ record in DB                       │
-│ (User Job Applications)            │
+│ 200: { watching: true,             │
+│       message: "Now watching" }    │
 └────┬───────────────────────────────┘
      │
      ▼
 ┌────────────────────────────────────┐
-│ Generate reminder                  │
-│ entries based on                   │
-│ job important dates                │
+│ Daily Beat Task (08:00 UTC):       │
+│ send_deadline_reminders finds      │
+│ all watches where entity's         │
+│ application_end is in T-7/T-3/T-1 │
+│ → smart_notify(staggered) per user │
 └────┬───────────────────────────────┘
      │
      ▼
 ┌────────────────────────────────────┐
-│ If marked as                       │
-│ priority, set                      │
-│ priority flag                      │
-└────┬───────────────────────────────┘
-     │
-     ▼
-┌────────────────────────────────────┐
-│ Show success message               │
-│ "Added to your                     │
-│  application tracker"              │
-└────┬───────────────────────────────┘
-     │
-     ▼
-┌────────────────────────────────────┐
-│ User navigates to                  │
-│ "My Applications"                  │
-└────┬───────────────────────────────┘
-     │
-     ▼
-┌────────────────────────────────────┐
-│ Applications Dashboard Shows:      │
-│                                    │
-│ ┌────────────────────────────────┐ │
-│ │ Tabs:                          │ │
-│ │ [All] [Priority] [Upcoming]    │ │
-│ │ [Past Exams] [Results Pending] │ │
-│ └────────────────────────────────┘ │
-│                                    │
-│ ┌────────────────────────────────┐ │
-│ │ ┌────────────────────────────┐ │ │
-│ │ │ Job: Railway ALP           │ │ │
-│ │ │ Org: RRB                   │ │ │
-│ │ │ ⭐ Priority                │ │ │
-│ │ │                            │ │ │
-│ │ │ Next: Exam on 15-Feb-2026  │ │ │
-│ │ │ Status: Applied            │ │ │
-│ │ │                            │ │ │
-│ │ │ [View] [Edit] [Delete]     │ │ │
-│ │ └────────────────────────────┘ │ │
-│ │                                │ │
-│ │ ┌────────────────────────────┐ │ │
-│ │ │ Job: SSC CGL               │ │ │
-│ │ │ Org: SSC                   │ │ │
-│ │ │                            │ │ │
-│ │ │ Next: Application Deadline │ │ │
-│ │ │       31-Dec-2025          │ │ │
-│ │ │ Status: Application Open   │ │ │
-│ │ │                            │ │ │
-│ │ │ [View] [Edit] [Delete]     │ │ │
-│ │ └────────────────────────────┘ │ │
-│ └────────────────────────────────┘ │
-└────────────────────────────────────┘
-     │
-     ▼
-┌────────────────────────────────────┐
-│ Background Process:                │
-│ Celery checks                      │
-│ reminders daily                    │
-└────┬───────────────────────────────┘
-     │
-     ▼
-┌────────────────────────────────────┐
-│ For each application with          │
-│ upcoming dates:                    │
-│                                    │
-│ IF date is in:                     │
-│ - 7 days: Send reminder            │
-│ - 3 days: Send reminder            │
-│ - 1 day: Send reminder             │
-│ - Same day: Send final reminder    │
-│                                    │
-│ Update reminder status as "sent"   │
-└────┬───────────────────────────────┘
-     │
-     ▼
-┌────────────────────────────────────┐
-│ User receives notifications via    │
-│ smart_notify (up to 5 channels):   │
-│ in-app, push, email, Telegram,     │
-│ WhatsApp (based on preferences)    │
+│ User receives notification via     │
+│ smart_notify (5 channels):         │
+│ in-app (T+0), push (T+0),          │
+│ email (T+15min), Telegram (T+15m), │
+│ WhatsApp (T+1hr) — per prefs      │
 └────┬───────────────────────────────┘
      │
      ▼
@@ -750,31 +632,32 @@ Admin/Operator → Admin Frontend (port 8081)
 └─────────┘
 ```
 
-## 6. Priority Job Update Notification Flow
+## 6. Watcher Update Notification Flow
 
-```
 ┌─────────────────────────────────┐
-│ Trigger: Admin updates a job    │
-│ (dates, status)                 │
+│ Trigger: Admin approves or     │
+│ updates a job/exam             │
 └───────────────┬─────────────────┘
                 │
                 ▼
 ┌─────────────────────────────────┐
-│ Save updated job to database    │
+│ Save updated job/exam to DB     │
 └───────────────┬─────────────────┘
                 │
                 ▼
 ┌─────────────────────────────────┐
 │ Trigger Celery Task:            │
-│ notify_priority_subscribers     │
-│ → smart_notify per user         │
-│   (staggered, priority=high)    │
+│ notify_watchers_on_update       │
+│ (entity_type, entity_id)        │
+│ → smart_notify(staggered) per   │
+│   user who watches this entity  │
 └───────────────┬─────────────────┘
                 │
                 ▼
 ┌─────────────────────────────────┐
-│ Find all users who marked this  │
-│ job as priority                 │
+│ Find all user_watches rows      │
+│ WHERE entity_type AND entity_id │
+│ match the updated job/exam      │
 └───────────────┬─────────────────┘
                 │
                 ▼
@@ -788,12 +671,11 @@ Admin/Operator → Admin Frontend (port 8081)
      │               │                │
      │               ▼                │
      │  ┌──────────────────────────┐  │
-     │  │ Determine what changed:  │  │
-     │  │ - Application date?      │  │
-     │  │ - Exam date?             │  │
-     │  │ - Admit card date?       │  │
-     │  │ - Result date?           │  │
-     │  │ - Job cancelled?         │  │
+     │  │ Build notification:       │  │
+     │  │ type='watched_item_       │  │
+     │  │       updated'            │  │
+     │  │ title = job/exam title    │  │
+     │  │ action_url = detail page │  │
      │  └────────────┬─────────────┘  │
      │               │                │
      │               ▼                │
@@ -832,9 +714,9 @@ Admin/Operator → Admin Frontend (port 8081)
      │         │             │        │
      │         ▼             ▼        │
      │  ┌──────────────────────────┐  │
-     │  │ Update user's            │  │
-     │  │ application record       │  │
-     │  │ with new dates           │  │
+     │  │ Log delivery per channel  │  │
+     │  │ in notification_delivery  │  │
+     │  │ _log table                │  │
      │  └──────────────────────────┘  │
      │                                │
      └────────────────────────────────┘
@@ -843,163 +725,92 @@ Admin/Operator → Admin Frontend (port 8081)
        ┌───────────────────┐
        │        END        │
        └───────────────────┘
-```
 
 ## 7. Admin Dashboard Workflow
 
-```
-┌──────────────────────────────────────┐
-│ Admin Login                          │
-│ src/frontend-admin/ (port 8081)      │
-│ http://localhost:8081/auth/login     │
-└──────────────────┬───────────────────┘
-                   │
-                   ▼
-┌────────────────────────────────────────────────────┐
-│                  ADMIN DASHBOARD                   │
-│                                                    │
-│  ┌──────────────────────────────────────────────┐  │
-│  │ Statistics Cards:                            │  │
-│  │ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐  │  │
-│  │ │ Total  │ │ Active │ │  Total │ │  New   │  │  │
-│  │ │ Users  │ │  Jobs  │ │  Apps  │ │ Users  │  │  │
-│  │ │ 10,547 │ │   234  │ │ 45,231 │ │  +127  │  │  │
-│  │ └────────┘ └────────┘ └────────┘ └────────┘  │  │
-│  └──────────────────────────────────────────────┘  │
-│                                                    │
-│  ┌──────────────────────────────────────────────┐  │
-│  │ Quick Actions:                               │  │
-│  │ [+ Add New Job]  [View Users]  [Analytics]   │  │
-│  └──────────────────────────────────────────────┘  │
-│                                                    │
-│  ┌──────────────────────────────────────────────┐  │
-│  │ Recent Activity:                             │  │
-│  │ • New user registration: john@example.com    │  │
-│  │ • Job application: SSC CGL by 25 users       │  │
-│  │ • Job updated: Railway ALP dates changed     │  │
-│  └──────────────────────────────────────────────┘  │
-│                                                    │
-│  ┌──────────────────────────────────────────────┐  │
-│  │ Popular Jobs (Most Applied):                 │  │
-│  │ 1. SSC CGL - 5,234 applications              │  │
-│  │ 2. Railway ALP - 4,892 applications          │  │
-│  │ 3. UPSC CSE - 3,456 applications             │  │
-│  └──────────────────────────────────────────────┘  │
-└──────────────────┬─────────────────────────────────┘
-                   │
-     ┌─────────────┼─────────────┐
-     │             │             │
-     ▼             ▼             ▼
-┌──────────┐  ┌──────────┐  ┌──────────┐
-│   Job    │  │   User   │  │Analytics │
-│Management│  │Management│  │    &     │
-│          │  │          │  │ Reports  │
-└────┬─────┘  └────┬─────┘  └────┬─────┘
-     │             │             │
-     └─────────────┼─────────────┘
-                   │
-                   ▼
-┌────────────────────────────────────────────────────┐
-│                                                    │
-│  JOB MANAGEMENT:          USER MANAGEMENT:         │
-│  • Create Job             • View All Users         │
-│  • Edit Job               • User Details           │
-│  • Delete Job             • Suspend/Activate       │
-│  • Job Status             • Change Roles           │
-│                                                    │
-│  ANALYTICS:                                        │
-│  • User Demographics                               │
-│  • Application Trends                              │
-│  • Popular Organizations                           │
-│  • Notification Stats                              │
-│                                                    │
-└────────────────────────────────────────────────────┘
-```
-
-## 8. Database Operations Flow
-
-```
 ┌───────────────────────────────────────────────────────────────────┐
 │                        POSTGRESQL TABLES                          │
 └───────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────┐      ┌─────────────────────────────────┐
-│           Admin Users           │      │             Users               │
-│  - id (Primary Key, UUID)       │      │  - id (Primary Key, UUID)       │
-│  - email, password_hash         │      │  - email, password_hash         │
-│  - role (admin/operator)        │      │  - status                       │
+│           admin_users           │      │             users               │
+│  - id UUID PK                   │      │  - id UUID PK                   │
+│  - email, password_hash         │      │  - firebase_uid (unique)        │
+│  - role (admin/operator)        │      │  - email, full_name             │
+│  - is_active                    │      │  - is_active                    │
 └───────────────┬─────────────────┘      └───────────────┬─────────────────┘
                 │                                        │
                 │ (One-to-Many)                          │ (One-to-One)
                 │                                        │
 ┌───────────────▼─────────────────┐      ┌───────────────▼─────────────────┐
-│          Admin Logs             │      │         User Profiles           │
-│  - id                           │      │  - id (Primary Key, UUID)       │
-│  - admin_id (FK)                │      │  - user_id (Foreign Key)        │
-│  - action, resource_id          │      │  - personal_info, education     │
-└─────────────────────────────────┘      └───────────────┬─────────────────┘
+│          admin_logs             │      │         user_profiles           │
+│  - id UUID PK                   │      │  - id UUID PK                   │
+│  - admin_id FK                  │      │  - user_id FK (unique)          │
+│  - action, target_type/id       │      │  - personal_info JSONB          │
+│  - expires_at (30 day TTL)      │      │  - education JSONB              │
+└─────────────────────────────────┘      │  - followed_orgs JSONB          │
+                                         └───────────────┬─────────────────┘
                                                          │
                                          ┌───────────────┼─────────────────┐
                                          │               │                 │
-                         ┌───────────────▼───────┐ ┌─────▼─────────┐ ┌─────▼───────────────┐
-                         │      User Devices     │ │ Notifications │ │User Job Applications│
-                         │  - id                 │ │  - id         │ │  - id               │
-                         │  - user_id (FK)       │ │  - user_id    │ │  - user_id (FK)     │
-                         │  - fcm_token          │ │  - message    │ │  - job_id (FK)      │
-                         └───────────────┬───────┘ └─────┬─────────┘ └─────┬───────────────┘
-                                         │               │                 │
-                                         │               ▼                 │
-                                         │ ┌─────────────────────────┐     │
-                                         └─►Notification Delivery Log│     │
-                                           │  - id                   │     │
-                                           │  - notification_id (FK) │     │
-                                           │  - channel, status      │     │
-                                           └─────────────────────────┘     │
-                                                                           │
-                                                                 ┌─────────▼───────────────┐
-                                                                 │      Job Vacancies      │
-                                                                 │  - id (PK, UUID)        │
-                                                                 │  - job_title, org       │
-                                                                 │  - eligibility        │
-                                                                 │  - important_dates    │
-                                                                 └─────────┬───────────────┘
-                                                                           │
-                                                                           │ (Tracked By)
-                                                                           │
-                                                                 ┌─────────▼───────────────┐
-                                                                 │   Target Organizations  │
-                                                                 │   (In User Preferences) │
-                                                                 └─────────────────────────┘
+                         ┌───────────────▼───────┐ ┌─────▼─────────┐ ┌─────▼──────────┐
+                         │      user_devices     │ │ notifications │ │  user_watches  │
+                         │  - id UUID PK         │ │  - id UUID PK │ │  - id UUID PK  │
+                         │  - user_id FK         │ │  - user_id FK │ │  - user_id FK  │
+                         │  - fcm_token          │ │  - title, body│ │  - entity_type │
+                         │  - device_fingerprint │ │  - is_read    │ │  - entity_id   │
+                         └───────────────┬───────┘ └─────┬─────────┘ └────────────────┘
+                                         │               │                              ▲
+                                         │               ▼                              │
+                                         │ ┌─────────────────────────┐    ┌─────────────┴──────┐
+                                         └─►notif_delivery_log       │    │       jobs         │
+                                           │  - id UUID PK           │    │  - id UUID PK      │
+                                           │  - notification_id FK   │    │  - job_title, org  │
+                                           │  - channel, status      │    │  - eligibility     │
+                                           └─────────────────────────┘    │  - application_end │
+                                                                          └────────────────────┘
+                                                                                    │
+                                                                          ┌─────────▼──────────┐
+                                                                          │   entrance_exams   │
+                                                                          │  - id UUID PK      │
+                                                                          │  - exam_name       │
+                                                                          │  - conducting_body │
+                                                                          │  - status          │
+                                                                          └────────────────────┘
 
 INDEXES FOR PERFORMANCE:
 ════════════════════════
 
-Users & Admin Users:
+users & admin_users:
   - email (unique)
-  - role (Admin Users)
+  - firebase_uid (unique, users only)
+  - role (admin_users)
 
-User Profiles:
-  - user_id (unique)
-  - education.highest_qualification
-  - personal_info.category
+user_profiles:
+  - user_id (unique FK)
 
-Job Vacancies:
+jobs:
   - organization
-  - eligibility.min_qualification
   - status, created_at
+  - search_vector GIN (full-text)
+  - slug (unique)
 
-User Job Applications:
-  - user_id + job_id (compound, unique)
-  - user_id + is_priority
+entrance_exams:
+  - status, exam_date
+  - search_vector GIN (full-text)
+  - slug (unique)
+
+user_watches:
+  - UNIQUE(user_id, entity_type, entity_id)
 
 Notifications & Devices:
-  - user_id + is_read (Notifications)
-  - notification_id (Delivery Log)
-  - fcm_token (unique, User Devices)
-  - user_id + device_fingerprint (User Devices)
+  - user_id + is_read (notifications)
+  - notification_id (notif_delivery_log)
+  - fcm_token (unique, user_devices)
+  - user_id + device_fingerprint (user_devices)
 ```
 
-## 9. Celery Task Scheduler Flow
+## 8. Celery Task Scheduler Flow
 
 ```
 ┌──────────────────────────────────────────────────┐
@@ -1007,19 +818,11 @@ Notifications & Devices:
 │            (Background Tasks Runner)               │
 └────────────────────────────────────────────────────┘
 
-┌──────────────────┐       ┌──────────────────┐
-│   DAILY TASKS    │       │  HOURLY TASKS    │
-│   (1:00 AM)      │       │  (Every Hour)    │
-└────────┬─────────┘       └────────┬─────────┘
-         │                          │
-         ▼                          ▼
-┌──────────────────┐       ┌──────────────────┐
-│ Match New Jobs   │       │ Send Pending     │
-│ with Users       │       │ Notifications    │
-└────────┬─────────┘       └────────┬─────────┘
-         │                          │
-         │                          │
-         └────────┬─────────────────┘
+┌──────────────────────────────────────────────────┐
+│                  DAILY BEAT TASKS                │
+│              (from celery_app.py beat_schedule)  │
+└──────────┬───────────────────────────────┘
+                   │
                   │
                   ▼
          ┌────────────────┐
@@ -1027,17 +830,15 @@ Notifications & Devices:
          │   (Broker)     │
          └────────┬───────┘
                   │
-    ┌─────────────┼─────────────┐
-    │             │             │
-    ▼             ▼             ▼
-┌────────┐   ┌────────┐   ┌────────┐
-│ Worker │   │ Worker │   │ Worker │
-│   1    │   │   2    │   │   3    │
-└────┬───┘   └────┬───┘   └────┬───┘
-     │            │            │
-     └────────────┼────────────┘
-                  │
-                  ▼
+                  ┌───┬───┐
+                  │       │
+              ┌───▼───┐ ┌─▼─────┐
+              │Worker │ │Worker │
+              │  1    │ │  2    │
+              └───┬───┘ └───┬───┘
+                  └────┬────┘
+                       │
+                       ▼
      ┌────────────────────────┐
      │   TASK EXECUTION       │
      │                        │
@@ -1064,46 +865,57 @@ Notifications & Devices:
      │ └────────────────────┘ │
      └────────────────────────┘
 
-SCHEDULED TASKS (with Priority Routing):
-════════════════════════════════════════
+SCHEDULED TASKS (beat_schedule in celery_app.py):
+══════════════════════════════════════════════════
 
 1. app.tasks.notifications.send_deadline_reminders
-   Run: Every day at 08:00 UTC
-   Priority: HIGH
-   Purpose: Send application deadline reminders
+   Run: Daily 08:00 UTC
+   Purpose: T-7, T-3, T-1 reminders for all user_watches watchers
 
 2. app.tasks.cleanup.purge_expired_notifications
-   Run: Every day at 01:00 UTC
-   Priority: LOW
-   Purpose: Archive old notifications (TTL enforcement)
-   Retry: 1x
+   Run: Daily 01:00 UTC
+   Purpose: Delete notifications past their expires_at (90 days)
 
 3. app.tasks.cleanup.purge_expired_admin_logs
-   Run: Every day at 01:30 UTC
-   Priority: LOW
-   Purpose: Delete expired admin logs (TTL enforcement)
-   Retry: 1x
+   Run: Daily 01:30 UTC
+   Purpose: Delete admin_logs past their expires_at (30 days)
 
 4. app.tasks.cleanup.purge_soft_deleted_jobs
-   Run: Every day at 02:00 UTC
-   Priority: LOW
-   Purpose: Permanently delete soft-deleted jobs
-   Retry: 1x
+   Run: Daily 02:00 UTC
+   Purpose: Hard-delete cancelled jobs older than 90 days
 
 5. app.tasks.jobs.close_expired_job_listings
-   Run: Every day at 02:30 UTC
-   Priority: MEDIUM
-   Purpose: Close job listings that have passed their deadline
-   Retry: 3x
+   Run: Daily 02:30 UTC
+   Purpose: Set status='expired' on jobs past application_end
 
-6. app.tasks.seo.generate_sitemap
-   Run: Every day at 04:00 UTC
-   Priority: LOW
-   Purpose: Generate updated sitemap for SEO
-   Retry: 1x
+6. app.tasks.jobs.update_exam_statuses
+   Run: Daily 02:35 UTC
+   Purpose: Set status='completed' on entrance exams past exam_date
+
+7. app.tasks.seo.generate_sitemap
+   Run: Daily 04:00 UTC
+   Purpose: Regenerate /sitemap.xml with active jobs + exams
+
+EVENT-TRIGGERED TASKS:
+═══════════════════════
+
+• notify_watchers_on_update(entity_type, entity_id)
+  Triggered when job/exam is approved or updated → notifies all watchers
+
+• smart_notify(user_id, ...)
+  Unified delivery entry — instant or staggered, 5 channels
+
+• deliver_delayed_email / deliver_delayed_whatsapp / deliver_delayed_telegram
+  Staggered delivery tasks fired after NOTIFY_*_DELAY seconds
+
+• send_email_notification(to, subject, template, context)
+  Direct email send via SMTP (retries 3x with exponential backoff)
+
+NOTE: send_new_job_notifications and notify_priority_subscribers are
+registered tasks but are no-op stubs (pass body) — not yet implemented.
 ```
 
-## 10. Complete User Journey Map
+## 9. Complete User Journey Map
 
 ```
 ┌────────────────────────────────────────────────────────────────┐
@@ -1127,41 +939,25 @@ User Dashboard → Browse Jobs → Filter by Eligibility → View Details
                     └───────────────────────────────────────┘
                                     │
                                     ▼
-                          Add to Application Tracker
-                          Mark Important Jobs Priority
+                          Watch Jobs & Exams (user_watches table)
+                          max 100 watches per user
 
 ONGOING: NOTIFICATION & TRACKING
 ═════════════════════════════════
-Receive Notifications → Check Dashboard → Update Application Status
-         │                                          │
-         ├─ New Jobs (Matching Profile)            │
-         ├─ Application Deadlines                  │
-         ├─ Admit Card Releases                    │
-         ├─ Exam Reminders                         │
-         └─ Result Announcements                   │
-                                                    ▼
-                                    View "My Applications" Dashboard:
-                                    • Upcoming Exams
-                                    • Pending Applications
-                                    • Past Exams
-                                    • Results Awaited
-
-APPLICATION PHASE
-═════════════════
-Select Job → Visit Official Website → Fill Application → Get App Number
-                                                              │
-                                                              ▼
-                                              Update in Tracker with:
-                                              • Application Number
-                                              • Personal Notes
-                                              • Enable Reminders
+Receive Notifications → Check Dashboard → Visit official site to apply
+         │
+         ├─ Deadline Reminders (T-7, T-3, T-1 for watched items)
+         ├─ Admit Card Releases (when admin publishes admit_cards)
+         ├─ Answer Key Releases (when admin publishes answer_keys)
+         ├─ Result Releases (when admin publishes results)
+         └─ Job/Exam Updates (when admin modifies watched item)
 
 EXAM PHASE
 ══════════
-Receive Admit Card Alert → Download Admit Card → Exam Reminder
+Receive Admit Card Notification → Download from official site → Exam Reminder
                                                        │
                                                        ▼
-                                            Take Exam → Mark as "Completed"
+                                            Take Exam → Receive Result notification
 
 RESULT PHASE
 ════════════
@@ -1181,7 +977,7 @@ Receive Result Notification → Check Result → Update Status:
 
 ---
 
-## 11. Role-Based Access Control (RBAC) Permission Enforcement
+## 10. Role-Based Access Control (RBAC) Permission Enforcement
 
 ```
 ┌────────────────────────────────────────────────────────────────────┐
@@ -1208,10 +1004,11 @@ REQUEST FLOW with PERMISSION CHECKS:
     ┌──────────────────────┐
     │ Decode JWT           │
     │ Extract claims:      │
-    │ - user_id            │
-    │ - email              │
-    │ - role ⭐            │
+    │ - sub (user_id)      │
+    │ - user_type ⭐       │
+    │ - jti                │
     │ - exp                │
+    │ - iat                │
     └────────┬─────────────┘
              │
              ▼
@@ -1227,8 +1024,8 @@ REQUEST FLOW with PERMISSION CHECKS:
     │                 │
     │                 ▼
     │         ┌──────────────────────┐
-    │         │ @require_role(...)   │
-    │         │ Check allowed roles  │
+    │         │ @require_operator or  │
+    │         │ @require_admin guard  │
     │         └────────┬─────────────┘
     │                  │
     │         ┌────────┴─────────┐
@@ -1249,25 +1046,24 @@ ROLE-BASED ENDPOINT MATRIX:
 
 USER ROLE (👤) - Regular Job Seeker
 ────────────────────────────────────
-✅ GET    /api/v1/jobs                    View all jobs (public)
-✅ GET    /api/v1/jobs/<id>               View job details (public)
-✅ GET    /api/v1/users/profile           View own profile
-✅ PUT    /api/v1/users/profile           Update own profile
-✅ GET    /api/v1/notifications           View own notifications
-✅ GET    /api/v1/applications            View own applications
-✅ POST   /api/v1/applications            Add to tracker
-✅ POST   /api/v1/auth/refresh            Refresh access token
+✅ GET    /api/v1/jobs                    View jobs (public)
+✅ GET    /api/v1/jobs/<slug>             View job details (public)
+✅ POST   /api/v1/jobs/<id>/watch        Watch job
+✅ DELETE /api/v1/jobs/<id>/watch        Unwatch job
+✅ GET    /api/v1/users/me/watched       List watched items
+✅ GET    /api/v1/users/profile          View own profile
+✅ PUT    /api/v1/users/profile          Update own profile
+✅ GET    /api/v1/notifications          View own notifications
+✅ POST   /api/v1/auth/refresh           Refresh access token
 
 Rate Limits:
-  - API: 1000 requests/min per user
-  - Login: 5 attempts/min
+  - API: 1000 requests/min per user (SlowAPI)
+  - verify-token: 10 attempts/min
 
-❌ POST   /api/v1/admin/jobs              (Admin only) 403
-❌ PUT    /api/v1/admin/jobs/<id>         (Admin only) 403
+❌ POST   /api/v1/admin/jobs              (Operator+ only) 403
 ❌ DELETE /api/v1/admin/jobs/<id>         (Admin only) 403
-❌ GET    /api/v1/admin/users             (Admin only) 403
-❌ PUT    /api/v1/admin/users/<id>/role   (Admin only) 403
-❌ GET    /api/v1/admin/analytics         (Admin only) 403
+❌ GET    /api/v1/admin/users             (Operator+ only) 403
+❌ PUT    /api/v1/admin/users/<id>/status (Admin only) 403
 
 OPERATOR ROLE (🔧) - Content Reviewer
 ──────────────────────────────────────
@@ -1280,18 +1076,15 @@ OPERATOR ROLE (🔧) - Content Reviewer
 ✅ GET    /api/v1/users/profile           View own profile
 ✅ PUT    /api/v1/users/profile           Update own profile
 ✅ GET    /api/v1/notifications           View own notifications
-✅ GET    /api/v1/applications            View own applications
 ✅ POST   /api/v1/auth/refresh            Refresh access token
 
 Rate Limits:
-  - API: 1000 requests/min per user
-  - Login: 5 attempts/min
+  - API: 1000 requests/min per user (SlowAPI)
+  - verify-token: 10 attempts/min
 
-❌ POST   /api/v1/admin/jobs              (Admin only) 403
+❌ POST   /api/v1/admin/jobs              (Admin only for create) 403
 ❌ DELETE /api/v1/admin/jobs/<id>         (Admin only) 403
-❌ GET    /api/v1/admin/users             (Admin only) 403
-❌ PUT    /api/v1/admin/users/<id>/role   (Admin only) 403
-❌ GET    /api/v1/admin/analytics         (Admin only) 403
+❌ PUT    /api/v1/admin/users/<id>/status (Admin only) 403
 
 ADMIN ROLE (👨‍💼) - Full Control
 ──────────────────────────────────
@@ -1305,12 +1098,11 @@ ADMIN ROLE (👨‍💼) - Full Control
 ✅ PUT    /api/v1/users/profile           Update own profile
 ✅ GET    /api/v1/admin/users             List all users
 ✅ GET    /api/v1/admin/users/<id>        View user details
-✅ PUT    /api/v1/admin/users/<id>/role   Change user role (audit logged)
-✅ PUT    /api/v1/admin/users/<id>/status Suspend/activate user
-
-✅ GET    /api/v1/admin/analytics         View analytics
-✅ GET    /api/v1/admin/logs              View activity logs
+✅ PUT    /api/v1/admin/users/<id>/status Suspend/activate user (audit logged)
+✅ GET    /api/v1/admin/stats             Dashboard stats
+✅ GET    /api/v1/admin/logs              View audit logs (admin only)
 ✅ GET    /api/v1/admin/jobs              List all jobs (admin panel)
+✅ POST   /api/v1/admin/admin-users       Create new admin/operator account
 ✅ POST   /api/v1/auth/refresh            Refresh access token
 
 Rate Limits:
@@ -1322,28 +1114,31 @@ All admin actions are logged in admin_logs table
 
 ---
 
-## 12. JWT Token Rotation & Refresh Flow
+## 11. JWT Token Rotation & Refresh Flow
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
 │                    JWT TOKEN LIFECYCLE                           │
 └──────────────────────────────────────────────────────────────────┘
 
-INITIAL LOGIN:
-══════════════
+INITIAL LOGIN (Users):
+══════════════════════
 
-User Login
+Firebase login (email OTP / Google / Phone) on client
     │
     ▼
 ┌──────────────────────┐
 │ POST /api/v1/auth/   │
-│      login           │
-│ + X-Request-ID       │
+│   verify-token        │
+│ { id_token,           │
+│   full_name? }        │
 └────────┬─────────────┘
          │
          ▼
 ┌──────────────────────┐
-│ Validate credentials │
+│ Firebase Admin SDK   │
+│ verifies token,      │
+│ upserts user in DB   │
 └────────┬─────────────┘
          │
          ▼ Valid
@@ -1353,7 +1148,8 @@ User Login
 │ 1. ACCESS TOKEN (15 minutes)       │
 │    • Used for API calls            │
 │    • Short-lived for security      │
-│    • Contains: user_id, role, email│
+│    • Contains: user_id, user_type, │
+│      jti, exp, iat                  │
 │                                    │
 │ 2. REFRESH TOKEN (7 days)          │
 │    • Used to get new access token  │
@@ -1375,12 +1171,12 @@ User Login
          │
          ▼
 ┌──────────────────────┐
-│ Client stores:       │
-│ • Access token in    │
-│   memory/localStorage│
-│ • Refresh token in   │
-│   httpOnly cookie    │
-│   (more secure)      │
+│ Flask stores tokens  │
+│ in server-side       │
+│ session:             │
+│ • session["token"]   │
+│ • session["refresh_  │
+│   token"]            │
 └──────────────────────┘
 
 
@@ -1427,11 +1223,10 @@ Access Token Expired (after 15 min)
 ┌──────────────────────┐
 │ POST /api/v1/auth/   │
 │      refresh         │
-│ + X-Request-ID       │
 │                      │
-│ Header:              │
-│ Authorization:       │
-│   Bearer <refresh>   │
+│ Body (JSON):         │
+│ { "refresh_token":   │
+│   "eyJ..." }         │
 └────────┬─────────────┘
          │
          ▼
@@ -1477,41 +1272,32 @@ SECURITY BENEFITS:
    • Limits exposure window
 
 ✅ Automatic refresh
-   • Seamless UX for active users
-   • No interruption
+   • Flask frontend auto-refreshes on 401
+   • No user interruption
 
 ✅ Long refresh token (7 days)
-   • Stored in httpOnly cookie
-   • Not accessible to JavaScript
-   • Protected from XSS attacks
+   • Stored in Flask server-side session
+   • Not exposed in HTTP response body
 
 ✅ Forced re-login after 7 days
    • Periodic authentication verification
    • Compromised refresh token expires
 
 ✅ Token rotation
-   • Each refresh issues new access token
-   • Old tokens can be blacklisted
+   • Each /auth/refresh issues new pair
+   • Old refresh JTI is blocklisted in Redis
 
 
-TOKEN STORAGE BEST PRACTICES:
+TOKEN STORAGE (Flask Frontend):
 ═════════════════════════════
 
 ┌──────────────────────────────────┐
-│ ACCESS TOKEN                     │
-│ • Store in: Memory/localStorage  │
-│ • Pros: Easy access for API calls│
-│ • Cons: XSS vulnerable           │
-│ • Mitigation: Short TTL (15 min) │
-└──────────────────────────────────┘
-
-┌──────────────────────────────────┐
-│ REFRESH TOKEN                    │
-│ • Store in: httpOnly cookie      │
-│ • Pros: Not accessible to JS     │
-│ • Cons: CSRF vulnerable          │
-│ • Mitigation: Same-Site cookie   │
-│              + CSRF token        │
+│ TOKENS IN FLASK SESSION          │
+│ • session["token"]  (access)    │
+│ • session["refresh_token"]      │
+│ • Server-side session cookie    │
+│ • CSRF token also in session    │
+│   validated on every POST form  │
 └──────────────────────────────────┘
 
 
@@ -1579,11 +1365,11 @@ Suspicious Activity Detected
 
 ---
 
-## 13. Entrance Exam Data Model
+## 12. Entrance Exam Data Model
 
-Entrance exams (NEET, JEE, CLAT, CAT, GATE, CUET etc.) are stored in a
-separate `entrance_exams` table, distinct from `job_vacancies`. The three
-document tables (`job_admit_cards`, `job_answer_keys`, `job_results`) are
+Entrance exams (NEET, JEE, CLAT, CAT, GATE etc.) are stored in a
+separate `entrance_exams` table, distinct from `jobs`. The three
+document tables (`admit_cards`, `answer_keys`, `results`) are
 **polymorphic** — each row links to either a job or an entrance exam.
 
 ```
@@ -1593,7 +1379,7 @@ document tables (`job_admit_cards`, `job_answer_keys`, `job_results`) are
 
   WHY SEPARATE?
   ─────────────
-  job_vacancies fields          entrance_exams fields
+  jobs fields                   entrance_exams fields
   ─────────────────────         ─────────────────────────────
   total_vacancies        ≠      seats_info (seats by college)
   salary_initial/max     ≠      (no salary — it's education)
@@ -1606,7 +1392,7 @@ document tables (`job_admit_cards`, `job_answer_keys`, `job_results`) are
   ─────────────────
 
   ┌──────────────────────────┐         ┌──────────────────────────────┐
-  │     job_vacancies        │         │       entrance_exams         │
+  │         jobs             │         │       entrance_exams         │
   │  (Government Jobs)       │         │  (NEET/JEE/CLAT/CAT/GATE)   │
   │                          │         │                              │
   │  id UUID PK              │         │  id UUID PK                  │
@@ -1617,10 +1403,10 @@ document tables (`job_admit_cards`, `job_answer_keys`, `job_results`) are
   │  employment_type         │         │  stream (medical/engg/law)   │
   │  qualification_level     │         │  eligibility JSONB           │
   │  vacancy_breakdown JSONB │         │  exam_details JSONB          │
-  │  job_type (latest_job/   │         │  selection_process JSONB     │
-  │    admit_card/answer_key/│         │  seats_info JSONB            │
-  │    result)               │         │  fee_* (5 columns)           │
-  │  fee_* (5 columns)       │         │  status (upcoming/active/    │
+  │  fee_general/obc/sc_st/  │         │  selection_process JSONB     │
+  │    ews/female (integers) │         │  seats_info JSONB            │
+  │  source (manual/         │         │  fee_* (5 columns)           │
+  │    pdf_upload)           │         │  status (upcoming/active/    │
   │  search_vector GENERATED │         │    completed/cancelled)      │
   └──────────┬───────────────┘         │  search_vector GENERATED     │
              │                         └─────────────┬────────────────┘
@@ -1631,9 +1417,9 @@ document tables (`job_admit_cards`, `job_answer_keys`, `job_results`) are
              │  job_id FK (nullable) ─────────────┐  │
              │                                   ▼  │
              │                          ┌──────────────────┐
-             └──────────────────────── ▶│  job_admit_cards │
+             └─────────────────────────►│  job_admit_cards │
                                          │                  │
-  exam_id FK (nullable) ──────────────▶ │  id UUID PK      │
+  exam_id FK (nullable) ──────────────► │  id UUID PK      │ ◄── CHECK:
                                          │  job_id  UUID?   │ ◀── CHECK:
                                          │  exam_id UUID?   │     (job_id IS NOT NULL
                                          │  phase_number    │      AND exam_id IS NULL)
@@ -1644,12 +1430,12 @@ document tables (`job_admit_cards`, `job_answer_keys`, `job_results`) are
                                          └──────────────────┘
 
   Same polymorphic pattern applies to:
-    • job_answer_keys  (job_id XOR exam_id + phase docs)
-    • job_results      (job_id XOR exam_id + cutoff_marks JSONB)
+    • answer_keys  (job_id XOR exam_id + phase docs)
+    • results      (job_id XOR exam_id + cutoff_marks JSONB)
 
   SEEDED DATA (current):
   ──────────────────────
-  job_vacancies:  10 jobs + 9 admit card posts + 9 answer key posts + 9 result posts
+  jobs:  10 jobs + (admit_cards/answer_keys/results linked via job_id FK)
   entrance_exams: 9 exams
     • NEET PG 2026 (medical, pg)     → 3 phase docs (admit card + answer key + result)
     • NEET UG 2026 (medical, ug)     → 4 phase docs
@@ -1689,19 +1475,19 @@ listing page, gradient hero colour, and detail page design.
   ──────────────────────────────────────────────────────────
   Section       URL              Hero Gradient         DB Source
   ──────────    ───────────────  ──────────────────    ──────────────────
-  Jobs          /                Navy → Blue            job_vacancies (latest_job)
-  Admit Cards   /admit-cards     Blue → Sky Blue        job_vacancies (admit_card)
-  Answer Keys   /answer-keys     Brown → Amber          job_vacancies (answer_key)
-  Results       /results         Dark Green → Green     job_vacancies (result)
+  Jobs          /                Navy → Blue            jobs
+  Admit Cards   /admit-cards     Blue → Sky Blue        admit_cards
+  Answer Keys   /answer-keys     Brown → Amber          answer_keys
+  Results       /results         Dark Green → Green     results
   Entrance Exams /entrance-exams  Dark Purple → Purple   entrance_exams
 
-  JOB CARD LEFT ACCENT (list pages):
+  CARD ACCENT (list pages — section-specific CSS class):
   ────────────────────────────────────
-  job_type=latest_job  → purple left border  (.card-latest)
-  job_type=admit_card  → blue left border    (.card-admit)
-  job_type=answer_key  → amber left border   (.card-answer)
-  job_type=result      → green left border   (.card-result)
-  entrance_exam        → purple left border  (admission card)
+  Jobs section         → navy/blue left border
+  Admit Cards section  → blue left border
+  Answer Keys section  → amber left border
+  Results section      → green left border
+  Entrance Exams       → purple left border
 
   DETAIL PAGE FLOW:
   ─────────────────

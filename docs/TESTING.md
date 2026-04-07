@@ -23,8 +23,7 @@ git commit -m "feat: describe what you did"
 # 5. Push and open a PR targeting main
 git push origin feature/your-feature-name
 
-# 6. CI runs all 3 test jobs + SonarCloud — all must pass before merge
-
+# 6. CI runs all 5 jobs — all must pass before merge
 # 7. Squash merge via GitHub, delete the branch
 ```
 
@@ -34,13 +33,13 @@ git push origin feature/your-feature-name
 
 ---
 
-## Run Tests
+## Run Tests Locally
 
 ```bash
-# Backend — unit tests only (coverage XML written to /app/coverage.xml automatically)
+# Backend — unit tests only (coverage XML written to /app/coverage.xml automatically via pytest.ini)
 docker exec hermes_backend python -m pytest tests/unit/ -q
 
-# Backend — all tests (unit + integration + security + e2e)
+# Backend — all tests (unit + integration)
 docker exec hermes_backend python -m pytest tests/ -q
 
 # Backend — integration tests only
@@ -51,34 +50,65 @@ docker exec hermes_frontend python -m pytest tests/ --cov=app --cov-report=term-
 
 # Admin frontend (container must be running)
 docker exec hermes_frontend_admin python -m pytest tests/ --cov=app --cov-report=term-missing -q
+
+# E2E (requires all 3 services running via docker compose up)
+pytest tests/e2e/ -q
 ```
 
-> **Coverage is automatic:** `src/backend/pytest.ini` sets `addopts = --cov=app --cov-report=xml:/app/coverage.xml --cov-report=term-missing`.
-> The XML report at `/app/coverage.xml` is what SonarCloud ingests in CI.
+> **Coverage is automatic for backend:** `src/backend/pytest.ini` sets `addopts = --cov=app --cov-report=xml:/app/coverage.xml --cov-report=term-missing`.
+
+---
 
 ## CI Pipeline (GitHub Actions)
 
 The workflow at `.github/workflows/build.yml` runs on every push to `main` and every pull request.
-All three test jobs run **in parallel**; SonarCloud waits for all three.
+Jobs 1–3 run **in parallel**; job 4 (E2E) waits for all three; job 5 (SonarCloud) waits for all four.
 
 ```
 push / PR
-  ├─► job: test                — compose up (PG + Redis + backend) → pytest --cov → coverage artifact
-  ├─► job: test-frontend       — docker build → docker run pytest --cov → coverage artifact
-  └─► job: test-frontend-admin — docker build → docker run pytest --cov → coverage artifact
-              └─► job: sonarcloud  — downloads all 3 coverage XMLs → single SonarCloud scan
+  ├─► job 1: test                — docker-compose.test.yml up (PG+Redis+PgBouncer+backend)
+  │                                  → alembic upgrade head
+  │                                  → docker exec test_backend pytest tests/unit/ tests/integration/
+  │                                  → coverage artifact: coverage/backend/coverage.xml
+  │
+  ├─► job 2: test-frontend       — docker build hermes_frontend_ci
+  │                                  → docker run (--env-file .env.test, volume-mounted /app/coverage)
+  │                                  → pytest tests/ --cov=app
+  │                                  → coverage artifact: coverage/frontend/coverage.xml
+  │
+  ├─► job 3: test-frontend-admin — docker build hermes_frontend_admin_ci
+  │                                  → docker run (--env-file .env.test, volume-mounted /app/coverage)
+  │                                  → pytest tests/ --cov=app
+  │                                  → coverage artifact: coverage/frontend-admin/coverage.xml
+  │
+  ├─► job 4: test-e2e            — needs [1, 2, 3]
+  │     (ubuntu-latest)              → docker-compose.test.yml up --wait (all services)
+  │                                  → alembic upgrade head
+  │                                  → seed CI admin + user; capture user JWT → E2E_USER_TOKEN
+  │                                  → pip install tests/e2e/requirements.txt
+  │                                  → pytest tests/e2e/
+  │
+  └─► job 5: sonarcloud          — needs [1, 2, 3, 4]
+        (ubuntu-latest)              → download all 3 coverage artifacts
+                                     → SonarCloud scan (sonar-project.properties)
 ```
 
 | Job | Service | Infra needed | Coverage artifact |
 |-----|---------|-------------|-------------------|
-| `test` | Backend (FastAPI) | PostgreSQL + Redis + PgBouncer via compose | `coverage/backend/coverage.xml` |
+| `test` | Backend (FastAPI) | PostgreSQL + Redis + PgBouncer via `docker-compose.test.yml` | `coverage/backend/coverage.xml` |
 | `test-frontend` | User frontend (Flask) | None — Flask test client + MagicMock | `coverage/frontend/coverage.xml` |
 | `test-frontend-admin` | Admin frontend (Flask) | None — Flask test client + MagicMock | `coverage/frontend-admin/coverage.xml` |
-| `sonarcloud` | — | Needs all 3 jobs | Merges all 3 XMLs |
+| `test-e2e` | Cross-service | All 3 services via `docker-compose.test.yml` | None |
+| `sonarcloud` | — | Needs all 4 jobs | Merges all 3 XMLs |
 
-- **All 3 test jobs must pass** before SonarCloud runs (`needs: [test, test-frontend, test-frontend-admin]`).
-- **Branch protection** on `main` requires all 4 jobs to pass before a PR can merge.
-- CI `.env` files are written inline in the workflow — no production secrets in CI.
+**Key details:**
+- `docker-compose.test.yml` has no `celery_worker`, `celery_beat`, or `mailpit` — those are dev-only.
+- Backend test image bakes `app/` in at build time; `tests/` and `pytest.ini` are volume-mounted so they can be updated without rebuilding.
+- Frontend/admin test images run as standalone `docker run` containers with a host-mounted `coverage/` directory to extract the XML.
+- E2E tests use the `requests` library for HTTP calls — no browser automation.
+- All CI `.env` values come from `.env.test` files committed to the repo (no production secrets).
+
+---
 
 ## Pre-commit Hooks
 
@@ -99,6 +129,8 @@ Hooks run automatically before every `git commit` (installed via `pre-commit ins
 pre-commit run --all-files
 ```
 
+---
+
 ## Manual Firebase Test Credentials
 
 These phone numbers are configured in **Firebase Console → Authentication → Phone numbers for testing** and bypass real SMS.
@@ -111,9 +143,9 @@ For email/password and Google login, create a new account via the `/login` page 
 
 ---
 
-## Backend — 77% (250 unit tests)
+## Backend Tests (`src/backend/tests/`)
 
-Test suite updated: removed all `UserJobApplication`, `platform_analytics`, `update_user_role`, org-following, `send_new_job_notifications`, and `notify_priority_subscribers` tests (premature features reverted). Added `test_matching_entrance_exams.py` (14 tests) and new coverage-improvement test files for `content.py`, `entrance_exams.py`, `watches.py`, and `dependencies.py`.
+**16 unit files + 10 integration files.**
 
 | Module | Coverage | Notes |
 |--------|----------|-------|
@@ -139,93 +171,115 @@ Test suite updated: removed all `UserJobApplication`, `platform_analytics`, `upd
 
 ### Backend Test Files
 
-| File | Tests | Covers |
-|------|-------|--------|
-| `unit/test_route_admin.py` | 26 | Dashboard stats, jobs CRUD, user mgmt, audit logs |
-| `unit/test_route_notifications.py` | 17 | List, mark read/all, delete, has_more pagination |
-| `unit/test_route_users.py` | 12 | Profile, phone, FCM tokens |
-| `unit/test_route_jobs.py` | 7 | Listing filters (active-only default), recommended, detail |
-| `unit/test_route_content.py` | 44 | Admit cards, answer keys, results — public list/detail + admin CRUD; `_validate_document_parent` |
-| `unit/test_route_entrance_exams.py` | 28 | Public list (filters, pagination, search) + detail; admin list/get/create (slug collision, published_at)/update/delete |
-| `unit/test_route_watches.py` | 17 | Watch/unwatch jobs & exams (limit enforcement, duplicate guard); list_watched (empty, job-only, exam-only, mixed) |
-| `unit/test_dependencies.py` | 27 | `_decode_and_validate_token` (valid, expired, wrong type, blocklist, scope); `get_current_user/admin`; `require_admin/operator` |
-| `unit/test_matching.py` | 14 | Job recommendation scoring (state, category, education, age, recency) |
-| `unit/test_matching_entrance_exams.py` | 14 | Entrance exam recommendation scoring |
-| `unit/test_services.py` | 10 | PDF extraction, AI parsing |
-| `unit/test_tasks.py` | 9 | Cleanup, close_expired_job_listings, job extraction |
-| `unit/test_notification_tasks.py` | 16 | Deadline reminders (7/3/1 day), smart_notify, delayed delivery |
-| `unit/test_notification_service.py` | 22 | NotificationService: all channels (`_send_push` via `user_devices`, fingerprint dedup, `_send_fcm`), prefs, email limits |
-| `integration/test_auth.py` | 20 | Firebase verify-token (new/existing/migrate/suspended/deleted/phone-only), logout (blocklist check via `/notifications`), refresh, admin login/logout/refresh, RBAC |
-| `integration/test_auth_extended.py` | 21 | Email OTP registration, password validation, password set/change, phone verification, email linking |
-| `integration/test_admin.py` | 14 | Admin API, stats, RBAC |
-| `integration/test_jobs.py` | 17 | Public job listing and search (active-only filter) |
-| `integration/test_users.py` | 18 | User profile API |
-| `integration/test_notifications.py` | 20 | Notification API |
-| `security/test_security.py` | 14 | JWT structure (HS256/exp/iat/jti), RBAC, token revocation, admin bcrypt, XSS, SQLi, CORS |
-| `e2e/test_user_flow.py` | 3 | Admin job lifecycle, user management, RBAC operator-vs-admin |
+**Unit (`src/backend/tests/unit/`):**
 
-### Backend Unit Test Strategy
+| File | Covers |
+|------|--------|
+| `test_route_admin.py` | Dashboard stats, jobs CRUD, user mgmt, audit logs |
+| `test_route_notifications.py` | List, mark read/all, delete, has_more pagination |
+| `test_route_users.py` | Profile, phone, FCM tokens |
+| `test_route_jobs.py` | Listing filters (active-only default), recommended, detail |
+| `test_route_content.py` | Admit cards, answer keys, results — public list/detail + admin CRUD; `_validate_document_parent` |
+| `test_route_entrance_exams.py` | Public list (filters, pagination, search) + detail; admin list/get/create (slug collision)/update/delete |
+| `test_route_watches.py` | Watch/unwatch jobs & exams (limit enforcement, duplicate guard); list_watched (empty, job-only, exam-only, mixed) |
+| `test_route_health.py` | Health check endpoint |
+| `test_dependencies.py` | `_decode_and_validate_token` (valid, expired, wrong type, blocklist, scope); `get_current_user/admin`; `require_admin/operator` |
+| `test_matching.py` | Job recommendation scoring (state, category, education, age, recency) |
+| `test_matching_entrance_exams.py` | Entrance exam recommendation scoring |
+| `test_services.py` | PDF extraction, AI parsing |
+| `test_tasks.py` | Cleanup, close_expired_job_listings, job extraction |
+| `test_notification_tasks.py` | Deadline reminders (7/3/1 day), smart_notify, delayed delivery |
+| `test_notification_service.py` | NotificationService: all channels (`_send_push`, fingerprint dedup, `_send_fcm`), prefs, email limits |
+| `test_route_jobs.py` | Listing filters, recommended tab, detail by slug |
 
-Route handlers are called **directly as async functions** with `AsyncMock` db sessions, bypassing HTTP/ASGI entirely. This avoids SQLAlchemy's internal greenlet switches that cause `coverage.py` to lose trace context after `await db.execute()` calls.
+**Integration (`src/backend/tests/integration/`):**
 
-`NotificationService` tests mock the synchronous SQLAlchemy `Session` and all external I/O (FCM, SMTP, Redis) so they run without any live services.
+| File | Covers |
+|------|--------|
+| `test_auth.py` | Firebase verify-token (new/existing/migrate/suspended/deleted/phone-only), logout (blocklist), refresh, admin login/logout/refresh, RBAC |
+| `test_auth_extended.py` | Email OTP registration, password validation, set/change, phone verification, email linking |
+| `test_admin.py` | Admin API, stats, RBAC |
+| `test_content.py` | Admit cards, answer keys, results — real DB round-trips |
+| `test_entrance_exams.py` | Entrance exam CRUD via HTTP + real DB |
+| `test_jobs.py` | Public job listing and search (active-only filter) |
+| `test_notifications.py` | Notification API |
+| `test_security.py` | JWT structure (HS256/exp/iat/jti), RBAC, token revocation, admin bcrypt, XSS, SQLi, CORS |
+| `test_users.py` | User profile API |
+| `test_watches.py` | Watch/unwatch jobs & exams via HTTP + real DB |
 
-Tasks that use **lazy imports** (e.g. `smart_notify`, `deliver_delayed_email`, `deliver_delayed_whatsapp`) are tested by patching `app.services.notifications.NotificationService` at its source module rather than on the tasks module (since the class is imported inside the function body at call-time).
+### Backend Test Strategy
 
-Firebase tests mock `app.firebase.verify_id_token` via `unittest.mock.patch` so they run without live Firebase credentials. The `user_token` fixture now uses `create_access_token()` directly instead of calling the removed `/auth/login` endpoint.
+Route **unit tests** call handler functions **directly as async functions** with `AsyncMock` db sessions, bypassing HTTP/ASGI entirely. This avoids SQLAlchemy greenlet switches that cause `coverage.py` to lose trace context after `await db.execute()` calls.
+
+**Integration tests** use `httpx.AsyncClient` with `ASGITransport` against the real FastAPI app, wired to a live PostgreSQL + Redis via the test `conftest.py`. A session-scoped `truncate_all_tables` autouse fixture clears all 13 tables before the test session.
+
+`NotificationService` tests mock all external I/O (FCM, SMTP, Redis) so they run without live services.
+
+Firebase tests mock `app.firebase.verify_id_token` via `unittest.mock.patch` — no live Firebase credentials needed. The `user_token` fixture uses `create_access_token()` directly.
 
 ### Why Some Backend Lines Are Uncovered
 
-- **`routers/auth.py`** — Firebase-dependent paths covered at integration level; OAuth and OTP flows require live credentials.
-- **`routers/watches.py`** — IntegrityError rollback and ordering-by-creation-date reassembly paths covered at integration level.
-- **`routers/content.py`** — Recommend endpoints and some detail enrichment paths are covered; remaining uncovered lines are in rarely-reached branches (e.g. both-job-and-exam parent edge cases).
-- **`firebase.py`** — real `verify_id_token()` call requires a live Firebase project; the init guard (`firebase_admin._apps`) is covered by unit tests.
+- **`routers/auth.py`** — Firebase-dependent paths covered at integration level; OAuth flows require live credentials.
+- **`routers/watches.py`** — IntegrityError rollback path covered at integration level.
+- **`routers/content.py`** — Rarely-reached branches (e.g. both-job-and-exam parent edge cases).
+- **`firebase.py`** — Real `verify_id_token()` requires a live Firebase project.
 - **`routers/admin.py`** — PDF file-write + Celery dispatch block; covered at integration level.
-- **`tasks/notifications.py`** — Firebase FCM send in `smart_notify` requires `FIREBASE_CREDENTIALS_PATH`, absent in the test environment. Stubs `send_new_job_notifications` and `notify_priority_subscribers` are no-ops.
-- **`services/notifications.py`** — `_send_fcm_with_status` happy path and the new `_send_push` (reads `user_devices` with fingerprint dedup) require Firebase credentials for the FCM leg; `_send_fcm` wrapper and no-credentials path are covered.
-- **`services/ai_extractor.py`** — requires live Anthropic API credentials.
-- **`tasks/seo.py`** — sitemap file-write path requires filesystem setup.
+- **`tasks/notifications.py`** — Firebase FCM send in `smart_notify` requires `FIREBASE_CREDENTIALS_PATH`.
+- **`services/notifications.py`** — `_send_fcm_with_status` happy path requires Firebase credentials.
+- **`services/ai_extractor.py`** — Requires live Anthropic API credentials.
+- **`tasks/seo.py`** — Sitemap file-write path requires filesystem setup.
 
 ---
 
-## User Frontend — 91% (80 tests)
+## User Frontend Tests (`src/frontend/tests/`)
+
+**1 unit file + 1 integration file.**
 
 | Module | Coverage | Notes |
 |--------|----------|-------|
 | `app/__init__.py` | 90% | Firebase JS-handled routes (email-verify deep-link, account-link) not exercised |
 | `app/api_client.py` | 100% | All HTTP methods covered |
 
-### Frontend Test Files
-
-| File | Tests | Covers |
-|------|-------|--------|
-| `unit/test_api_client.py` | 17 | `__init__`, `_headers`, `get`, `post`, `put`, `delete`, `patch` |
-| `integration/test_routes.py` | 63 | All routes: index, job listing, job detail, dashboard, notifications, login (GET), `/auth/firebase-callback`, logout, profile, org follow/unfollow, recommended jobs, application track/update/delete |
+| File | Covers |
+|------|--------|
+| `unit/test_api_client.py` | `__init__`, `_headers`, `get`, `post`, `put`, `delete`, `patch` — all methods |
+| `integration/test_routes.py` | All routes: index, job listing, job detail, dashboard, notifications, login, `/auth/firebase-callback`, logout, profile, org follow/unfollow, recommended jobs |
 
 ### Frontend Test Strategy
 
 Flask `test_client()` with `app.api_client` replaced by a `MagicMock`. No real backend or Firebase calls are made. Auth-required routes are tested both with and without a session token.
 
-All POST form tests must include `csrf_token` in the form data (or set it in `session` before the request). The `/auth/firebase-callback` endpoint is exempt from CSRF validation (it receives a JSON body authenticated by the Firebase ID token).
-
-The `conftest.py` includes a session-scoped `truncate_all_tables` autouse fixture that truncates all tables before the test session starts, preventing stale data from prior runs from causing test failures. The truncation list covers all 13 tables: `notification_delivery_log`, `notifications`, `user_watches`, `user_devices`, `admin_logs`, `admit_cards`, `answer_keys`, `results`, `jobs`, `entrance_exams`, `user_profiles`, `users`, `admin_users`.
+All POST form tests include `csrf_token` in the form data. The `/auth/firebase-callback` endpoint is exempt from CSRF validation.
 
 ---
 
-## Admin Frontend — 97% (88 tests)
+## Admin Frontend Tests (`src/frontend-admin/tests/`)
+
+**1 unit file + 1 integration file.**
 
 | Module | Coverage | Notes |
 |--------|----------|-------|
-| `app/__init__.py` | 97% | All routes covered; `patch()` in api_client unused |
-| `app/api_client.py` | 94% | `patch()` method not used by any admin route |
+| `app/__init__.py` | 97% | All routes covered |
+| `app/api_client.py` | 94% | `patch()` method not called by any admin route |
 
-### Admin Frontend Test Files
-
-| File | Tests | Covers |
-|------|-------|--------|
-| `unit/test_api_client.py` | 18 | All methods including `post_file` (timeout, headers, files) |
-| `integration/test_routes.py` | 70 | All routes: dashboard (analytics for admin vs operator), jobs, new job, job delete, PDF extraction, draft review, users, user detail, role management, logs |
+| File | Covers |
+|------|--------|
+| `unit/test_api_client.py` | All methods including `post_file` (timeout, headers, files) |
+| `integration/test_routes.py` | All routes: dashboard (admin vs operator analytics), jobs, new job, job delete, PDF extraction, draft review, users, user detail, role management, logs |
 
 ### Why Some Admin Frontend Lines Are Uncovered
 
-- **`api_client.py:63–69`** — `patch()` method exists for completeness but no admin frontend route currently calls it.
+- **`api_client.py` — `patch()`** — exists for completeness but no admin frontend route currently calls it.
+
+---
+
+## E2E Tests (`tests/e2e/`)
+
+Cross-service HTTP tests using the `requests` library. All three services must be running.
+
+| File | Covers |
+|------|--------|
+| `test_health.py` | Smoke-tests all 3 service `/health` endpoints |
+| `test_full_flow.py` | Job lifecycle (draft → approve → visible on frontend → delete); admin frontend login/navigate/logout; watch job flow (watch → list → unwatch); entrance exam lifecycle |
+
+In CI (job 4), services are started via `docker-compose.test.yml`, an admin and regular user are seeded, the user JWT is captured as `E2E_USER_TOKEN`, then `pytest tests/e2e/` runs on the host runner.

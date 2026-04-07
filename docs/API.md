@@ -13,12 +13,14 @@ All list endpoints return: `{ "data": [...], "pagination": { "limit", "offset", 
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
 | POST | `/auth/verify-token` | Public | Verify Firebase ID token → upsert user → internal JWT pair |
-| POST | `/auth/send-email-otp` | Public | Send OTP to email for registration |
-| POST | `/auth/verify-email-otp` | Public | Verify email OTP → returns verification token |
-| POST | `/auth/complete-registration` | Public | Complete registration with password after OTP verification |
+| POST | `/auth/send-email-otp` | Public | Send OTP to email for registration (rate-limited: 3/min) |
+| POST | `/auth/verify-email-otp` | Public | Verify email OTP → returns short-lived verification token (5 min) |
+| POST | `/auth/complete-registration` | Public | Create Firebase user + send welcome email after OTP verification |
 | POST | `/auth/check-phone-availability` | Public | Check if phone number is already registered |
-| POST | `/auth/logout` | User JWT | Revoke access token (and optionally refresh token) via Redis blocklist |
-| POST | `/auth/refresh` | Public | Rotate internal token pair |
+| POST | `/auth/check-user-providers` | Public | Check which auth providers a Firebase user has (Google, password) |
+| POST | `/auth/add-password` | Public | Add password to an existing social-auth (Google) account (requires OTP verification token) |
+| POST | `/auth/logout` | User JWT | Revoke access + optional refresh token via Redis blocklist (returns 204) |
+| POST | `/auth/refresh` | Public | Rotate internal token pair (old refresh JTI is blocklisted) |
 
 **Registration Methods:**
 - Email/Password: Send OTP → verify OTP → complete registration with password
@@ -64,6 +66,7 @@ If `refresh_token` is provided, its JTI is also added to the Redis blocklist so 
 | GET | `/users/profile` | User | Get own profile + user data |
 | PUT | `/users/profile` | User | Update profile fields |
 | PUT | `/users/profile/phone` | User | Update phone number (marks as unverified) |
+| POST | `/users/me/send-phone-otp` | User | Send OTP to verify phone number |
 | POST | `/users/me/verify-phone-otp` | User | Verify phone number with OTP |
 | POST | `/users/me/set-password` | User | Set password for Google OAuth users |
 | POST | `/users/me/change-password` | User | Change password (requires re-authentication client-side before calling) |
@@ -194,7 +197,6 @@ Content is stored across four dedicated tables: `jobs`, `admit_cards`, `answer_k
 |--------|----------|------|-------------|
 | GET | `/admin/users` | Operator+ | List users (search by name/email) |
 | GET | `/admin/users/:id` | Operator+ | User detail with profile |
-| PUT | `/admin/users/:id/role` | Admin only | Change user role (admin/operator) |
 | PUT | `/admin/users/:id/status` | Admin only | Suspend or activate user |
 
 ### Admin Account Management
@@ -207,7 +209,7 @@ Content is stored across four dedicated tables: `jobs`, `admit_cards`, `answer_k
 ```json
 {
   "email": "operator@example.com",
-  "password": "MinEight1",
+  "password": "MinEight1",  # pragma: allowlist secret
   "full_name": "New Operator",
   "role": "operator",
   "phone": null,
@@ -220,8 +222,7 @@ The first admin account must be seeded directly in the database. All subsequent 
 
 | Method | Endpoint | Role | Description |
 |--------|----------|------|-------------|
-| GET | `/admin/stats` | Operator+ | Job/user/application counts (includes new_this_week) |
-| GET | `/admin/analytics` | Admin only | Platform analytics (demographics, trends, etc.) |
+| GET | `/admin/stats` | Operator+ | Job/user counts by status (includes new_this_week) |
 | GET | `/admin/logs` | Admin only | Admin audit trail |
 
 ---
@@ -305,7 +306,7 @@ All channels always deliver — staggered just adds a time gap so the user isn't
 | WhatsApp | If user has `notification_preferences.whatsapp` not set to `false` | Placeholder until `WHATSAPP_API_TOKEN` is configured |
 | Telegram | If user has chat_id set in `notification_preferences.telegram.chat_id` and `notification_preferences.telegram.enabled` not `false` | Requires `TELEGRAM_BOT_TOKEN`; uses Bot API `sendMessage` with Markdown |}
 
-Every delivery attempt is logged in `notification_delivery_log` with status (`pending`, `queued`, `sent`, `delivered`, `failed`, `skipped`). Email is logged as `queued` when the Celery task is dispatched (not when actually sent).
+Every delivery attempt is logged in `notification_delivery_log` with status (`pending`, `sent`, `delivered`, `failed`). Status starts as `pending`, moves to `sent` on dispatch, `delivered` on confirmation, `failed` on error.
 
 ---
 
@@ -385,7 +386,19 @@ Authorization: Bearer <user_token>
 
 ## Error Responses
 
-All errors follow: `{ "detail": "Error message" }`
+All errors follow the structured format from `app/main.py`:
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "ERROR_CODE",
+    "message": "Human-readable message",
+    "details": [],
+    "timestamp": "2026-04-07T06:00:00Z"
+  }
+}
+```
 
 | Code | Meaning |
 |------|---------|
@@ -438,11 +451,11 @@ GET /api/v1/admin/stats
 Authorization: Bearer <admin_token>
 → 200 {
   "jobs": { "total": 7, "active": 6, "draft": 0 },
-  "admit_cards": { "total": 15, "active": 15 },
-  "answer_keys": { "total": 3, "active": 3 },
-  "results": { "total": 2, "active": 2 },
+  "admit_cards": { "total": 15 },
+  "answer_keys": { "total": 3 },
+  "results": { "total": 2 },
   "entrance_exams": { "total": 5, "active": 4 },
-  "users": { "total": 3, "active": 3, "new_this_week": 1 },
+  "users": { "total": 3, "active": 3, "new_this_week": 1 }
 }
 ```
 
