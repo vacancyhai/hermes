@@ -338,8 +338,8 @@ Per-phase results (shortlist, cutoff, merit list, final). Polymorphic.
 ---
 
 ### 12. `entrance_exams`
-Admission / entrance exams (NEET, JEE, CLAT, CAT, GATE, CUET etc.) — separate from `jobs`.
-These are educational admissions, not government job recruitments.
+Entrance exams (NEET, JEE, CLAT, CAT, GATE, CUET etc.) — separate from `jobs`.
+These are educational entrance examinations, not government job recruitments.
 
 | Column | Type | Nullable | Description |
 |--------|------|----------|-------------|

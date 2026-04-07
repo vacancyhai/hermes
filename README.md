@@ -13,7 +13,7 @@ multi-channel notifications, and an admin panel.
 > PDF upload with AI extraction (Anthropic Claude), draft review & approve workflow, CSRF protection,
 > PWA (manifest, service worker, offline fallback), comprehensive test suite, security audit.
 >
-> **Latest additions:** Separate `entrance_exams` table for admission/entrance exams (NEET, JEE, CLAT, CAT, GATE, CUET etc.)
+> **Latest additions:** Separate `entrance_exams` table for entrance exams (NEET, JEE, CLAT, CAT, GATE, CUET etc.)
 > decoupled from `jobs`; polymorphic document tables (`admit_cards`, `answer_keys`, `results`) now
 > support both jobs and entrance exams via `job_id`/`exam_id` FK; 5-section frontend navigation
 > (Jobs / Admit Cards / Answer Keys / Results / Entrance Exams); type-aware gradient detail pages with shared
@@ -78,7 +78,7 @@ PostgreSQL and Redis are isolated inside Docker networks — never exposed to th
 - **CSRF Protection** — All user frontend POST forms include a session-bound CSRF token validated on the server. The Firebase callback endpoint is exempt (authenticated by Firebase ID token).
 - **Two-Tier RBAC** — Regular users (`users` table, user frontend port 8080) and Operator/Admin (`admin_users` table with role column, admin frontend port 8081); JWT `user_type` claim (`"user"` | `"admin"`) enforces strict scope isolation — admin tokens are rejected by user endpoints and vice versa.
 - **Organisation Follow** — Follow SSC, UPSC, Railway, etc. (stored in `user_profiles.followed_organizations`) to get notified on every new vacancy from that organisation.
-- **Entrance Exam Admissions** — Separate `entrance_exams` table for NEET, JEE, CLAT, CAT, CUET, GATE etc.; distinct from government job vacancies with exam-specific fields: `stream`, `exam_type`, `counselling_body`, `seats_info`, eligibility, exam pattern.
+- **Entrance Exams** — Separate `entrance_exams` table for NEET, JEE, CLAT, CAT, CUET, GATE etc.; distinct from government job vacancies with exam-specific fields: `stream`, `exam_type`, `counselling_body`, `seats_info`, eligibility, exam pattern.
 - **Polymorphic Document Tables** — `admit_cards`, `answer_keys`, `results` each link to either a job (`job_id`) or entrance exam (`exam_id`) via DB CHECK constraint — exactly one parent per row.
 - **5-Section Navigation** — Jobs, Admit Cards, Answer Keys, Results, Entrance Exams — each with its own section page, search, and type-matching gradient hero color.
 - **Unified Detail Pages** — Type-aware gradient heroes (navy/blue/amber/green/purple per section); structured sections for eligibility, selection process, exam pattern, vacancy breakdown, fee table; Web Share API button (with clipboard fallback).
@@ -263,6 +263,9 @@ hermes/
 │   ├── staging/                  # Staging .env templates
 │   └── production/               # Production .env templates
 ├── scripts/
+│   ├── seed_jobs.py              # Seed: 10 jobs + 9 exams + 32 phase docs (run manually)
+│   │                             #   docker cp scripts/seed_jobs.py hermes_backend:/app/seed_jobs.py
+│   │                             #   docker exec hermes_backend python seed_jobs.py
 │   ├── backup/                   # backup_db.sh + restore_db.sh
 │   └── deployment/               # deploy_all.sh + stop_all.sh + check_config.sh
 ├── sonar-project.properties      # SonarCloud config (3 source roots, 4 test roots, 3 coverage XMLs)

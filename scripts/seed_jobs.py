@@ -1,14 +1,17 @@
 """Seed script — inserts realistic government job data for all 4 portal sections.
 
 Sections seeded:
-  - 10 latest_job entries (recruitment posts)
-  - 9  admit_card entries (standalone admit card announcements)
-  - 9  answer_key entries (standalone answer key announcements)
-  - 9  result entries  (standalone result announcements)
-  - Per-phase linked documents (job_admit_cards, job_answer_keys, job_results)
+  - 9  latest_job entries (recruitment posts)
+  - 9  admit_card entries (standalone admit card announcements on /admit-cards page)
+  - 9  answer_key entries (standalone answer key announcements on /answer-keys page)
+  - 9  result entries  (standalone result announcements on /results page)
+  - Per-phase linked documents (admit_cards, answer_keys, results via job_id FK):
+      SSC CGL, IBPS PO, RRB NTPC, UPSC CSE, SSC GD, MPSC, IBPS RRB (7 jobs with multi-phase docs)
+  - 9  entrance_exams with full phase docs (admit_cards, answer_keys, results via exam_id FK)
 
-Usage (inside Docker):
-    docker exec -w /app hermes_backend python -m app.data.seed_jobs
+Usage:
+    docker cp scripts/seed_jobs.py hermes_backend:/app/seed_jobs.py
+    docker exec hermes_backend python seed_jobs.py
 
 Re-runnable: existing slugs are skipped, phase docs deduplicated by title.
 """
@@ -99,6 +102,7 @@ SLUGS_TO_REPLACE = [
     "nta-neet-pg-2026-admit-card",  # Was incorrectly admit_card type
     "nta-neet-pg-2026",  # Was latest_job; now entrance_exam
     "nta-neet-pg-2026-hall-ticket",  # Duplicates the admit card now linked via exam_id in job_admit_cards
+    "ibps-clerk-crp-xv-2025",  # Removed: reduced JOBS list to 9
 ]
 
 
@@ -1469,121 +1473,111 @@ JOBS = [
         "is_urgent": False,
     },
     # ------------------------------------------------------------------
-    # 10. IBPS Clerk XV 2025
+    # 9. IBPS RRB Officer Scale-I 2025
     # ------------------------------------------------------------------
     {
-        "job_title": "IBPS Clerk (CRP Clerk XV) Recruitment 2025",
-        "slug": "ibps-clerk-crp-xv-2025",
+        "job_title": "IBPS RRB Officer Scale-I (Assistant Manager) Recruitment 2025",
+        "slug": "ibps-rrb-officer-scale-i-2025",
         "organization": _IBPS,
         "department": "IBPS",
         "employment_type": "permanent",
         "qualification_level": "graduate",
-        "total_vacancies": 6128,
+        "total_vacancies": 9423,
         "vacancy_breakdown": {
-            "by_category": {"UR": 2452, "OBC": 1655, "EWS": 613, "SC": 919, "ST": 489},
+            "by_category": {
+                "UR": 3770,
+                "OBC": 2545,
+                "EWS": 942,
+                "SC": 1414,
+                "ST": 752,
+            },
             "by_post": [
                 {
-                    "post_name": "Clerical Cadre",
-                    "total": 6128,
-                    "pay_scale": "₹17,900–₹47,920",
+                    "post_name": "Officer Scale-I (Assistant Manager)",
+                    "total": 9423,
+                    "pay_scale": "₹36,000–₹63,840",
                 }
             ],
         },
-        "description": "<p>IBPS invites online applications for <strong>6,128 Clerical Cadre</strong> vacancies across 11 participating public sector banks. Selected candidates serve as Clerk / Single Window Operator at various bank branches across India.</p>",
-        "short_description": "IBPS Clerk 2025: 6,128 vacancies in 11 public sector banks. Any graduate eligible. Prelims + Mains + LPT.",
+        "description": "<p>IBPS RRB CRP XIV invites applications for <strong>9,423 Officer Scale-I</strong> vacancies across 43 Regional Rural Banks. Officer Scale-I is equivalent to Assistant Manager in RRBs and provides a direct entry into banking management cadre.</p>",
+        "short_description": "IBPS RRB Officer Scale-I 2025: 9,423 vacancies across 43 Regional Rural Banks. Graduate eligible. Prelims + Mains + Interview.",
         "eligibility": {
             "min_qualification": "graduate",
-            "qualification_details": "Graduation in any discipline from a recognised University",
+            "qualification_details": "Degree in any discipline from a recognised University; Computer knowledge mandatory",
             "age_limit": {
-                "min": 20,
-                "max": 28,
-                "cutoff_date": "2025-11-01",
-                "relaxation": {
-                    "OBC": 3,
-                    "SC": 5,
-                    "ST": 5,
-                    "PwBD": 10,
-                    "Ex_Serviceman": 5,
-                },
+                "min": 18,
+                "max": 30,
+                "cutoff_date": "2025-09-01",
+                "relaxation": {"OBC": 3, "SC": 5, "ST": 5, "PwBD": 10, "Ex_Serviceman": 5},
             },
+            "language": "Proficiency in state's local language mandatory",
         },
         "application_details": {
             "application_mode": "Online",
             "application_link": _IBPS_APPLY,
             "official_website": "https://ibps.in",
             "fee_payment_mode": "Online (Debit/Credit Card, Net Banking, UPI)",
+            "important_links": [
+                {"type": "apply_online", "text": _APPLY_ONLINE, "url": _IBPS_APPLY},
+                {
+                    "type": "download_notification",
+                    "text": _OFFICIAL_NOTIF,
+                    "url": "https://ibps.in/rrb-notification",
+                },
+            ],
         },
         "documents": [
-            {
-                "name": _DEGREE_CERT,
-                "mandatory": True,
-                "format": "PDF",
-                "max_size_kb": 500,
-            },
+            {"name": _DEGREE_CERT, "mandatory": True, "format": "PDF", "max_size_kb": 500},
             {"name": "Photo", "mandatory": True, "format": "JPG", "max_size_kb": 50},
-            {
-                "name": "Signature",
-                "mandatory": True,
-                "format": "JPG",
-                "max_size_kb": 20,
-            },
+            {"name": "Signature", "mandatory": True, "format": "JPG", "max_size_kb": 20},
+            {"name": _CATEGORY_CERT, "mandatory": False, "format": "PDF", "max_size_kb": 300},
         ],
-        "notification_date": date(2025, 9, 12),
-        "application_start": date(2025, 9, 12),
-        "application_end": date(2025, 10, 2),
-        "exam_start": date(2025, 11, 22),
-        "result_date": date(2026, 4, 1),
+        "notification_date": date(2025, 7, 7),
+        "application_start": date(2025, 7, 7),
+        "application_end": date(2025, 7, 28),
+        "exam_start": date(2025, 8, 3),
+        "result_date": date(2026, 1, 1),
         "exam_details": {
             "exam_pattern": [
                 {
                     "phase": "Prelims",
                     "subjects": [
-                        {"name": _ENG_LANG, "questions": 30, "marks": 30},
-                        {"name": "Numerical Ability", "questions": 35, "marks": 35},
-                        {"name": _REASONING, "questions": 35, "marks": 35},
+                        {"name": _REASONING, "questions": 40, "marks": 40},
+                        {"name": _QUANT_APT, "questions": 40, "marks": 40},
                     ],
-                    "total_marks": 100,
-                    "duration_minutes": 60,
+                    "total_marks": 80,
+                    "duration_minutes": 45,
                     "qualifying": True,
                 },
                 {
                     "phase": "Mains",
                     "subjects": [
-                        {
-                            "name": "General/Financial Awareness",
-                            "questions": 50,
-                            "marks": 50,
-                        },
-                        {"name": "General English", "questions": 40, "marks": 40},
-                        {
-                            "name": "Reasoning Ability & Computer Aptitude",
-                            "questions": 50,
-                            "marks": 60,
-                        },
-                        {"name": _QUANT_APT, "questions": 50, "marks": 50},
+                        {"name": _REASONING, "questions": 40, "marks": 50},
+                        {"name": _GEN_AWARENESS, "questions": 40, "marks": 40},
+                        {"name": _QUANT_APT, "questions": 40, "marks": 50},
+                        {"name": "English / Hindi Language", "questions": 40, "marks": 40},
+                        {"name": "Computer Knowledge", "questions": 40, "marks": 20},
                     ],
                     "total_marks": 200,
-                    "duration_minutes": 160,
+                    "duration_minutes": 120,
                 },
+                {"phase": "Interview", "marks": 100},
             ],
-            "exam_language": ["Hindi", "English"],
+            "exam_language": ["Hindi", "English", "Regional Language"],
             "total_phases": 3,
         },
         "salary": {
-            "pay_scale": "₹17,900–₹47,920",
-            "allowances": ["DA", "HRA", "CCA", "Medical Aid"],
-            "other_benefits": "Pension, PF, Staff Loan at concessional rate",
+            "pay_scale": "₹36,000–₹63,840",
+            "allowances": ["DA", "HRA", "CCA", "Medical Aid", "Staff Perquisites"],
+            "other_benefits": "Pension, PF, Housing Loan at concessional rate",
         },
-        "salary_initial": 17900,
-        "salary_max": 47920,
+        "salary_initial": 36000,
+        "salary_max": 63840,
         "selection_process": [
-            {
-                "phase": 1,
-                "name": "Preliminary Examination (Online)",
-                "qualifying": True,
-            },
+            {"phase": 1, "name": "Preliminary Examination (Online)", "qualifying": True},
             {"phase": 2, "name": "Main Examination (Online)", "qualifying": False},
-            {"phase": 3, "name": "Language Proficiency Test (LPT)", "qualifying": True},
+            {"phase": 3, "name": "Interview", "qualifying": False},
+            {"phase": 4, "name": _DOC_VERIFY, "qualifying": True},
         ],
         "fee_general": 850,
         "fee_obc": 850,
@@ -1602,7 +1596,7 @@ JOBS = [
 # Covers NEET PG/UG, JEE, CLAT, CAT, CUET, NEET SS, CET etc.
 # ---------------------------------------------------------------------------
 
-ADMISSIONS = [
+ENTRANCE_EXAMS = [
     {
         "slug": "nta-neet-pg-2026",
         "exam_name": "NTA NEET PG 2026 — Medical PG Entrance Examination",
@@ -3414,6 +3408,22 @@ PHASE_DOCS = {
                 "notes": "Candidates scoring above cut-off in respective categories are shortlisted for Tier-2.",
                 "published_at": datetime(2026, 3, 10, tzinfo=timezone.utc),
             },
+            {
+                "phase_number": 2,
+                "title": "SSC CGL Tier-2 2026 Result — Final Merit List",
+                "result_type": "final",
+                "download_url": "https://ssc.nic.in/result/cgl-tier2-2026",
+                "cutoff_marks": {
+                    "AAO_UR": 618.50,
+                    "IT_Inspector_UR": 598.25,
+                    "Tax_Assistant_UR": 542.00,
+                    "SC": 490.50,
+                    "ST": 465.75,
+                },
+                "total_qualified": 14582,
+                "notes": "Final selection based on Tier-2 marks. Post-wise allocation in separate order. Join by 1 Oct 2026.",
+                "published_at": datetime(2026, 7, 1, tzinfo=timezone.utc),
+            },
         ],
     },
     "ibps-po-recruitment-2025": {
@@ -3475,6 +3485,38 @@ PHASE_DOCS = {
                 "total_qualified": 41800,
                 "published_at": datetime(2025, 11, 15, tzinfo=timezone.utc),
             },
+            {
+                "phase_number": 2,
+                "title": "IBPS PO Mains 2025 Result — Shortlist for Interview",
+                "result_type": "shortlist",
+                "download_url": "https://ibps.in/result/po-mains",
+                "cutoff_marks": {
+                    "UR": 64.25,
+                    "OBC": 59.50,
+                    "EWS": 61.00,
+                    "SC": 51.75,
+                    "ST": 47.25,
+                },
+                "total_qualified": 13365,
+                "notes": "Approx 3× vacancy count shortlisted for Interview across categories.",
+                "published_at": datetime(2026, 1, 5, tzinfo=timezone.utc),
+            },
+            {
+                "phase_number": 3,
+                "title": "IBPS PO 2025 Final Result & Provisional Allotment",
+                "result_type": "final",
+                "download_url": "https://ibps.in/result/po-final",
+                "cutoff_marks": {
+                    "UR_composite": 52.50,
+                    "OBC_composite": 48.25,
+                    "EWS_composite": 49.75,
+                    "SC_composite": 42.00,
+                    "ST_composite": 38.50,
+                },
+                "total_qualified": 4455,
+                "notes": "Composite score = Mains (80%) + Interview (20%). Bank-wise allotment published separately.",
+                "published_at": datetime(2026, 2, 15, tzinfo=timezone.utc),
+            },
         ],
     },
     "rrb-ntpc-graduate-level-recruitment-2025": {
@@ -3522,9 +3564,384 @@ PHASE_DOCS = {
                 "notes": "Candidates shortlisted at 20× vacancy count in each category and post.",
                 "published_at": datetime(2026, 5, 15, tzinfo=timezone.utc),
             },
+            {
+                "phase_number": 2,
+                "title": "RRB NTPC CBT-2 2026 Result — Merit List",
+                "result_type": "merit_list",
+                "download_url": "https://rrbapply.gov.in/result/ntpc-cbt2",
+                "cutoff_marks": {
+                    "UR_Station_Master": 85.50,
+                    "UR_Goods_Guard": 78.25,
+                    "UR_Jr_Account_Asst": 80.00,
+                    "SC_Station_Master": 72.00,
+                    "ST_Station_Master": 65.75,
+                },
+                "total_qualified": 23116,
+                "notes": "Post-wise merit list. Candidates shortlisted for Skill Test / Typing Test / Document Verification.",
+                "published_at": datetime(2026, 9, 1, tzinfo=timezone.utc),
+            },
+        ],
+    },
+    "ibps-rrb-officer-scale-i-2025": {
+        "admit_cards": [
+            {
+                "phase_number": 1,
+                "title": "IBPS RRB Officer Scale-I Prelims 2025 Call Letter",
+                "download_url": "https://ibps.in/call-letter/rrb-officer-prelims",
+                "valid_from": date(2025, 7, 28),
+                "valid_until": date(2025, 8, 10),
+                "notes": "Download using Registration No. & Password/DOB. Multiple exam dates.",
+                "published_at": datetime(2025, 7, 28, tzinfo=timezone.utc),
+            },
+            {
+                "phase_number": 2,
+                "title": "IBPS RRB Officer Scale-I Mains 2025 Call Letter",
+                "download_url": "https://ibps.in/call-letter/rrb-officer-mains",
+                "valid_from": date(2025, 9, 28),
+                "valid_until": date(2025, 10, 5),
+                "notes": "Only for candidates who cleared Prelims. Single day exam.",
+                "published_at": datetime(2025, 9, 28, tzinfo=timezone.utc),
+            },
+        ],
+        "answer_keys": [
+            {
+                "phase_number": 1,
+                "title": "IBPS RRB Officer Scale-I Prelims 2025 Answer Key",
+                "answer_key_type": "provisional",
+                "files": [
+                    {"label": _REASONING, "url": "https://ibps.in/ak/rrb-officer-pre-reasoning.pdf"},
+                    {"label": _QUANT_APT, "url": "https://ibps.in/ak/rrb-officer-pre-quant.pdf"},
+                ],
+                "published_at": datetime(2025, 8, 12, tzinfo=timezone.utc),
+            },
+            {
+                "phase_number": 2,
+                "title": "IBPS RRB Officer Scale-I Mains 2025 Answer Key",
+                "answer_key_type": "provisional",
+                "files": [
+                    {"label": "Mains Question Paper + Key", "url": "https://ibps.in/ak/rrb-officer-mains-2025.pdf"},
+                ],
+                "objection_url": "https://ibps.in/objection/rrb-officer-mains",
+                "objection_deadline": date(2025, 10, 12),
+                "published_at": datetime(2025, 10, 8, tzinfo=timezone.utc),
+            },
+        ],
+        "results": [
+            {
+                "phase_number": 1,
+                "title": "IBPS RRB Officer Scale-I Prelims 2025 Result",
+                "result_type": "shortlist",
+                "download_url": "https://ibps.in/result/rrb-officer-prelims",
+                "cutoff_marks": {
+                    "UR": 55.25,
+                    "OBC": 51.50,
+                    "EWS": 52.75,
+                    "SC": 44.00,
+                    "ST": 40.50,
+                },
+                "total_qualified": 94230,
+                "notes": "Approx 10× vacancy count shortlisted per category for Mains.",
+                "published_at": datetime(2025, 8, 25, tzinfo=timezone.utc),
+            },
+            {
+                "phase_number": 2,
+                "title": "IBPS RRB Officer Scale-I Mains 2025 Result",
+                "result_type": "shortlist",
+                "download_url": "https://ibps.in/result/rrb-officer-mains",
+                "cutoff_marks": {
+                    "UR": 120.50,
+                    "OBC": 114.25,
+                    "EWS": 116.00,
+                    "SC": 102.75,
+                    "ST": 96.00,
+                },
+                "total_qualified": 18846,
+                "notes": "Shortlisted for Interview (2× vacancy count per category).",
+                "published_at": datetime(2025, 11, 10, tzinfo=timezone.utc),
+            },
+            {
+                "phase_number": 3,
+                "title": "IBPS RRB Officer Scale-I 2025 Final Result & Provisional Allotment",
+                "result_type": "final",
+                "download_url": "https://ibps.in/result/rrb-officer-final",
+                "cutoff_marks": {
+                    "UR_composite": 68.50,
+                    "OBC_composite": 63.25,
+                    "SC_composite": 55.00,
+                    "ST_composite": 50.75,
+                },
+                "total_qualified": 9423,
+                "notes": "Composite score = Mains (80%) + Interview (20%). Bank-wise provisional allotment list published.",
+                "published_at": datetime(2026, 1, 15, tzinfo=timezone.utc),
+            },
         ],
     },
     # Note: nta-neet-pg-2026 phase docs are in EXAM_PHASE_DOCS (exam_id FK)
+    "upsc-civil-services-examination-2026": {
+        "admit_cards": [
+            {
+                "phase_number": 1,
+                "title": "UPSC Civil Services Prelims 2026 Admit Card",
+                "download_url": "https://upsconline.nic.in/admit-card/csp-2026",
+                "valid_from": date(2026, 5, 10),
+                "valid_until": date(2026, 5, 25),
+                "notes": "Download from upsconline.nic.in using Registration ID & DOB. Carry e-Admit Card printout + original photo ID.",
+                "published_at": datetime(2026, 5, 10, tzinfo=timezone.utc),
+            },
+            {
+                "phase_number": 2,
+                "title": "UPSC Civil Services Mains 2026 Admit Card",
+                "download_url": "https://upsconline.nic.in/admit-card/csm-2026",
+                "valid_from": date(2026, 9, 14),
+                "valid_until": date(2026, 9, 23),
+                "notes": "Only for candidates who cleared Prelims. Carry printout + original ID. No electronic devices allowed.",
+                "published_at": datetime(2026, 9, 14, tzinfo=timezone.utc),
+            },
+        ],
+        "answer_keys": [
+            {
+                "phase_number": 1,
+                "title": "UPSC Civil Services Prelims 2026 — GS Paper I Answer Key",
+                "answer_key_type": "provisional",
+                "files": [
+                    {
+                        "label": "GS Paper I — Set A",
+                        "url": "https://upsc.gov.in/ak/csp-2026-gs1-seta.pdf",
+                    },
+                    {
+                        "label": "GS Paper I — Set B",
+                        "url": "https://upsc.gov.in/ak/csp-2026-gs1-setb.pdf",
+                    },
+                    {
+                        "label": "GS Paper I — Set C",
+                        "url": "https://upsc.gov.in/ak/csp-2026-gs1-setc.pdf",
+                    },
+                    {
+                        "label": "GS Paper I — Set D",
+                        "url": "https://upsc.gov.in/ak/csp-2026-gs1-setd.pdf",
+                    },
+                ],
+                "published_at": datetime(2026, 6, 2, tzinfo=timezone.utc),
+            },
+        ],
+        "results": [
+            {
+                "phase_number": 1,
+                "title": "UPSC Civil Services Prelims 2026 Result — Shortlist for Mains",
+                "result_type": "shortlist",
+                "download_url": "https://upsc.gov.in/result/csp-2026",
+                "cutoff_marks": {
+                    "General": 92.51,
+                    "EWS": 84.17,
+                    "OBC": 82.34,
+                    "SC": 72.49,
+                    "ST": 63.30,
+                    "PwBD": 40.23,
+                },
+                "total_qualified": 14624,
+                "notes": "Approx 13× vacancy count shortlisted for Mains across all categories.",
+                "published_at": datetime(2026, 7, 15, tzinfo=timezone.utc),
+            },
+            {
+                "phase_number": 2,
+                "title": "UPSC Civil Services Mains 2026 Result — Shortlist for Interview",
+                "result_type": "shortlist",
+                "download_url": "https://upsc.gov.in/result/csm-2026",
+                "cutoff_marks": {
+                    "note": "Marks not disclosed; interview call letters issued directly",
+                },
+                "total_qualified": 2845,
+                "notes": "Approx 2× vacancy count shortlisted for Personality Test (Interview).",
+                "published_at": datetime(2027, 1, 10, tzinfo=timezone.utc),
+            },
+        ],
+    },
+    "ssc-gd-constable-recruitment-2025": {
+        "admit_cards": [
+            {
+                "phase_number": 1,
+                "title": "SSC GD Constable 2025 CBT Admit Card",
+                "download_url": "https://ssc.nic.in/admit-card/gd-cbt-2025",
+                "valid_from": date(2026, 2, 5),
+                "valid_until": date(2026, 3, 15),
+                "notes": "Download from ssc.nic.in. Carry printout with passport photo pasted and photo ID to exam centre.",
+                "published_at": datetime(2026, 2, 5, tzinfo=timezone.utc),
+            },
+            {
+                "phase_number": 2,
+                "title": "SSC GD Constable 2025 PET/PST Admit Card",
+                "download_url": "https://ssc.nic.in/admit-card/gd-pet-2025",
+                "valid_from": date(2026, 5, 10),
+                "valid_until": date(2026, 6, 30),
+                "notes": "Only for candidates who cleared CBT. Report to allotted venue at 6:00 AM in sports kit.",
+                "published_at": datetime(2026, 5, 10, tzinfo=timezone.utc),
+            },
+        ],
+        "answer_keys": [
+            {
+                "phase_number": 1,
+                "title": "SSC GD Constable 2025 CBT Provisional Answer Key",
+                "answer_key_type": "provisional",
+                "files": [
+                    {
+                        "label": "General Intelligence & Reasoning",
+                        "url": "https://ssc.nic.in/ak/gd-2025-gi.pdf",
+                    },
+                    {
+                        "label": "General Awareness",
+                        "url": "https://ssc.nic.in/ak/gd-2025-ga.pdf",
+                    },
+                    {
+                        "label": "Mathematics",
+                        "url": "https://ssc.nic.in/ak/gd-2025-math.pdf",
+                    },
+                    {
+                        "label": "English / Hindi",
+                        "url": "https://ssc.nic.in/ak/gd-2025-eng.pdf",
+                    },
+                ],
+                "objection_url": "https://ssc.nic.in/objection/gd-2025",
+                "objection_deadline": date(2026, 3, 30),
+                "published_at": datetime(2026, 3, 22, tzinfo=timezone.utc),
+            },
+            {
+                "phase_number": 1,
+                "title": "SSC GD Constable 2025 CBT Final Answer Key",
+                "answer_key_type": "final",
+                "files": [
+                    {
+                        "label": "Final Answer Key (All Shifts)",
+                        "url": "https://ssc.nic.in/fak/gd-2025-final.pdf",
+                    },
+                ],
+                "published_at": datetime(2026, 4, 15, tzinfo=timezone.utc),
+            },
+        ],
+        "results": [
+            {
+                "phase_number": 1,
+                "title": "SSC GD Constable 2025 CBT Result — Shortlist for PET/PST",
+                "result_type": "shortlist",
+                "download_url": "https://ssc.nic.in/result/gd-cbt-2025",
+                "cutoff_marks": {
+                    "UR_Male": 82.50,
+                    "UR_Female": 78.25,
+                    "OBC_Male": 75.00,
+                    "SC_Male": 65.50,
+                    "ST_Male": 58.75,
+                },
+                "total_qualified": 148500,
+                "notes": "Approx 6× vacancy count shortlisted for PET/PST in each category.",
+                "published_at": datetime(2026, 4, 30, tzinfo=timezone.utc),
+            },
+            {
+                "phase_number": 2,
+                "title": "SSC GD Constable 2025 Final Result & Merit List",
+                "result_type": "final",
+                "download_url": "https://ssc.nic.in/result/gd-final-2025",
+                "cutoff_marks": {
+                    "UR": 82.50,
+                    "OBC": 75.00,
+                    "EWS": 76.25,
+                    "SC": 65.50,
+                    "ST": 58.75,
+                },
+                "total_qualified": 25487,
+                "notes": "Final selection after CBT + PET + PST + Medical. Post-wise allocation in separate order.",
+                "published_at": datetime(2026, 9, 15, tzinfo=timezone.utc),
+            },
+        ],
+    },
+    "mpsc-rajyaseva-state-services-examination-2025": {
+        "admit_cards": [
+            {
+                "phase_number": 1,
+                "title": "MPSC Rajyaseva Prelims 2025 Admit Card",
+                "download_url": "https://mpsconline.gov.in/admit-card/rajyaseva-prelims-2025",
+                "valid_from": date(2026, 3, 26),
+                "valid_until": date(2026, 4, 5),
+                "notes": "Download from mpsconline.gov.in. Carry printout with photo pasted and any original photo ID. Hall ticket in Marathi/English.",
+                "published_at": datetime(2026, 3, 26, tzinfo=timezone.utc),
+            },
+            {
+                "phase_number": 2,
+                "title": "MPSC Rajyaseva Mains 2026 Admit Card",
+                "download_url": "https://mpsconline.gov.in/admit-card/rajyaseva-mains-2026",
+                "valid_from": date(2026, 11, 15),
+                "valid_until": date(2026, 11, 25),
+                "notes": "Only for candidates who cleared Prelims. Venue allotted across Maharashtra divisional HQs.",
+                "published_at": datetime(2026, 11, 15, tzinfo=timezone.utc),
+            },
+        ],
+        "answer_keys": [
+            {
+                "phase_number": 1,
+                "title": "MPSC Rajyaseva Prelims 2025 — GS Answer Key",
+                "answer_key_type": "provisional",
+                "files": [
+                    {
+                        "label": "GS Paper — Set A (Marathi)",
+                        "url": "https://mpsc.gov.in/ak/rajyaseva-pre-2025-seta-mar.pdf",
+                    },
+                    {
+                        "label": "GS Paper — Set A (English)",
+                        "url": "https://mpsc.gov.in/ak/rajyaseva-pre-2025-seta-eng.pdf",
+                    },
+                ],
+                "objection_url": "https://mpsconline.gov.in/objection",
+                "objection_deadline": date(2026, 4, 20),
+                "published_at": datetime(2026, 4, 10, tzinfo=timezone.utc),
+            },
+            {
+                "phase_number": 1,
+                "title": "MPSC Rajyaseva Prelims 2025 — GS Final Answer Key",
+                "answer_key_type": "final",
+                "files": [
+                    {
+                        "label": "Final Answer Key (Marathi & English)",
+                        "url": "https://mpsc.gov.in/fak/rajyaseva-pre-2025-final.pdf",
+                    },
+                ],
+                "published_at": datetime(2026, 5, 5, tzinfo=timezone.utc),
+            },
+        ],
+        "results": [
+            {
+                "phase_number": 1,
+                "title": "MPSC Rajyaseva Prelims 2025 Result — Shortlist for Mains",
+                "result_type": "shortlist",
+                "download_url": "https://mpsc.gov.in/result/rajyaseva-pre-2025",
+                "cutoff_marks": {
+                    "Open_GS": 135.00,
+                    "OBC_GS": 126.50,
+                    "SC_GS": 118.00,
+                    "ST_GS": 112.25,
+                    "NT_GS": 122.00,
+                    "EWS_GS": 128.50,
+                },
+                "total_qualified": 5328,
+                "notes": "12× vacancy count shortlisted. CSAT Paper II qualifying only (33% = 66 marks minimum).",
+                "published_at": datetime(2026, 6, 1, tzinfo=timezone.utc),
+            },
+            {
+                "phase_number": 2,
+                "title": "MPSC Rajyaseva Mains 2026 Result — Shortlist for Interview",
+                "result_type": "shortlist",
+                "download_url": "https://mpsc.gov.in/result/rajyaseva-mains-2026",
+                "cutoff_marks": {
+                    "Open": 528,
+                    "OBC": 498,
+                    "SC": 462,
+                    "ST": 445,
+                    "NT": 480,
+                    "EWS": 510,
+                },
+                "total_qualified": 1332,
+                "notes": "3× vacancy count shortlisted for Interview/Personality Test from Mains merit.",
+                "published_at": datetime(2027, 3, 1, tzinfo=timezone.utc),
+            },
+        ],
+    },
 }
 
 
@@ -3682,7 +4099,7 @@ def seed():
         # ── Step 3: Insert entrance_exams ──────────────────────────────
         exam_id_by_slug: dict[str, uuid.UUID] = {}
 
-        for data in ADMISSIONS:
+        for data in ENTRANCE_EXAMS:
             existing = session.execute(
                 select(EntranceExam).where(EntranceExam.slug == data["slug"])
             ).scalar_one_or_none()

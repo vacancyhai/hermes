@@ -682,7 +682,7 @@ The user frontend supports Progressive Web App features:
 
 ## Entrance Exams
 
-Entrance / admission exams (NEET, JEE, CLAT, CAT, GATE etc.) are stored in the `entrance_exams` table, separate from `jobs`.
+Entrance exams (NEET, JEE, CLAT, CAT, GATE etc.) are stored in the `entrance_exams` table, separate from `jobs`.
 They have exam-specific fields: `stream`, `exam_type`, `counselling_body`, `seats_info`, exam pattern.
 
 ### Public (read-only, active exams only)
@@ -780,7 +780,7 @@ Authorization: Bearer <admin_token>
 | `admin_users` | Admin/operator accounts (role, department, permissions) |
 | `user_profiles` | Extended user profile (education, category, location, followed_organizations) |
 | `jobs` | Job vacancy postings with FTS vector |
-| `entrance_exams` | Admission/entrance exams (NEET, JEE, CLAT, CAT, GATE etc.) |
+| `entrance_exams` | Entrance exams (NEET, JEE, CLAT, CAT, GATE etc.) |
 | `notifications` | User notifications |
 | `notification_delivery_log` | Per-channel delivery tracking (push/email/whatsapp/telegram) |
 | `user_devices` | Device registry (FCM token, fingerprint de-duplication) |

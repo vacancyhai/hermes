@@ -668,7 +668,7 @@ Each section uses a gradient hero and consistent card design:
 The three document tables (`admit_cards`, `answer_keys`, `results`) are **polymorphic** — each row links to either:
 
 - A job vacancy via `job_id` (traditional recruitment docs)
-- An entrance exam via `exam_id` (educational admission docs)
+- An entrance exam via `exam_id` (entrance exam phase docs)
 
 Database constraint ensures exactly one reference:
 ```sql

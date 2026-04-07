@@ -1498,7 +1498,7 @@ listing page, gradient hero colour, and detail page design.
         │                                       │
         ▼                                       ▼
   Flask renders job_detail.html          Flask renders entrance_exam_detail.html
-  (type-aware hero: hero-job /           (hero-admission: purple gradient)
+  (type-aware hero: hero-job /           (hero-entrance-exam: purple gradient)
    hero-admit / hero-answer /
    hero-result)
         │                                       │
@@ -1517,7 +1517,7 @@ listing page, gradient hero colour, and detail page design.
 ## 15. HTMX Phase Document Tab Flow
 
 Phase documents (admit cards, answer keys, results) are loaded on-demand
-via HTMX into tabbed panels on job and admission detail pages.
+via HTMX into tabbed panels on job and entrance exam detail pages.
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────┐

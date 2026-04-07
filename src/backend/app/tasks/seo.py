@@ -18,7 +18,7 @@ SITEMAP_PATH = os.environ.get("SITEMAP_PATH", "/app/sitemap.xml")
 
 @celery.task(name="app.tasks.seo.generate_sitemap")
 def generate_sitemap():
-    """Regenerate /sitemap.xml with all active job + admission exam URLs. Daily 04:00 UTC."""
+    """Regenerate /sitemap.xml with all active job + entrance exam URLs. Daily 04:00 UTC."""
     with Session(sync_engine) as session:
         jobs = session.execute(
             text(
@@ -57,7 +57,7 @@ def generate_sitemap():
         SubElement(url_el, "changefreq").text = "daily"
         SubElement(url_el, "priority").text = "0.8"
 
-    # Admission exam detail pages
+    # Entrance exam detail pages
     for slug, updated_at in exams:
         url_el = SubElement(urlset, "url")
         SubElement(url_el, "loc").text = f"{SITE_URL}/entrance-exams/{slug}"
