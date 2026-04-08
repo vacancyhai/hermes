@@ -182,7 +182,7 @@ See `.pre-commit-config.yaml` for full configuration.
 ```
 hermes/
 ├── docker-compose.yml            # Dev: all services (PostgreSQL, Redis, PgBouncer, Backend,
-│                                 #   Celery Worker, Frontend, Admin Frontend, Mailpit)
+│                                 #   Celery Worker, Celery Beat, Frontend, Admin Frontend, Mailpit)
 ├── docker-compose.test.yml       # CI: same minus celery_worker and mailpit; uses config/test/.env.*
 ├── alembic.ini                   # Alembic config (URL overridden by env.py at runtime)
 ├── migrations/                   # Alembic migrations (0001–0004)
@@ -208,7 +208,7 @@ hermes/
 │   │   │   │   ├── content.py        # /api/v1/admit-cards, /answer-keys, /results
 │   │   │   │   ├── entrance_exams.py # /api/v1/entrance-exams/* + /api/v1/admin/entrance-exams/*
 │   │   │   │   └── health.py         # /api/v1/health
-│   │   │   ├── models/           # SQLAlchemy 2.0 Mapped models (13 tables, see DATABASE.md)
+│   │   │   ├── models/           # SQLAlchemy 2.0 Mapped models (14 tables, see DATABASE.md)
 │   │   │   ├── schemas/          # Pydantic v2 request/response models
 │   │   │   ├── services/
 │   │   │   │   ├── matching.py       # Job scoring engine (category +4, state +3, education +2…)
@@ -241,9 +241,6 @@ hermes/
 │   │   │   ├── api_client.py     # Extends BaseApiClient + inherits post_file() for PDF uploads
 │   │   │   └── templates/        # 15+ templates including entrance exam edit, job review
 │   │   └── tests/                # unit/test_api_client.py + integration/test_routes.py
-│   ├── mobile-app/               # React Native pre-work (Phase 9 — planned)
-│   │   ├── google-services.json  # Android Firebase config (com.hermes.app)
-│   │   └── GoogleService-Info.plist  # iOS Firebase config
 │   └── nginx/                    # Reverse Proxy (port 80/443)
 │       ├── nginx.conf            # Rate limiting, routing, security headers
 │       └── static/               # Serves sitemap.xml

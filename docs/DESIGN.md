@@ -90,18 +90,19 @@ All services are defined in the single root **`docker-compose.yml`** (developmen
 | `pgbouncer`      | edoburu/pgbouncer  | `5432`   | shared via compose env vars         |
 | `backend`        | local build        | `8000`   | `config/development/.env.backend`        |
 | `celery_worker`  | local build        | —        | `config/development/.env.backend`        |
+| `celery_beat`    | local build        | —        | `config/development/.env.backend`        |
 | `frontend`       | local build        | `8080`   | `config/development/.env.frontend`       |
 | `frontend-admin` | local build        | `8081`   | `config/development/.env.frontend-admin` |
 | `mailpit`        | axllent/mailpit    | `1025/8025` | — (dev only)                     |
 
-> **CI (`docker-compose.test.yml`)** omits `celery_worker` and `mailpit`. Services use `config/test/.env.*`.
+> **CI (`docker-compose.test.yml`)** omits `celery_worker`, `celery_beat`, and `mailpit`. Services use `config/test/.env.*`.
 
 ### Health Checks
 
 | Service        | Interval | Endpoint / Command                          |
 | -------------- | -------- | ------------------------------------------- |
 | PostgreSQL     | 10s      | `pg_isready -U hermes_user -d hermes_db`    |
-| PgBouncer      | 10s      | `nc -z localhost 5432`                      |
+| PgBouncer      | 10s      | `psql -h postgresql` connection check       |
 | Redis          | 10s      | `redis-cli ping`                            |
 | Backend        | 30s/15s  | `GET /api/v1/health` (port 8000)            |
 | User Frontend  | 30s/15s  | `GET /health` (port 8080)                   |
