@@ -196,6 +196,7 @@ jobs:
           BACKEND_URL: http://localhost:8000
           E2E_ADMIN_EMAIL: admin@ci-test.com
           E2E_ADMIN_PASSWORD: AdminCI123  # pragma: allowlist secret
+          E2E_USER_TOKEN: ${{ env.E2E_USER_TOKEN }}
 
       - name: Tear down e2e services
         if: always()
