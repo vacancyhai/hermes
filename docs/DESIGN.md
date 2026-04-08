@@ -88,13 +88,13 @@ All services are defined in the single root **`docker-compose.yml`** (developmen
 | `postgresql`     | postgres:16-alpine | `5432`   | shared via compose env vars         |
 | `redis`          | redis:7-alpine     | `6379`   | shared via compose env vars         |
 | `pgbouncer`      | edoburu/pgbouncer  | `5432`   | shared via compose env vars         |
-| `backend`        | local build        | `8000`   | `src/backend/.env`                  |
-| `celery_worker`  | local build        | —        | `src/backend/.env`                  |
-| `frontend`       | local build        | `8080`   | `src/frontend/.env`                 |
-| `frontend-admin` | local build        | `8081`   | `src/frontend-admin/.env`           |
+| `backend`        | local build        | `8000`   | `config/development/.env.backend`        |
+| `celery_worker`  | local build        | —        | `config/development/.env.backend`        |
+| `frontend`       | local build        | `8080`   | `config/development/.env.frontend`       |
+| `frontend-admin` | local build        | `8081`   | `config/development/.env.frontend-admin` |
 | `mailpit`        | axllent/mailpit    | `1025/8025` | — (dev only)                     |
 
-> **CI (`docker-compose.test.yml`)** omits `celery_worker` and `mailpit`. Backend uses `.env.test`.
+> **CI (`docker-compose.test.yml`)** omits `celery_worker` and `mailpit`. Services use `config/test/.env.*`.
 
 ### Health Checks
 
@@ -188,7 +188,7 @@ React Native App (Android + iOS)
 | Phone-only users | ✅ Done | Migration 0010 — `email` nullable |
 | Android config | ✅ Done | `src/mobile-app/google-services.json` (project: vacancy-hai-7) |
 | iOS config | ✅ Done | `src/mobile-app/GoogleService-Info.plist` |
-| Test phone | ✅ Done | `+917777777777` / OTP `123456` in Firebase Console |
+| Test phone | ✅ Done | `+917777777777` / OTP `777777` in Firebase Console |
 
 React Native is chosen over Flutter for:
 - Native JSON consumption (JavaScript)
@@ -212,7 +212,7 @@ a native-like experience on Android and limited support on iOS Safari.
 
 See **[DATABASE.md](DATABASE.md)** for the complete schema — ERD, all 14 tables, column definitions, indexes, and CHECK constraints.
 
-**2 Alembic migrations (`0001` → `0002`). Tables:**
+**4 Alembic migrations (`0001` → `0004`). Tables:**
 `users`, `admin_users`, `user_profiles`, `user_devices`, `jobs`,
 `notifications`, `notification_delivery_log`, `admin_logs`, `user_watches`,
 `admit_cards`, `answer_keys`, `results`, `entrance_exams`.
@@ -778,11 +778,8 @@ RAM so builds are fast enough in production.
 | Volumes  | Hot-reload mounts for code                             |
 
 ```bash
-cp config/development/.env.backend.development        src/backend/.env
-cp config/development/.env.frontend.development       src/frontend/.env
-cp config/development/.env.frontend-admin.development src/frontend-admin/.env
-
 # All services are in the single root docker-compose.yml
+# docker-compose.yml reads config/development/.env.* directly
 docker compose up -d --build
 ```
 
@@ -1057,19 +1054,21 @@ All items below are implemented.
 
 ## Environment Variables
 
-Each service has its own `.env` file.
+Each service has its own `.env` file stored in `config/<environment>/`.
 
-- **Template / reference:** `src/backend/.env.example` — fully annotated, safe to commit, lists every variable with defaults and "REQUIRED in production" markers.
-- **Environment-specific templates:** `config/<environment>/` — pre-filled values for dev/staging/production.
-- **Actual secrets:** `src/backend/.env` — gitignored, never committed.
+- **Templates (committed):** `config/staging/` and `config/production/` — placeholder values, safe to commit.
+- **Dev/test secrets (gitignored):** `config/development/` and `config/test/` — never committed.
+- **Reference examples:** `src/backend/.env.example`, `src/frontend/.env.example`, `src/frontend-admin/.env.example` — annotated, safe to commit.
 
-```bash
-# Onboarding a new developer:
-cp src/backend/.env.example src/backend/.env
-# Fill in REQUIRED values (POSTGRES_PASSWORD, JWT_SECRET_KEY, Firebase keys)
+```
+config/
+├── development/   .env.backend  .env.frontend  .env.frontend-admin  ← gitignored
+├── test/          .env.backend  .env.frontend  .env.frontend-admin  ← gitignored (CI)
+├── staging/       .env.backend  .env.frontend  .env.frontend-admin  ← committed (placeholders)
+└── production/    .env.backend  .env.frontend  .env.frontend-admin  ← committed (placeholders)
 ```
 
-### Backend (`src/backend/.env`)
+### Backend (`config/development/.env.backend`)
 
 ```env
 # App
@@ -1130,7 +1129,7 @@ SITEMAP_PATH=/app/sitemap.xml
 FRONTEND_URL=https://yourdomain.com
 ```
 
-### User Frontend (`src/frontend/.env`)
+### User Frontend (`config/development/.env.frontend`)
 
 ```env
 BACKEND_API_URL=http://localhost:8000/api/v1
@@ -1142,7 +1141,7 @@ FIREBASE_AUTH_DOMAIN=<project-id>.firebaseapp.com
 FIREBASE_PROJECT_ID=<project-id>
 ```
 
-### Admin Frontend (`src/frontend-admin/.env`)
+### Admin Frontend (`config/development/.env.frontend-admin`)
 
 ```env
 BACKEND_API_URL=http://localhost:8000/api/v1
@@ -1236,9 +1235,7 @@ networks on the VM — never exposed to any OCI subnet or the internet.
 No OCI services needed for local development. Run everything in Docker:
 
 ```bash
-cp config/development/.env.backend.development        src/backend/.env
-cp config/development/.env.frontend.development       src/frontend/.env
-cp config/development/.env.frontend-admin.development src/frontend-admin/.env
+# docker-compose.yml reads config/development/.env.* directly — no copying needed
 
 # Validate config before starting
 ./scripts/deployment/check_config.sh development
@@ -1257,10 +1254,7 @@ ssh -i <key> ubuntu@<vm-public-ip>
 
 # Clone and configure
 git clone <repo-url> hermes && cd hermes
-cp config/production/.env.backend.production       src/backend/.env
-cp config/production/.env.frontend.production      src/frontend/.env
-cp config/production/.env.frontend-admin.production src/frontend-admin/.env
-# Fill in all <placeholder> values in the copied .env files, then validate:
+# Fill in all <placeholder> values in config/production/.env.* then validate:
 ./scripts/deployment/check_config.sh production
 
 # Deploy all services (backend → frontends → nginx)
