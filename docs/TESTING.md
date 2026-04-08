@@ -131,15 +131,7 @@ pre-commit run --all-files
 
 ---
 
-## Manual Firebase Test Credentials
-
-These phone numbers are configured in **Firebase Console → Authentication → Phone numbers for testing** and bypass real SMS.
-
-| Phone | OTP | Use |
-|-------|-----|-----|
-| +917777777777 | 123456 | Phone OTP login on `/login` page |
-
-For email/password and Google login, create a new account via the `/login` page or use the Firebase Console to create a test user. Admin accounts are created via `POST /api/v1/admin/admin-users` (after the first admin is seeded directly into the DB — see README.md Quick Start).
+> **Firebase test credentials** (test phone numbers, OTP bypass) are documented in [DESIGN.md → Authentication & RBAC](DESIGN.md#authentication--rbac).
 
 ---
 

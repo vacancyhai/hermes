@@ -349,6 +349,16 @@ POST /api/v1/admin/admin-users  (admin role only)
 
 User status (suspend/activate) can be changed via `PUT /api/v1/admin/users/:id/status` (admin only).
 
+### Firebase Test Credentials
+
+These phone numbers are configured in **Firebase Console → Authentication → Phone numbers for testing** and bypass real SMS.
+
+| Phone | OTP | Use |
+|-------|-----|-----|
+| +917777777777 | 123456 | Phone OTP login on `/login` page |
+
+For email/password and Google login, create a test user via the Firebase Console or the `/login` page. Admin accounts are seeded via the DB (see README.md Quick Start).
+
 ---
 
 ## Background Tasks
@@ -1068,91 +1078,13 @@ config/
 └── production/    .env.backend  .env.frontend  .env.frontend-admin  ← committed (placeholders)
 ```
 
-### Backend (`config/development/.env.backend`)
+The actual variable definitions live in the `config/` files. Use the annotated example files as a reference:
 
-```env
-# App
-APP_ENV=development
-SECRET_KEY=<random-32-bytes>
-BACKEND_PORT=8000
+- `src/backend/.env.example` — all backend variables with descriptions
+- `src/frontend/.env.example` — all frontend variables
+- `src/frontend-admin/.env.example` — all admin frontend variables
 
-# PostgreSQL (async via asyncpg, through PgBouncer)
-DATABASE_URL=postgresql+asyncpg://hermes_user:<password>@pgbouncer:5432/hermes_db
-DB_POOL_SIZE=20
-
-# Redis (use Docker service name 'redis', not 'localhost')
-REDIS_URL=redis://redis:6379/0
-REDIS_PASSWORD=<password>
-REDIS_KEY_PREFIX=hermes
-
-# Celery (must use literal values — no shell interpolation in .env)
-CELERY_BROKER_URL=redis://redis:6379/0
-CELERY_RESULT_BACKEND=redis://redis:6379/0
-
-# Email (dev: Mailpit SMTP port 1025 / prod: OCI Email Delivery)
-MAIL_SERVER=smtp.email.ap-mumbai-1.oci.oraclecloud.com
-MAIL_PORT=587
-MAIL_USE_TLS=True
-MAIL_USERNAME=<OCI-SMTP-credential-OCID>
-MAIL_PASSWORD=<OCI-SMTP-credential-password>
-MAIL_DEFAULT_SENDER=noreply@yourdomain.com
-MAIL_ENABLED=True              # Set False to disable all email sending
-
-# Firebase (Auth + FCM push — shared credentials)
-FIREBASE_CREDENTIALS_PATH=path/to/firebase-credentials.json
-FIREBASE_WEB_API_KEY=<from-firebase-console>
-FIREBASE_AUTH_DOMAIN=<project-id>.firebaseapp.com
-FIREBASE_PROJECT_ID=<project-id>
-
-# Telegram Bot API
-TELEGRAM_BOT_TOKEN=             # Leave blank to disable Telegram notifications
-
-# Notification delivery delays (staggered mode, in seconds)
-NOTIFY_EMAIL_DELAY=900         # 15 minutes (default)
-NOTIFY_WHATSAPP_DELAY=3600     # 1 hour (default)
-NOTIFY_TELEGRAM_DELAY=900      # 15 minutes (default)
-
-# JWT (internal tokens issued after Firebase verification)
-JWT_SECRET_KEY=<separate-random-key>
-JWT_ACCESS_TOKEN_EXPIRES=900
-JWT_REFRESH_TOKEN_EXPIRES=604800   # 7 days
-
-# AI Extraction (PDF job ingestion)
-ANTHROPIC_API_KEY=<anthropic-api-key>   # Leave blank to disable AI extraction
-AI_MODEL=claude-3-5-sonnet-20241022
-
-# SEO / Sitemap
-SITE_URL=https://yourdomain.com
-SITEMAP_PATH=/app/sitemap.xml
-
-# Frontend URL (for CORS and email links)
-FRONTEND_URL=https://yourdomain.com
-```
-
-### User Frontend (`config/development/.env.frontend`)
-
-```env
-BACKEND_API_URL=http://localhost:8000/api/v1
-SECRET_KEY=<frontend-secret-key>
-FRONTEND_PORT=8080
-SESSION_TIMEOUT=3600
-FIREBASE_WEB_API_KEY=<from-firebase-console>
-FIREBASE_AUTH_DOMAIN=<project-id>.firebaseapp.com
-FIREBASE_PROJECT_ID=<project-id>
-```
-
-### Admin Frontend (`config/development/.env.frontend-admin`)
-
-```env
-BACKEND_API_URL=http://localhost:8000/api/v1
-SECRET_KEY=<admin-frontend-secret-key>
-FRONTEND_ADMIN_PORT=8081
-SESSION_TIMEOUT=3600
-```
-
-In production, `BACKEND_API_URL` points to the internal Docker hostname
-(`http://backend:8000/api/v1`) or the production domain. Each frontend must
-have a **different** `SECRET_KEY`.
+In production, `BACKEND_API_URL` points to the internal Docker hostname (`http://backend:8000/api/v1`). Each frontend must have a **different** `SECRET_KEY`.
 
 ---
 

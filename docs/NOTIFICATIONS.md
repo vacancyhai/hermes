@@ -84,19 +84,6 @@ Admin panel actions do not trigger email notifications to affected users (to pre
 
 ---
 
-## Rate Limiting
+> **Rate limiting** on auth endpoints (`/auth/send-email-otp`, `/auth/verify-email-otp`) is documented in [DESIGN.md → Security Design](DESIGN.md#security-design).
 
-| Mechanism | Limit |
-|-----------|-------|
-| `/auth/send-email-otp` endpoint | 3 requests/minute per IP |
-| `/auth/verify-email-otp` endpoint | 5 requests/minute per IP |
-| OTP validity | 5 minutes (Redis TTL) |
-| Celery task queuing | Prevents email server overload |
-
----
-
-## Testing
-
-1. **Mailpit UI:** `http://localhost:8025` — view all captured emails in dev
-2. **Unit tests:** Mock `send_email_notification.delay()` in tests
-3. **Integration tests:** Use test database; emails dispatched but not actually sent (`MAIL_ENABLED=false` in `config/test/.env.backend`)
+> **Testing notifications** (Mailpit, mocking, CI setup) is documented in [TESTING.md](TESTING.md).
