@@ -33,12 +33,7 @@ All templates are in `src/backend/app/templates/email/` and extend `base.html`.
 
 ## OTP Email Flow
 
-OTP emails for registration are sent **synchronously** (not via Celery) using direct SMTP:
-
-```python
-# In auth.py — /auth/send-email-otp
-await asyncio.to_thread(_smtp_send_otp, body.email, otp)
-```
+OTP emails for registration are sent **synchronously** (not via Celery) using direct SMTP via `asyncio.to_thread(_smtp_send_otp)` in `auth.py`.
 
 OTP is stored in Redis with a **5-minute TTL** (`setex(otp_key, 300, otp)`). After successful verification (`/auth/verify-email-otp`), a short-lived JWT verification token (5 min) is returned for use in `/auth/complete-registration`.
 
@@ -46,18 +41,7 @@ OTP is stored in Redis with a **5-minute TTL** (`setex(otp_key, 300, otp)`). Aft
 
 ## Job Alert / Deadline Email Flow
 
-All other emails are sent asynchronously via Celery:
-
-```python
-from app.tasks.notifications import send_email_notification
-
-send_email_notification.delay(
-    email_address,
-    subject,
-    template_path,
-    context_vars
-)
-```
+All other emails are sent asynchronously via Celery using `send_email_notification.delay(email_address, subject, template_path, context_vars)` from `app.tasks.notifications`.
 
 ---
 
