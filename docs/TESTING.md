@@ -72,12 +72,12 @@ push / PR
   │                                  → coverage artifact: coverage/backend/coverage.xml
   │
   ├─► job 2: test-frontend       — docker build hermes_frontend_ci
-  │                                  → docker run (--env-file .env.test, volume-mounted /app/coverage)
+  │                                  → docker run (--env-file config/test/.env.frontend, volume-mounted /app/coverage)
   │                                  → pytest tests/ --cov=app
   │                                  → coverage artifact: coverage/frontend/coverage.xml
   │
   ├─► job 3: test-frontend-admin — docker build hermes_frontend_admin_ci
-  │                                  → docker run (--env-file .env.test, volume-mounted /app/coverage)
+  │                                  → docker run (--env-file config/test/.env.frontend-admin, volume-mounted /app/coverage)
   │                                  → pytest tests/ --cov=app
   │                                  → coverage artifact: coverage/frontend-admin/coverage.xml
   │
@@ -106,7 +106,7 @@ push / PR
 - Backend test image bakes `app/` in at build time; `tests/` and `pytest.ini` are volume-mounted so they can be updated without rebuilding.
 - Frontend/admin test images run as standalone `docker run` containers with a host-mounted `coverage/` directory to extract the XML.
 - E2E tests use the `requests` library for HTTP calls — no browser automation.
-- All CI `.env` values come from `.env.test` files committed to the repo (no production secrets).
+- All CI `.env` values come from `config/test/.env.*` files committed to the repo (no production secrets).
 
 ---
 
@@ -211,7 +211,7 @@ For email/password and Google login, create a new account via the `/login` page 
 
 Route **unit tests** call handler functions **directly as async functions** with `AsyncMock` db sessions, bypassing HTTP/ASGI entirely. This avoids SQLAlchemy greenlet switches that cause `coverage.py` to lose trace context after `await db.execute()` calls.
 
-**Integration tests** use `httpx.AsyncClient` with `ASGITransport` against the real FastAPI app, wired to a live PostgreSQL + Redis via the test `conftest.py`. A session-scoped `truncate_all_tables` autouse fixture clears all 13 tables before the test session.
+**Integration tests** use `httpx.AsyncClient` with `ASGITransport` against the real FastAPI app, wired to a live PostgreSQL + Redis via the test `conftest.py`. A session-scoped `truncate_all_tables` autouse fixture clears all 14 tables before the test session.
 
 `NotificationService` tests mock all external I/O (FCM, SMTP, Redis) so they run without live services.
 
