@@ -140,25 +140,25 @@ pre-commit run --all-files
 **16 unit files + 10 integration files.**
 
 | Module | Coverage | Notes |
-|--------|----------|-------|
-| `routers/notifications.py` | 93% | |
-| `routers/watches.py` | 47% | IntegrityError rollback path covered at integration level |
-| `routers/jobs.py` | 93% | |
-| `routers/users.py` | 100% | |
-| `routers/admin.py` | 0% | PDF file-write + Celery dispatch path; covered at integration level |
-| `routers/content.py` | 19% | List/get/CRUD public+admin endpoints covered; detail views with parent enrichment covered |
-| `routers/entrance_exams.py` | 96% | |
-| `routers/auth.py` | 66% | Covered at integration level (Firebase mocking) |
-| `dependencies.py` | 97% | JWT decode, blocklist, RBAC fully covered |
+|--------|----------|---------|
+| `routers/notifications.py` | 100% | |
+| `routers/watches.py` | 100% | |
+| `routers/jobs.py` | 100% | |
+| `routers/users.py` | 73% | Phone/password flows and some profile update paths covered at integration level |
+| `routers/admin.py` | 73% | PDF file-write + bulk role/status/log-query paths covered at integration level |
+| `routers/content.py` | 96% | |
+| `routers/entrance_exams.py` | 97% | |
+| `routers/auth.py` | 79% | Firebase-dependent OAuth paths require live credentials |
+| `dependencies.py` | 85% | JWT decode, blocklist, RBAC fully covered; async dep wiring uncovered |
 | `firebase.py` | 75% | Real Firebase token verify path requires live credentials |
-| `services/notifications.py` | 80% | FCM `_send_push` uses `user_devices` table; `_send_fcm_with_status` happy path requires credentials |
+| `services/notifications.py` | 77% | FCM happy path and WhatsApp/Telegram delivery require live credentials |
 | `services/matching.py` | 80% | with-prefs scoring paths covered; no-prefs pagination covered |
-| `services/ai_extractor.py` | 0% | Requires live Anthropic API |
-| `services/pdf_extractor.py` | 77% | |
-| `tasks/notifications.py` | 57% | Firebase FCM send in `smart_notify` requires credentials |
+| `services/ai_extractor.py` | 100% | |
+| `services/pdf_extractor.py` | 100% | |
+| `tasks/notifications.py` | 67% | Firebase FCM send in `smart_notify` requires credentials; stub tasks uncovered |
 | `tasks/cleanup.py` | 100% | |
-| `tasks/jobs.py` | 100% | |
-| `tasks/seo.py` | 68% | |
+| `tasks/jobs.py` | 57% | AI-extraction and PDF-parse paths require live Anthropic API |
+| `tasks/seo.py` | 100% | |
 | `models/*` / `schemas/*` | 100% | |
 
 ### Backend Test Files
@@ -229,7 +229,7 @@ Firebase tests mock `app.firebase.verify_id_token` via `unittest.mock.patch` —
 
 | Module | Coverage | Notes |
 |--------|----------|-------|
-| `app/__init__.py` | 90% | Firebase JS-handled routes (email-verify deep-link, account-link) not exercised |
+| `app/__init__.py` | 85% | Firebase JS-handled routes (email-verify deep-link, account-link) not exercised |
 | `app/api_client.py` | 100% | All HTTP methods covered |
 
 | File | Covers |
@@ -251,8 +251,8 @@ All POST form tests include `csrf_token` in the form data. The `/auth/firebase-c
 
 | Module | Coverage | Notes |
 |--------|----------|-------|
-| `app/__init__.py` | 97% | All routes covered |
-| `app/api_client.py` | 94% | `patch()` method not called by any admin route |
+| `app/__init__.py` | 82% | Entrance exam and some user-management routes not fully exercised |
+| `app/api_client.py` | 96% | All HTTP methods including `post_file` covered |
 
 | File | Covers |
 |------|--------|
@@ -261,7 +261,7 @@ All POST form tests include `csrf_token` in the form data. The `/auth/firebase-c
 
 ### Why Some Admin Frontend Lines Are Uncovered
 
-- **`api_client.py` — `patch()`** — exists for completeness but no admin frontend route currently calls it.
+- **`app/__init__.py`** — Entrance exam admin routes and some bulk-action paths not exercised in test suite.
 
 ---
 
