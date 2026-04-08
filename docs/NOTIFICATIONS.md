@@ -63,7 +63,7 @@ send_email_notification.delay(
 
 ## Configuration
 
-Email settings in `.env`:
+Email settings in `config/development/.env.backend`:
 
 ```env
 MAIL_ENABLED=true
@@ -126,4 +126,4 @@ Admin panel actions do not trigger email notifications to affected users (to pre
 
 1. **Mailpit UI:** `http://localhost:8025` — view all captured emails in dev
 2. **Unit tests:** Mock `send_email_notification.delay()` in tests
-3. **Integration tests:** Use test database; emails dispatched but not actually sent (`MAIL_ENABLED=false` in `.env.test`)
+3. **Integration tests:** Use test database; emails dispatched but not actually sent (`MAIL_ENABLED=false` in `config/test/.env.backend`)
