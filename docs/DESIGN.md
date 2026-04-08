@@ -157,46 +157,7 @@ Frontend (port 8080 or 8081)
 This means any frontend can be replaced (e.g. Flask → React, or a React Native
 mobile app) with zero backend changes — only the HTTP client layer changes.
 
-### Phase 9: Mobile App (React Native) — Pre-Work Done
-
-The FastAPI backend already serves as a headless REST API. A mobile app will be
-an additional client calling the same `/api/v1/*` endpoints:
-
-```
-React Native App (Android + iOS)
-  ├── @react-native-firebase/auth → POST /api/v1/auth/verify-token → internal JWT
-  ├── Calls same /api/v1/* endpoints via axios + JWT interceptor
-  ├── @react-native-firebase/messaging → POST/DELETE /users/me/fcm-token
-  └── Offline job caching (AsyncStorage / MMKV)
-```
-
-**Backend is fully ready — no changes required.** The following is already implemented:
-
-| Component | Status | Detail |
-|-----------|--------|--------|
-| `POST /auth/verify-token` | ✅ Done | Firebase ID token → internal JWT (email, Google, phone OTP) |
-| `POST /auth/send-email-otp` | ✅ Done | Send OTP to email for registration |
-| `POST /auth/verify-email-otp` | ✅ Done | Verify email OTP → returns verification token |
-| `POST /auth/complete-registration` | ✅ Done | Complete registration with password after OTP verification |
-| `POST /users/me/set-password` | ✅ Done | Set password for Google OAuth users |
-| `POST /users/me/change-password` | ✅ Done | Change password (requires current password) |
-| `POST /users/me/verify-phone-otp` | ✅ Done | Verify phone number with OTP |
-| `POST /users/me/link-email-password` | ✅ Done | Link email+password to phone-only account |
-| `POST /users/me/fcm-token` | ✅ Done | Register device FCM token |
-| `DELETE /users/me/fcm-token` | ✅ Done | Unregister on logout |
-| `firebase_uid` on `users` | ✅ Done | Migration 0009 — unique index |
-| `is_phone_verified` on `users` | ✅ Done | Migration 0005 — phone verification status |
-| Phone-only users | ✅ Done | Migration 0010 — `email` nullable |
-| Android config | ✅ Done | `src/mobile-app/google-services.json` (project: vacancy-hai-7) |
-| iOS config | ✅ Done | `src/mobile-app/GoogleService-Info.plist` |
-| Test phone | ✅ Done | `+917777777777` / OTP `777777` in Firebase Console |
-
-React Native is chosen over Flutter for:
-- Native JSON consumption (JavaScript)
-- Larger developer ecosystem in India
-- `@react-native-firebase` SDK for seamless Firebase Auth + FCM integration
-
-### PWA (Progressive Web App) — Implemented (Phase 7)
+### PWA (Progressive Web App) — Implemented
 
 The Flask user frontend is a full PWA. The following are already in `src/frontend/app/static/`:
 
@@ -204,8 +165,7 @@ The Flask user frontend is a full PWA. The following are already in `src/fronten
 - **`sw.js`** — Service worker: caches job pages for offline access, serves `offline.html` fallback
 - **`icon-192.png` / `icon-512.png`** — PWA icons
 
-The PWA does not replace React Native for a full mobile app (Phase 9, deferred) but provides
-a native-like experience on Android and limited support on iOS Safari.
+The PWA provides a native-like experience on Android and limited support on iOS Safari.
 
 ---
 
