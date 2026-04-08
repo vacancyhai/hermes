@@ -78,17 +78,6 @@ MAIL_DEFAULT_SENDER=noreply@hermes.example.com
 
 ---
 
-## Password Requirements
-
-Enforced on all password operations (user and admin):
-- **Minimum 8 characters**
-- **At least 1 uppercase letter**
-- **At least 1 special character** (`!@#$%^&*(),.?":{}|<>`)
-
-Validated server-side via Pydantic schema.
-
----
-
 ## Email Notification Events
 
 ### User Actions
