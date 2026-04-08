@@ -91,7 +91,7 @@ PostgreSQL and Redis are isolated inside Docker networks — never exposed to th
 | Document | Description |
 | -------- | ----------- |
 | [docs/DESIGN.md](docs/DESIGN.md) | System design: architecture, auth, Celery tasks, SEO, notifications, CI/CD, security, deployment |
-| [docs/DATABASE.md](docs/DATABASE.md) | Full database schema: ERD, all 13 tables, column definitions, indexes, CHECK constraints |
+| [docs/DATABASE.md](docs/DATABASE.md) | Full database schema: ERD, all 14 tables, column definitions, indexes, CHECK constraints |
 | [docs/NOTIFICATIONS.md](docs/NOTIFICATIONS.md) | Email templates, notification channels, OTP flow, delivery modes |
 | [docs/API.md](docs/API.md) | Complete API endpoint reference with request/response examples |
 | [docs/DIAGRAMS.md](docs/DIAGRAMS.md) | ASCII workflow diagrams for all major user and system flows |
@@ -101,21 +101,19 @@ PostgreSQL and Redis are isolated inside Docker networks — never exposed to th
 ## Development Quick Start
 
 ```bash
-# 1. Copy env templates for all three services and fill in secrets
-cp src/backend/.env.example        src/backend/.env
-cp src/frontend/.env.example       src/frontend/.env
-cp src/frontend-admin/.env.example src/frontend-admin/.env
-# Edit src/backend/.env — required: POSTGRES_PASSWORD, JWT_SECRET_KEY,
+# 1. Fill in secrets in the development env files
+# Edit config/development/.env.backend — required: POSTGRES_PASSWORD, JWT_SECRET_KEY,
 # FIREBASE_WEB_API_KEY, FIREBASE_AUTH_DOMAIN, FIREBASE_PROJECT_ID,
 # FIREBASE_CREDENTIALS_PATH for your Firebase project.
 # Optional: ANTHROPIC_API_KEY (enables AI PDF extraction).
+# (docker-compose.yml reads config/development/.env.* directly — no copying needed)
 
 # 2. Start all services (PostgreSQL, Redis, PgBouncer, FastAPI, Celery, Frontends, Mailpit)
 docker compose up -d --build
 
 # 3. Run database migrations
 docker exec hermes_backend alembic -c /app/alembic.ini upgrade head
-# Migrations: 0001 (initial schema), 0002 (add followed_organizations to user_profiles)
+# Migrations: 0001 (initial schema), 0002 (followed_organizations), 0003 (drop is_featured/is_urgent), 0004 (drop views)
 
 # 4. Create the first admin account (required — no self-registration for admins)
 docker exec hermes_backend python -c "
@@ -185,15 +183,14 @@ See `.pre-commit-config.yaml` for full configuration.
 hermes/
 ├── docker-compose.yml            # Dev: all services (PostgreSQL, Redis, PgBouncer, Backend,
 │                                 #   Celery Worker, Frontend, Admin Frontend, Mailpit)
-├── docker-compose.test.yml       # CI: same minus celery_worker and mailpit; uses .env.test
+├── docker-compose.test.yml       # CI: same minus celery_worker and mailpit; uses config/test/.env.*
 ├── alembic.ini                   # Alembic config (URL overridden by env.py at runtime)
-├── migrations/                   # Alembic migrations (0001 initial, 0002 followed_organizations)
+├── migrations/                   # Alembic migrations (0001–0004)
 ├── src/
 │   ├── backend/                  # FastAPI REST API (port 8000)
 │   │   ├── Dockerfile
 │   │   ├── requirements.txt
 │   │   ├── pytest.ini            # asyncio_mode=auto; addopts --cov=app
-│   │   ├── .env.test             # CI env (committed — no secrets)
 │   │   ├── app/
 │   │   │   ├── main.py           # FastAPI app factory, lifespan, router registration
 │   │   │   ├── config.py         # pydantic-settings (extra="ignore"), singleton
@@ -227,7 +224,6 @@ hermes/
 │   ├── frontend/                 # User Frontend (Flask + HTMX + Alpine.js, port 8080)
 │   │   ├── Dockerfile
 │   │   ├── requirements.txt
-│   │   ├── .env.test             # CI env (committed — no secrets)
 │   │   ├── app/
 │   │   │   ├── __init__.py       # All routes: /, /jobs, /admit-cards, /answer-keys, /results,
 │   │   │   │                     # /entrance-exams, /dashboard, /notifications, /profile, /login
@@ -239,7 +235,6 @@ hermes/
 │   ├── frontend-admin/           # Admin Frontend (Flask + HTMX, port 8081)
 │   │   ├── Dockerfile
 │   │   ├── requirements.txt
-│   │   ├── .env.test             # CI env (committed — no secrets)
 │   │   ├── app/
 │   │   │   ├── __init__.py       # Routes: dashboard, jobs CRUD, entrance exams CRUD, users, logs
 │   │   │   ├── _base_api_client.py  # Shared HTTP client base class
@@ -259,9 +254,10 @@ hermes/
 │       ├── test_health.py        # Smoke: all 3 /health endpoints
 │       └── test_full_flow.py     # Job lifecycle, admin login flow, watch flow, exam lifecycle
 ├── config/
-│   ├── development/              # .env.backend/frontend/frontend-admin templates
-│   ├── staging/                  # Staging .env templates
-│   └── production/               # Production .env templates
+│   ├── development/              # .env.backend, .env.frontend, .env.frontend-admin (gitignored)
+│   ├── test/                     # .env.backend, .env.frontend, .env.frontend-admin (CI, gitignored)
+│   ├── staging/                  # .env.backend, .env.frontend, .env.frontend-admin (committed placeholders)
+│   └── production/               # .env.backend, .env.frontend, .env.frontend-admin (committed placeholders)
 ├── scripts/
 │   ├── seed_jobs.py              # Seed: 10 jobs + 9 exams + 32 phase docs (run manually)
 │   │                             #   docker cp scripts/seed_jobs.py hermes_backend:/app/seed_jobs.py
