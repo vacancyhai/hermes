@@ -61,20 +61,20 @@ communicate via HTTP REST API.
 │ Port: 8000       │  │ Port: 8080       │  │ Port: 8081       │
 └────────┬─────────┘  └──────────────────┘  └──────────────────┘
          │
-         ├──────────────┬──────────────┐
-         ↓              ↓              ↓
-┌─────────────┐  ┌─────────────┐  ┌──────────┐
-│ PostgreSQL  │  │   Redis     │  │ Celery   │
-│  Container  │  │  Container  │  │ Worker   │
-│ Port: 5432  │  │ Port: 6379  │  │          │
-└─────────────┘  └─────────────┘  └──────────┘
+         ├──────────────┬──────────────┬──────────────┐
+         ↓              ↓              ↓              ↓
+┌─────────────┐  ┌─────────────┐  ┌──────────────┐  ┌────────────────┐
+│ PostgreSQL  │  │   Redis     │  │hermes-worker │  │hermes-scheduler│
+│  Container  │  │  Container  │  │ (tasks)      │  │ (cron/beat)    │
+│ Port: 5432  │  │ Port: 6379  │  │              │  │                │
+└─────────────┘  └─────────────┘  └──────────────┘  └────────────────┘
 ```
 
 ### Docker Networks
 
 | Network           | Services                                                                         |
 | ----------------- | -------------------------------------------------------------------------------- |
-| `hermes_network`  | backend, celery_worker, postgresql, pgbouncer, redis, frontend, frontend-admin, mailpit |
+| `hermes_network`  | backend, hermes-worker, hermes-scheduler, postgresql, pgbouncer, redis, frontend, frontend-admin, mailpit |
 
 Frontends **cannot** reach the database or Redis directly — all persistence goes
 through the backend REST API via `BACKEND_API_URL`.
@@ -89,13 +89,13 @@ All services are defined in the single root **`docker-compose.yml`** (developmen
 | `redis`          | redis:7-alpine     | `6379`   | shared via compose env vars         |
 | `pgbouncer`      | edoburu/pgbouncer  | `5432`   | shared via compose env vars         |
 | `backend`        | local build        | `8000`   | `config/development/.env.backend`        |
-| `celery_worker`  | local build        | —        | `config/development/.env.backend`        |
-| `celery_beat`    | local build        | —        | `config/development/.env.backend`        |
+| `hermes-worker`  | local build        | —        | `config/development/.env.backend`        |
+| `hermes-scheduler`| local build        | —        | `config/development/.env.backend`        |
 | `frontend`       | local build        | `8080`   | `config/development/.env.frontend`       |
 | `frontend-admin` | local build        | `8081`   | `config/development/.env.frontend-admin` |
 | `mailpit`        | axllent/mailpit    | `1025/8025` | — (dev only)                     |
 
-> **CI (`docker-compose.test.yml`)** omits `celery_worker`, `celery_beat`, and `mailpit`. Services use `config/test/.env.*`.
+> **CI (`docker-compose.test.yml`)** omits `hermes-worker`, `hermes-scheduler`, and `mailpit`. Services use `config/test/.env.*`.
 
 ### Health Checks
 
@@ -292,7 +292,7 @@ ctx = CryptContext(schemes=['bcrypt'])
 engine = create_engine(os.environ['DATABASE_URL'].replace('+asyncpg', '+psycopg2'))
 with engine.connect() as conn:
     conn.execute(text(\"INSERT INTO admin_users (id, email, password_hash, full_name, role, status, is_email_verified) VALUES (:id, :email, :pw, :name, 'admin', 'active', TRUE)\"),
-        {'id': str(uuid.uuid4()), 'email': 'admin@example.com', 'pw': ctx.hash('ChangeMe123!'), 'name': 'Admin'})
+        {'id': str(uuid.uuid4()), 'email': 'admin@hermes.com', 'pw': ctx.hash('Admin@123'), 'name': 'Admin'})
     conn.commit()
 "
 ```
@@ -300,7 +300,7 @@ with engine.connect() as conn:
 After the first admin exists, subsequent admin/operator accounts are created via the API:
 ```
 POST /api/v1/admin/admin-users  (admin role only)
-{ "email": "operator@example.com", "password": "Operator@123", "full_name": "Operator", "role": "operator" }  # pragma: allowlist secret
+{ "email": "operator@hermes.com", "password": "Oper@123", "full_name": "Operator", "role": "operator" }  # pragma: allowlist secret
 ```
 
 **Password Requirements (enforced for all users and admins):**
@@ -324,7 +324,7 @@ For email/password and Google login, create a test user via the Firebase Console
 
 ## Background Tasks
 
-### Celery Beat Schedule
+### hermes-scheduler (Beat Schedule)
 
 | Task                            | Schedule        | Description                            |
 | ------------------------------- | --------------- | -------------------------------------- |
@@ -336,7 +336,7 @@ For email/password and Google login, create a test user via the Firebase Console
 | `update-exam-statuses`          | Daily 02:35 UTC | Set `status='completed'` on entrance exams whose `exam_date` has passed |
 | `generate-sitemap`              | Daily 04:00 UTC | Regenerate `/sitemap.xml` — active jobs, active/upcoming exams, all 5 section pages |
 
-### Event-Triggered Tasks
+### hermes-worker (Event-Triggered Tasks)
 
 | Trigger                       | Task                           | Description                            |
 | ----------------------------- | ------------------------------ | -------------------------------------- |
@@ -439,13 +439,13 @@ discoverability.
 
 ### Dynamic Sitemap
 
-A nightly Celery task (`generate-sitemap`) regenerates `/sitemap.xml` with all
+A nightly `hermes-scheduler` task (`generate-sitemap`) regenerates `/sitemap.xml` with all
 active job URLs:
 
 ```xml
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://hermes.example.com/jobs/ssc-cgl-2026</loc>
+    <loc>https://hermes.com/jobs/ssc-cgl-2026</loc>
     <lastmod>2026-03-15</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -464,7 +464,7 @@ Each job detail page renders SEO-critical tags in the Jinja2 `<head>`:
 ```html
 <title>{{ job.job_title }} — {{ job.organization }} | Hermes</title>
 <meta name="description" content="{{ job.short_description }}">
-<link rel="canonical" href="https://hermes.example.com/jobs/{{ job.slug }}">
+<link rel="canonical" href="https://hermes.com/jobs/{{ job.slug }}">
 <meta property="og:title" content="{{ job.job_title }}">
 <meta property="og:description" content="{{ job.short_description }}">
 <meta property="og:type" content="website">
@@ -673,12 +673,12 @@ These work for both jobs and exams using the same backend endpoints.
 
 ### Data Retention
 
-Row expiry is handled via an `expires_at` column and nightly Celery purge tasks.
+Row expiry is handled via an `expires_at` column and nightly `hermes-scheduler` purge tasks.
 
-| Data              | Retention | Mechanism                     |
-| ----------------- | --------- | ----------------------------- |
-| Notifications     | 90 days   | `expires_at` + Celery purge   |
-| Admin logs        | 30 days   | `expires_at` + Celery purge   |
+| Data              | Retention | Mechanism                                  |
+| ----------------- | --------- | ------------------------------------------ |
+| Notifications     | 90 days   | `expires_at` + `hermes-scheduler` purge    |
+| Admin logs        | 30 days   | `expires_at` + `hermes-scheduler` purge    |
 | JWT blocklist     | Token TTL | Redis TTL (auto-expires with token) |
 | Email OTP         | 5 minutes | Redis TTL (`setex` 300s)      |
 
@@ -687,12 +687,12 @@ Row expiry is handled via an `expires_at` column and nightly Celery purge tasks.
 ### PgBouncer (Connection Pooling)
 
 PgBouncer runs as a sidecar container (~10 MB RAM) between the application
-and PostgreSQL. The FastAPI backend and Celery worker connect to PgBouncer
+and PostgreSQL. The FastAPI backend and `hermes-worker` connect to PgBouncer
 on port `5432` (container-internal) instead of PostgreSQL directly.
 
 This matters because:
 - PostgreSQL on ARM with limited memory shouldn't hold too many connections
-- Celery workers can spike connection counts during task bursts
+- `hermes-worker` can spike connection counts during task bursts
 - PgBouncer multiplexes many app connections over fewer PostgreSQL connections
 
 Configuration: transaction pooling mode, `max_client_conn=100`,
@@ -717,7 +717,7 @@ consistent fields:
 ```
 
 `structlog` is configured once in the FastAPI app startup and works with
-Uvicorn and Celery.
+Uvicorn, `hermes-worker`, and `hermes-scheduler`.
 
 ### Image Deployment
 
@@ -801,7 +801,8 @@ All containers run via Docker Compose on this single VM.
 | Redis 7          | ~256 MB  |
 | PgBouncer        | ~10 MB   |
 | Backend (FastAPI) | ~512 MB  |
-| Celery Worker    | ~512 MB  |
+| hermes-worker    | ~256 MB  |
+| hermes-scheduler | ~128 MB  |
 | User Frontend    | ~256 MB  |
 | Admin Frontend   | ~256 MB  |
 | Nginx            | ~64 MB   |
@@ -1082,7 +1083,7 @@ Internet
 │  │ PostgreSQL 16  │  Redis 7               │  │
 │  │ (Docker volume) │ (password protected)  │  │
 │  ├─────────────────────────────────────────┤  │
-│  │ Celery Worker                           │  │
+│  │ hermes-worker + hermes-scheduler        │  │
 │  └─────────────────────────────────────────┘  │
 │                                               │
 │  Cron: pg_dump daily                          │
@@ -1130,14 +1131,9 @@ No OCI services needed for local development. Run everything in Docker:
 ```bash
 # docker-compose.yml reads config/development/.env.* directly — no copying needed
 
-# Validate config before starting
-./scripts/deployment/check_config.sh development
-
 # All services in single root docker-compose.yml
 docker compose up -d --build
 ```
-
-Or use the deploy script: `./scripts/deployment/deploy_all.sh development`
 
 ### Production Deployment
 
@@ -1147,32 +1143,25 @@ ssh -i <key> ubuntu@<vm-public-ip>
 
 # Clone and configure
 git clone <repo-url> hermes && cd hermes
-# Fill in all <placeholder> values in config/production/.env.* then validate:
-./scripts/deployment/check_config.sh production
+# Fill in all <placeholder> values in config/production/.env.*
 
-# Deploy all services (backend → frontends → nginx)
-./scripts/deployment/deploy_all.sh production
-```
-
-Or start all services directly with the root compose file:
-
-```bash
+# Deploy all services
 docker compose up -d --build
 ```
 
 ### Backup and Restore
 
-**Daily database backup** (host cron):
+**Daily database backup** (host cron via `pg_dump`):
 
 ```bash
 # crontab -e
-0 2 * * * /home/ubuntu/hermes/scripts/backup/backup_db.sh
+0 2 * * * docker exec hermes_postgresql pg_dump -U hermes_user hermes_db > /home/ubuntu/hermes/backups/hermes_db_$(date +%Y%m%d_%H%M%S).dump
 ```
 
 **Restore:**
 
 ```bash
-./scripts/backup/restore_db.sh <file>   # restore from pg_dump
+docker exec -i hermes_postgresql psql -U hermes_user hermes_db < <backup_file>
 ```
 
 ---

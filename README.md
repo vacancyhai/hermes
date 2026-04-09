@@ -54,7 +54,7 @@ Browser → Cloudflare (CDN + DDoS) → Nginx (SSL, port 443)
             ├── /*            → User Frontend (port 8080)
             └── admin.*       → Admin Frontend (port 8081)
 
-Backend containers: PostgreSQL, Redis, FastAPI (Uvicorn), Celery Worker
+Backend containers: PostgreSQL, Redis, FastAPI (Uvicorn), hermes-worker, hermes-scheduler
 ```
 
 Frontends communicate with the backend exclusively via REST API
@@ -66,7 +66,7 @@ PostgreSQL and Redis are isolated inside Docker networks — never exposed to th
 - **Job Matching** — Scores jobs against user profile: reservation category eligibility (+4), state preference (+3), preferred categories (+2), education level (+2), age eligibility vs. `age_min`/`age_max` in job eligibility (+2), and recency bonus (+1); scoring engine in `services/matching.py`. The candidate pool is capped at the 500 most-recent active jobs (a known trade-off documented in the code).
 - **Watch Jobs & Exams** — Users watch specific jobs or entrance exams (`user_watches` table, max 100 per user) to receive automatic deadline reminders and update notifications.
 - **Multi-Channel Notifications** — In-app, FCM push (tokens stored in `user_profiles.fcm_tokens`), email (OCI Email Delivery), **WhatsApp** (infrastructure ready, pending `WHATSAPP_API_TOKEN` + `WHATSAPP_PHONE_NUMBER_ID`), and **Telegram** (Bot API `sendMessage`; activated when `TELEGRAM_BOT_TOKEN` is set, user stores `telegram_chat_id` via preferences API); instant mode for OTP/auth, staggered mode for job alerts with configurable delays per channel.
-- **Deadline Reminders** — Celery task `send_deadline_reminders` fires automatic alerts at T-7, T-3, and T-1 days before `application_end` for all watchers of a job or exam. Scheduled daily at 08:00 UTC via `celery_app.py` beat_schedule.
+- **Deadline Reminders** — Celery task `send_deadline_reminders` fires automatic alerts at T-7, T-3, and T-1 days before `application_end` for all watchers of a job or exam. Scheduled daily at 08:00 UTC via `hermes-scheduler` (`celery_app.py` beat_schedule).
 - **Dynamic UI** — HTMX for live search, infinite scroll, and real-time updates without JavaScript frameworks.
 - **Full-Text Search** — PostgreSQL tsvector/GIN-indexed ranked search on job titles, organisations, and descriptions (no Elasticsearch needed).
 - **SEO Optimized** — Dynamic sitemap, meta tags, and Google JobPosting JSON-LD structured data for organic traffic.
@@ -108,7 +108,7 @@ PostgreSQL and Redis are isolated inside Docker networks — never exposed to th
 # Optional: ANTHROPIC_API_KEY (enables AI PDF extraction).
 # (docker-compose.yml reads config/development/.env.* directly — no copying needed)
 
-# 2. Start all services (PostgreSQL, Redis, PgBouncer, FastAPI, Celery, Frontends, Mailpit)
+# 2. Start all services (PostgreSQL, Redis, PgBouncer, FastAPI, hermes-worker, hermes-scheduler, Frontends, Mailpit)
 docker compose up -d --build
 
 # 3. Run database migrations
@@ -126,8 +126,8 @@ with engine.connect() as conn:
     conn.execute(text(\"\"\"
         INSERT INTO admin_users (id, email, password_hash, full_name, role, status, is_email_verified)
         VALUES (:id, :email, :pw, :name, 'admin', 'active', TRUE)
-    \"\"\"), {\"id\": str(uuid.uuid4()), \"email\": \"admin@example.com\",
-         \"pw\": ctx.hash(\"ChangeMe123!\"), \"name\": \"Admin\"})
+    \"\"\"), {\"id\": str(uuid.uuid4()), \"email\": \"admin@hermes.com\",
+             \"pw\": ctx.hash(\"Admin@123\"), \"name\": \"Admin\"})
     conn.commit()
 "
 # After the first admin is created, additional accounts can be created via:
@@ -140,11 +140,9 @@ docker exec hermes_backend python -m pytest tests/unit/ -q
 #   Backend API:    http://localhost:8000/api/v1/health
 #   API Docs:       http://localhost:8000/api/v1/docs
 #   User Frontend:  http://localhost:8080
-#   Admin Frontend: http://localhost:8081  (login: admin@example.com / ChangeMe123!)
+#   Admin Frontend: http://localhost:8081  (login: admin@hermes.com / Admin@123)
 #   Mailpit UI:     http://localhost:8025
 ```
-
-Or use the deploy script: `./scripts/deployment/deploy_all.sh development`
 
 ## Branching Strategy
 
@@ -182,8 +180,8 @@ See `.pre-commit-config.yaml` for full configuration.
 ```
 hermes/
 ├── docker-compose.yml            # Dev: all services (PostgreSQL, Redis, PgBouncer, Backend,
-│                                 #   Celery Worker, Celery Beat, Frontend, Admin Frontend, Mailpit)
-├── docker-compose.test.yml       # CI: same minus celery_worker and mailpit; uses config/test/.env.*
+│                                 #   hermes-worker, hermes-scheduler, Frontend, Admin Frontend, Mailpit)
+├── docker-compose.test.yml       # CI: same minus hermes-worker, hermes-scheduler and mailpit; uses config/test/.env.*
 ├── alembic.ini                   # Alembic config (URL overridden by env.py at runtime)
 ├── migrations/                   # Alembic migrations (0001–0004)
 ├── src/
@@ -257,10 +255,7 @@ hermes/
 │   └── production/               # .env.backend, .env.frontend, .env.frontend-admin (committed placeholders)
 ├── scripts/
 │   ├── seed_jobs.py              # Seed: 10 jobs + 9 exams + 32 phase docs (run manually)
-│   │                             #   docker cp scripts/seed_jobs.py hermes_backend:/app/seed_jobs.py
-│   │                             #   docker exec hermes_backend python seed_jobs.py
-│   ├── backup/                   # backup_db.sh + restore_db.sh
-│   └── deployment/               # deploy_all.sh + stop_all.sh + check_config.sh
+│   └── seed_creds.py             # Seed: admin + test user accounts
 ├── sonar-project.properties      # SonarCloud config (3 source roots, 4 test roots, 3 coverage XMLs)
 ├── .pre-commit-config.yaml       # Pre-commit hooks (black, isort, flake8, mypy, detect-secrets)
 ├── .secrets.baseline             # detect-secrets baseline (empty — no secrets in repo)

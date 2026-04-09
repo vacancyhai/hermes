@@ -124,17 +124,6 @@ seed-creds:
 	docker cp scripts/seed_creds.py hermes_backend:/app/seed_creds.py
 	docker exec hermes_backend python seed_creds.py
 
-.PHONY: backup
-backup:
-	bash scripts/backup/backup_db.sh
-
-.PHONY: restore
-restore:
-ifndef LATEST
-	$(error LATEST is not set. Usage: make restore LATEST=backups/hermes_db_<timestamp>.dump)
-endif
-	bash scripts/backup/restore_db.sh $(LATEST)
-
 # ── Tests ─────────────────────────────────────────────────────────────────────
 
 .PHONY: test
@@ -192,12 +181,6 @@ test-e2e:
 
 .PHONY: test-all
 test-all: test test-frontend test-admin
-
-# ── Config ────────────────────────────────────────────────────────────────────
-
-.PHONY: check-config
-check-config:
-	bash scripts/deployment/check_config.sh $(ENV)
 
 # ── Cleanup ───────────────────────────────────────────────────────────────────
 

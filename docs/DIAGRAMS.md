@@ -36,12 +36,12 @@ All services run from a single root `docker-compose.yml`. They communicate via H
 │  USER FRONTEND      │  │  ADMIN FRONTEND     │  │  BACKEND SERVICE       │
 │  src/frontend/      │  │  src/frontend-admin/│  │  src/backend/          │
 │                     │  │                     │  │                        │
-│  1 container        │  │  1 container        │  │  4 containers:         │
+│  1 container        │  │  1 container        │  │  5 containers:         │
 │  Port: 8080         │  │  Port: 8081         │  │  1. PostgreSQL (5432)  │
 │  Flask/Jinja2       │  │  Flask/Jinja2       │  │  2. Redis (6379)       │
 │                     │  │                     │  │  3. Backend API (8000) │
-│  Public users:      │  │  Staff only:        │  │  4. Celery Worker      │
-│  - Register         │  │  - Admin login      │  │                        │
+│  Public users:      │  │  Staff only:        │  │  4. hermes-worker      │
+│  - Register         │  │  - Admin login      │  │  5. hermes-scheduler   │
 │  - Login            │  │  - Operator login   │  │  JWT Auth + RBAC       │
 │  - Browse jobs      │  │  - Manage jobs      │  │  /api/v1/* endpoints   │
 │                     │  │  - Manage users     │  │                        │
@@ -814,7 +814,7 @@ Notifications & Devices:
 
 ```
 ┌──────────────────────────────────────────────────┐
-│              CELERY BEAT SCHEDULER                 │
+│              hermes-scheduler (Beat)               │
 │            (Background Tasks Runner)               │
 └────────────────────────────────────────────────────┘
 

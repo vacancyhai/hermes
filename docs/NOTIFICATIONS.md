@@ -54,7 +54,7 @@ MAIL_ENABLED=true
 MAIL_SERVER=mailpit           # Use mailpit for development
 MAIL_PORT=1025
 MAIL_USE_TLS=false
-MAIL_DEFAULT_SENDER=noreply@hermes.example.com
+MAIL_DEFAULT_SENDER=noreply@hermes.com
 ```
 
 - **Development:** Emails captured by Mailpit (web UI at `http://localhost:8025`)

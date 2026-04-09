@@ -206,8 +206,8 @@ Content is stored across four dedicated tables: `jobs`, `admit_cards`, `answer_k
 **Request body:**
 ```json
 {
-  "email": "operator@example.com",
-  "password": "MinEight1",  # pragma: allowlist secret
+  "email": "operator@hermes.com",
+  "password": "Oper@123",  # pragma: allowlist secret
   "full_name": "New Operator",
   "role": "operator",
   "phone": null,
@@ -469,7 +469,7 @@ Authorization: Bearer <admin_token>
 ## SEO
 
 ### Sitemap
-- Celery Beat task `generate_sitemap` runs daily at 04:00 UTC
+- `hermes-scheduler` task `generate_sitemap` runs daily at 04:00 UTC
 - Generates `/sitemap.xml` with all active job URLs
 - Served via Nginx at `/sitemap.xml`
 

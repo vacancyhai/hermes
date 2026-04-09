@@ -60,6 +60,10 @@ htmlcov/
 sitemap.xml
 uploads/
 
+# Postman
+*.postman_collection.json
+*.postman_environment.json
+
 # Alembic
 migrations/versions/*.pyc
 secrets/

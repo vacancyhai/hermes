@@ -1,13 +1,13 @@
 """Seed script — creates admin users, test users with profiles, and Firebase Auth users.
 
 Admins seeded (admin_users table):
-  - admin@example.com    / AdminPass123!  (role: admin)
-  - operator@example.com / OperPass123!   (role: operator)
+  - admin@hermes.com    / Admin@123  (role: admin)
+  - operator@hermes.com / Oper@123   (role: operator)
 
 Test users seeded (users + user_profiles tables):
-  - user1@example.com / UserPass123!  (Graduate, General, Maharashtra)
-  - user2@example.com / UserPass123!  (Graduate, OBC, Delhi)
-  - user3@example.com / UserPass123!  (Post-graduate, SC, Tamil Nadu)
+  - user1@hermes.com / User@123  (Graduate, General, Maharashtra)
+  - user2@hermes.com / User@123  (Graduate, OBC, Delhi)
+  - user3@hermes.com / User@123  (Post-graduate, SC, Tamil Nadu)
 
 Firebase Auth users are also created for the 3 test users and their firebase_uid
 is linked back to the PostgreSQL users row.
@@ -43,20 +43,20 @@ _engine = create_engine(_DB_URL)
 # Admin accounts
 # ---------------------------------------------------------------------------
 
-_USER_PASS = "UserPass123!"  # pragma: allowlist secret
+_USER_PASS = "User@123"  # pragma: allowlist secret
 
 ADMINS = [
     {
-        "email": "admin@example.com",
-        "password": "AdminPass123!",  # pragma: allowlist secret
+        "email": "admin@hermes.com",
+        "password": "Admin@123",  # pragma: allowlist secret
         "full_name": "Super Admin",
         "role": "admin",
         "department": "Platform",
         "phone": None,
     },
     {
-        "email": "operator@example.com",
-        "password": "OperPass123!",  # pragma: allowlist secret
+        "email": "operator@hermes.com",
+        "password": "Oper@123",  # pragma: allowlist secret
         "full_name": "Content Operator",
         "role": "operator",
         "department": "Content",
@@ -70,7 +70,7 @@ ADMINS = [
 
 USERS = [
     {
-        "email": "user1@example.com",
+        "email": "user1@hermes.com",
         "password": _USER_PASS,
         "full_name": "Rahul Sharma",
         "phone": None,
@@ -102,7 +102,7 @@ USERS = [
         },
     },
     {
-        "email": "user2@example.com",
+        "email": "user2@hermes.com",
         "password": _USER_PASS,
         "full_name": "Priya Patel",
         "phone": None,
@@ -134,7 +134,7 @@ USERS = [
         },
     },
     {
-        "email": "user3@example.com",
+        "email": "user3@hermes.com",
         "password": _USER_PASS,
         "full_name": "Arun Kumar",
         "phone": None,
@@ -327,14 +327,14 @@ def seed():
     _seed_firebase_users()
 
     print("\nCredentials:")
-    print("  Admin:    admin@example.com    / AdminPass123!")
-    print("  Operator: operator@example.com / OperPass123!")
-    print("  User 1:   user1@example.com    / UserPass123!")
-    print("  User 2:   user2@example.com    / UserPass123!")
-    print("  User 3:   user3@example.com    / UserPass123!")
+    print("  Admin:    admin@hermes.com    / Admin@123")
+    print("  Operator: operator@hermes.com / Oper@123")
+    print("  User 1:   user1@hermes.com    / User@123")
+    print("  User 2:   user2@hermes.com    / User@123")
+    print("  User 3:   user3@hermes.com    / User@123")
     print("\nPostman test flow:")
     print("  1. Set {{firebase_web_api_key}} in collection variables")
-    print("  2. Run 'Step 1 — Get Firebase ID Token' with user1@example.com / UserPass123!")
+    print("  2. Run 'Step 1 — Get Firebase ID Token' with user1@hermes.com / User@123")
     print("  3. Run 'Step 2 — Verify Firebase Token' → sets {{user_token}}")
 
 

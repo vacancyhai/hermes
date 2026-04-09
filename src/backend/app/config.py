@@ -34,7 +34,7 @@ class Settings(BaseSettings):
     MAIL_USE_TLS: bool = True
     MAIL_USERNAME: str = ""
     MAIL_PASSWORD: str = ""
-    MAIL_DEFAULT_SENDER: str = "noreply@example.com"
+    MAIL_DEFAULT_SENDER: str = "noreply@hermes.com"
     MAIL_ENABLED: bool = False
 
     # JWT

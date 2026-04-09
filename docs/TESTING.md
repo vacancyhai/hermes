@@ -102,7 +102,7 @@ push / PR
 | `sonarcloud` | — | Needs all 4 jobs | Merges all 3 XMLs |
 
 **Key details:**
-- `docker-compose.test.yml` has no `celery_worker`, `celery_beat`, or `mailpit` — those are dev-only.
+- `docker-compose.test.yml` has no `hermes-worker`, `hermes-scheduler`, or `mailpit` — those are dev-only.
 - Backend test image bakes `app/` in at build time; `tests/` and `pytest.ini` are volume-mounted so they can be updated without rebuilding.
 - Frontend/admin test images run as standalone `docker run` containers with a host-mounted `coverage/` directory to extract the XML.
 - E2E tests use the `requests` library for HTTP calls — no browser automation.

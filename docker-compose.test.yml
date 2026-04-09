@@ -5,7 +5,7 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-hermes_test_db}
       POSTGRES_USER: ${POSTGRES_USER:-hermes_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hermes_ci_pass}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-hermes_user} -d ${POSTGRES_DB:-hermes_test_db}"]
       interval: 10s
@@ -30,7 +30,7 @@ services:
     image: edoburu/pgbouncer:latest
     container_name: test_pgbouncer
     environment:
-      DATABASE_URL: postgres://${POSTGRES_USER:-hermes_user}:${POSTGRES_PASSWORD:-hermes_ci_pass}@postgresql:5432/${POSTGRES_DB:-hermes_test_db}
+      DATABASE_URL: postgres://${POSTGRES_USER:-hermes_user}:${POSTGRES_PASSWORD}@postgresql:5432/${POSTGRES_DB:-hermes_test_db}
       POOL_MODE: transaction
       MAX_CLIENT_CONN: 100
       DEFAULT_POOL_SIZE: 20
@@ -39,7 +39,7 @@ services:
       postgresql:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "pg_isready", "-h", "localhost", "-p", "5432"]
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 5432 || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
