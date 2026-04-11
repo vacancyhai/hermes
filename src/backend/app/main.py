@@ -9,8 +9,8 @@ from app.config import settings
 from app.logging_config import setup_logging
 from app.rate_limit import limiter
 from app.routers import admin, auth, health, jobs, notifications, users
-from app.routers.admissions import admin_router as exams_admin_router
-from app.routers.admissions import public_router as exams_public_router
+from app.routers.admissions import admin_router as admissions_admin_router
+from app.routers.admissions import public_router as admissions_public_router
 from app.routers.content import (
     admit_cards_admin_router,
     admit_cards_router,
@@ -167,6 +167,6 @@ app.include_router(admin.router)
 app.include_router(admit_cards_admin_router)
 app.include_router(answer_keys_admin_router)
 app.include_router(results_admin_router)
-app.include_router(exams_public_router)
-app.include_router(exams_admin_router)
+app.include_router(admissions_public_router)
+app.include_router(admissions_admin_router)
 app.include_router(watches_router)

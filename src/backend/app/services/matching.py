@@ -237,7 +237,7 @@ async def get_recommended_answer_keys(
     limit: int = 20,
     offset: int = 0,
 ) -> tuple[list, int]:
-    """Return answer keys for jobs/exams the user is watching."""
+    """Return answer keys for jobs/admissions the user is watching."""
     job_ids, admission_ids = await _get_watched_ids(user_id, db)
     if not job_ids and not admission_ids:
         return [], 0
@@ -264,7 +264,7 @@ async def get_recommended_results(
     limit: int = 20,
     offset: int = 0,
 ) -> tuple[list, int]:
-    """Return results for jobs/exams the user is watching."""
+    """Return results for jobs/admissions the user is watching."""
     job_ids, admission_ids = await _get_watched_ids(user_id, db)
     if not job_ids and not admission_ids:
         return [], 0
