@@ -16,7 +16,7 @@
             <h1>{{ card.title }}</h1>
             {% if card.get('job') %}
             <div class="org">🏛 {{ card.job.organization }} · {{ card.job.job_title }}</div>
-            {% elif card.get('exam') %}
+            {% elif card.get('admission') %}
             <div class="org">🏛 {{ card.exam.conducting_body }} · {{ card.exam.exam_name }}</div>
             {% endif %}
         </div>
@@ -30,7 +30,7 @@
     </a>
     {% if card.get('job') %}
     <a href="/jobs/{{ card.job.id }}" class="share-btn">View Job Details →</a>
-    {% elif card.get('exam') %}
+    {% elif card.get('admission') %}
     <a href="/admissions/{{ card.admission.id }}" class="share-btn">View Admission Details →</a>
     {% endif %}
     <button type="button" class="share-btn" onclick="if(navigator.share){navigator.share({title:document.title,url:window.location.href})}else{navigator.clipboard.writeText(window.location.href);alert('Link copied!')}">⬆ Share</button>

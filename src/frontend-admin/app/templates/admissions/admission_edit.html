@@ -8,19 +8,19 @@
         <div>
             <h1 class="page-title">&#127979; {{ exam.exam_name }}</h1>
             <p class="page-subtitle">
-                <span class="status-badge status-{{ exam.status }}">{{ exam.status | title }}</span>
+                <span class="status-badge status-{{ admission.status }}">{{ admission.status | title }}</span>
                 &nbsp;{{ exam.exam_type | upper }} &middot; {{ exam.stream | replace('_',' ') | title }}
             </p>
         </div>
         <div class="header-actions">
             {% if session.get('admin_role') == 'admin' %}
-            <form method="POST" action="/admissions/{{ exam.id }}/delete"
-                  onsubmit="return confirm('Permanently delete this exam and all its phase documents?')" style="margin:0">
+            <form method="POST" action="/admissions/{{ admission.id }}/delete"
+                  onsubmit="return confirm('Permanently delete this admission and all its phase documents?')" style="margin:0">
                 <button type="submit" class="btn btn-danger btn-sm">&#128465; Delete</button>
             </form>
             {% endif %}
             <a href="/admissions" class="btn btn-outline">Cancel</a>
-            <button type="submit" form="exam-edit-form" class="btn btn-primary">&#10003; Save Changes</button>
+            <button type="submit" form="admission-edit-form" class="btn btn-primary">&#10003; Save Changes</button>
         </div>
     </div>
 </div>
@@ -32,7 +32,7 @@
 {% endwith %}
 
 <!-- ── Admission Details Form ─────────────────────────────────────────────── -->
-<form id="exam-edit-form" method="POST" action="/admissions/{{ exam.id }}/edit">
+<form id="admission-edit-form" method="POST" action="/admissions/{{ admission.id }}/edit">
     <!-- Basic Information -->
     <div class="section-card">
         <div class="section-header section-header--blue">
@@ -50,13 +50,13 @@
                 <div class="form-group col-span-2">
                     <label>Conducting Body <span class="req">*</span></label>
                     <input type="text" name="conducting_body" required
-                           value="{{ exam.conducting_body }}"
+                           value="{{ admission.conducting_body }}"
                            placeholder="e.g. National Testing Agency">
                 </div>
                 <div class="form-group">
                     <label>Counselling Body</label>
                     <input type="text" name="counselling_body"
-                           value="{{ exam.counselling_body or '' }}"
+                           value="{{ admission.counselling_body or '' }}"
                            placeholder="e.g. MCC, JoSAA">
                 </div>
                 <div class="form-group">
@@ -79,7 +79,7 @@
                     <label>Status</label>
                     <select name="status">
                         {% for val in ['upcoming','active','completed','cancelled'] %}
-                        <option value="{{ val }}" {{ 'selected' if exam.status == val }}>{{ val | title }}</option>
+                        <option value="{{ val }}" {{ 'selected' if admission.status == val }}>{{ val | title }}</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -87,18 +87,18 @@
             <div class="form-group" style="margin-top:.75rem">
                 <label>Short Description</label>
                 <input type="text" name="short_description" maxlength="300"
-                       value="{{ exam.short_description or '' }}"
+                       value="{{ admission.short_description or '' }}"
                        placeholder="E.g. NEET PG 2026: National entrance for MD/MS/PG Diploma.">
             </div>
             <div class="form-group" style="margin-top:.5rem">
                 <label>Full Description</label>
                 <textarea name="description" rows="4"
-                          placeholder="Full HTML or plain-text description…">{{ exam.description or '' }}</textarea>
+                          placeholder="Full HTML or plain-text description…">{{ admission.description or '' }}</textarea>
             </div>
             <div class="form-group" style="margin-top:.5rem">
                 <label>Official Website URL</label>
                 <input type="url" name="source_url"
-                       value="{{ exam.source_url or '' }}"
+                       value="{{ admission.source_url or '' }}"
                        placeholder="https://nta.ac.in/neet-pg">
             </div>
         </div>
@@ -114,11 +114,11 @@
             <div class="form-grid-3">
                 <div class="form-group">
                     <label>Application Start</label>
-                    <input type="date" name="application_start" value="{{ exam.application_start or '' }}">
+                    <input type="date" name="application_start" value="{{ admission.application_start or '' }}">
                 </div>
                 <div class="form-group">
                     <label>Application End</label>
-                    <input type="date" name="application_end" value="{{ exam.application_end or '' }}">
+                    <input type="date" name="application_end" value="{{ admission.application_end or '' }}">
                 </div>
                 <div class="form-group">
                     <label>Exam Date</label>
@@ -126,11 +126,11 @@
                 </div>
                 <div class="form-group">
                     <label>Result Date</label>
-                    <input type="date" name="result_date" value="{{ exam.result_date or '' }}">
+                    <input type="date" name="result_date" value="{{ admission.result_date or '' }}">
                 </div>
                 <div class="form-group">
                     <label>Counselling Start</label>
-                    <input type="date" name="counselling_start" value="{{ exam.counselling_start or '' }}">
+                    <input type="date" name="counselling_start" value="{{ admission.counselling_start or '' }}">
                 </div>
             </div>
         </div>
@@ -149,7 +149,7 @@
                 <div class="fee-cell">
                     <label>{{ flabel }}</label>
                     <input type="number" name="{{ fname }}" min="0"
-                           value="{{ exam[fname] if exam[fname] is not none else '' }}"
+                           value="{{ admission[fname] if admission[fname] is not none else '' }}"
                            placeholder="0">
                 </div>
                 {% endfor %}
@@ -430,7 +430,7 @@ Biology, 100, 360"></textarea>
                     <td><strong>{{ ac.title }}</strong></td>
                     <td class="pd-meta">{{ ac.valid_from or '' }}{% if ac.valid_from and ac.valid_until %} → {% endif %}{{ ac.valid_until or '' }}</td>
                     <td>
-                        <form method="POST" action="/admissions/{{ exam.id }}/docs/admit-cards/{{ ac.id }}/delete" onsubmit="return confirm('Delete this admit card?')">
+                        <form method="POST" action="/admissions/{{ admission.id }}/docs/admit-cards/{{ ac.id }}/delete" onsubmit="return confirm('Delete this admit card?')">
                             <button type="submit" class="btn btn-sm pd-del-btn">&#10005; Delete</button>
                         </form>
                     </td>
@@ -443,7 +443,7 @@ Biology, 100, 360"></textarea>
             {% endif %}
             <details class="pd-add-panel">
                 <summary class="pd-add-toggle">&#43; Add Admit Card</summary>
-                <form method="POST" action="/admissions/{{ exam.id }}/docs/admit-cards" class="pd-add-form">
+                <form method="POST" action="/admissions/{{ admission.id }}/docs/admit-cards" class="pd-add-form">
                     <div class="pd-form-grid">
                         <div class="pd-fg pd-full"><label>Title *</label><input type="text" name="title" required placeholder="NEET PG 2026 Admit Card"></div>
                         <div class="pd-fg pd-full"><label>Download URL *</label><input type="url" name="download_url" required placeholder="https://nta.ac.in/admit-card"></div>
@@ -476,7 +476,7 @@ Biology, 100, 360"></textarea>
                     <td><span class="badge {{ 'badge-success' if ak.answer_key_type == 'final' else 'badge-warning' }}">{{ ak.answer_key_type | title }}</span></td>
                     <td class="pd-meta">{{ ak.objection_deadline or '—' }}</td>
                     <td>
-                        <form method="POST" action="/admissions/{{ exam.id }}/docs/answer-keys/{{ ak.id }}/delete" onsubmit="return confirm('Delete this answer key?')">
+                        <form method="POST" action="/admissions/{{ admission.id }}/docs/answer-keys/{{ ak.id }}/delete" onsubmit="return confirm('Delete this answer key?')">
                             <button type="submit" class="btn btn-sm pd-del-btn">&#10005; Delete</button>
                         </form>
                     </td>
@@ -489,7 +489,7 @@ Biology, 100, 360"></textarea>
             {% endif %}
             <details class="pd-add-panel">
                 <summary class="pd-add-toggle">&#43; Add Answer Key</summary>
-                <form method="POST" action="/admissions/{{ exam.id }}/docs/answer-keys" class="pd-add-form">
+                <form method="POST" action="/admissions/{{ admission.id }}/docs/answer-keys" class="pd-add-form">
                     <div class="pd-form-grid">
                         <div class="pd-fg pd-full"><label>Title *</label><input type="text" name="title" required placeholder="NEET PG 2026 Provisional Answer Key"></div>
                         <div class="pd-fg"><label>Type</label><select name="answer_key_type"><option value="provisional">Provisional</option><option value="final">Final</option></select></div>
@@ -521,7 +521,7 @@ Biology, 100, 360"></textarea>
                     <td><span class="badge badge-info">{{ res.result_type | replace('_',' ') | title }}</span></td>
                     <td class="pd-meta">{{ res.total_qualified or '—' }}</td>
                     <td>
-                        <form method="POST" action="/admissions/{{ exam.id }}/docs/results/{{ res.id }}/delete" onsubmit="return confirm('Delete this result?')">
+                        <form method="POST" action="/admissions/{{ admission.id }}/docs/results/{{ res.id }}/delete" onsubmit="return confirm('Delete this result?')">
                             <button type="submit" class="btn btn-sm pd-del-btn">&#10005; Delete</button>
                         </form>
                     </td>
@@ -534,7 +534,7 @@ Biology, 100, 360"></textarea>
             {% endif %}
             <details class="pd-add-panel">
                 <summary class="pd-add-toggle">&#43; Add Result</summary>
-                <form method="POST" action="/admissions/{{ exam.id }}/docs/results" class="pd-add-form">
+                <form method="POST" action="/admissions/{{ admission.id }}/docs/results" class="pd-add-form">
                     <div class="pd-form-grid">
                         <div class="pd-fg pd-full"><label>Title *</label><input type="text" name="title" required placeholder="NEET PG 2026 Result & Score Card"></div>
                         <div class="pd-fg"><label>Result Type</label><select name="result_type"><option value="shortlist">Shortlist</option><option value="cutoff">Cut-off</option><option value="merit_list" selected>Merit List</option><option value="final">Final</option></select></div>
@@ -551,7 +551,7 @@ Biology, 100, 360"></textarea>
 </div>
 
 <script>
-const EXAM_DATA = {{ exam | tojson }};
+const ADMISSION_DATA = {{ admission | tojson }};
 
 (function init() {
     const ed = EXAM_DATA.exam_details || {};
@@ -628,7 +628,7 @@ const EXAM_DATA = {{ exam | tojson }};
     setV('si_ews', si.EWS); setV('si_sc', si.SC); setV('si_st', si.ST);
 })();
 
-document.getElementById('exam-edit-form').addEventListener('submit', function() {
+document.getElementById('admission-edit-form').addEventListener('submit', function() {
     const g = id => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };
     const gi = id => { const v = g(id); return v !== '' ? parseInt(v) : null; };
     const gf = id => { const v = g(id); return v !== '' ? parseFloat(v) : null; };

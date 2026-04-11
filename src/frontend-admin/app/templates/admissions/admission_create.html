@@ -7,11 +7,11 @@
     <div class="page-header-row">
         <div>
             <h1 class="page-title">&#127979; New Admission</h1>
-            <p class="page-subtitle">Fill in exam details below and click Create.</p>
+            <p class="page-subtitle">Fill in admission details below and click Create.</p>
         </div>
         <div class="header-actions">
             <a href="/admissions" class="btn btn-outline">Cancel</a>
-            <button type="submit" form="exam-form" class="btn btn-primary">&#10003; Create Admission</button>
+            <button type="submit" form="admission-form" class="btn btn-primary">&#10003; Create Admission</button>
         </div>
     </div>
 </div>
@@ -22,7 +22,7 @@
     {% endfor %}
 {% endwith %}
 
-<form id="exam-form" method="POST" action="/admissions/new">
+<form id="admission-form" method="POST" action="/admissions/new">
 
     <!-- Basic Information -->
     <div class="section-card">
@@ -407,7 +407,7 @@ Biology, 100, 360"></textarea>
 </template>
 
 <script>
-document.getElementById('exam-form').addEventListener('submit', function() {
+document.getElementById('admission-form').addEventListener('submit', function() {
     const g = id => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };
     const gi = id => { const v = g(id); return v !== '' ? parseInt(v) : null; };
     const gf = id => { const v = g(id); return v !== '' ? parseFloat(v) : null; };

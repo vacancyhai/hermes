@@ -17,7 +17,7 @@ Routes:
   /admissions/new             — Create admission
   /admissions/<id>/edit       — Edit admission
   /admissions/<id>/delete     — POST: delete admission
-  /admissions/<id>/docs/...   — POST: add/delete docs on exam
+  /admissions/<id>/docs/...   — POST: add/delete docs on admission
   /users                          — User management (list, search, status filter)
   /users/<id>                     — User detail
   /users/<id>/suspend             — Toggle user suspend/activate
@@ -535,7 +535,7 @@ def admissions():
 
 @bp.route("/admissions/list", methods=["GET"])
 def admissions_list_partial():
-    """HTMX partial — exam table rows for load-more."""
+    """HTMX partial — admission table rows for load-more."""
     token = session.get("token")
     if not token:
         return "", 401
@@ -576,7 +576,7 @@ def new_admission():
             exam_id = resp.json().get("id")
             flash("Admission created.", "success")
             return redirect(f"/admissions/{exam_id}/edit")
-        detail = resp.json().get("detail", "Failed to create exam") if resp.headers.get("content-type", "").startswith(_CONTENT_TYPE_JSON) else "Failed to create exam"
+        detail = resp.json().get("detail", "Failed to create admission") if resp.headers.get("content-type", "").startswith(_CONTENT_TYPE_JSON) else "Failed to create admission"
         flash(detail, "error")
     return render_template("admissions/admission_create.html")
 
@@ -631,7 +631,7 @@ def edit_admission(exam_id):
 
     return render_template(
         "admissions/admission_edit.html",
-        exam=resp_detail,
+        admission=resp_detail,
         admit_cards=ac_resp.json().get("data", []) if ac_resp.ok else [],
         answer_keys=ak_resp.json().get("data", []) if ak_resp.ok else [],
         results=re_resp.json().get("data", []) if re_resp.ok else [],

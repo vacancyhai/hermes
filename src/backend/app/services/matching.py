@@ -340,7 +340,7 @@ async def get_recommended_admissions(
         .order_by(Admission.created_at.desc())
         .limit(CANDIDATE_LIMIT)
     )
-    exams = result.scalars().all()
+    admissions = result.scalars().all()
 
     # Pre-compute user attributes for scoring
     pref_states = {s.lower() for s in (profile.preferred_states or [])}
@@ -350,32 +350,32 @@ async def get_recommended_admissions(
     recency_cutoff = today - timedelta(days=RECENCY_DAYS)
 
     scored: list[tuple[int, date | None, Admission]] = []
-    for admission in exams:
+    for admission in admissions:
         score = 0
 
         # Build admission's eligible category set from eligibility dict
-        exam_cats = set()
+        admission_cats = set()
         if admission.eligibility and isinstance(admission.eligibility, dict):
             cat_val = admission.eligibility.get("category")
             if isinstance(cat_val, list):
-                exam_cats = {c.lower() for c in cat_val}
+                admission_cats = {c.lower() for c in cat_val}
             elif isinstance(cat_val, str):
-                exam_cats.add(cat_val.lower())
+                admission_cats.add(cat_val.lower())
 
         # Category eligibility: user's actual reservation category is in the admission's categories
-        if user_category and (not exam_cats or user_category in exam_cats):
+        if user_category and (not admission_cats or user_category in admission_cats):
             score += CATEGORY_ELIGIBILITY_MATCH
 
         # State match via eligibility dict
-        exam_states = set()
+        admission_states = set()
         if admission.eligibility and isinstance(admission.eligibility, dict):
             for key in ("states", "state", "location", "conducting_states"):
                 val = admission.eligibility.get(key)
                 if isinstance(val, list):
-                    exam_states.update(s.lower() for s in val)
+                    admission_states.update(s.lower() for s in val)
                 elif isinstance(val, str):
-                    exam_states.add(val.lower())
-        if pref_states and (not exam_states or pref_states & exam_states):
+                    admission_states.add(val.lower())
+        if pref_states and (not admission_states or pref_states & admission_states):
             score += STATE_MATCH
 
         # Education match: extract qualification from eligibility dict
