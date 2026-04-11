@@ -1,14 +1,14 @@
 """Rename exam_name/exam_type/exam_date/exam_details → admission_name/admission_type/admission_date/admission_details in admissions table.
 
-Revision ID: 0003_rename_admission_columns
-Revises: 0002_add_followed_organizations
+Revision ID: 0007_rename_admission_columns
+Revises: 0006
 Create Date: 2026-04-11
 """
 
 from alembic import op
 
-revision = "0003_rename_admission_columns"
-down_revision = "0002_add_followed_organizations"
+revision = "0007_rename_admission_columns"
+down_revision = "0006"
 branch_labels = None
 depends_on = None
 
