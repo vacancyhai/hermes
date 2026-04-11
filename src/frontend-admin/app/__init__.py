@@ -30,6 +30,8 @@ import json
 import os
 import secrets
 
+from datetime import timedelta
+
 from flask import Blueprint, Flask, current_app, flash, redirect, render_template, request, session
 
 from app._flask_utils import (
@@ -119,6 +121,9 @@ def login():
         payload = _jwt_payload(session["token"])
         session["admin_name"] = email
         session["admin_role"] = payload.get("role", "operator")
+        if request.form.get("remember"):
+            session.permanent = True
+            current_app.permanent_session_lifetime = timedelta(days=30)
         return redirect("/")
     flash("Invalid credentials", "error")
     return redirect(_URL_LOGIN)
