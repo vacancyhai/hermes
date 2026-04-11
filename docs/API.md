@@ -92,8 +92,8 @@ Users can watch specific jobs or admissions to receive automatic notifications.
 |--------|----------|------|-------------|
 | POST | `/jobs/{job_id}/watch` | User | Watch a job (idempotent, max 100) |
 | DELETE | `/jobs/{job_id}/watch` | User | Unwatch a job (404 if not watching) |
-| POST | `/admissions/{exam_id}/watch` | User | Watch an admission (idempotent) |
-| DELETE | `/admissions/{exam_id}/watch` | User | Unwatch an admission |
+| POST | `/admissions/{admission_id}/watch` | User | Watch an admission (idempotent) |
+| DELETE | `/admissions/{admission_id}/watch` | User | Unwatch an admission |
 | GET | `/users/me/watched` | User | List all watched jobs + exams |
 
 **Automatic notifications triggered by watching:**
@@ -156,7 +156,7 @@ Content is stored across four dedicated tables: `jobs`, `admit_cards`, `answer_k
 | Method | Endpoint | Role | Description |
 |--------|----------|------|---------|
 | GET | `/admin/admit-cards` | Operator+ | List all admit cards |
-| POST | `/admin/admit-cards` | Operator+ | Create admit card (must specify `job_id` OR `exam_id`) |
+| POST | `/admin/admit-cards` | Operator+ | Create admit card (must specify `job_id` OR `admission_id`) |
 | PUT | `/admin/admit-cards/{id}` | Operator+ | Update admit card |
 | DELETE | `/admin/admit-cards/{id}` | Operator+ | Delete admit card |
 
@@ -167,7 +167,7 @@ Content is stored across four dedicated tables: `jobs`, `admit_cards`, `answer_k
 | Method | Endpoint | Role | Description |
 |--------|----------|------|---------|
 | GET | `/admin/answer-keys` | Operator+ | List all answer keys |
-| POST | `/admin/answer-keys` | Operator+ | Create answer key (must specify `job_id` OR `exam_id`) |
+| POST | `/admin/answer-keys` | Operator+ | Create answer key (must specify `job_id` OR `admission_id`) |
 | PUT | `/admin/answer-keys/{id}` | Operator+ | Update answer key |
 | DELETE | `/admin/answer-keys/{id}` | Operator+ | Delete answer key |
 
@@ -178,7 +178,7 @@ Content is stored across four dedicated tables: `jobs`, `admit_cards`, `answer_k
 | Method | Endpoint | Role | Description |
 |--------|----------|------|---------|
 | GET | `/admin/results` | Operator+ | List all results |
-| POST | `/admin/results` | Operator+ | Create result (must specify `job_id` OR `exam_id`) |
+| POST | `/admin/results` | Operator+ | Create result (must specify `job_id` OR `admission_id`) |
 | PUT | `/admin/results/{id}` | Operator+ | Update result |
 | DELETE | `/admin/results/{id}` | Operator+ | Delete result |
 
@@ -580,7 +580,7 @@ These are now top-level resources, independent of jobs and admissions. Each docu
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/admin/admit-cards` | List all admit cards (any status) |
-| POST | `/admin/admit-cards` | Create admit card (must specify job_id OR exam_id) |
+| POST | `/admin/admit-cards` | Create admit card (must specify job_id OR admission_id) |
 | PUT | `/admin/admit-cards/{id}` | Update admit card |
 | DELETE | `/admin/admit-cards/{id}` | Delete admit card |
 
@@ -598,7 +598,7 @@ These are now top-level resources, independent of jobs and admissions. Each docu
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/admin/answer-keys` | List all answer keys (any status) |
-| POST | `/admin/answer-keys` | Create answer key (must specify job_id OR exam_id) |
+| POST | `/admin/answer-keys` | Create answer key (must specify job_id OR admission_id) |
 | PUT | `/admin/answer-keys/{id}` | Update answer key |
 | DELETE | `/admin/answer-keys/{id}` | Delete answer key |
 
@@ -616,13 +616,13 @@ These are now top-level resources, independent of jobs and admissions. Each docu
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/admin/results` | List all results (any status) |
-| POST | `/admin/results` | Create result (must specify job_id OR exam_id) |
+| POST | `/admin/results` | Create result (must specify job_id OR admission_id) |
 | PUT | `/admin/results/{id}` | Update result |
 | DELETE | `/admin/results/{id}` | Delete result |
 
 ### Document Creation
 
-When creating a document via the top-level admin endpoints, you must specify **either** `job_id` OR `exam_id` in the request body:
+When creating a document via the top-level admin endpoints, you must specify **either** `job_id` OR `admission_id` in the request body:
 
 ```json
 // Create admit card for a job
@@ -639,7 +639,7 @@ POST /api/v1/admin/admit-cards
 // Create answer key for an admission
 POST /api/v1/admin/answer-keys
 {
-  "exam_id": "uuid-here",
+  "admission_id": "uuid-here",
   "title": "NEET UG 2026 Provisional Answer Key",
   "answer_key_type": "provisional",
   "files": [{"label": "Set A", "url": "https://..."}],
@@ -648,7 +648,7 @@ POST /api/v1/admin/answer-keys
 ```
 
 **Validation rules:**
-- Cannot specify both `job_id` and `exam_id`
+- Cannot specify both `job_id` and `admission_id`
 - Must specify at least one
 - Parent job/exam must exist in database
 
@@ -692,9 +692,9 @@ They have exam-specific fields: `stream`, `exam_type`, `counselling_body`, `seat
 |--------|----------|-------------|
 | GET | `/admissions` | List active admissions (stream/exam_type/search filters) |
 | GET | `/admissions/{slug}` | Exam detail by slug |
-| GET | `/admissions/{exam_id}/admit-cards` | Per-phase admit cards (exam status must not be `cancelled`) |
-| GET | `/admissions/{exam_id}/answer-keys` | Per-phase answer keys (exam status must not be `cancelled`) |
-| GET | `/admissions/{exam_id}/results` | Per-phase results (exam status must not be `cancelled`) |
+| GET | `/admissions/{admission_id}/admit-cards` | Per-phase admit cards (exam status must not be `cancelled`) |
+| GET | `/admissions/{admission_id}/answer-keys` | Per-phase answer keys (exam status must not be `cancelled`) |
+| GET | `/admissions/{admission_id}/results` | Per-phase results (exam status must not be `cancelled`) |
 
 **Query Parameters for `GET /admissions`:**
 

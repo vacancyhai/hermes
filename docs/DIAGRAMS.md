@@ -1419,19 +1419,19 @@ document tables (`admit_cards`, `answer_keys`, `results`) are
              │                          ┌──────────────────┐
              └─────────────────────────►│  job_admit_cards │
                                          │                  │
-  exam_id FK (nullable) ──────────────► │  id UUID PK      │ ◄── CHECK:
+  admission_id FK (nullable) ──────────────► │  id UUID PK      │ ◄── CHECK:
                                          │  job_id  UUID?   │ ◀── CHECK:
-                                         │  exam_id UUID?   │     (job_id IS NOT NULL
-                                         │  phase_number    │      AND exam_id IS NULL)
+                                         │  admission_id UUID?│     (job_id IS NOT NULL
+                                         │  phase_number    │      AND admission_id IS NULL)
                                          │  title           │     OR
                                          │  download_url    │     (job_id IS NULL
-                                         │  valid_from/until│      AND exam_id IS NOT NULL)
+                                         │  valid_from/until│      AND admission_id IS NOT NULL)
                                          │  notes           │
                                          └──────────────────┘
 
   Same polymorphic pattern applies to:
-    • answer_keys  (job_id XOR exam_id + phase docs)
-    • results      (job_id XOR exam_id + cutoff_marks JSONB)
+    • answer_keys  (job_id XOR admission_id + phase docs)
+    • results      (job_id XOR admission_id + cutoff_marks JSONB)
 
   SEEDED DATA (current):
   ──────────────────────
@@ -1446,7 +1446,7 @@ document tables (`admit_cards`, `answer_keys`, `results`) are
     • CUET UG 2026 (general, ug)     → 4 phase docs
     • NEET SS 2025 (medical, doctoral)→3 phase docs
     • GATE 2026 (engineering, pg)    → 3 phase docs
-  Total: 32 phase documents seeded via exam_id FK
+  Total: 32 phase documents seeded via admission_id FK
 ```
 
 ---
@@ -1508,7 +1508,7 @@ listing page, gradient hero colour, and detail page design.
         │                                       │
         ▼                                       ▼
   HTMX loads /partials/jobs/             HTMX loads /partials/exams/
-  {job_id}/admit-cards                   {exam_id}/admit-cards
+  {job_id}/admit-cards                   {admission_id}/admit-cards
   (on tab click)                         (on tab click)
 ```
 
@@ -1578,7 +1578,7 @@ via HTMX into tabbed panels on job and admission detail pages.
         ▼
   FastAPI queries job_admit_cards WHERE job_id={id}
         │                 OR
-                    WHERE exam_id={id}  ← for admission_detail.html
+                    WHERE admission_id={id}  ← for admission_detail.html
         │
         ▼
   Returns list of admit card rows (JSON)

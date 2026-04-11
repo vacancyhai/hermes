@@ -179,7 +179,7 @@ See **[DATABASE.md](DATABASE.md)** for the complete schema — ERD, all 14 table
 `admit_cards`, `answer_keys`, `results`, `admissions`.
 
 **Polymorphic document tables:** `admit_cards`, `answer_keys`, `results` each
-link to either a `jobs` row (`job_id`) or an `admissions` row (`exam_id`)
+link to either a `jobs` row (`job_id`) or an `admissions` row (`admission_id`)
 via a DB-level `CHECK` constraint — exactly one FK per row, never both, never neither.
 
 ---
@@ -639,13 +639,13 @@ Each section uses a gradient hero and consistent card design:
 The three document tables (`admit_cards`, `answer_keys`, `results`) are **polymorphic** — each row links to either:
 
 - A job vacancy via `job_id` (traditional recruitment docs)
-- An admission via `exam_id` (admission phase docs)
+- An admission via `admission_id` (admission phase docs)
 
 Database constraint ensures exactly one reference:
 ```sql
 CONSTRAINT ck_doc_source CHECK (
-  (job_id IS NOT NULL AND exam_id IS NULL) OR
-  (job_id IS NULL AND exam_id IS NOT NULL)
+  (job_id IS NOT NULL AND admission_id IS NULL) OR
+  (job_id IS NULL AND admission_id IS NOT NULL)
 )
 ```
 

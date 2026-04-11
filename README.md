@@ -15,7 +15,7 @@ multi-channel notifications, and an admin panel.
 >
 > **Latest additions:** Separate `admissions` table for admissions (NEET, JEE, CLAT, CAT, GATE, CUET etc.)
 > decoupled from `jobs`; polymorphic document tables (`admit_cards`, `answer_keys`, `results`) now
-> support both jobs and admissions via `job_id`/`exam_id` FK; 5-section frontend navigation
+> support both jobs and admissions via `job_id`/`admission_id` FK; 5-section frontend navigation
 > (Jobs / Admit Cards / Answer Keys / Results / Admissions); type-aware gradient detail pages with shared
 > CSS design system; single Web Share API button replacing WhatsApp/Telegram share links; 9 admission seed
 > entries with full metadata and 32 linked phase documents; fixed frontend detail pages to correctly render
@@ -82,7 +82,7 @@ PostgreSQL and Redis are isolated inside Docker networks — never exposed to th
 - **Two-Tier RBAC** — Regular users (`users` table, user frontend port 8080) and Operator/Admin (`admin_users` table with role column, admin frontend port 8081); JWT `user_type` claim (`"user"` | `"admin"`) enforces strict scope isolation — admin tokens are rejected by user endpoints and vice versa.
 - **Organisation Follow** — Follow SSC, UPSC, Railway, etc. (stored in `user_profiles.followed_organizations`) to get notified on every new vacancy from that organisation.
 - **Admissions** — Separate `admissions` table for NEET, JEE, CLAT, CAT, CUET, GATE etc.; distinct from government job vacancies with exam-specific fields: `stream`, `exam_type`, `counselling_body`, `seats_info`, eligibility, exam pattern.
-- **Polymorphic Document Tables** — `admit_cards`, `answer_keys`, `results` each link to either a job (`job_id`) or admission (`exam_id`) via DB CHECK constraint — exactly one parent per row.
+- **Polymorphic Document Tables** — `admit_cards`, `answer_keys`, `results` each link to either a job (`job_id`) or admission (`admission_id`) via DB CHECK constraint — exactly one parent per row.
 - **5-Section Navigation** — Jobs, Admit Cards, Answer Keys, Results, Admissions — each with its own section page, search, and type-matching gradient hero color.
 - **Unified Detail Pages** — Type-aware gradient heroes (navy/blue/amber/green/purple per section); structured sections for eligibility, selection process, exam pattern, vacancy breakdown, fee table; Web Share API button (with clipboard fallback).
 - **HTMX Doc Tabs** — Per-phase admit cards, answer keys, and results loaded on-demand in tabbed panels on both job detail and admission detail pages.

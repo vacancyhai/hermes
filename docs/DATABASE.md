@@ -320,7 +320,7 @@ Per-phase admit card links. Linked to either a **job** or an **admission** (poly
 |--------|------|----------|-------------|
 | `id` | UUID (PK) | No | Auto-generated |
 | `job_id` | UUID (FK → `jobs.id`, nullable) | Yes | CASCADE delete |
-| `exam_id` | UUID (FK → `admissions.id`, nullable) | Yes | CASCADE delete |
+| `admission_id` | UUID (FK → `admissions.id`, nullable) | Yes | CASCADE delete |
 | `phase_number` | SmallInteger | Yes | Exam phase (1, 2, …) |
 | `title` | String(255) | No | E.g. "SSC CGL Tier-1 2025 Admit Card" |
 | `download_url` | Text | No | Link to download the admit card |
@@ -331,7 +331,7 @@ Per-phase admit card links. Linked to either a **job** or an **admission** (poly
 | `created_at` | DateTime | No | Creation timestamp |
 | `updated_at` | DateTime | No | Last update timestamp |
 
-> `ck_admit_cards_source`: `(job_id IS NOT NULL AND exam_id IS NULL) OR (job_id IS NULL AND exam_id IS NOT NULL)`
+> `ck_admit_cards_source`: `(job_id IS NOT NULL AND admission_id IS NULL) OR (job_id IS NULL AND admission_id IS NOT NULL)`
 
 **Indexes:** `idx_admit_cards_job`, `idx_admit_cards_exam`, `idx_admit_cards_pub`
 
@@ -344,7 +344,7 @@ Per-phase answer keys (provisional or final). Polymorphic.
 |--------|------|----------|-------------|
 | `id` | UUID (PK) | No | Auto-generated |
 | `job_id` | UUID (FK → `jobs.id`, nullable) | Yes | CASCADE delete |
-| `exam_id` | UUID (FK → `admissions.id`, nullable) | Yes | CASCADE delete |
+| `admission_id` | UUID (FK → `admissions.id`, nullable) | Yes | CASCADE delete |
 | `phase_number` | SmallInteger | Yes | Exam phase |
 | `title` | String(255) | No | E.g. "JEE Main Session 1 Provisional Answer Key" |
 | `answer_key_type` | String(20) | No | `ck_answer_key_type`: `provisional` \| `final`; default `provisional` |
@@ -355,7 +355,7 @@ Per-phase answer keys (provisional or final). Polymorphic.
 | `created_at` | DateTime | No | Creation timestamp |
 | `updated_at` | DateTime | No | Last update timestamp |
 
-> `ck_answer_keys_source`: `(job_id IS NOT NULL AND exam_id IS NULL) OR (job_id IS NULL AND exam_id IS NOT NULL)`
+> `ck_answer_keys_source`: `(job_id IS NOT NULL AND admission_id IS NULL) OR (job_id IS NULL AND admission_id IS NOT NULL)`
 
 **Indexes:** `idx_answer_keys_job`, `idx_answer_keys_exam`, `idx_answer_keys_type`
 
@@ -368,7 +368,7 @@ Per-phase results (shortlist, cutoff, merit list, final). Polymorphic.
 |--------|------|----------|-------------|
 | `id` | UUID (PK) | No | Auto-generated |
 | `job_id` | UUID (FK → `jobs.id`, nullable) | Yes | CASCADE delete |
-| `exam_id` | UUID (FK → `admissions.id`, nullable) | Yes | CASCADE delete |
+| `admission_id` | UUID (FK → `admissions.id`, nullable) | Yes | CASCADE delete |
 | `phase_number` | SmallInteger | Yes | Exam phase |
 | `title` | String(255) | No | E.g. "NEET PG 2026 Result & Score Card" |
 | `result_type` | String(20) | No | `ck_result_type`: `shortlist` \| `cutoff` \| `merit_list` \| `final` |
@@ -380,7 +380,7 @@ Per-phase results (shortlist, cutoff, merit list, final). Polymorphic.
 | `created_at` | DateTime | No | Creation timestamp |
 | `updated_at` | DateTime | No | Last update timestamp |
 
-> `ck_results_source`: `(job_id IS NOT NULL AND exam_id IS NULL) OR (job_id IS NULL AND exam_id IS NOT NULL)`
+> `ck_results_source`: `(job_id IS NOT NULL AND admission_id IS NULL) OR (job_id IS NULL AND admission_id IS NOT NULL)`
 
 **Indexes:** `idx_results_job`, `idx_results_exam`, `idx_results_pub`
 
