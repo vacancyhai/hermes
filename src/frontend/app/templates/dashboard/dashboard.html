@@ -31,7 +31,7 @@
     </div>
     <div class="stat-card">
         <div class="count">{{ watched_admissions | length }}</div>
-        <div class="label">Exams</div>
+        <div class="label">Admissions</div>
     </div>
 </div>
 
@@ -58,7 +58,7 @@
 {% endif %}
 
 {% if watched_admissions %}
-<div class="section-title">🎓 Watched Exams</div>
+<div class="section-title">🎓 Watched Admissions</div>
 {% for item in watched_admissions %}
 <div class="watch-card">
     <div style="flex:1;min-width:0">
@@ -67,7 +67,7 @@
         {% if item.application_end %}<div class="deadline">Apply by: {{ item.application_end }}</div>{% endif %}
     </div>
     <div style="display:flex;gap:.5rem;align-items:center;flex-shrink:0">
-        <span class="type-pill" style="background:#d1fae5;color:#065f46">Exam</span>
+        <span class="type-pill" style="background:#d1fae5;color:#065f46">Admission</span>
         <a href="/admissions/{{ item.id }}" class="btn btn-outline" style="font-size:.78rem;padding:.25rem .6rem">View →</a>
         <form method="post" action="/admissions/{{ item.id }}/unwatch" style="display:inline">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
@@ -85,7 +85,7 @@
     <p style="margin-bottom:1rem">Watch jobs and admissions to get deadline reminders.</p>
     <div style="display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap">
         <a href="/jobs" class="btn btn-primary">Browse Jobs</a>
-        <a href="/admissions" class="btn btn-outline">Browse Exams</a>
+        <a href="/admissions" class="btn btn-outline">Browse Admissions</a>
     </div>
 </div>
 {% endif %}

@@ -906,7 +906,7 @@ def admission_detail(exam_id):
     if token:
         w_resp = current_app.api_client.get(_API_WATCHED, token=token)
         if w_resp.ok:
-            watching = any(str(e["id"]) == exam_id for e in w_resp.json().get("exams", []))
+            watching = any(str(e["id"]) == exam_id for e in w_resp.json().get("admissions", []))
     return render_template("admissions/detail.html", admission=admission, watching=watching)
 
 

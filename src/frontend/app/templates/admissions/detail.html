@@ -96,7 +96,7 @@
 <!-- Description -->
 {% if admission.description %}
 <div class="detail-section">
-    <h2>📋 About This Exam</h2>
+    <h2>📋 About This Admission</h2>
     <div>{{ admission.description|safe }}</div>
 </div>
 {% endif %}
@@ -133,7 +133,7 @@
 </div>
 {% endif %}
 
-<!-- Exam Pattern & Details -->
+<!-- Admission Pattern & Details -->
 {#
   exam_details: {mode, duration_minutes, total_marks, total_questions, negative_marking,
                  language:[], subjects:[{name,questions,marks}]}
@@ -141,7 +141,7 @@
 {% set ed = admission.exam_details or {} %}
 {% if ed.get('mode') or ed.get('total_marks') or ed.get('subjects') %}
 <div class="detail-section">
-    <h2>📝 Exam Pattern</h2>
+    <h2>📝 Admission Pattern</h2>
     <div class="detail-grid" style="margin-bottom:.75rem">
         {% if ed.get('mode') %}
         <div class="detail-item"><div class="label">Mode</div><div class="value">{{ ed.mode }}</div></div>

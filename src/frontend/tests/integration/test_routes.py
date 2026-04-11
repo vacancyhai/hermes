@@ -299,7 +299,7 @@ def test_dashboard_no_token_shows_login(client, mock_api):
 
 def test_dashboard_with_token(auth_client):
     client, mock_api = auth_client
-    mock_api.get.return_value = _ok({"jobs": [], "exams": [], "total": 0})
+    mock_api.get.return_value = _ok({"jobs": [], "admissions": [], "total": 0})
     resp = client.get("/dashboard")
     assert resp.status_code == 200
 
