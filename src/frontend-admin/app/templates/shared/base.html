@@ -69,6 +69,12 @@
         .htmx-indicator{display:none}
         .htmx-request .htmx-indicator{display:inline-block}
         footer{text-align:center;padding:2rem 1rem;color:#64748b;font-size:.8rem;border-top:1px solid #e2e8f0;margin-top:2rem}
+        .doc-actions{display:flex;gap:.3rem;flex-wrap:wrap}
+        .doc-btn{display:inline-flex;align-items:center;gap:.25rem;padding:.2rem .5rem;border-radius:.3rem;font-size:.72rem;font-weight:600;text-decoration:none;border:1px solid;transition:opacity .15s}
+        .doc-btn:hover{opacity:.8;text-decoration:none}
+        .doc-btn--ac{background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe}
+        .doc-btn--ak{background:#f5f3ff;color:#6d28d9;border-color:#ddd6fe}
+        .doc-btn--rs{background:#f0fdf4;color:#15803d;border-color:#bbf7d0}
         @media(max-width:768px){.stats-grid{grid-template-columns:1fr 1fr} table{font-size:.8rem}}
     </style>
     {% block head %}{% endblock %}

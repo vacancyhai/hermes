@@ -1,11 +1,20 @@
 {% extends "shared/base.html" %}
 {% block title %}New Entrance Exam — Hermes Admin{% endblock %}
 {% block content %}
-<div style="margin-bottom:1rem">
-    <a href="/entrance-exams" style="font-size:.875rem;color:#6b7280">← Back to Entrance Exams</a>
-</div>
 
-<h1 style="font-size:1.35rem;margin-bottom:1.25rem">🎓 New Entrance Exam</h1>
+<div class="page-header">
+    <a href="/entrance-exams" class="back-link">&#8592; Back to Entrance Exams</a>
+    <div class="page-header-row">
+        <div>
+            <h1 class="page-title">&#127979; New Entrance Exam</h1>
+            <p class="page-subtitle">Fill in exam details below and click Create.</p>
+        </div>
+        <div class="header-actions">
+            <a href="/entrance-exams" class="btn btn-outline">Cancel</a>
+            <button type="submit" form="exam-form" class="btn btn-primary">&#10003; Create Exam</button>
+        </div>
+    </div>
+</div>
 
 {% with messages = get_flashed_messages(with_categories=true) %}
     {% for category, message in messages %}
@@ -13,107 +22,305 @@
     {% endfor %}
 {% endwith %}
 
-<form method="POST" action="/entrance-exams/new" style="margin-bottom:2rem">
-    <div class="form-grid">
-        <div class="form-group form-full">
-            <label>Exam Name *</label>
-            <input type="text" name="exam_name" required
-                   placeholder="e.g. NTA NEET PG 2026 — Medical PG Entrance Examination">
+<form id="exam-form" method="POST" action="/entrance-exams/new">
+
+    <!-- Basic Information -->
+    <div class="section-card">
+        <div class="section-header section-header--blue">
+            <span class="section-icon">&#127979;</span>
+            <span>Basic Information</span>
         </div>
-        <div class="form-group">
-            <label>Conducting Body *</label>
-            <input type="text" name="conducting_body" required
-                   placeholder="e.g. National Testing Agency">
-        </div>
-        <div class="form-group">
-            <label>Counselling Body</label>
-            <input type="text" name="counselling_body"
-                   placeholder="e.g. MCC, JoSAA, CLAT Consortium">
-        </div>
-        <div class="form-group">
-            <label>Exam Type *</label>
-            <select name="exam_type" required>
-                {% for val, label in [('ug','UG — Undergraduate'),('pg','PG — Postgraduate'),('doctoral','Doctoral'),('lateral','Lateral Entry')] %}
-                <option value="{{ val }}">{{ label }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="form-group">
-            <label>Stream *</label>
-            <select name="stream" required>
-                {% for val, label in [('medical','Medical'),('engineering','Engineering'),('law','Law'),('management','Management'),('arts_science','Arts & Science'),('general','General')] %}
-                <option value="{{ val }}">{{ label }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="form-group">
-            <label>Status</label>
-            <select name="status">
-                {% for val in ['upcoming','active','completed','cancelled'] %}
-                <option value="{{ val }}" {{ 'selected' if val == 'upcoming' }}>{{ val | title }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="form-group">
-            <label>Application Start</label>
-            <input type="date" name="application_start">
-        </div>
-        <div class="form-group">
-            <label>Application End (Deadline)</label>
-            <input type="date" name="application_end">
-        </div>
-        <div class="form-group">
-            <label>Exam Date</label>
-            <input type="date" name="exam_date">
-        </div>
-        <div class="form-group">
-            <label>Result Date</label>
-            <input type="date" name="result_date">
-        </div>
-        <div class="form-group">
-            <label>Counselling Start</label>
-            <input type="date" name="counselling_start">
+        <div class="section-body">
+            <div class="form-grid-3">
+                <div class="form-group col-span-3">
+                    <label for="ec_exam_name">Exam Name <span class="req">*</span></label>
+                    <input id="ec_exam_name" type="text" name="exam_name" required
+                           placeholder="e.g. NTA NEET PG 2026 — Medical PG Entrance Examination">
+                </div>
+                <div class="form-group col-span-2">
+                    <label for="ec_conducting_body">Conducting Body <span class="req">*</span></label>
+                    <input id="ec_conducting_body" type="text" name="conducting_body" required
+                           placeholder="e.g. National Testing Agency">
+                </div>
+                <div class="form-group">
+                    <label for="ec_counselling_body">Counselling Body</label>
+                    <input id="ec_counselling_body" type="text" name="counselling_body"
+                           placeholder="e.g. MCC, JoSAA, CLAT Consortium">
+                </div>
+                <div class="form-group">
+                    <label for="ec_exam_type">Exam Type <span class="req">*</span></label>
+                    <select id="ec_exam_type" name="exam_type" required>
+                        <option value="ug">UG — Undergraduate</option>
+                        <option value="pg" selected>PG — Postgraduate</option>
+                        <option value="doctoral">Doctoral</option>
+                        <option value="lateral">Lateral Entry</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="ec_stream">Stream <span class="req">*</span></label>
+                    <select id="ec_stream" name="stream" required>
+                        <option value="medical">Medical</option>
+                        <option value="engineering">Engineering</option>
+                        <option value="law">Law</option>
+                        <option value="management">Management</option>
+                        <option value="arts_science">Arts &amp; Science</option>
+                        <option value="general">General</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="ec_status">Status</label>
+                    <select id="ec_status" name="status">
+                        <option value="upcoming" selected>Upcoming</option>
+                        <option value="active">Active</option>
+                        <option value="completed">Completed</option>
+                        <option value="cancelled">Cancelled</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group" style="margin-top:.75rem">
+                <label for="ec_short_desc">Short Description</label>
+                <input id="ec_short_desc" type="text" name="short_description" maxlength="300"
+                       placeholder="E.g. NEET PG 2026: National entrance for MD/MS/PG Diploma. MBBS eligible.">
+            </div>
+            <div class="form-group" style="margin-top:.5rem">
+                <label for="ec_description">Full Description</label>
+                <textarea id="ec_description" name="description" rows="4"
+                          placeholder="Full HTML or plain-text description…"></textarea>
+            </div>
+            <div class="form-group" style="margin-top:.5rem">
+                <label for="ec_source_url">Official Website URL</label>
+                <input id="ec_source_url" type="url" name="source_url"
+                       placeholder="https://nta.ac.in/neet-pg">
+            </div>
         </div>
     </div>
 
-    <div class="form-section-title" style="margin-top:1rem">Application Fee (INR)</div>
-    <div class="form-grid">
-        {% for fname, flabel in [('fee_general','General / UR'),('fee_obc','OBC-NCL'),('fee_sc_st','SC / ST'),('fee_ews','EWS'),('fee_female','Female / PwBD')] %}
-        <div class="form-group">
-            <label>{{ flabel }}</label>
-            <input type="number" name="{{ fname }}" min="0" placeholder="Leave blank if N/A">
+    <!-- Important Dates -->
+    <div class="section-card">
+        <div class="section-header section-header--purple">
+            <span class="section-icon">&#128197;</span>
+            <span>Important Dates</span>
         </div>
-        {% endfor %}
+        <div class="section-body">
+            <div class="form-grid-3">
+                <div class="form-group">
+                    <label for="ec_app_start">Application Start</label>
+                    <input id="ec_app_start" type="date" name="application_start">
+                </div>
+                <div class="form-group">
+                    <label for="ec_app_end">Application End <span class="req">*</span></label>
+                    <input id="ec_app_end" type="date" name="application_end">
+                </div>
+                <div class="form-group">
+                    <label for="ec_exam_date">Exam Date</label>
+                    <input id="ec_exam_date" type="date" name="exam_date">
+                </div>
+                <div class="form-group">
+                    <label for="ec_result_date">Result Date</label>
+                    <input id="ec_result_date" type="date" name="result_date">
+                </div>
+                <div class="form-group">
+                    <label for="ec_counselling_start">Counselling Start</label>
+                    <input id="ec_counselling_start" type="date" name="counselling_start">
+                </div>
+            </div>
+        </div>
     </div>
 
-    <div class="form-group form-full" style="margin-top:1rem">
-        <label>Short Description (one-liner for cards)</label>
-        <input type="text" name="short_description" maxlength="300"
-               placeholder="E.g. NEET PG 2026: National entrance for MD/MS/PG Diploma. MBBS eligible.">
-    </div>
-    <div class="form-group form-full">
-        <label>Description (HTML)</label>
-        <textarea name="description" rows="5" placeholder="Full HTML description…"></textarea>
-    </div>
-    <div class="form-group form-full">
-        <label>Official Website URL</label>
-        <input type="url" name="source_url" placeholder="https://nta.ac.in/neet-pg">
+    <!-- Application Fee -->
+    <div class="section-card">
+        <div class="section-header section-header--green">
+            <span class="section-icon">&#8377;</span>
+            <span>Application Fee</span>
+        </div>
+        <div class="section-body">
+            <p class="subsection-label">Fee by Category (INR)</p>
+            <div class="fee-grid">
+                {% for fname, flabel in [('fee_general','General / UR'),('fee_obc','OBC-NCL'),('fee_sc_st','SC / ST'),('fee_ews','EWS'),('fee_female','Female / PwBD')] %}
+                <div class="fee-cell">
+                    <label>{{ flabel }}</label>
+                    <input type="number" name="{{ fname }}" min="0" placeholder="0">
+                </div>
+                {% endfor %}
+            </div>
+        </div>
     </div>
 
-    <div style="margin-top:1.25rem;display:flex;gap:.5rem">
-        <button type="submit" class="btn btn-primary">Create Exam</button>
+    <!-- Exam Pattern & Details -->
+    <div class="section-card">
+        <div class="section-header" style="background:linear-gradient(90deg,#0f766e,#14b8a6)">
+            <span class="section-icon">&#128221;</span>
+            <span>Exam Pattern &amp; Details</span>
+        </div>
+        <div class="section-body">
+            <div class="form-grid-3">
+                <div class="form-group">
+                    <label>Mode</label>
+                    <select id="ed_mode">
+                        <option value="">— select —</option>
+                        <option value="Online">Online (CBT)</option>
+                        <option value="Offline">Offline (OMR)</option>
+                        <option value="Online + Offline">Online + Offline</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Duration (minutes)</label>
+                    <input type="number" id="ed_duration" min="0" placeholder="180">
+                </div>
+                <div class="form-group">
+                    <label>Total Marks</label>
+                    <input type="number" id="ed_total_marks" min="0" placeholder="720">
+                </div>
+                <div class="form-group">
+                    <label>Total Questions</label>
+                    <input type="number" id="ed_total_questions" min="0" placeholder="200">
+                </div>
+                <div class="form-group">
+                    <label>Negative Marking</label>
+                    <input type="number" id="ed_negative" step="0.01" placeholder="0.25">
+                </div>
+                <div class="form-group">
+                    <label>Language(s)</label>
+                    <input type="text" id="ed_language" placeholder="Hindi, English">
+                </div>
+            </div>
+            <div class="form-group" style="margin-top:.75rem">
+                <label>Subjects <span style="font-weight:400;color:#9ca3af">(one per line: Subject, Questions, Marks)</span></label>
+                <textarea id="ed_subjects" rows="4" placeholder="Physics, 50, 180
+Chemistry, 50, 180
+Biology, 100, 360"></textarea>
+            </div>
+        </div>
+    </div>
+
+    <!-- Eligibility -->
+    <div class="section-card">
+        <div class="section-header" style="background:linear-gradient(90deg,#d97706,#f59e0b)">
+            <span class="section-icon">&#9989;</span>
+            <span>Eligibility</span>
+        </div>
+        <div class="section-body">
+            <div class="form-grid-3">
+                <div class="form-group col-span-2">
+                    <label>Qualification Required</label>
+                    <input type="text" id="el_qualification" placeholder="e.g. MBBS / BDS from MCI/DCI recognised institution">
+                </div>
+                <div class="form-group">
+                    <label>Minimum % in Qualifying</label>
+                    <input type="number" id="el_min_percent" min="0" max="100" placeholder="50">
+                </div>
+                <div class="form-group">
+                    <label>Min Age</label>
+                    <input type="number" id="el_age_min" min="0" placeholder="17">
+                </div>
+                <div class="form-group">
+                    <label>Max Age (General)</label>
+                    <input type="number" id="el_age_max" min="0" placeholder="25">
+                </div>
+                <div class="form-group">
+                    <label>Attempts Allowed</label>
+                    <input type="number" id="el_attempts" min="0" placeholder="3">
+                </div>
+            </div>
+            <div class="form-group" style="margin-top:.75rem">
+                <label>Additional Notes</label>
+                <input type="text" id="el_notes" placeholder="e.g. NRI / OCI candidates must apply through MCC">
+            </div>
+        </div>
+    </div>
+
+    <!-- Seats Info -->
+    <div class="section-card">
+        <div class="section-header" style="background:linear-gradient(90deg,#4338ca,#6366f1)">
+            <span class="section-icon">&#128202;</span>
+            <span>Seats Information <span style="font-weight:400;opacity:.8;font-size:.75rem">(optional)</span></span>
+        </div>
+        <div class="section-body">
+            <div class="form-grid-3">
+                <div class="form-group"><label>Total Seats</label><input type="number" id="si_total" min="0" placeholder="0"></div>
+                <div class="form-group"><label>General / UR</label><input type="number" id="si_ur" min="0" placeholder="0"></div>
+                <div class="form-group"><label>OBC-NCL</label><input type="number" id="si_obc" min="0" placeholder="0"></div>
+                <div class="form-group"><label>EWS</label><input type="number" id="si_ews" min="0" placeholder="0"></div>
+                <div class="form-group"><label>SC</label><input type="number" id="si_sc" min="0" placeholder="0"></div>
+                <div class="form-group"><label>ST</label><input type="number" id="si_st" min="0" placeholder="0"></div>
+            </div>
+        </div>
+    </div>
+
+    <input type="hidden" name="exam_details_json" id="exam_details_json">
+    <input type="hidden" name="eligibility_json" id="eligibility_json">
+    <input type="hidden" name="seats_info_json" id="seats_info_json">
+
+    <div class="form-actions">
         <a href="/entrance-exams" class="btn btn-outline">Cancel</a>
+        <button type="submit" class="btn btn-primary btn-lg">&#10003; Create Exam</button>
     </div>
+
 </form>
 
+<script>
+document.getElementById('exam-form').addEventListener('submit', function() {
+    const g = id => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };
+    const gi = id => { const v = g(id); return v !== '' ? parseInt(v) : null; };
+    const gf = id => { const v = g(id); return v !== '' ? parseFloat(v) : null; };
+    const lang = g('ed_language');
+    const subjects = g('ed_subjects').split('\n').filter(l => l.trim()).map(line => {
+        const p = line.split(',').map(s => s.trim());
+        return { name: p[0] || '', questions: parseInt(p[1]) || 0, marks: parseInt(p[2]) || 0 };
+    });
+    document.getElementById('exam_details_json').value = JSON.stringify({
+        mode: g('ed_mode') || null, duration_minutes: gi('ed_duration'),
+        total_marks: gi('ed_total_marks'), total_questions: gi('ed_total_questions'),
+        negative_marking: gf('ed_negative'),
+        language: lang ? lang.split(',').map(s => s.trim()).filter(Boolean) : [],
+        subjects
+    });
+    document.getElementById('eligibility_json').value = JSON.stringify({
+        qualification: g('el_qualification') || null,
+        min_percentage: gi('el_min_percent'),
+        age_limit: { min: gi('el_age_min'), max: gi('el_age_max') },
+        attempts_allowed: gi('el_attempts'),
+        notes: g('el_notes') || null
+    });
+    document.getElementById('seats_info_json').value = JSON.stringify({
+        total: gi('si_total'), UR: gi('si_ur'), OBC: gi('si_obc'),
+        EWS: gi('si_ews'), SC: gi('si_sc'), ST: gi('si_st')
+    });
+});
+</script>
+
 <style>
-.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}
-.form-full{grid-column:1/-1}
+.page-header{margin-bottom:1.5rem}
+.back-link{font-size:.8rem;color:#6b7280;text-decoration:none}
+.back-link:hover{color:#374151}
+.page-header-row{display:flex;justify-content:space-between;align-items:flex-start;margin-top:.5rem;gap:1rem}
+.page-title{font-size:1.4rem;font-weight:700;color:#111827;margin:0}
+.page-subtitle{font-size:.85rem;color:#6b7280;margin:.2rem 0 0}
+.header-actions{display:flex;gap:.5rem;align-items:center;flex-shrink:0}
+.form-actions{display:flex;justify-content:flex-end;gap:.5rem;margin-top:1.5rem;padding-top:1rem;border-top:1px solid #e5e7eb}
+.btn-lg{padding:.5rem 1.25rem;font-size:.95rem}
+.section-card{border:1px solid #e5e7eb;border-radius:.75rem;margin-bottom:1.25rem;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.section-header{display:flex;align-items:center;gap:.5rem;padding:.65rem 1rem;font-size:.85rem;font-weight:700;color:#fff;letter-spacing:.03em}
+.section-icon{font-size:1rem}
+.section-header--blue{background:linear-gradient(90deg,#2563eb,#3b82f6)}
+.section-header--purple{background:linear-gradient(90deg,#7c3aed,#8b5cf6)}
+.section-header--green{background:linear-gradient(90deg,#059669,#10b981)}
+.section-body{padding:1rem}
+.subsection-label{font-size:.75rem;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.06em;margin:.25rem 0 .5rem}
+.form-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.75rem}
+.col-span-2{grid-column:span 2}
+.col-span-3{grid-column:span 3}
 .form-group{display:flex;flex-direction:column;gap:.25rem}
-.form-group label{font-size:.8rem;font-weight:600;color:#374151}
-.form-group input,.form-group select,.form-group textarea{padding:.4rem .6rem;border:1px solid #d1d5db;border-radius:.375rem;font-size:.875rem;font-family:inherit}
+.form-group label{font-size:.78rem;font-weight:600;color:#374151}
+.form-group input,.form-group select,.form-group textarea{padding:.45rem .65rem;border:1px solid #d1d5db;border-radius:.375rem;font-size:.875rem;font-family:inherit;background:#fff;transition:border-color .15s}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{outline:none;border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.1)}
 .form-group textarea{resize:vertical}
-.form-section-title{font-size:.85rem;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.05em;margin:.75rem 0 .35rem}
-@media(max-width:640px){.form-grid{grid-template-columns:1fr}}
+.req{color:#ef4444}
+.fee-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:.5rem}
+.fee-cell{display:flex;flex-direction:column;gap:.2rem;background:#f9fafb;border:1px solid #e5e7eb;border-radius:.375rem;padding:.5rem}
+.fee-cell label{font-size:.7rem;font-weight:700;color:#6b7280;text-align:center}
+.fee-cell input{text-align:center;border:1px solid #d1d5db;border-radius:.25rem;padding:.3rem;font-size:.85rem}
+@media(max-width:768px){.form-grid-3{grid-template-columns:1fr 1fr}.col-span-3{grid-column:span 2}.fee-grid{grid-template-columns:repeat(3,1fr)}.page-header-row{flex-direction:column}.header-actions{width:100%;justify-content:flex-end}}
+@media(max-width:480px){.form-grid-3{grid-template-columns:1fr}.col-span-2,.col-span-3{grid-column:span 1}.fee-grid{grid-template-columns:1fr 1fr}}
 </style>
 {% endblock %}

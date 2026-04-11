@@ -227,10 +227,20 @@ async def list_admit_cards(
     db: Annotated[AsyncSession, Depends(get_db)],
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
     offset: Annotated[int, Query(ge=0)] = 0,
+    job_id: uuid.UUID | None = None,
+    exam_id: uuid.UUID | None = None,
 ):
     """List all admit cards."""
-    query = select(AdmitCard).order_by(AdmitCard.created_at.desc())
+    query = select(AdmitCard).order_by(
+        AdmitCard.phase_number.nulls_last(), AdmitCard.created_at.desc()
+    )
     count_query = select(func.count(AdmitCard.id))
+    if job_id:
+        query = query.where(AdmitCard.job_id == job_id)
+        count_query = count_query.where(AdmitCard.job_id == job_id)
+    if exam_id:
+        query = query.where(AdmitCard.exam_id == exam_id)
+        count_query = count_query.where(AdmitCard.exam_id == exam_id)
 
     total = (await db.execute(count_query)).scalar()
     result = await db.execute(query.offset(offset).limit(limit))
@@ -253,10 +263,20 @@ async def list_answer_keys(
     db: Annotated[AsyncSession, Depends(get_db)],
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
     offset: Annotated[int, Query(ge=0)] = 0,
+    job_id: uuid.UUID | None = None,
+    exam_id: uuid.UUID | None = None,
 ):
     """List all answer keys."""
-    query = select(AnswerKey).order_by(AnswerKey.created_at.desc())
+    query = select(AnswerKey).order_by(
+        AnswerKey.phase_number.nulls_last(), AnswerKey.created_at.desc()
+    )
     count_query = select(func.count(AnswerKey.id))
+    if job_id:
+        query = query.where(AnswerKey.job_id == job_id)
+        count_query = count_query.where(AnswerKey.job_id == job_id)
+    if exam_id:
+        query = query.where(AnswerKey.exam_id == exam_id)
+        count_query = count_query.where(AnswerKey.exam_id == exam_id)
 
     total = (await db.execute(count_query)).scalar()
     result = await db.execute(query.offset(offset).limit(limit))
@@ -279,10 +299,20 @@ async def list_results(
     db: Annotated[AsyncSession, Depends(get_db)],
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
     offset: Annotated[int, Query(ge=0)] = 0,
+    job_id: uuid.UUID | None = None,
+    exam_id: uuid.UUID | None = None,
 ):
     """List all results."""
-    query = select(Result).order_by(Result.created_at.desc())
+    query = select(Result).order_by(
+        Result.phase_number.nulls_last(), Result.created_at.desc()
+    )
     count_query = select(func.count(Result.id))
+    if job_id:
+        query = query.where(Result.job_id == job_id)
+        count_query = count_query.where(Result.job_id == job_id)
+    if exam_id:
+        query = query.where(Result.exam_id == exam_id)
+        count_query = count_query.where(Result.exam_id == exam_id)
 
     total = (await db.execute(count_query)).scalar()
     result = await db.execute(query.offset(offset).limit(limit))

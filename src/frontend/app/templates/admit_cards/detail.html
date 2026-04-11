@@ -47,13 +47,7 @@
     {% if card.valid_until %}
     <div class="detail-item">
         <div class="label">Valid Until</div>
-        <div class="value">{{ card.valid_until }}</div>
-    </div>
-    {% endif %}
-    {% if card.published_at %}
-    <div class="detail-item">
-        <div class="label">Published</div>
-        <div class="value">{{ card.published_at[:10] }}</div>
+        <div class="value urgent">{{ card.valid_until }}</div>
     </div>
     {% endif %}
     {% if card.phase_number %}
@@ -62,14 +56,30 @@
         <div class="value">Phase {{ card.phase_number }}</div>
     </div>
     {% endif %}
+    {% if card.published_at %}
+    <div class="detail-item">
+        <div class="label">Published</div>
+        <div class="value">{{ card.published_at[:10] }}</div>
+    </div>
+    {% endif %}
 </div>
 
 {% if card.notes %}
-<div class="detail-section">
-    <h2>📋 Important Notes</h2>
-    <p>{{ card.notes }}</p>
+<div class="detail-section" style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:.5rem;padding:1rem 1.25rem">
+    <h2 style="color:#1e40af">📋 Important Instructions</h2>
+    <p style="color:#1e3a8a">{{ card.notes }}</p>
 </div>
 {% endif %}
+
+<!-- What to carry section -->
+<div class="detail-section">
+    <h2>📎 What to Carry to the Exam</h2>
+    <ul style="list-style:none;padding:0;display:flex;flex-direction:column;gap:.4rem">
+        <li style="display:flex;align-items:center;gap:.5rem;padding:.4rem .75rem;background:#f8fafc;border:1px solid #e2e8f0;border-radius:.4rem;font-size:.875rem">✔️ Printed admit card (A4 size, black ink)</li>
+        <li style="display:flex;align-items:center;gap:.5rem;padding:.4rem .75rem;background:#f8fafc;border:1px solid #e2e8f0;border-radius:.4rem;font-size:.875rem">✔️ Valid government-issued photo ID (Aadhar / PAN / Passport)</li>
+        <li style="display:flex;align-items:center;gap:.5rem;padding:.4rem .75rem;background:#f8fafc;border:1px solid #e2e8f0;border-radius:.4rem;font-size:.875rem">✔️ Passport-sized photographs</li>
+    </ul>
+</div>
 
 <!-- Download CTA -->
 <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:.5rem;padding:1.25rem;text-align:center;margin-top:1.5rem">
@@ -77,6 +87,9 @@
     <a href="{{ card.download_url }}" target="_blank" rel="noopener" class="btn btn-primary" style="font-size:.95rem;padding:.6rem 1.5rem">
         ⬇ Download Admit Card
     </a>
-    <p style="font-size:.78rem;color:#64748b;margin-top:.5rem">Opens official source in a new tab</p>
+    {% if card.valid_until %}
+    <p style="font-size:.8rem;color:#1e40af;margin-top:.5rem">Valid until: <strong>{{ card.valid_until }}</strong></p>
+    {% endif %}
+    <p style="font-size:.78rem;color:#64748b;margin-top:.25rem">Opens official source in a new tab</p>
 </div>
 {% endblock %}

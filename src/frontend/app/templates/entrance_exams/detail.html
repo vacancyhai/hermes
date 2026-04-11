@@ -101,42 +101,102 @@
 </div>
 {% endif %}
 
-<!-- Seats Info -->
-{% if exam.seats_info %}
+<!-- Eligibility -->
+{#
+  eligibility: {qualification, min_percentage, age_limit:{min,max}, attempts_allowed, notes}
+#}
+{% set elig = exam.eligibility or {} %}
+{% if elig.get('qualification') or elig.get('age_limit') or elig.get('attempts_allowed') or elig.get('notes') %}
 <div class="detail-section">
-    <h2>🎓 Seats Information</h2>
-    {% if exam.seats_info.get('total_seats') %}
-    <p><strong>Total Seats:</strong> {{ "{:,}".format(exam.seats_info.total_seats) }}</p>
+    <h2>✅ Eligibility</h2>
+    {% if elig.get('qualification') %}
+    <p><strong>Qualification:</strong> {{ elig.qualification }}</p>
     {% endif %}
-    {% if exam.seats_info.get('participating_institutes') %}
-    <p style="margin-top:.35rem"><strong>Participating Institutes:</strong> {{ exam.seats_info.participating_institutes }}</p>
+    {% if elig.get('min_percentage') %}
+    <p style="margin-top:.35rem"><strong>Minimum Marks in Qualifying:</strong> {{ elig.min_percentage }}%</p>
+    {% endif %}
+    {% if elig.get('age_limit') %}
+    {% set age = elig.age_limit %}
+    <p style="margin-top:.35rem"><strong>Age Limit:</strong>
+        {% if age.get('min') and age.get('max') %}{{ age.min }} – {{ age.max }} years
+        {% elif age.get('max') %}Up to {{ age.max }} years
+        {% elif age.get('min') %}Minimum {{ age.min }} years
+        {% endif %}
+    </p>
+    {% endif %}
+    {% if elig.get('attempts_allowed') %}
+    <p style="margin-top:.35rem"><strong>Maximum Attempts:</strong> {{ elig.attempts_allowed }}</p>
+    {% endif %}
+    {% if elig.get('notes') %}
+    <p style="margin-top:.35rem;font-size:.875rem;color:#475569">{{ elig.notes }}</p>
     {% endif %}
 </div>
 {% endif %}
 
-<!-- Eligibility -->
-{% if exam.eligibility %}
+<!-- Exam Pattern & Details -->
+{#
+  exam_details: {mode, duration_minutes, total_marks, total_questions, negative_marking,
+                 language:[], subjects:[{name,questions,marks}]}
+#}
+{% set ed = exam.exam_details or {} %}
+{% if ed.get('mode') or ed.get('total_marks') or ed.get('subjects') %}
 <div class="detail-section">
-    <h2>✅ Eligibility</h2>
-    {% set elig = exam.eligibility %}
-    {% if elig.get('qualification') %}
-    <p><strong>Qualification:</strong> {{ elig.qualification }}</p>
-    {% endif %}
-    {% if elig.get('age_limit') %}
-    {% set age = elig.age_limit %}
-    <p style="margin-top:.4rem"><strong>Age Limit:</strong>
-        {% if age is string %}{{ age }}
-        {% elif age.get('min') and age.get('max') %}{{ age.min }} – {{ age.max }} years
-        {% elif age.get('max') %}Up to {{ age.max }} years
+    <h2>📝 Exam Pattern</h2>
+    <div class="detail-grid" style="margin-bottom:.75rem">
+        {% if ed.get('mode') %}
+        <div class="detail-item"><div class="label">Mode</div><div class="value">{{ ed.mode }}</div></div>
         {% endif %}
-    </p>
+        {% if ed.get('duration_minutes') %}
+        <div class="detail-item"><div class="label">Duration</div><div class="value">{{ ed.duration_minutes }} minutes</div></div>
+        {% endif %}
+        {% if ed.get('total_marks') %}
+        <div class="detail-item"><div class="label">Total Marks</div><div class="value">{{ ed.total_marks }}</div></div>
+        {% endif %}
+        {% if ed.get('total_questions') %}
+        <div class="detail-item"><div class="label">Questions</div><div class="value">{{ ed.total_questions }}</div></div>
+        {% endif %}
+        {% if ed.get('negative_marking') %}
+        <div class="detail-item"><div class="label">Negative Marking</div><div class="value">&minus;{{ ed.negative_marking }} per wrong</div></div>
+        {% endif %}
+        {% if ed.get('language') %}
+        <div class="detail-item"><div class="label">Languages</div><div class="value">{{ ed.language | join(', ') }}</div></div>
+        {% endif %}
+    </div>
+    {% if ed.get('subjects') %}
+    <table class="fee-table">
+        <thead><tr><th>Subject</th><th style="text-align:right">Questions</th><th style="text-align:right">Marks</th></tr></thead>
+        <tbody>
+        {% for sub in ed.subjects %}
+        <tr>
+            <td>{{ sub.get('name','—') if sub is mapping else sub }}</td>
+            <td style="text-align:right">{{ sub.get('questions','—') if sub is mapping else '—' }}</td>
+            <td style="text-align:right">{{ sub.get('marks','—') if sub is mapping else '—' }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
     {% endif %}
-    {% if elig.get('subjects') %}
-    <p style="margin-top:.4rem"><strong>Subjects Required:</strong> {{ elig.subjects | join(', ') if elig.subjects is iterable else elig.subjects }}</p>
-    {% endif %}
-    {% if elig.get('attempts') %}
-    <p style="margin-top:.4rem"><strong>Maximum Attempts:</strong> {{ elig.attempts }}</p>
-    {% endif %}
+</div>
+{% endif %}
+
+<!-- Seats Info -->
+{#
+  seats_info: {total, UR, OBC, EWS, SC, ST}
+#}
+{% set si = exam.seats_info or {} %}
+{% if si.get('total') or si.get('UR') or si.get('OBC') %}
+<div class="detail-section">
+    <h2>🎓 Seats Information</h2>
+    <div style="display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:.25rem">
+        {% for cat in ['total','UR','OBC','EWS','SC','ST'] %}
+        {% if si.get(cat) %}
+        <div {% if cat == 'total' %}style="background:#dbeafe;border-radius:.35rem;padding:.3rem .7rem;text-align:center;min-width:52px"{% else %}style="background:#f1f5f9;border-radius:.35rem;padding:.3rem .7rem;text-align:center;min-width:52px"{% endif %}>
+            <div style="font-size:.875rem;font-weight:700;color:#1e293b">{{ "{:,}".format(si[cat]) if si[cat] is number else si[cat] }}</div>
+            <div style="font-size:.7rem;color:#64748b;text-transform:uppercase;letter-spacing:.04em">{{ cat }}</div>
+        </div>
+        {% endif %}
+        {% endfor %}
+    </div>
 </div>
 {% endif %}
 
@@ -144,39 +204,11 @@
 {% if exam.selection_process %}
 <div class="detail-section">
     <h2>🎯 Selection Process</h2>
-    <ol>
+    <ol style="padding-left:1.2rem">
         {% for step in exam.selection_process %}
-        <li>{{ step.get('name', step) if step is mapping else step }}</li>
+        <li style="margin-bottom:.3rem">{{ step.get('name', step) if step is mapping else step }}</li>
         {% endfor %}
     </ol>
-</div>
-{% endif %}
-
-<!-- Exam Pattern -->
-{% if exam.exam_details and exam.exam_details.get('exam_pattern') %}
-<div class="detail-section">
-    <h2>📝 Exam Pattern</h2>
-    {% for phase in exam.exam_details.exam_pattern %}
-    <div style="margin-bottom:.75rem">
-        <strong>{{ phase.get('phase', 'Phase ' ~ loop.index) }}</strong>
-        {% if phase.get('exam_mode') %} · {{ phase.exam_mode }}{% endif %}
-        {% if phase.get('total_marks') %} · {{ phase.total_marks }} marks{% endif %}
-        {% if phase.get('duration_minutes') %} · {{ phase.duration_minutes }} mins{% endif %}
-        {% if phase.get('subjects') %}
-        <table class="fee-table" style="margin-top:.4rem">
-            <thead><tr><th>Subject</th><th>Questions</th><th>Marks</th></tr></thead>
-            <tbody>
-            {% for sub in phase.subjects %}
-            <tr><td>{{ sub.name if sub is mapping else sub }}</td>
-                <td>{{ sub.get('questions', '—') if sub is mapping else '—' }}</td>
-                <td>{{ sub.get('marks', '—') if sub is mapping else '—' }}</td>
-            </tr>
-            {% endfor %}
-            </tbody>
-        </table>
-        {% endif %}
-    </div>
-    {% endfor %}
 </div>
 {% endif %}
 
