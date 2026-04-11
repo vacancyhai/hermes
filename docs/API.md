@@ -100,7 +100,7 @@ Users can watch specific jobs or admissions to receive automatic notifications.
 - `deadline_reminder_7d` — 7 days before `application_end`
 - `deadline_reminder_3d` — 3 days before `application_end`
 - `deadline_reminder_1d` — Last day to apply (high priority)
-- `watched_item_updated` — When admin approves or updates the job/exam
+- `watched_item_updated` — When admin approves or updates the job/admission
 
 **Response for `GET /users/me/watched`:**
 ```json
@@ -573,7 +573,7 @@ These are now top-level resources, independent of jobs and admissions. Each docu
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/admit-cards` | List all admit cards (paginated) |
-| GET | `/admit-cards/{id}` | Get single admit card by ID (includes job/exam context) |
+| GET | `/admit-cards/{id}` | Get single admit card by ID (includes job/admission context) |
 
 #### Admin Endpoints (operator+)
 
@@ -591,7 +591,7 @@ These are now top-level resources, independent of jobs and admissions. Each docu
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/answer-keys` | List all answer keys (paginated) |
-| GET | `/answer-keys/{id}` | Get single answer key by ID (includes job/exam context) |
+| GET | `/answer-keys/{id}` | Get single answer key by ID (includes job/admission context) |
 
 #### Admin Endpoints (operator+)
 
@@ -609,7 +609,7 @@ These are now top-level resources, independent of jobs and admissions. Each docu
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/results` | List all results (paginated) |
-| GET | `/results/{id}` | Get single result by ID (includes job/exam context) |
+| GET | `/results/{id}` | Get single result by ID (includes job/admission context) |
 
 #### Admin Endpoints (operator+)
 
@@ -650,7 +650,7 @@ POST /api/v1/admin/answer-keys
 **Validation rules:**
 - Cannot specify both `job_id` and `admission_id`
 - Must specify at least one
-- Parent job/exam must exist in database
+- Parent job/admission must exist in database
 
 **`phase_number`** (optional integer 1–10) maps to the corresponding entry in the parent job's `selection_process` JSONB array — e.g. phase 1 = "Tier-1 CBT". `NULL` means the document applies to the whole job (e.g. a final merit list).
 
@@ -692,15 +692,15 @@ They have exam-specific fields: `stream`, `exam_type`, `counselling_body`, `seat
 |--------|----------|-------------|
 | GET | `/admissions` | List active admissions (stream/exam_type/search filters) |
 | GET | `/admissions/{slug}` | Exam detail by slug |
-| GET | `/admissions/{admission_id}/admit-cards` | Per-phase admit cards (exam status must not be `cancelled`) |
-| GET | `/admissions/{admission_id}/answer-keys` | Per-phase answer keys (exam status must not be `cancelled`) |
-| GET | `/admissions/{admission_id}/results` | Per-phase results (exam status must not be `cancelled`) |
+| GET | `/admissions/{admission_id}/admit-cards` | Per-phase admit cards (admission status must not be `cancelled`) |
+| GET | `/admissions/{admission_id}/answer-keys` | Per-phase answer keys (admission status must not be `cancelled`) |
+| GET | `/admissions/{admission_id}/results` | Per-phase results (admission status must not be `cancelled`) |
 
 **Query Parameters for `GET /admissions`:**
 
 | Param | Type | Description |
 |-------|------|-------------|
-| `q` | string | Full-text search on exam name, conducting body, description |
+| `q` | string | Full-text search on admission name, conducting body, description |
 | `stream` | string | `medical`, `engineering`, `law`, `management`, `arts_science`, `general` |
 | `exam_type` | string | `ug`, `pg`, `doctoral`, `lateral` |
 | `limit` | int | 1-100, default: 20 |
@@ -713,11 +713,11 @@ They have exam-specific fields: `stream`, `exam_type`, `counselling_body`, `seat
 | Method | Endpoint | Description |
 |--------|----------|-----------|
 | GET | `/admin/admissions` | List all exams (any status, filterable by stream/exam_type/status) |
-| GET | `/admin/admissions/{id}` | Get single exam detail by ID (any status) |
+| GET | `/admin/admissions/{id}` | Get single admission detail by ID (any status) |
 | POST | `/admin/admissions` | Create admission |
 | PUT | `/admin/admissions/{id}` | Update admission |
 | DELETE | `/admin/admissions/{id}` | Delete admission (cascades to linked docs) |
-| POST | `/admin/admissions/{id}/admit-cards` | Add admit card to exam |
+| POST | `/admin/admissions/{id}/admit-cards` | Add admit card to admission |
 | PUT | `/admin/admissions/{id}/admit-cards/{doc_id}` | Update admit card |
 | DELETE | `/admin/admissions/{id}/admit-cards/{doc_id}` | Delete admit card |
 | POST | `/admin/admissions/{id}/answer-keys` | Add answer key |
@@ -842,6 +842,6 @@ Authorization: Bearer <admin_token>
 | `user_devices` | Device registry (FCM token, fingerprint de-duplication) |
 | `admin_logs` | Admin audit trail |
 | `user_watches` | Jobs and exams a user is tracking (for notifications) |
-| `admit_cards` | Per-phase admit cards (linked to job OR exam via polymorphic FK) |
+| `admit_cards` | Per-phase admit cards (linked to job OR admission via polymorphic FK) |
 | `answer_keys` | Per-phase answer keys — provisional/final, multi-paper files JSONB |
 | `results` | Per-phase results — shortlist/cutoff/merit_list/final, cutoff_marks JSONB |
