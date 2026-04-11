@@ -751,7 +751,7 @@ def logs_list_partial():
 
 def _handle_unexpected_error(exc):
     current_app.logger.error("Unhandled exception: %s", exc, exc_info=True)
-    return render_template("auth/login.html"), 500
+    return render_template("shared/500.html"), 500
 
 
 def create_app():
