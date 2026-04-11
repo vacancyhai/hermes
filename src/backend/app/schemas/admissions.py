@@ -6,19 +6,19 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-EXAM_TYPES = Literal["ug", "pg", "doctoral", "lateral"]
-EXAM_STREAMS = Literal[
+ADMISSION_TYPES = Literal["ug", "pg", "doctoral", "lateral"]
+ADMISSION_STREAMS = Literal[
     "medical", "engineering", "law", "management", "arts_science", "general"
 ]
-EXAM_STATUSES = Literal["upcoming", "active", "completed", "cancelled"]
+ADMISSION_STATUSES = Literal["upcoming", "active", "completed", "cancelled"]
 
 
 class AdmissionCreateRequest(BaseModel):
     admission_name: str = Field(min_length=1, max_length=500)
     conducting_body: str = Field(min_length=1, max_length=255)
     counselling_body: str | None = None
-    admission_type: EXAM_TYPES = "pg"
-    stream: EXAM_STREAMS = "general"
+    admission_type: ADMISSION_TYPES = "pg"
+    stream: ADMISSION_STREAMS = "general"
     eligibility: dict = Field(default_factory=dict)
     admission_details: dict = Field(default_factory=dict)
     selection_process: list = Field(default_factory=list)
@@ -36,15 +36,15 @@ class AdmissionCreateRequest(BaseModel):
     description: str | None = None
     short_description: str | None = None
     source_url: str | None = None
-    status: EXAM_STATUSES = "active"
+    status: ADMISSION_STATUSES = "active"
 
 
 class AdmissionUpdateRequest(BaseModel):
     admission_name: str | None = Field(None, min_length=1, max_length=500)
     conducting_body: str | None = None
     counselling_body: str | None = None
-    admission_type: EXAM_TYPES | None = None
-    stream: EXAM_STREAMS | None = None
+    admission_type: ADMISSION_TYPES | None = None
+    stream: ADMISSION_STREAMS | None = None
     eligibility: dict | None = None
     admission_details: dict | None = None
     selection_process: list | None = None
@@ -62,7 +62,7 @@ class AdmissionUpdateRequest(BaseModel):
     description: str | None = None
     short_description: str | None = None
     source_url: str | None = None
-    status: EXAM_STATUSES | None = None
+    status: ADMISSION_STATUSES | None = None
 
 
 class AdmissionResponse(BaseModel):
