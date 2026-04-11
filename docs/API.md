@@ -84,7 +84,7 @@ If `refresh_token` is provided, its JTI is also added to the Redis blocklist so 
 
 ---
 
-## Watch (Track Jobs & Exams)
+## Watch (Track Jobs & Admissions)
 
 Users can watch specific jobs or admissions to receive automatic notifications.
 

@@ -939,7 +939,7 @@ User Dashboard → Browse Jobs → Filter by Eligibility → View Details
                     └───────────────────────────────────────┘
                                     │
                                     ▼
-                          Watch Jobs & Exams (user_watches table)
+                          Watch Jobs & Admissions (user_watches table)
                           max 100 watches per user
 
 ONGOING: NOTIFICATION & TRACKING
