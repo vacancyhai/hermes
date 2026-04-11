@@ -554,7 +554,7 @@ Biology, 100, 360"></textarea>
 const ADMISSION_DATA = {{ admission | tojson }};
 
 (function init() {
-    const ed = EXAM_DATA.admission_details || {};
+    const ed = ADMISSION_DATA.admission_details || {};
     const setV = (id, v) => { const el = document.getElementById(id); if (el && v !== null && v !== undefined) el.value = v; };
     const selV = (id, v) => { const el = document.getElementById(id); if (el && v) el.value = v; };
     selV('ed_mode', ed.mode);
@@ -584,7 +584,7 @@ const ADMISSION_DATA = {{ admission | tojson }};
     }
 
     // Prefill selection process
-    const existingPhases = EXAM_DATA.selection_process || [];
+    const existingPhases = ADMISSION_DATA.selection_process || [];
     if (existingPhases.length) {
         document.getElementById('phases-empty').style.display = 'none';
         existingPhases.forEach(ph => {
@@ -615,7 +615,7 @@ const ADMISSION_DATA = {{ admission | tojson }};
         document.getElementById('phases-empty').style.display = '';
     }
 
-    const el = EXAM_DATA.eligibility || {};
+    const el = ADMISSION_DATA.eligibility || {};
     setV('el_qualification', el.qualification);
     setV('el_min_percent', el.min_percentage);
     setV('el_age_min', (el.age_limit || {}).min);
@@ -623,7 +623,7 @@ const ADMISSION_DATA = {{ admission | tojson }};
     setV('el_attempts', el.attempts_allowed);
     setV('el_notes', el.notes);
 
-    const si = EXAM_DATA.seats_info || {};
+    const si = ADMISSION_DATA.seats_info || {};
     setV('si_total', si.total); setV('si_ur', si.UR); setV('si_obc', si.OBC);
     setV('si_ews', si.EWS); setV('si_sc', si.SC); setV('si_st', si.ST);
 })();
