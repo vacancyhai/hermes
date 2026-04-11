@@ -210,7 +210,7 @@ async def get_recommended_admit_cards(
     limit: int = 20,
     offset: int = 0,
 ) -> tuple[list, int]:
-    """Return admit cards for jobs/exams the user is watching."""
+    """Return admit cards for jobs/admissions the user is watching."""
     job_ids, admission_ids = await _get_watched_ids(user_id, db)
     if not job_ids and not admission_ids:
         return [], 0

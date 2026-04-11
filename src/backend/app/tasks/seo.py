@@ -25,7 +25,7 @@ def generate_sitemap():
                 "SELECT slug, updated_at FROM jobs WHERE status = 'active' ORDER BY updated_at DESC"
             )
         ).fetchall()
-        exams = session.execute(
+        admissions = session.execute(
             text(
                 "SELECT slug, updated_at FROM admissions"
                 " WHERE status IN ('active','upcoming') ORDER BY updated_at DESC"
@@ -58,7 +58,7 @@ def generate_sitemap():
         SubElement(url_el, "priority").text = "0.8"
 
     # Admission detail pages
-    for slug, updated_at in exams:
+    for slug, updated_at in admissions:
         url_el = SubElement(urlset, "url")
         SubElement(url_el, "loc").text = f"{SITE_URL}/admissions/{slug}"
         if updated_at:
@@ -69,4 +69,8 @@ def generate_sitemap():
     tree = ElementTree(urlset)
     tree.write(SITEMAP_PATH, xml_declaration=True, encoding="UTF-8")
 
-    return {"jobs_count": len(jobs), "exams_count": len(exams), "path": SITEMAP_PATH}
+    return {
+        "jobs_count": len(jobs),
+        "admissions_count": len(admissions),
+        "path": SITEMAP_PATH,
+    }
