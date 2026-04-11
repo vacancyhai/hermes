@@ -164,12 +164,12 @@ def dashboard():
     resp, authed = _try_with_refresh(lambda t: current_app.api_client.get(_API_WATCHED, token=t))
     if not authed:
         return redirect(_URL_LOGIN)
-    watched = resp.json() if resp.ok else {"jobs": [], "exams": [], "total": 0}
+    watched = resp.json() if resp.ok else {"jobs": [], "admissions": [], "total": 0}
 
     return render_template(
         "dashboard/dashboard.html",
         watched_jobs=watched.get("jobs", []),
-        watched_exams=watched.get("exams", []),
+        watched_admissions=watched.get("admissions", []),
         total=watched.get("total", 0),
     )
 
@@ -857,7 +857,7 @@ def admissions():
             recommended_exams = rec_resp.json().get("data", [])
         w_resp = current_app.api_client.get(_API_WATCHED, token=session.get("token"))
         if w_resp.ok:
-            watched_admission_ids = {str(e["id"]) for e in w_resp.json().get("exams", [])}
+            watched_admission_ids = {str(e["id"]) for e in w_resp.json().get("admissions", [])}
     return render_template(
         "admissions/list.html",
         exams=data.get("data", []),

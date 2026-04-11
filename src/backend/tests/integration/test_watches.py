@@ -1,4 +1,4 @@
-"""Integration tests for watch endpoints — watch/unwatch jobs & exams, list watched."""
+"""Integration tests for watch endpoints — watch/unwatch jobs & admissions, list watched."""
 
 import uuid
 
@@ -141,7 +141,7 @@ async def test_list_watched_empty(client: AsyncClient, user_token: str):
     assert resp.status_code == 200
     data = resp.json()
     assert "jobs" in data
-    assert "exams" in data
+    assert "admissions" in data
     assert "total" in data
 
 
@@ -165,7 +165,7 @@ async def test_list_watched_includes_admission(
     )
     resp = await client.get("/api/v1/users/me/watched", headers=auth_header(user_token))
     assert resp.status_code == 200
-    watched_ids = [e["id"] for e in resp.json()["exams"]]
+    watched_ids = [e["id"] for e in resp.json()["admissions"]]
     assert admission_id in watched_ids
 
 

@@ -277,7 +277,7 @@ def test_admission_lifecycle(backend_url, admin_api_token, user_api_token):
         timeout=10,
     )
     assert resp.status_code == 200
-    watched_ids = [e["id"] for e in resp.json().get("exams", [])]
+    watched_ids = [e["id"] for e in resp.json().get("admissions", [])]
     assert admission_id in watched_ids
 
     # Delete admission

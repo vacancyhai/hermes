@@ -191,12 +191,12 @@ async def list_watched(
             for j in result.scalars().all()
         }
 
-    exams_by_id: dict = {}
+    admissions_by_id: dict = {}
     if admission_ids:
         result = await db.execute(
             select(Admission).where(Admission.id.in_(admission_ids))
         )
-        exams_by_id = {
+        admissions_by_id = {
             e.id: {
                 "id": str(e.id),
                 "exam_name": e.exam_name,
@@ -216,10 +216,14 @@ async def list_watched(
         for w in watches
         if w.entity_type == "job" and w.entity_id in jobs_by_id
     ]
-    exams = [
-        exams_by_id[w.entity_id]
+    admissions = [
+        admissions_by_id[w.entity_id]
         for w in watches
-        if w.entity_type == "exam" and w.entity_id in exams_by_id
+        if w.entity_type == "exam" and w.entity_id in admissions_by_id
     ]
 
-    return {"jobs": jobs, "exams": exams, "total": len(jobs) + len(exams)}
+    return {
+        "jobs": jobs,
+        "admissions": admissions,
+        "total": len(jobs) + len(admissions),
+    }

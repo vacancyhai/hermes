@@ -30,7 +30,7 @@
         <div class="label">Jobs</div>
     </div>
     <div class="stat-card">
-        <div class="count">{{ watched_exams | length }}</div>
+        <div class="count">{{ watched_admissions | length }}</div>
         <div class="label">Exams</div>
     </div>
 </div>
@@ -57,9 +57,9 @@
 {% endfor %}
 {% endif %}
 
-{% if watched_exams %}
+{% if watched_admissions %}
 <div class="section-title">🎓 Watched Exams</div>
-{% for item in watched_exams %}
+{% for item in watched_admissions %}
 <div class="watch-card">
     <div style="flex:1;min-width:0">
         <h3><a href="/admissions/{{ item.id }}" style="color:#1e293b">{{ item.exam_name }}</a></h3>
@@ -79,7 +79,7 @@
 {% endfor %}
 {% endif %}
 
-{% if not watched_jobs and not watched_exams %}
+{% if not watched_jobs and not watched_admissions %}
 <div class="empty-state">
     <p style="font-size:1.1rem;margin-bottom:.5rem">No items watched yet.</p>
     <p style="margin-bottom:1rem">Watch jobs and admissions to get deadline reminders.</p>

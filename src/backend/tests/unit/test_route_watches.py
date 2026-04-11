@@ -1,4 +1,4 @@
-"""Unit tests for watch route handlers (watch/unwatch jobs & exams, list watched)."""
+"""Unit tests for watch route handlers (watch/unwatch jobs & admissions, list watched)."""
 
 import uuid
 from datetime import datetime, timezone
@@ -318,7 +318,7 @@ async def test_list_watched_empty():
 
     result = await list_watched(current_user=(user, {}), db=db)
     assert result["jobs"] == []
-    assert result["exams"] == []
+    assert result["admissions"] == []
     assert result["total"] == 0
 
 
@@ -341,7 +341,7 @@ async def test_list_watched_with_job():
     result = await list_watched(current_user=(user, {}), db=db)
     assert len(result["jobs"]) == 1
     assert result["jobs"][0]["slug"] == "ssc-cgl"
-    assert result["exams"] == []
+    assert result["admissions"] == []
     assert result["total"] == 1
 
 
@@ -362,14 +362,14 @@ async def test_list_watched_with_exam():
     db.execute = AsyncMock(side_effect=[watches_res, exams_res])
 
     result = await list_watched(current_user=(user, {}), db=db)
-    assert len(result["exams"]) == 1
-    assert result["exams"][0]["slug"] == "neet-2025"
+    assert len(result["admissions"]) == 1
+    assert result["admissions"][0]["slug"] == "neet-2025"
     assert result["jobs"] == []
     assert result["total"] == 1
 
 
 @pytest.mark.asyncio
-async def test_list_watched_mixed_jobs_and_exams():
+async def test_list_watched_mixed_jobs_and_admissions():
     from app.routers.watches import list_watched
 
     user = _make_user()
@@ -390,5 +390,5 @@ async def test_list_watched_mixed_jobs_and_exams():
 
     result = await list_watched(current_user=(user, {}), db=db)
     assert len(result["jobs"]) == 1
-    assert len(result["exams"]) == 1
+    assert len(result["admissions"]) == 1
     assert result["total"] == 2
