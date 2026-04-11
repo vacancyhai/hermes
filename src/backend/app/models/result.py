@@ -17,4 +17,4 @@ class Result(PhaseDocMixin, Base):
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     job = relationship("Job", back_populates="results")
-    exam = relationship("EntranceExam", back_populates="results")
+    admission = relationship("Admission", back_populates="results")

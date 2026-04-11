@@ -1,4 +1,4 @@
-"""Unit tests for entrance exam matching/recommendation engine."""
+"""Unit tests for admission matching/recommendation engine."""
 
 from datetime import date, datetime, timedelta, timezone
 
@@ -11,7 +11,7 @@ from app.services.matching import (
     STATE_MATCH,
     _education_rank,
     _user_age,
-    get_recommended_entrance_exams,
+    get_recommended_admissions,
 )
 
 
@@ -23,7 +23,7 @@ def _make_exam(
     exam_date=None,
     status="active",
 ):
-    """Helper to create mock EntranceExam."""
+    """Helper to create mock Admission."""
     from unittest.mock import MagicMock
 
     exam = MagicMock()
@@ -55,11 +55,11 @@ def _make_profile(
     return p
 
 
-# --- get_recommended_entrance_exams — no profile path ---
+# --- get_recommended_admissions — no profile path ---
 
 
 @pytest.mark.asyncio
-async def test_get_recommended_entrance_exams_no_profile():
+async def test_get_recommended_admissions_no_profile():
     """When user has no profile, return newest exams sorted by created_at (DB-paginated)."""
     from unittest.mock import AsyncMock, MagicMock
 
@@ -87,7 +87,7 @@ async def test_get_recommended_entrance_exams_no_profile():
 
     db.execute = AsyncMock(side_effect=[profile_result, count_result, exams_result])
 
-    exams, total = await get_recommended_entrance_exams(
+    exams, total = await get_recommended_admissions(
         user_id="some-uuid", db=db, limit=10, offset=0
     )
     assert total == 2
@@ -95,7 +95,7 @@ async def test_get_recommended_entrance_exams_no_profile():
 
 
 @pytest.mark.asyncio
-async def test_get_recommended_entrance_exams_no_profile_pagination():
+async def test_get_recommended_admissions_no_profile_pagination():
     """Offset/limit pagination works in the no-profile path (DB-level)."""
     from unittest.mock import AsyncMock, MagicMock
 
@@ -114,18 +114,18 @@ async def test_get_recommended_entrance_exams_no_profile_pagination():
 
     db.execute = AsyncMock(side_effect=[profile_result, count_result, exams_result])
 
-    exams, total = await get_recommended_entrance_exams(
+    exams, total = await get_recommended_admissions(
         user_id="uid", db=db, limit=2, offset=2
     )
     assert total == 5
     assert len(exams) == 2
 
 
-# --- get_recommended_entrance_exams — with profile / scoring ---
+# --- get_recommended_admissions — with profile / scoring ---
 
 
 @pytest.mark.asyncio
-async def test_get_recommended_entrance_exams_state_match():
+async def test_get_recommended_admissions_state_match():
     """State match adds STATE_MATCH score."""
     from unittest.mock import AsyncMock, MagicMock
 
@@ -140,14 +140,14 @@ async def test_get_recommended_entrance_exams_state_match():
     exams_result.scalars.return_value.all.return_value = [exam_no_match, exam_match]
     db.execute = AsyncMock(side_effect=[profile_result, exams_result])
 
-    exams, total = await get_recommended_entrance_exams(user_id="uid", db=db, limit=10)
+    exams, total = await get_recommended_admissions(user_id="uid", db=db, limit=10)
     assert total == 2
     # exam_match should come first (higher score)
     assert exams[0] == exam_match
 
 
 @pytest.mark.asyncio
-async def test_get_recommended_entrance_exams_category_match():
+async def test_get_recommended_admissions_category_match():
     """Category match adds CATEGORY_ELIGIBILITY_MATCH score."""
     from unittest.mock import AsyncMock, MagicMock
 
@@ -162,12 +162,12 @@ async def test_get_recommended_entrance_exams_category_match():
     exams_result.scalars.return_value.all.return_value = [exam_no_match, exam_match]
     db.execute = AsyncMock(side_effect=[profile_result, exams_result])
 
-    exams, _ = await get_recommended_entrance_exams(user_id="uid", db=db, limit=10)
+    exams, _ = await get_recommended_admissions(user_id="uid", db=db, limit=10)
     assert exams[0] == exam_match
 
 
 @pytest.mark.asyncio
-async def test_get_recommended_entrance_exams_education_match():
+async def test_get_recommended_admissions_education_match():
     """Education match: user qualifies when user_edu_rank >= exam_edu_rank."""
     from unittest.mock import AsyncMock, MagicMock
 
@@ -185,13 +185,13 @@ async def test_get_recommended_entrance_exams_education_match():
     ]
     db.execute = AsyncMock(side_effect=[profile_result, exams_result])
 
-    exams, _ = await get_recommended_entrance_exams(user_id="uid", db=db, limit=10)
+    exams, _ = await get_recommended_admissions(user_id="uid", db=db, limit=10)
     # exam_qualifies gets education bonus, so it ranks first
     assert exams[0] == exam_qualifies
 
 
 @pytest.mark.asyncio
-async def test_get_recommended_entrance_exams_age_match():
+async def test_get_recommended_admissions_age_match():
     """Age match: user within exam's eligibility range gets AGE_MATCH score."""
     from unittest.mock import AsyncMock, MagicMock
 
@@ -209,12 +209,12 @@ async def test_get_recommended_entrance_exams_age_match():
     exams_result.scalars.return_value.all.return_value = [exam_no_match, exam_match]
     db.execute = AsyncMock(side_effect=[profile_result, exams_result])
 
-    exams, _ = await get_recommended_entrance_exams(user_id="uid", db=db, limit=10)
+    exams, _ = await get_recommended_admissions(user_id="uid", db=db, limit=10)
     assert exams[0] == exam_match
 
 
 @pytest.mark.asyncio
-async def test_get_recommended_entrance_exams_recency_bonus():
+async def test_get_recommended_admissions_recency_bonus():
     """Recent exams (within 7 days) get RECENCY_BONUS score."""
     from unittest.mock import AsyncMock, MagicMock
 
@@ -236,13 +236,13 @@ async def test_get_recommended_entrance_exams_recency_bonus():
     exams_result.scalars.return_value.all.return_value = [old_exam, new_exam]
     db.execute = AsyncMock(side_effect=[profile_result, exams_result])
 
-    exams, _ = await get_recommended_entrance_exams(user_id="uid", db=db, limit=10)
+    exams, _ = await get_recommended_admissions(user_id="uid", db=db, limit=10)
     # new_exam gets recency bonus (both get edu match, new_exam gets +1 recency)
     assert exams[0] == new_exam
 
 
 @pytest.mark.asyncio
-async def test_get_recommended_entrance_exams_combined_scoring():
+async def test_get_recommended_admissions_combined_scoring():
     """Multiple matching criteria combine scores correctly."""
     from unittest.mock import AsyncMock, MagicMock
 
@@ -285,13 +285,13 @@ async def test_get_recommended_entrance_exams_combined_scoring():
     exams_result.scalars.return_value.all.return_value = [exam_poor, exam_perfect]
     db.execute = AsyncMock(side_effect=[profile_result, exams_result])
 
-    exams, _ = await get_recommended_entrance_exams(user_id="uid", db=db, limit=10)
+    exams, _ = await get_recommended_admissions(user_id="uid", db=db, limit=10)
     # exam_perfect should rank first with high combined score
     assert exams[0] == exam_perfect
 
 
 @pytest.mark.asyncio
-async def test_get_recommended_entrance_exams_empty_profile_no_scoring():
+async def test_get_recommended_admissions_empty_profile_no_scoring():
     """Profile with all-empty prefs → falls back to newest-first (DB-paginated)."""
     from unittest.mock import AsyncMock, MagicMock
 
@@ -315,12 +315,12 @@ async def test_get_recommended_entrance_exams_empty_profile_no_scoring():
     exams_result.scalars.return_value.all.return_value = [exam]
     db.execute = AsyncMock(side_effect=[profile_result, count_result, exams_result])
 
-    exams, total = await get_recommended_entrance_exams(user_id="uid", db=db, limit=10)
+    exams, total = await get_recommended_admissions(user_id="uid", db=db, limit=10)
     assert total == 1
 
 
 @pytest.mark.asyncio
-async def test_get_recommended_entrance_exams_category_string():
+async def test_get_recommended_admissions_category_string():
     """Category as string (not list) in eligibility still matches."""
     from unittest.mock import AsyncMock, MagicMock
 
@@ -334,12 +334,12 @@ async def test_get_recommended_entrance_exams_category_string():
     exams_result.scalars.return_value.all.return_value = [exam]
     db.execute = AsyncMock(side_effect=[profile_result, exams_result])
 
-    exams, total = await get_recommended_entrance_exams(user_id="uid", db=db, limit=10)
+    exams, total = await get_recommended_admissions(user_id="uid", db=db, limit=10)
     assert total == 1
 
 
 @pytest.mark.asyncio
-async def test_get_recommended_entrance_exams_state_string():
+async def test_get_recommended_admissions_state_string():
     """State as string (not list) in eligibility still matches."""
     from unittest.mock import AsyncMock, MagicMock
 
@@ -353,12 +353,12 @@ async def test_get_recommended_entrance_exams_state_string():
     exams_result.scalars.return_value.all.return_value = [exam]
     db.execute = AsyncMock(side_effect=[profile_result, exams_result])
 
-    exams, total = await get_recommended_entrance_exams(user_id="uid", db=db, limit=10)
+    exams, total = await get_recommended_admissions(user_id="uid", db=db, limit=10)
     assert total == 1
 
 
 @pytest.mark.asyncio
-async def test_get_recommended_entrance_exams_min_qualification_key():
+async def test_get_recommended_admissions_min_qualification_key():
     """Education matching works with 'min_qualification' key."""
     from unittest.mock import AsyncMock, MagicMock
 
@@ -372,12 +372,12 @@ async def test_get_recommended_entrance_exams_min_qualification_key():
     exams_result.scalars.return_value.all.return_value = [exam]
     db.execute = AsyncMock(side_effect=[profile_result, exams_result])
 
-    exams, _ = await get_recommended_entrance_exams(user_id="uid", db=db, limit=10)
+    exams, _ = await get_recommended_admissions(user_id="uid", db=db, limit=10)
     assert len(exams) == 1
 
 
 @pytest.mark.asyncio
-async def test_get_recommended_entrance_exams_age_flexible_keys():
+async def test_get_recommended_admissions_age_flexible_keys():
     """Age matching works with 'min_age'/'max_age' keys."""
     from unittest.mock import AsyncMock, MagicMock
 
@@ -392,12 +392,12 @@ async def test_get_recommended_entrance_exams_age_flexible_keys():
     exams_result.scalars.return_value.all.return_value = [exam]
     db.execute = AsyncMock(side_effect=[profile_result, exams_result])
 
-    exams, _ = await get_recommended_entrance_exams(user_id="uid", db=db, limit=10)
+    exams, _ = await get_recommended_admissions(user_id="uid", db=db, limit=10)
     assert len(exams) == 1
 
 
 @pytest.mark.asyncio
-async def test_get_recommended_entrance_exams_pagination():
+async def test_get_recommended_admissions_pagination():
     """Pagination works correctly with scored results."""
     from unittest.mock import AsyncMock, MagicMock
 
@@ -412,7 +412,7 @@ async def test_get_recommended_entrance_exams_pagination():
     exams_result.scalars.return_value.all.return_value = exams
     db.execute = AsyncMock(side_effect=[profile_result, exams_result])
 
-    page, total = await get_recommended_entrance_exams(
+    page, total = await get_recommended_admissions(
         user_id="uid", db=db, limit=5, offset=0
     )
     assert total == 10
@@ -425,7 +425,7 @@ async def test_get_recommended_entrance_exams_pagination():
     exams_result2.scalars.return_value.all.return_value = exams
     db.execute = AsyncMock(side_effect=[profile_result2, exams_result2])
 
-    page2, total2 = await get_recommended_entrance_exams(
+    page2, total2 = await get_recommended_admissions(
         user_id="uid", db=db, limit=5, offset=5
     )
     assert total2 == 10

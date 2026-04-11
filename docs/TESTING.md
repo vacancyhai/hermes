@@ -147,7 +147,7 @@ pre-commit run --all-files
 | `routers/users.py` | 73% | Phone/password flows and some profile update paths covered at integration level |
 | `routers/admin.py` | 73% | PDF file-write + bulk role/status/log-query paths covered at integration level |
 | `routers/content.py` | 96% | |
-| `routers/entrance_exams.py` | 97% | |
+| `routers/admissions.py` | 97% | |
 | `routers/auth.py` | 79% | Firebase-dependent OAuth paths require live credentials |
 | `dependencies.py` | 85% | JWT decode, blocklist, RBAC fully covered; async dep wiring uncovered |
 | `firebase.py` | 75% | Real Firebase token verify path requires live credentials |
@@ -172,12 +172,12 @@ pre-commit run --all-files
 | `test_route_users.py` | Profile, phone, FCM tokens |
 | `test_route_jobs.py` | Listing filters (active-only default), recommended, detail |
 | `test_route_content.py` | Admit cards, answer keys, results — public list/detail + admin CRUD; `_validate_document_parent` |
-| `test_route_entrance_exams.py` | Public list (filters, pagination, search) + detail; admin list/get/create (slug collision)/update/delete |
+| `test_route_admissions.py` | Public list (filters, pagination, search) + detail; admin list/get/create (slug collision)/update/delete |
 | `test_route_watches.py` | Watch/unwatch jobs & exams (limit enforcement, duplicate guard); list_watched (empty, job-only, exam-only, mixed) |
 | `test_route_health.py` | Health check endpoint |
 | `test_dependencies.py` | `_decode_and_validate_token` (valid, expired, wrong type, blocklist, scope); `get_current_user/admin`; `require_admin/operator` |
 | `test_matching.py` | Job recommendation scoring (state, category, education, age, recency) |
-| `test_matching_entrance_exams.py` | Entrance exam recommendation scoring |
+| `test_matching_admissions.py` | Admission recommendation scoring |
 | `test_services.py` | PDF extraction, AI parsing |
 | `test_tasks.py` | Cleanup, close_expired_job_listings, job extraction |
 | `test_notification_tasks.py` | Deadline reminders (7/3/1 day), smart_notify, delayed delivery |
@@ -192,7 +192,7 @@ pre-commit run --all-files
 | `test_auth_extended.py` | Email OTP registration, password validation, set/change, phone verification, email linking |
 | `test_admin.py` | Admin API, stats, RBAC |
 | `test_content.py` | Admit cards, answer keys, results — real DB round-trips |
-| `test_entrance_exams.py` | Entrance exam CRUD via HTTP + real DB |
+| `test_admissions.py` | Admission CRUD via HTTP + real DB |
 | `test_jobs.py` | Public job listing and search (active-only filter) |
 | `test_notifications.py` | Notification API |
 | `test_security.py` | JWT structure (HS256/exp/iat/jti), RBAC, token revocation, admin bcrypt, XSS, SQLi, CORS |
@@ -251,7 +251,7 @@ All POST form tests include `csrf_token` in the form data. The `/auth/firebase-c
 
 | Module | Coverage | Notes |
 |--------|----------|-------|
-| `app/__init__.py` | 82% | Entrance exam and some user-management routes not fully exercised |
+| `app/__init__.py` | 82% | Admission and some user-management routes not fully exercised |
 | `app/api_client.py` | 96% | All HTTP methods including `post_file` covered |
 
 | File | Covers |
@@ -261,7 +261,7 @@ All POST form tests include `csrf_token` in the form data. The `/auth/firebase-c
 
 ### Why Some Admin Frontend Lines Are Uncovered
 
-- **`app/__init__.py`** — Entrance exam admin routes and some bulk-action paths not exercised in test suite.
+- **`app/__init__.py`** — Admission admin routes and some bulk-action paths not exercised in test suite.
 
 ---
 
@@ -272,6 +272,6 @@ Cross-service HTTP tests using the `requests` library. All three services must b
 | File | Covers |
 |------|--------|
 | `test_health.py` | Smoke-tests all 3 service `/health` endpoints |
-| `test_full_flow.py` | Job lifecycle (draft → approve → visible on frontend → delete); admin frontend login/navigate/logout; watch job flow (watch → list → unwatch); entrance exam lifecycle |
+| `test_full_flow.py` | Job lifecycle (draft → approve → visible on frontend → delete); admin frontend login/navigate/logout; watch job flow (watch → list → unwatch); admission lifecycle |
 
 In CI (job 4), services are started via `docker-compose.test.yml`, an admin and regular user are seeded, the user JWT is captured as `E2E_USER_TOKEN`, then `pytest tests/e2e/` runs on the host runner.

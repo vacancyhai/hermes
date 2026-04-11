@@ -17,4 +17,4 @@ class AdmitCard(PhaseDocMixin, Base):
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     job = relationship("Job", back_populates="admit_cards")
-    exam = relationship("EntranceExam", back_populates="admit_cards")
+    admission = relationship("Admission", back_populates="admit_cards")

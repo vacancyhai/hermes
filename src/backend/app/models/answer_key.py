@@ -20,4 +20,4 @@ class AnswerKey(PhaseDocMixin, Base):
     objection_deadline: Mapped[date | None] = mapped_column(Date, nullable=True)
 
     job = relationship("Job", back_populates="answer_keys")
-    exam = relationship("EntranceExam", back_populates="answer_keys")
+    admission = relationship("Admission", back_populates="answer_keys")

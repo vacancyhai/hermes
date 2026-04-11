@@ -20,33 +20,85 @@ docker exec hermes_backend alembic -c /app/alembic.ini upgrade head
 
 ## Entity Relationship Diagram (ERD)
 
-```mermaid
-erDiagram
-    USERS ||--o| USER_PROFILES : has
-    USERS ||--o{ USER_WATCHES : tracks
-    USERS ||--o{ NOTIFICATIONS : receives
-    USERS ||--o{ USER_DEVICES : registers
-    USERS ||--o{ NOTIFICATION_DELIVERY_LOG : "is notified"
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                          HERMES — ENTITY RELATIONSHIP DIAGRAM                   │
+└─────────────────────────────────────────────────────────────────────────────────┘
 
-    ADMIN_USERS ||--o{ JOBS : creates
-    ADMIN_USERS ||--o{ ADMIN_LOGS : performs
+  ┌──────────────┐   1    ┌──────────────────┐
+  │  ADMIN_USERS │───────►│      JOBS        │
+  │              │        │ (job listings)   │
+  │  id          │        │ id               │
+  │  email       │        │ title            │
+  │  role        │        │ status           │
+  └──────┬───────┘        └────────┬─────────┘
+         │ 1                       │ 1
+         │                         │
+         ▼ *                       ├──────────────────────────────────────┐
+  ┌──────────────┐                 │                                      │
+  │  ADMIN_LOGS  │                 │                                      │
+  │              │                 │                                      │
+  │  id          │          ┌──────▼──────────────────────────────────────▼──────────────────────────────────┐
+  │  action      │          │              POLYMORPHIC DOCUMENT TABLES                                        │
+  │  resource_   │          │                                                                                  │
+  │  type/id     │          │  ┌──────────────┐   ┌──────────────┐   ┌──────────────┐                        │
+  └──────────────┘          │  │  ADMIT_CARDS │   │  ANSWER_KEYS │   │   RESULTS    │                        │
+                            │  │              │   │              │   │              │                        │
+                            │  │ id           │   │ id           │   │ id           │                        │
+                            │  │ job_id ──────┼───┼── (FK jobs)  │   │ job_id       │                        │
+                            │  │ admission_id─┼───┼── (FK adm.)  │   │ admission_id │                        │
+                            │  │ title        │   │ title        │   │ title        │                        │
+                            │  │ phase_number │   │ phase_number │   │ phase_number │                        │
+                            │  └──────────────┘   └──────────────┘   └──────────────┘                        │
+                            │                                                                                  │
+                            │  CHECK: (job_id IS NOT NULL AND admission_id IS NULL)                            │
+                            │      OR (job_id IS NULL     AND admission_id IS NOT NULL)                        │
+                            └──────────────────────────────────────────────────────────────────────────────────┘
+         ▲ *                       ▲ 1
+         │                         │
+  ┌──────┴───────┐        ┌────────┴─────────┐
+  │    JOBS      │        │   ADMISSIONS     │
+  │              │        │ (NEET/JEE/CLAT)  │
+  │  (see above) │        │ id               │
+  └──────────────┘        │ exam_name        │
+                          │ conducting_body  │
+                          │ stream           │
+                          │ status           │
+                          └──────────────────┘
 
-    JOBS ||--o{ USER_WATCHES : "is tracked by"
-    JOBS ||--o{ ADMIT_CARDS : "has (job_id)"
-    JOBS ||--o{ ANSWER_KEYS : "has (job_id)"
-    JOBS ||--o{ RESULTS : "has (job_id)"
-
-    ENTRANCE_EXAMS ||--o{ USER_WATCHES : "is tracked by"
-    ENTRANCE_EXAMS ||--o{ ADMIT_CARDS : "has (exam_id)"
-    ENTRANCE_EXAMS ||--o{ ANSWER_KEYS : "has (exam_id)"
-    ENTRANCE_EXAMS ||--o{ RESULTS : "has (exam_id)"
-
-    NOTIFICATIONS ||--o{ NOTIFICATION_DELIVERY_LOG : attempts
-    USER_DEVICES ||--o{ NOTIFICATION_DELIVERY_LOG : targets
+  ┌──────────────┐  1     ┌──────────────────┐  *   ┌─────────────────────────┐
+  │    USERS     │───────►│  USER_WATCHES    │      │   USER_WATCHES entity   │
+  │              │        │                  │      │                         │
+  │ id           │        │ id               │      │ entity_type = 'job'     │
+  │ email        │        │ user_id ─────────┼─────►│   entity_id → JOBS.id   │
+  │ status       │        │ entity_type      │      │                         │
+  └──────┬───────┘        │ entity_id        │      │ entity_type = 'exam'    │
+         │                └──────────────────┘      │   entity_id → ADMISSIONS│
+         │ 1                                        └─────────────────────────┘
+         ├──────────────────────┐
+         │                      │
+         ▼ 0..1                 ▼ *
+  ┌──────────────┐     ┌────────────────────┐
+  │ USER_PROFILES│     │   NOTIFICATIONS    │
+  │              │     │                    │
+  │ id           │     │ id                 │
+  │ user_id      │     │ user_id            │     ┌────────────────────────────┐
+  │ stream       │     │ type               │────►│  NOTIFICATION_DELIVERY_LOG │
+  │ category     │     │ title              │  *  │                            │
+  │ state        │     │ is_read            │     │ id                         │
+  └──────────────┘     └────────────────────┘     │ notification_id            │
+                                                   │ device_id                  │
+  ┌──────────────┐                                 │ status                     │
+  │ USER_DEVICES │────────────────────────────────►│ sent_at                    │
+  │              │  *                              └────────────────────────────┘
+  │ id           │
+  │ user_id      │
+  │ fcm_token    │
+  └──────────────┘
 ```
 
 > **Polymorphic constraint:** `admit_cards`, `answer_keys`, and `results` each have a DB-level
-> CHECK constraint `(job_id IS NOT NULL AND exam_id IS NULL) OR (job_id IS NULL AND exam_id IS NOT NULL)`
+> CHECK constraint `(job_id IS NOT NULL AND admission_id IS NULL) OR (job_id IS NULL AND admission_id IS NOT NULL)`
 > ensuring exactly one parent reference per row.
 
 ---
@@ -209,7 +261,7 @@ Audit logs for staff actions. Auto-expire after 30 days.
 | `id` | UUID (PK) | No | Auto-generated |
 | `admin_id` | UUID (FK → `admin_users.id`) | No | Admin who performed the action |
 | `action` | String(100) | No | `create_job`, `suspend_user`, `admin_login`, etc. |
-| `resource_type` | String(100) | Yes | `job`, `user`, `entrance_exam`, etc. |
+| `resource_type` | String(100) | Yes | `job`, `user`, `admission`, etc. |
 | `resource_id` | UUID | Yes | Affected resource ID |
 | `details` | Text | Yes | Human-readable summary |
 | `changes` | JSONB | No | Before/after snapshot; default `{}` |
@@ -262,13 +314,13 @@ Channel-level delivery tracking per notification attempt.
 ---
 
 ### 9. `admit_cards`
-Per-phase admit card links. Linked to either a **job** or an **entrance exam** (polymorphic).
+Per-phase admit card links. Linked to either a **job** or an **admission** (polymorphic).
 
 | Column | Type | Nullable | Description |
 |--------|------|----------|-------------|
 | `id` | UUID (PK) | No | Auto-generated |
 | `job_id` | UUID (FK → `jobs.id`, nullable) | Yes | CASCADE delete |
-| `exam_id` | UUID (FK → `entrance_exams.id`, nullable) | Yes | CASCADE delete |
+| `exam_id` | UUID (FK → `admissions.id`, nullable) | Yes | CASCADE delete |
 | `phase_number` | SmallInteger | Yes | Exam phase (1, 2, …) |
 | `title` | String(255) | No | E.g. "SSC CGL Tier-1 2025 Admit Card" |
 | `download_url` | Text | No | Link to download the admit card |
@@ -292,7 +344,7 @@ Per-phase answer keys (provisional or final). Polymorphic.
 |--------|------|----------|-------------|
 | `id` | UUID (PK) | No | Auto-generated |
 | `job_id` | UUID (FK → `jobs.id`, nullable) | Yes | CASCADE delete |
-| `exam_id` | UUID (FK → `entrance_exams.id`, nullable) | Yes | CASCADE delete |
+| `exam_id` | UUID (FK → `admissions.id`, nullable) | Yes | CASCADE delete |
 | `phase_number` | SmallInteger | Yes | Exam phase |
 | `title` | String(255) | No | E.g. "JEE Main Session 1 Provisional Answer Key" |
 | `answer_key_type` | String(20) | No | `ck_answer_key_type`: `provisional` \| `final`; default `provisional` |
@@ -316,7 +368,7 @@ Per-phase results (shortlist, cutoff, merit list, final). Polymorphic.
 |--------|------|----------|-------------|
 | `id` | UUID (PK) | No | Auto-generated |
 | `job_id` | UUID (FK → `jobs.id`, nullable) | Yes | CASCADE delete |
-| `exam_id` | UUID (FK → `entrance_exams.id`, nullable) | Yes | CASCADE delete |
+| `exam_id` | UUID (FK → `admissions.id`, nullable) | Yes | CASCADE delete |
 | `phase_number` | SmallInteger | Yes | Exam phase |
 | `title` | String(255) | No | E.g. "NEET PG 2026 Result & Score Card" |
 | `result_type` | String(20) | No | `ck_result_type`: `shortlist` \| `cutoff` \| `merit_list` \| `final` |
@@ -334,9 +386,9 @@ Per-phase results (shortlist, cutoff, merit list, final). Polymorphic.
 
 ---
 
-### 12. `entrance_exams`
-Entrance exams (NEET, JEE, CLAT, CAT, GATE, CUET etc.) — separate from `jobs`.
-These are educational entrance examinations, not government job recruitments.
+### 12. `admissions`
+Admissions (NEET, JEE, CLAT, CAT, GATE, CUET etc.) — separate from `jobs`.
+These are educational admissioninations, not government job recruitments.
 
 | Column | Type | Nullable | Description |
 |--------|------|----------|-------------|
@@ -345,8 +397,8 @@ These are educational entrance examinations, not government job recruitments.
 | `exam_name` | String(500) | No | E.g. "NTA NEET PG 2026 — Medical PG Entrance" |
 | `conducting_body` | String(255) | No | E.g. "National Testing Agency" |
 | `counselling_body` | String(255) | Yes | E.g. "MCC", "JoSAA", "CLAT Consortium" |
-| `exam_type` | String(20) | No | `ck_entrance_exam_type`: `ug` \| `pg` \| `doctoral` \| `lateral`; default `pg` |
-| `stream` | String(30) | No | `ck_entrance_exam_stream`: `medical` \| `engineering` \| `law` \| `management` \| `arts_science` \| `general`; default `general` |
+| `exam_type` | String(20) | No | `ck_admission_type`: `ug` \| `pg` \| `doctoral` \| `lateral`; default `pg` |
+| `stream` | String(30) | No | `ck_admission_stream`: `medical` \| `engineering` \| `law` \| `management` \| `arts_science` \| `general`; default `general` |
 | `eligibility` | JSONB | No | `{min_qualification, attempts_limit, age_limit, ...}`; default `{}` |
 | `exam_details` | JSONB | No | `{exam_pattern: [{phase, subjects, total_marks, duration_minutes, negative_marking, exam_mode}]}`; default `{}` |
 | `selection_process` | JSONB | No | `[{phase, name, qualifying}]`; default `[]` |
@@ -364,17 +416,17 @@ These are educational entrance examinations, not government job recruitments.
 | `description` | Text | Yes | Full HTML description |
 | `short_description` | Text | Yes | One-liner for listing cards |
 | `source_url` | Text | Yes | Official website URL |
-| `status` | String(20) | No | `ck_entrance_exam_status`: `upcoming` \| `active` \| `completed` \| `cancelled`; default `active` |
+| `status` | String(20) | No | `ck_admission_status`: `upcoming` \| `active` \| `completed` \| `cancelled`; default `active` |
 | `published_at` | DateTime | Yes | When first published |
 | `created_at` | DateTime | No | Creation timestamp |
 | `updated_at` | DateTime | No | Last update timestamp |
 | `search_vector` | tsvector | — | GENERATED ALWAYS (exam_name A, conducting_body B, description C) — GIN indexed |
 
-**Indexes:** `idx_entrance_exams_slug` (unique), `idx_entrance_exams_stream_status`, `idx_entrance_exams_search` (GIN)
+**Indexes:** `idx_admissions_slug` (unique), `idx_admissions_stream_status`, `idx_admissions_search` (GIN)
 
 **Key design difference from `jobs`:**
 
-| Dimension | `jobs` | `entrance_exams` |
+| Dimension | `jobs` | `admissions` |
 |-----------|--------|------------------|
 | Outcome | Employment (govt job) | Education (college/IIT/NLU seat) |
 | Vacancies | `total_vacancies` + `vacancy_breakdown` | `seats_info` (seats by institution) |
@@ -392,7 +444,7 @@ Tracks which jobs or exams a user is watching for notification delivery.
 | `id` | UUID (PK) | No | Auto-generated |
 | `user_id` | UUID (FK → `users.id`) | No | CASCADE delete |
 | `entity_type` | String(10) | No | `ck_user_watches_entity_type`: `job` \| `exam` |
-| `entity_id` | UUID | No | ID of the watched job or entrance exam |
+| `entity_id` | UUID | No | ID of the watched job or admission |
 | `created_at` | DateTime | No | When the watch was created |
 
 > UNIQUE constraint `uq_user_watch` on `(user_id, entity_type, entity_id)`. Max 100 watches per user (enforced in application layer).

@@ -9,6 +9,8 @@ from app.config import settings
 from app.logging_config import setup_logging
 from app.rate_limit import limiter
 from app.routers import admin, auth, health, jobs, notifications, users
+from app.routers.admissions import admin_router as exams_admin_router
+from app.routers.admissions import public_router as exams_public_router
 from app.routers.content import (
     admit_cards_admin_router,
     admit_cards_router,
@@ -17,8 +19,6 @@ from app.routers.content import (
     results_admin_router,
     results_router,
 )
-from app.routers.entrance_exams import admin_router as exams_admin_router
-from app.routers.entrance_exams import public_router as exams_public_router
 from app.routers.watches import router as watches_router
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError

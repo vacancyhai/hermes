@@ -171,7 +171,7 @@ class JobListItem(BaseModel):
 
 class AdmitCardCreateRequest(BaseModel):
     job_id: uuid.UUID | None = None
-    exam_id: uuid.UUID | None = None
+    admission_id: uuid.UUID | None = None
     phase_number: int | None = Field(None, ge=1, le=10)
     title: str = Field(min_length=1, max_length=255)
     download_url: str = Field(min_length=1)
@@ -194,7 +194,7 @@ class AdmitCardUpdateRequest(BaseModel):
 class AdmitCardResponse(BaseModel):
     id: uuid.UUID
     job_id: uuid.UUID | None
-    exam_id: uuid.UUID | None
+    admission_id: uuid.UUID | None
     phase_number: int | None
     title: str
     download_url: str
@@ -215,7 +215,7 @@ ANSWER_KEY_TYPES = Literal["provisional", "final"]
 
 class AnswerKeyCreateRequest(BaseModel):
     job_id: uuid.UUID | None = None
-    exam_id: uuid.UUID | None = None
+    admission_id: uuid.UUID | None = None
     phase_number: int | None = Field(None, ge=1, le=10)
     title: str = Field(min_length=1, max_length=255)
     answer_key_type: ANSWER_KEY_TYPES = "provisional"
@@ -238,7 +238,7 @@ class AnswerKeyUpdateRequest(BaseModel):
 class AnswerKeyResponse(BaseModel):
     id: uuid.UUID
     job_id: uuid.UUID | None
-    exam_id: uuid.UUID | None
+    admission_id: uuid.UUID | None
     phase_number: int | None
     title: str
     answer_key_type: str
@@ -259,7 +259,7 @@ RESULT_TYPES = Literal["shortlist", "cutoff", "merit_list", "final"]
 
 class ResultCreateRequest(BaseModel):
     job_id: uuid.UUID | None = None
-    exam_id: uuid.UUID | None = None
+    admission_id: uuid.UUID | None = None
     phase_number: int | None = Field(None, ge=1, le=10)
     title: str = Field(min_length=1, max_length=255)
     result_type: RESULT_TYPES
@@ -284,7 +284,7 @@ class ResultUpdateRequest(BaseModel):
 class ResultResponse(BaseModel):
     id: uuid.UUID
     job_id: uuid.UUID | None
-    exam_id: uuid.UUID | None
+    admission_id: uuid.UUID | None
     phase_number: int | None
     title: str
     result_type: str

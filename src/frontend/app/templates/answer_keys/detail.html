@@ -40,7 +40,7 @@
     {% if key.get('job') %}
     <a href="/jobs/{{ key.job.id }}" class="share-btn">View Job Details →</a>
     {% elif key.get('exam') %}
-    <a href="/entrance-exams/{{ key.exam.id }}" class="share-btn">View Exam Details →</a>
+    <a href="/admissions/{{ key.exam.id }}" class="share-btn">View Exam Details →</a>
     {% endif %}
     <button type="button" class="share-btn" onclick="if(navigator.share){navigator.share({title:document.title,url:window.location.href})}else{navigator.clipboard.writeText(window.location.href);alert('Link copied!')}">⬆ Share</button>
 </div>

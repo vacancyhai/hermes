@@ -1,9 +1,9 @@
 {% extends "shared/base.html" %}
-{% block title %}Edit Entrance Exam — Hermes Admin{% endblock %}
+{% block title %}Edit Admission — Hermes Admin{% endblock %}
 {% block content %}
 
 <div class="page-header">
-    <a href="/entrance-exams" class="back-link">&#8592; Back to Entrance Exams</a>
+    <a href="/admissions" class="back-link">&#8592; Back to Admissions</a>
     <div class="page-header-row">
         <div>
             <h1 class="page-title">&#127979; {{ exam.exam_name }}</h1>
@@ -14,12 +14,12 @@
         </div>
         <div class="header-actions">
             {% if session.get('admin_role') == 'admin' %}
-            <form method="POST" action="/entrance-exams/{{ exam.id }}/delete"
+            <form method="POST" action="/admissions/{{ exam.id }}/delete"
                   onsubmit="return confirm('Permanently delete this exam and all its phase documents?')" style="margin:0">
                 <button type="submit" class="btn btn-danger btn-sm">&#128465; Delete</button>
             </form>
             {% endif %}
-            <a href="/entrance-exams" class="btn btn-outline">Cancel</a>
+            <a href="/admissions" class="btn btn-outline">Cancel</a>
             <button type="submit" form="exam-edit-form" class="btn btn-primary">&#10003; Save Changes</button>
         </div>
     </div>
@@ -32,7 +32,7 @@
 {% endwith %}
 
 <!-- ── Exam Details Form ─────────────────────────────────────────────── -->
-<form id="exam-edit-form" method="POST" action="/entrance-exams/{{ exam.id }}/edit">
+<form id="exam-edit-form" method="POST" action="/admissions/{{ exam.id }}/edit">
     <!-- Basic Information -->
     <div class="section-card">
         <div class="section-header section-header--blue">
@@ -45,7 +45,7 @@
                     <label>Exam Name <span class="req">*</span></label>
                     <input type="text" name="exam_name" required
                            value="{{ exam.exam_name }}"
-                           placeholder="e.g. NTA NEET PG 2026 — Medical PG Entrance Examination">
+                           placeholder="e.g. NTA NEET PG 2026 — Medical PG Admission Examination">
                 </div>
                 <div class="form-group col-span-2">
                     <label>Conducting Body <span class="req">*</span></label>
@@ -276,16 +276,138 @@ Biology, 100, 360"></textarea>
         </div>
     </div>
 
+    <!-- Important Links -->
+    <div class="section-card">
+        <div class="section-header section-header--slate">
+            <span class="section-icon">&#128279;</span>
+            <span>Important Links <span style="font-weight:400;opacity:.8;font-size:.75rem">(optional)</span></span>
+            <button type="button" class="btn-add-inline" onclick="addLink()">&#43; Add Link</button>
+        </div>
+        <div class="section-body">
+            <div id="links-container">
+                <div class="empty-state" id="links-empty" style="display:none">
+                    <div class="empty-icon">&#128279;</div>
+                    <p>No links added yet.</p>
+                    <button type="button" class="btn btn-outline" onclick="addLink()">&#43; Add Link</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Selection Process -->
+    <div class="section-card">
+        <div class="section-header section-header--orange">
+            <span class="section-icon">&#127947;</span>
+            <span>Selection Process <span style="font-weight:400;opacity:.8;font-size:.75rem">(optional)</span></span>
+            <button type="button" class="btn-add-inline" onclick="addPhase()">&#43; Add Phase</button>
+        </div>
+        <div class="section-body">
+            <div id="phases-container">
+                <div class="empty-state" id="phases-empty" style="display:none">
+                    <div class="empty-icon">&#127947;</div>
+                    <p>No phases added.</p>
+                    <button type="button" class="btn btn-outline" onclick="addPhase()">&#43; Add Phase</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <input type="hidden" name="exam_details_json" id="exam_details_json">
     <input type="hidden" name="eligibility_json" id="eligibility_json">
     <input type="hidden" name="seats_info_json" id="seats_info_json">
+    <input type="hidden" name="selection_process_json" id="selection_process_json">
+    <input type="hidden" name="links_json" id="links_json">
 
     <div class="form-actions">
-        <a href="/entrance-exams" class="btn btn-outline">Cancel</a>
+        <a href="/admissions" class="btn btn-outline">Cancel</a>
         <button type="submit" class="btn btn-primary btn-lg">&#10003; Save Changes</button>
     </div>
 
 </form>
+
+<!-- ═══ LINK ROW TEMPLATE ═══ -->
+<template id="link-template">
+<div class="ex-link-row">
+    <div class="form-grid-3">
+        <div class="form-group">
+            <label>Link Type</label>
+            <select class="lk-type">
+                <option value="apply_online">Apply Online</option>
+                <option value="download_notification">Notification PDF</option>
+                <option value="syllabus">Syllabus</option>
+                <option value="admit_card">Admit Card</option>
+                <option value="answer_key">Answer Key</option>
+                <option value="result">Result</option>
+                <option value="official_website">Official Website</option>
+                <option value="other">Other</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Display Text</label>
+            <input type="text" class="lk-text" placeholder="e.g. Apply Online">
+        </div>
+        <div class="form-group">
+            <label>URL</label>
+            <div style="display:flex;gap:.4rem">
+                <input type="url" class="lk-url" placeholder="https://" style="flex:1">
+                <button type="button" class="ex-btn-remove" onclick="removeLink(this)" title="Remove">&#10005;</button>
+            </div>
+        </div>
+    </div>
+</div>
+</template>
+
+<!-- ═══ PHASE ROW TEMPLATE ═══ -->
+<template id="phase-template">
+<div class="ex-phase-row">
+    <div class="ex-phase-header">
+        <div class="ex-phase-badge">1</div>
+        <div class="form-grid-3" style="flex:1">
+            <div class="form-group">
+                <label>Phase Type</label>
+                <select class="ph-type" onchange="toggleExPhaseFields(this)">
+                    <option value="written_test">&#128221; Written Test</option>
+                    <option value="counselling">&#127979; Counselling</option>
+                    <option value="interview">&#128172; Interview / Personality Test</option>
+                    <option value="document">&#128196; Document Verification</option>
+                    <option value="seat_allotment">&#127942; Seat Allotment</option>
+                    <option value="other">&#128295; Other</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Phase Name</label>
+                <input type="text" class="ph-name" placeholder="e.g. JEE Advanced Paper 1 &amp; 2">
+            </div>
+            <div class="form-group">
+                <label>Qualifying Only?</label>
+                <select class="ph-qualifying">
+                    <option value="false">No &mdash; Marks count</option>
+                    <option value="true">Yes &mdash; Pass / Fail</option>
+                </select>
+            </div>
+        </div>
+        <button type="button" class="ex-btn-remove" onclick="removePhase(this)">&#10005;</button>
+    </div>
+    <div class="ex-phase-extra written_test">
+        <div class="ex-phase-detail">
+            <div class="form-grid-3">
+                <div class="form-group"><label>Total Marks</label><input type="number" class="ph-total_marks" min="0" placeholder="360"></div>
+                <div class="form-group"><label>Duration (min)</label><input type="number" class="ph-duration" min="0" placeholder="180"></div>
+                <div class="form-group"><label>Negative Marking</label><input type="number" class="ph-negative" step="0.01" placeholder="1.0"></div>
+            </div>
+            <div class="form-group" style="margin-top:.5rem">
+                <label>Subjects <span style="font-weight:400;color:#9ca3af">(one per line: Subject, Questions, Marks)</span></label>
+                <textarea class="ph-subjects" rows="3" placeholder="Physics, 18, 120&#10;Chemistry, 18, 120&#10;Mathematics, 18, 120"></textarea>
+            </div>
+        </div>
+    </div>
+    <div class="ex-phase-extra counselling" style="display:none"><div class="ex-phase-detail"><div class="form-group"><label>Note</label><input type="text" class="ph-note" placeholder="e.g. JoSAA rounds 1-6"></div></div></div>
+    <div class="ex-phase-extra interview" style="display:none"><div class="ex-phase-detail"><div class="form-grid-3"><div class="form-group"><label>Marks</label><input type="number" class="ph-interview_marks" min="0"></div><div class="form-group col-span-2"><label>Note</label><input type="text" class="ph-note" placeholder=""></div></div></div></div>
+    <div class="ex-phase-extra document" style="display:none"><div class="ex-phase-detail"><div class="form-group"><label>Documents Required <span style="font-weight:400;color:#9ca3af">(one per line)</span></label><textarea class="ph-doc_list" rows="3"></textarea></div></div></div>
+    <div class="ex-phase-extra seat_allotment" style="display:none"><div class="ex-phase-detail"><div class="form-group"><label>Note</label><input type="text" class="ph-note" placeholder="e.g. Seat allotment via JoSAA"></div></div></div>
+    <div class="ex-phase-extra other" style="display:none"><div class="ex-phase-detail"><div class="form-group"><label>Note</label><input type="text" class="ph-note" placeholder="Details…"></div></div></div>
+</div>
+</template>
 
 <!-- ── Phase Documents ───────────────────────────────────────────────── -->
 <div id="docs" style="border-top:2px solid #e5e7eb;padding-top:1.5rem;margin-top:1rem">
@@ -308,7 +430,7 @@ Biology, 100, 360"></textarea>
                     <td><strong>{{ ac.title }}</strong></td>
                     <td class="pd-meta">{{ ac.valid_from or '' }}{% if ac.valid_from and ac.valid_until %} → {% endif %}{{ ac.valid_until or '' }}</td>
                     <td>
-                        <form method="POST" action="/entrance-exams/{{ exam.id }}/docs/admit-cards/{{ ac.id }}/delete" onsubmit="return confirm('Delete this admit card?')">
+                        <form method="POST" action="/admissions/{{ exam.id }}/docs/admit-cards/{{ ac.id }}/delete" onsubmit="return confirm('Delete this admit card?')">
                             <button type="submit" class="btn btn-sm pd-del-btn">&#10005; Delete</button>
                         </form>
                     </td>
@@ -321,7 +443,7 @@ Biology, 100, 360"></textarea>
             {% endif %}
             <details class="pd-add-panel">
                 <summary class="pd-add-toggle">&#43; Add Admit Card</summary>
-                <form method="POST" action="/entrance-exams/{{ exam.id }}/docs/admit-cards" class="pd-add-form">
+                <form method="POST" action="/admissions/{{ exam.id }}/docs/admit-cards" class="pd-add-form">
                     <div class="pd-form-grid">
                         <div class="pd-fg pd-full"><label>Title *</label><input type="text" name="title" required placeholder="NEET PG 2026 Admit Card"></div>
                         <div class="pd-fg pd-full"><label>Download URL *</label><input type="url" name="download_url" required placeholder="https://nta.ac.in/admit-card"></div>
@@ -354,7 +476,7 @@ Biology, 100, 360"></textarea>
                     <td><span class="badge {{ 'badge-success' if ak.answer_key_type == 'final' else 'badge-warning' }}">{{ ak.answer_key_type | title }}</span></td>
                     <td class="pd-meta">{{ ak.objection_deadline or '—' }}</td>
                     <td>
-                        <form method="POST" action="/entrance-exams/{{ exam.id }}/docs/answer-keys/{{ ak.id }}/delete" onsubmit="return confirm('Delete this answer key?')">
+                        <form method="POST" action="/admissions/{{ exam.id }}/docs/answer-keys/{{ ak.id }}/delete" onsubmit="return confirm('Delete this answer key?')">
                             <button type="submit" class="btn btn-sm pd-del-btn">&#10005; Delete</button>
                         </form>
                     </td>
@@ -367,7 +489,7 @@ Biology, 100, 360"></textarea>
             {% endif %}
             <details class="pd-add-panel">
                 <summary class="pd-add-toggle">&#43; Add Answer Key</summary>
-                <form method="POST" action="/entrance-exams/{{ exam.id }}/docs/answer-keys" class="pd-add-form">
+                <form method="POST" action="/admissions/{{ exam.id }}/docs/answer-keys" class="pd-add-form">
                     <div class="pd-form-grid">
                         <div class="pd-fg pd-full"><label>Title *</label><input type="text" name="title" required placeholder="NEET PG 2026 Provisional Answer Key"></div>
                         <div class="pd-fg"><label>Type</label><select name="answer_key_type"><option value="provisional">Provisional</option><option value="final">Final</option></select></div>
@@ -399,7 +521,7 @@ Biology, 100, 360"></textarea>
                     <td><span class="badge badge-info">{{ res.result_type | replace('_',' ') | title }}</span></td>
                     <td class="pd-meta">{{ res.total_qualified or '—' }}</td>
                     <td>
-                        <form method="POST" action="/entrance-exams/{{ exam.id }}/docs/results/{{ res.id }}/delete" onsubmit="return confirm('Delete this result?')">
+                        <form method="POST" action="/admissions/{{ exam.id }}/docs/results/{{ res.id }}/delete" onsubmit="return confirm('Delete this result?')">
                             <button type="submit" class="btn btn-sm pd-del-btn">&#10005; Delete</button>
                         </form>
                     </td>
@@ -412,7 +534,7 @@ Biology, 100, 360"></textarea>
             {% endif %}
             <details class="pd-add-panel">
                 <summary class="pd-add-toggle">&#43; Add Result</summary>
-                <form method="POST" action="/entrance-exams/{{ exam.id }}/docs/results" class="pd-add-form">
+                <form method="POST" action="/admissions/{{ exam.id }}/docs/results" class="pd-add-form">
                     <div class="pd-form-grid">
                         <div class="pd-fg pd-full"><label>Title *</label><input type="text" name="title" required placeholder="NEET PG 2026 Result & Score Card"></div>
                         <div class="pd-fg"><label>Result Type</label><select name="result_type"><option value="shortlist">Shortlist</option><option value="cutoff">Cut-off</option><option value="merit_list" selected>Merit List</option><option value="final">Final</option></select></div>
@@ -442,6 +564,56 @@ const EXAM_DATA = {{ exam | tojson }};
     setV('ed_negative', ed.negative_marking);
     setV('ed_language', (ed.language || []).join(', '));
     setV('ed_subjects', (ed.subjects || []).map(s => (s.name||'') + ', ' + (s.questions||'') + ', ' + (s.marks||'')).join('\n'));
+
+    // Prefill important links
+    const existingLinks = ed.important_links || [];
+    if (existingLinks.length) {
+        document.getElementById('links-empty').style.display = 'none';
+        existingLinks.forEach(lk => {
+            addLink();
+            const row = document.getElementById('links-container').lastElementChild;
+            const selEl = row.querySelector('.lk-type');
+            const txtEl = row.querySelector('.lk-text');
+            const urlEl = row.querySelector('.lk-url');
+            if (selEl) selEl.value = lk.type || 'other';
+            if (txtEl) txtEl.value = lk.text || '';
+            if (urlEl) urlEl.value = lk.url || '';
+        });
+    } else {
+        document.getElementById('links-empty').style.display = '';
+    }
+
+    // Prefill selection process
+    const existingPhases = EXAM_DATA.selection_process || [];
+    if (existingPhases.length) {
+        document.getElementById('phases-empty').style.display = 'none';
+        existingPhases.forEach(ph => {
+            addPhase();
+            const row = document.getElementById('phases-container').lastElementChild;
+            const typeEl = row.querySelector('.ph-type');
+            if (typeEl) { typeEl.value = ph.type || 'written_test'; toggleExPhaseFields(typeEl); }
+            const nameEl = row.querySelector('.ph-name');
+            if (nameEl) nameEl.value = ph.name || '';
+            const qualEl = row.querySelector('.ph-qualifying');
+            if (qualEl) qualEl.value = ph.qualifying ? 'true' : 'false';
+            if (ph.type === 'written_test') {
+                const tm = row.querySelector('.ph-total_marks'); if (tm && ph.total_marks) tm.value = ph.total_marks;
+                const dm = row.querySelector('.ph-duration'); if (dm && ph.duration_minutes) dm.value = ph.duration_minutes;
+                const nm = row.querySelector('.ph-negative'); if (nm && ph.negative_marking != null) nm.value = ph.negative_marking;
+                const subj = row.querySelector('.ph-subjects');
+                if (subj && ph.subjects) subj.value = ph.subjects.map(s => s.name + ', ' + s.questions + ', ' + s.marks).join('\n');
+            } else if (ph.type === 'interview') {
+                const mk = row.querySelector('.ph-interview_marks'); if (mk && ph.marks) mk.value = ph.marks;
+                const nt = row.querySelector('.ph-note'); if (nt && ph.note) nt.value = ph.note;
+            } else if (ph.type === 'document') {
+                const dl = row.querySelector('.ph-doc_list'); if (dl && ph.documents) dl.value = (ph.documents || []).join('\n');
+            } else {
+                const nt = row.querySelector('.ph-note'); if (nt && ph.note) nt.value = ph.note;
+            }
+        });
+    } else {
+        document.getElementById('phases-empty').style.display = '';
+    }
 
     const el = EXAM_DATA.eligibility || {};
     setV('el_qualification', el.qualification);
@@ -486,11 +658,96 @@ document.getElementById('exam-edit-form').addEventListener('submit', function() 
         total: gi('si_total'), UR: gi('si_ur'), OBC: gi('si_obc'),
         EWS: gi('si_ews'), SC: gi('si_sc'), ST: gi('si_st')
     });
+    document.getElementById('selection_process_json').value = JSON.stringify(serializePhases());
+    document.getElementById('links_json').value = JSON.stringify(serializeLinks());
+    // Embed links into exam_details too
+    const edParsed = JSON.parse(document.getElementById('exam_details_json').value || '{}');
+    edParsed.important_links = serializeLinks();
+    document.getElementById('exam_details_json').value = JSON.stringify(edParsed);
 });
+
+function serializeLinks() {
+    const links = [];
+    document.querySelectorAll('#links-container .ex-link-row').forEach(row => {
+        const url = row.querySelector('.lk-url').value.trim();
+        if (!url) return;
+        links.push({ type: row.querySelector('.lk-type').value, text: row.querySelector('.lk-text').value.trim(), url });
+    });
+    return links;
+}
+
+function serializePhases() {
+    const phases = [];
+    document.querySelectorAll('#phases-container .ex-phase-row').forEach((row, i) => {
+        const fv = cls => { const el = row.querySelector('.' + cls); return el ? el.value.trim() : ''; };
+        const iv = cls => { const v = fv(cls); return v !== '' ? parseInt(v) : null; };
+        const type = fv('ph-type');
+        const phase = { phase: i + 1, type, name: fv('ph-name'), qualifying: fv('ph-qualifying') === 'true' };
+        if (type === 'written_test') {
+            phase.total_marks = iv('ph-total_marks');
+            phase.duration_minutes = iv('ph-duration');
+            phase.negative_marking = (() => { const v = fv('ph-negative'); return v !== '' ? parseFloat(v) : null; })();
+            phase.subjects = fv('ph-subjects').split('\n').filter(l => l.trim()).map(line => {
+                const p = line.split(',').map(s => s.trim());
+                return { name: p[0] || '', questions: parseInt(p[1]) || 0, marks: parseInt(p[2]) || 0 };
+            });
+        } else if (type === 'interview') {
+            phase.marks = iv('ph-interview_marks'); phase.note = fv('ph-note');
+        } else if (type === 'document') {
+            phase.documents = fv('ph-doc_list').split('\n').map(s => s.trim()).filter(Boolean);
+        } else { const note = fv('ph-note'); if (note) phase.note = note; }
+        phases.push(phase);
+    });
+    return phases;
+}
+
+function addLink() {
+    document.getElementById('links-empty') && (document.getElementById('links-empty').style.display = 'none');
+    document.getElementById('links-container').appendChild(document.getElementById('link-template').content.cloneNode(true));
+}
+function removeLink(btn) {
+    btn.closest('.ex-link-row').remove();
+    if (!document.querySelector('#links-container .ex-link-row')) document.getElementById('links-empty').style.display = '';
+}
+function addPhase() {
+    document.getElementById('phases-empty') && (document.getElementById('phases-empty').style.display = 'none');
+    document.getElementById('phases-container').appendChild(document.getElementById('phase-template').content.cloneNode(true));
+    updatePhaseBadges();
+    toggleExPhaseFields(document.getElementById('phases-container').lastElementChild.querySelector('.ph-type'));
+}
+function removePhase(btn) {
+    btn.closest('.ex-phase-row').remove();
+    if (!document.querySelector('#phases-container .ex-phase-row')) document.getElementById('phases-empty').style.display = '';
+    updatePhaseBadges();
+}
+function updatePhaseBadges() {
+    document.querySelectorAll('#phases-container .ex-phase-badge').forEach((b, i) => b.textContent = i + 1);
+}
+function toggleExPhaseFields(sel) {
+    const row = sel.closest('.ex-phase-row');
+    row.querySelectorAll('.ex-phase-extra').forEach(el => el.style.display = 'none');
+    const match = row.querySelector('.ex-phase-extra.' + sel.value);
+    if (match) match.style.display = '';
+}
 </script>
 
 <style>
 .section-header--indigo{background:linear-gradient(90deg,#4338ca,#6366f1)}
+.section-header--slate{background:linear-gradient(90deg,#334155,#475569)}
+.section-header--orange{background:linear-gradient(90deg,#d97706,#f59e0b)}
+.btn-add-inline{margin-left:auto;background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.4);color:#fff;border-radius:.375rem;padding:.25rem .7rem;font-size:.8rem;cursor:pointer;font-weight:600}
+.btn-add-inline:hover{background:rgba(255,255,255,.3)}
+.empty-state{text-align:center;padding:1.5rem;color:#9ca3af}
+.empty-icon{font-size:2rem;margin-bottom:.4rem}
+.empty-state p{font-size:.85rem;margin:.2rem 0 .65rem}
+.ex-link-row{border:1px solid #e5e7eb;border-radius:.5rem;padding:.6rem .75rem;margin-bottom:.5rem;background:#fff}
+.ex-phase-row{border:1px solid #e5e7eb;border-radius:.5rem;margin-bottom:.75rem;overflow:hidden;background:#fafafa}
+.ex-phase-header{display:flex;align-items:flex-end;gap:.75rem;padding:.75rem;background:#fff;border-bottom:1px solid #f3f4f6}
+.ex-phase-badge{width:26px;height:26px;background:#f59e0b;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;flex-shrink:0;margin-bottom:.2rem}
+.ex-phase-extra{display:block}
+.ex-phase-detail{padding:.75rem;background:#fafafa;border-top:1px solid #f3f4f6}
+.ex-btn-remove{background:none;border:none;color:#d1d5db;cursor:pointer;font-size:.85rem;padding:.3rem;border-radius:.25rem;transition:color .15s;margin-bottom:.2rem}
+.ex-btn-remove:hover{color:#ef4444}
 /* ── Page header ─────────────────────────────────── */
 .page-header{margin-bottom:1.5rem}
 .back-link{font-size:.8rem;color:#6b7280;text-decoration:none}

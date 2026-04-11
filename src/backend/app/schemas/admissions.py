@@ -1,4 +1,4 @@
-"""Pydantic schemas for entrance exam endpoints."""
+"""Pydantic schemas for admission endpoints."""
 
 import uuid
 from datetime import date, datetime
@@ -13,7 +13,7 @@ EXAM_STREAMS = Literal[
 EXAM_STATUSES = Literal["upcoming", "active", "completed", "cancelled"]
 
 
-class EntranceExamCreateRequest(BaseModel):
+class AdmissionCreateRequest(BaseModel):
     exam_name: str = Field(min_length=1, max_length=500)
     conducting_body: str = Field(min_length=1, max_length=255)
     counselling_body: str | None = None
@@ -39,7 +39,7 @@ class EntranceExamCreateRequest(BaseModel):
     status: EXAM_STATUSES = "active"
 
 
-class EntranceExamUpdateRequest(BaseModel):
+class AdmissionUpdateRequest(BaseModel):
     exam_name: str | None = Field(None, min_length=1, max_length=500)
     conducting_body: str | None = None
     counselling_body: str | None = None
@@ -65,7 +65,7 @@ class EntranceExamUpdateRequest(BaseModel):
     status: EXAM_STATUSES | None = None
 
 
-class EntranceExamResponse(BaseModel):
+class AdmissionResponse(BaseModel):
     id: uuid.UUID
     slug: str
     exam_name: str
@@ -98,7 +98,7 @@ class EntranceExamResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class EntranceExamListItem(BaseModel):
+class AdmissionListItem(BaseModel):
     id: uuid.UUID
     slug: str
     exam_name: str

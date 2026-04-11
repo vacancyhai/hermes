@@ -1,4 +1,4 @@
-"""EntranceExam model — maps to `entrance_exams` table."""
+"""Admission model — maps to `admissions` table."""
 
 import uuid
 from datetime import date, datetime
@@ -11,8 +11,8 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 _CASCADE_ALL_DELETE = "all, delete-orphan"
 
 
-class EntranceExam(Base):
-    __tablename__ = "entrance_exams"
+class Admission(Base):
+    __tablename__ = "admissions"
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
@@ -62,19 +62,19 @@ class EntranceExam(Base):
 
     admit_cards = relationship(
         "AdmitCard",
-        back_populates="exam",
+        back_populates="admission",
         cascade=_CASCADE_ALL_DELETE,
         order_by="AdmitCard.phase_number",
     )
     answer_keys = relationship(
         "AnswerKey",
-        back_populates="exam",
+        back_populates="admission",
         cascade=_CASCADE_ALL_DELETE,
         order_by="AnswerKey.phase_number",
     )
     results = relationship(
         "Result",
-        back_populates="exam",
+        back_populates="admission",
         cascade=_CASCADE_ALL_DELETE,
         order_by="Result.phase_number",
     )

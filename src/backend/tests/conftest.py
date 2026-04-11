@@ -33,7 +33,7 @@ _TRUNCATE_TABLES = [
     "answer_keys",
     "results",
     "jobs",
-    "entrance_exams",
+    "admissions",
     "user_profiles",
     "users",
     "admin_users",
@@ -269,9 +269,9 @@ async def draft_job(client: AsyncClient, admin_token: str):
 
 @pytest_asyncio.fixture
 async def active_exam(client: AsyncClient, admin_token: str):
-    """Create an active entrance exam and return the full response dict."""
+    """Create an active admission and return the full response dict."""
     resp = await client.post(
-        "/api/v1/admin/entrance-exams",
+        "/api/v1/admin/admissions",
         json={
             "exam_name": f"Test Exam {uuid.uuid4().hex[:6]}",
             "conducting_body": "NTA",

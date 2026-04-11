@@ -578,7 +578,7 @@ Admin/Operator → Admin Frontend (port 8081)
 │ Click [Watch] button               │
 │ POST /api/v1/jobs/{id}/watch       │
 │   OR                               │
-│ POST /api/v1/entrance-exams/       │
+│ POST /api/v1/admissions/       │
 │      {id}/watch                    │
 └────┬───────────────────────────────┘
      │
@@ -771,7 +771,7 @@ Admin/Operator → Admin Frontend (port 8081)
                                                                           └────────────────────┘
                                                                                     │
                                                                           ┌─────────▼──────────┐
-                                                                          │   entrance_exams   │
+                                                                          │   admissions   │
                                                                           │  - id UUID PK      │
                                                                           │  - exam_name       │
                                                                           │  - conducting_body │
@@ -795,7 +795,7 @@ jobs:
   - search_vector GIN (full-text)
   - slug (unique)
 
-entrance_exams:
+admissions:
   - status, exam_date
   - search_vector GIN (full-text)
   - slug (unique)
@@ -890,7 +890,7 @@ SCHEDULED TASKS (beat_schedule in celery_app.py):
 
 6. app.tasks.jobs.update_exam_statuses
    Run: Daily 02:35 UTC
-   Purpose: Set status='completed' on entrance exams past exam_date
+   Purpose: Set status='completed' on admissions past exam_date
 
 7. app.tasks.seo.generate_sitemap
    Run: Daily 04:00 UTC
@@ -1365,21 +1365,21 @@ Suspicious Activity Detected
 
 ---
 
-## 12. Entrance Exam Data Model
+## 12. Admission Data Model
 
-Entrance exams (NEET, JEE, CLAT, CAT, GATE etc.) are stored in a
-separate `entrance_exams` table, distinct from `jobs`. The three
+Admissions (NEET, JEE, CLAT, CAT, GATE etc.) are stored in a
+separate `admissions` table, distinct from `jobs`. The three
 document tables (`admit_cards`, `answer_keys`, `results`) are
-**polymorphic** — each row links to either a job or an entrance exam.
+**polymorphic** — each row links to either a job or an admission.
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────┐
-│              ENTRANCE EXAM DATA MODEL                                    │
+│              ADMISSION DATA MODEL                                        │
 └──────────────────────────────────────────────────────────────────────────┘
 
   WHY SEPARATE?
   ─────────────
-  jobs fields                   entrance_exams fields
+  jobs fields                   admissions fields
   ─────────────────────         ─────────────────────────────
   total_vacancies        ≠      seats_info (seats by college)
   salary_initial/max     ≠      (no salary — it's education)
@@ -1392,7 +1392,7 @@ document tables (`admit_cards`, `answer_keys`, `results`) are
   ─────────────────
 
   ┌──────────────────────────┐         ┌──────────────────────────────┐
-  │         jobs             │         │       entrance_exams         │
+  │         jobs             │         │       admissions         │
   │  (Government Jobs)       │         │  (NEET/JEE/CLAT/CAT/GATE)   │
   │                          │         │                              │
   │  id UUID PK              │         │  id UUID PK                  │
@@ -1436,7 +1436,7 @@ document tables (`admit_cards`, `answer_keys`, `results`) are
   SEEDED DATA (current):
   ──────────────────────
   jobs:  10 jobs + (admit_cards/answer_keys/results linked via job_id FK)
-  entrance_exams: 9 exams
+  admissions: 9 exams
     • NEET PG 2026 (medical, pg)     → 3 phase docs (admit card + answer key + result)
     • NEET UG 2026 (medical, ug)     → 4 phase docs
     • JEE Main 2026 (engineering)    → 7 phase docs (2 sessions, each with docs)
@@ -1464,10 +1464,10 @@ listing page, gradient hero colour, and detail page design.
   SECTION NAV STRIP (shown on all pages):
   ─────────────────────────────────────────
   ┌───────────┬─────────────┬──────────────┬───────────┬──────────────┐
-  │ 💼 Jobs   │ 📄 Admit    │ ✏️ Answer    │ 🏆 Results│ 🎓 Entrance  │
-  │     /     │  Cards      │   Keys       │ /results  │    Exams     │
-  │           │/admit-cards │/answer-keys  │           │/entrance-    │
-  │           │             │              │           │  exams       │
+  │ 💼 Jobs   │ 📄 Admit    │ ✏️ Answer    │ 🏆 Results│ 🎓 Admissions│
+  │     /     │  Cards      │   Keys       │ /results  │              │
+  │           │/admit-cards │/answer-keys  │           │ /admissions  │
+  │           │             │              │           │              │
   └───────────┴─────────────┴──────────────┴───────────┴──────────────┘
   Active section highlighted with white border-bottom + white text
 
@@ -1479,7 +1479,7 @@ listing page, gradient hero colour, and detail page design.
   Admit Cards   /admit-cards     Blue → Sky Blue        admit_cards
   Answer Keys   /answer-keys     Brown → Amber          answer_keys
   Results       /results         Dark Green → Green     results
-  Entrance Exams /entrance-exams  Dark Purple → Purple   entrance_exams
+  Admissions /admissions  Dark Purple → Purple   admissions
 
   CARD ACCENT (list pages — section-specific CSS class):
   ────────────────────────────────────
@@ -1487,18 +1487,18 @@ listing page, gradient hero colour, and detail page design.
   Admit Cards section  → blue left border
   Answer Keys section  → amber left border
   Results section      → green left border
-  Entrance Exams       → purple left border
+  Admissions       → purple left border
 
   DETAIL PAGE FLOW:
   ─────────────────
-  User clicks job card                  User clicks entrance exam card
+  User clicks job card                  User clicks admission card
         │                                       │
         ▼                                       ▼
-  GET /jobs/<slug>                       GET /entrance-exams/<slug>
+  GET /jobs/<slug>                       GET /admissions/<slug>
         │                                       │
         ▼                                       ▼
-  Flask renders job_detail.html          Flask renders entrance_exam_detail.html
-  (type-aware hero: hero-job /           (hero-entrance-exam: purple gradient)
+  Flask renders job_detail.html          Flask renders admission_detail.html
+  (type-aware hero: hero-job /           (hero-admission: purple gradient)
    hero-admit / hero-answer /
    hero-result)
         │                                       │
@@ -1517,7 +1517,7 @@ listing page, gradient hero colour, and detail page design.
 ## 15. HTMX Phase Document Tab Flow
 
 Phase documents (admit cards, answer keys, results) are loaded on-demand
-via HTMX into tabbed panels on job and entrance exam detail pages.
+via HTMX into tabbed panels on job and admission detail pages.
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────┐
@@ -1578,7 +1578,7 @@ via HTMX into tabbed panels on job and entrance exam detail pages.
         ▼
   FastAPI queries job_admit_cards WHERE job_id={id}
         │                 OR
-                    WHERE exam_id={id}  ← for entrance_exam_detail.html
+                    WHERE exam_id={id}  ← for admission_detail.html
         │
         ▼
   Returns list of admit card rows (JSON)
@@ -1629,5 +1629,5 @@ via HTMX into tabbed panels on job and entrance exam detail pages.
 user registration, job creation, matching & notifications, application
 tracking, priority job updates, admin dashboard, database schema,
 Celery task scheduling, user journey map, RBAC enforcement, JWT token
-lifecycle, entrance exam data model, 5-section frontend navigation,
+lifecycle, admission data model, 5-section frontend navigation,
 and HTMX phase document tab loading.*

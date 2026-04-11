@@ -26,9 +26,9 @@
         </td>
         <td>
             <div style="display:flex;gap:.4rem;flex-wrap:wrap">
-                <a href="/entrance-exams/{{ exam.id }}/edit" class="btn btn-sm btn-outline">Edit</a>
+                <a href="/admissions/{{ exam.id }}/edit" class="btn btn-sm btn-outline">Edit</a>
                 {% if session.get('admin_role') == 'admin' %}
-                <form method="POST" action="/entrance-exams/{{ exam.id }}/delete"
+                <form method="POST" action="/admissions/{{ exam.id }}/delete"
                       onsubmit="return confirm('Delete {{ exam.exam_name }}? This will also delete all linked phase documents.')">
                     <button type="submit" class="btn btn-sm btn-danger">Delete</button>
                 </form>
@@ -43,7 +43,7 @@
 {% if pagination.get('has_more') %}
 <div style="text-align:center;padding:1rem 0">
     <button class="btn btn-outline"
-            hx-get="/entrance-exams/list?offset={{ pagination.offset + pagination.limit }}"
+            hx-get="/admissions/list?offset={{ pagination.offset + pagination.limit }}"
             hx-target="#exam-table"
             hx-swap="beforeend">
         Load more
@@ -53,7 +53,7 @@
 
 {% else %}
 <p style="color:#9ca3af;padding:2rem 0;text-align:center">
-    No entrance exams found.
-    <a href="/entrance-exams/new">Create the first exam →</a>
+    No admissions found.
+    <a href="/admissions/new">Create the first exam →</a>
 </p>
 {% endif %}

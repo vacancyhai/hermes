@@ -1,4 +1,4 @@
-"""Integration tests for entrance exam endpoints — public list/detail + admin CRUD."""
+"""Integration tests for admission endpoints — public list/detail + admin CRUD."""
 
 import uuid
 
@@ -16,7 +16,7 @@ def auth_header(token: str) -> dict:
 
 
 async def test_list_exams(client: AsyncClient, active_exam):
-    resp = await client.get("/api/v1/entrance-exams")
+    resp = await client.get("/api/v1/admissions")
     assert resp.status_code == 200
     data = resp.json()
     assert "data" in data
@@ -25,7 +25,7 @@ async def test_list_exams(client: AsyncClient, active_exam):
 
 
 async def test_list_exams_pagination(client: AsyncClient, active_exam):
-    resp = await client.get("/api/v1/entrance-exams?limit=1&offset=0")
+    resp = await client.get("/api/v1/admissions?limit=1&offset=0")
     assert resp.status_code == 200
     data = resp.json()
     assert len(data["data"]) <= 1
@@ -34,16 +34,14 @@ async def test_list_exams_pagination(client: AsyncClient, active_exam):
 
 async def test_list_exams_filter_by_stream(client: AsyncClient, active_exam):
     stream = active_exam["stream"]
-    resp = await client.get(f"/api/v1/entrance-exams?stream={stream}")
+    resp = await client.get(f"/api/v1/admissions?stream={stream}")
     assert resp.status_code == 200
     for item in resp.json()["data"]:
         assert item["stream"] == stream
 
 
 async def test_list_exams_fts_search(client: AsyncClient, active_exam):
-    resp = await client.get(
-        f"/api/v1/entrance-exams?q={active_exam['conducting_body']}"
-    )
+    resp = await client.get(f"/api/v1/admissions?q={active_exam['conducting_body']}")
     assert resp.status_code == 200
 
 
@@ -51,11 +49,11 @@ async def test_list_exams_fts_search(client: AsyncClient, active_exam):
 
 
 async def test_get_exam_by_id(client: AsyncClient, active_exam):
-    exam_id = active_exam["id"]
-    resp = await client.get(f"/api/v1/entrance-exams/{exam_id}")
+    admission_id = active_exam["id"]
+    resp = await client.get(f"/api/v1/admissions/{admission_id}")
     assert resp.status_code == 200
     data = resp.json()
-    assert data["id"] == exam_id
+    assert data["id"] == admission_id
     assert "admit_cards" in data
     assert "answer_keys" in data
     assert "results" in data
@@ -63,7 +61,7 @@ async def test_get_exam_by_id(client: AsyncClient, active_exam):
 
 async def test_get_exam_not_found(client: AsyncClient):
     fake_id = uuid.uuid4()
-    resp = await client.get(f"/api/v1/entrance-exams/{fake_id}")
+    resp = await client.get(f"/api/v1/admissions/{fake_id}")
     assert resp.status_code == 404
 
 
@@ -72,7 +70,7 @@ async def test_get_exam_not_found(client: AsyncClient):
 
 async def test_admin_list_exams(client: AsyncClient, admin_token: str, active_exam):
     resp = await client.get(
-        "/api/v1/admin/entrance-exams", headers=auth_header(admin_token)
+        "/api/v1/admin/admissions", headers=auth_header(admin_token)
     )
     assert resp.status_code == 200
     assert resp.json()["pagination"]["total"] >= 1
@@ -82,7 +80,7 @@ async def test_admin_list_exams_filter_by_status(
     client: AsyncClient, admin_token: str, active_exam
 ):
     resp = await client.get(
-        "/api/v1/admin/entrance-exams?status=active", headers=auth_header(admin_token)
+        "/api/v1/admin/admissions?status=active", headers=auth_header(admin_token)
     )
     assert resp.status_code == 200
     for item in resp.json()["data"]:
@@ -90,7 +88,7 @@ async def test_admin_list_exams_filter_by_status(
 
 
 async def test_admin_list_exams_unauthenticated(client: AsyncClient):
-    resp = await client.get("/api/v1/admin/entrance-exams")
+    resp = await client.get("/api/v1/admin/admissions")
     assert resp.status_code in (401, 403)
 
 
@@ -99,7 +97,7 @@ async def test_admin_list_exams_unauthenticated(client: AsyncClient):
 
 async def test_admin_create_exam(client: AsyncClient, admin_token: str):
     resp = await client.post(
-        "/api/v1/admin/entrance-exams",
+        "/api/v1/admin/admissions",
         json={
             "exam_name": f"JEE Main {uuid.uuid4().hex[:4]}",
             "conducting_body": "NTA",
@@ -118,12 +116,12 @@ async def test_admin_create_exam(client: AsyncClient, admin_token: str):
 async def test_admin_create_exam_slug_unique(client: AsyncClient, admin_token: str):
     name = f"Slug Exam {uuid.uuid4().hex[:4]}"
     resp1 = await client.post(
-        "/api/v1/admin/entrance-exams",
+        "/api/v1/admin/admissions",
         json={"exam_name": name, "conducting_body": "NTA", "status": "upcoming"},
         headers=auth_header(admin_token),
     )
     resp2 = await client.post(
-        "/api/v1/admin/entrance-exams",
+        "/api/v1/admin/admissions",
         json={"exam_name": name, "conducting_body": "NTA", "status": "upcoming"},
         headers=auth_header(admin_token),
     )
@@ -134,7 +132,7 @@ async def test_admin_create_exam_slug_unique(client: AsyncClient, admin_token: s
 
 async def test_operator_can_create_exam(client: AsyncClient, operator_token: str):
     resp = await client.post(
-        "/api/v1/admin/entrance-exams",
+        "/api/v1/admin/admissions",
         json={
             "exam_name": f"Operator Exam {uuid.uuid4().hex[:4]}",
             "conducting_body": "NTA",
@@ -149,9 +147,9 @@ async def test_operator_can_create_exam(client: AsyncClient, operator_token: str
 
 
 async def test_admin_update_exam(client: AsyncClient, admin_token: str, active_exam):
-    exam_id = active_exam["id"]
+    admission_id = active_exam["id"]
     resp = await client.put(
-        f"/api/v1/admin/entrance-exams/{exam_id}",
+        f"/api/v1/admin/admissions/{admission_id}",
         json={"status": "completed"},
         headers=auth_header(admin_token),
     )
@@ -162,7 +160,7 @@ async def test_admin_update_exam(client: AsyncClient, admin_token: str, active_e
 async def test_admin_update_exam_not_found(client: AsyncClient, admin_token: str):
     fake_id = uuid.uuid4()
     resp = await client.put(
-        f"/api/v1/admin/entrance-exams/{fake_id}",
+        f"/api/v1/admin/admissions/{fake_id}",
         json={"status": "completed"},
         headers=auth_header(admin_token),
     )
@@ -174,7 +172,7 @@ async def test_admin_update_exam_not_found(client: AsyncClient, admin_token: str
 
 async def test_admin_delete_exam(client: AsyncClient, admin_token: str):
     create_resp = await client.post(
-        "/api/v1/admin/entrance-exams",
+        "/api/v1/admin/admissions",
         json={
             "exam_name": f"Delete Me {uuid.uuid4().hex[:4]}",
             "conducting_body": "NTA",
@@ -183,10 +181,10 @@ async def test_admin_delete_exam(client: AsyncClient, admin_token: str):
         headers=auth_header(admin_token),
     )
     assert create_resp.status_code == 201
-    exam_id = create_resp.json()["id"]
+    admission_id = create_resp.json()["id"]
 
     resp = await client.delete(
-        f"/api/v1/admin/entrance-exams/{exam_id}",
+        f"/api/v1/admin/admissions/{admission_id}",
         headers=auth_header(admin_token),
     )
     assert resp.status_code == 204
@@ -195,7 +193,7 @@ async def test_admin_delete_exam(client: AsyncClient, admin_token: str):
 async def test_admin_delete_exam_not_found(client: AsyncClient, admin_token: str):
     fake_id = uuid.uuid4()
     resp = await client.delete(
-        f"/api/v1/admin/entrance-exams/{fake_id}",
+        f"/api/v1/admin/admissions/{fake_id}",
         headers=auth_header(admin_token),
     )
     assert resp.status_code == 404

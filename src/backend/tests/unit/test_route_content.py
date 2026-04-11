@@ -13,7 +13,7 @@ def _make_card(**kwargs):
     c = MagicMock()
     c.id = uuid.uuid4()
     c.job_id = kwargs.get("job_id", None)
-    c.exam_id = kwargs.get("exam_id", None)
+    c.admission_id = kwargs.get("admission_id", None)
     c.phase_number = None
     c.title = "Test Admit Card"
     c.download_url = "https://example.com/card.pdf"
@@ -32,7 +32,7 @@ def _make_key(**kwargs):
     k = MagicMock()
     k.id = uuid.uuid4()
     k.job_id = kwargs.get("job_id", None)
-    k.exam_id = kwargs.get("exam_id", None)
+    k.admission_id = kwargs.get("admission_id", None)
     k.phase_number = None
     k.title = "Test Answer Key"
     k.answer_key_type = "provisional"
@@ -51,7 +51,7 @@ def _make_result(**kwargs):
     r = MagicMock()
     r.id = uuid.uuid4()
     r.job_id = kwargs.get("job_id", None)
-    r.exam_id = kwargs.get("exam_id", None)
+    r.admission_id = kwargs.get("admission_id", None)
     r.phase_number = None
     r.title = "Test Result"
     r.result_type = "final"
@@ -161,12 +161,12 @@ async def test_validate_parent_job_found_passes():
 async def test_validate_parent_exam_found_passes():
     from app.routers.content import _validate_document_parent
 
-    exam_id = uuid.uuid4()
+    admission_id = uuid.uuid4()
     db = AsyncMock()
     res = MagicMock()
-    res.scalar.return_value = exam_id
+    res.scalar.return_value = admission_id
     db.execute = AsyncMock(return_value=res)
-    await _validate_document_parent(None, exam_id, db)
+    await _validate_document_parent(None, admission_id, db)
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -257,10 +257,10 @@ async def test_get_admit_card_found_with_exam():
     from app.routers.content import get_admit_card
     from app.schemas.jobs import AdmitCardResponse
 
-    exam_id = uuid.uuid4()
-    card = _make_card(exam_id=exam_id)
+    admission_id = uuid.uuid4()
+    card = _make_card(admission_id=admission_id)
     card.exam = MagicMock()
-    card.exam.id = exam_id
+    card.admission.id = admission_id
     card.exam.slug = "neet-2025"
     card.exam.exam_name = "NEET"
     card.exam.conducting_body = "NTA"
@@ -298,7 +298,7 @@ async def test_admin_create_admit_card_both_parents_raises():
 
     body = AdmitCardCreateRequest(
         job_id=uuid.uuid4(),
-        exam_id=uuid.uuid4(),
+        admission_id=uuid.uuid4(),
         title="Card",
         download_url="https://x.com/c.pdf",
     )
@@ -456,10 +456,10 @@ async def test_get_answer_key_found_with_exam():
     from app.routers.content import get_answer_key
     from app.schemas.jobs import AnswerKeyResponse
 
-    exam_id = uuid.uuid4()
-    key = _make_key(exam_id=exam_id)
+    admission_id = uuid.uuid4()
+    key = _make_key(admission_id=admission_id)
     key.exam = MagicMock()
-    key.exam.id = exam_id
+    key.admission.id = admission_id
     key.exam.slug = "jee-2025"
     key.exam.exam_name = "JEE"
     key.exam.conducting_body = "NTA"
@@ -637,10 +637,10 @@ async def test_get_result_found_with_exam():
     from app.routers.content import get_result
     from app.schemas.jobs import ResultResponse
 
-    exam_id = uuid.uuid4()
-    res_obj = _make_result(exam_id=exam_id)
+    admission_id = uuid.uuid4()
+    res_obj = _make_result(admission_id=admission_id)
     res_obj.exam = MagicMock()
-    res_obj.exam.id = exam_id
+    res_obj.admission.id = admission_id
     res_obj.exam.slug = "clat-2025"
     res_obj.exam.exam_name = "CLAT"
     res_obj.exam.conducting_body = "NLU"

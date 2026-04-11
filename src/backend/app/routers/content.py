@@ -29,9 +29,9 @@ import uuid
 from typing import Annotated, Any
 
 from app.dependencies import get_current_user, get_db, require_operator
+from app.models.admission import Admission
 from app.models.admit_card import AdmitCard
 from app.models.answer_key import AnswerKey
-from app.models.entrance_exam import EntranceExam
 from app.models.job import Job
 from app.models.result import Result
 from app.schemas.jobs import (
@@ -96,15 +96,15 @@ def _enrich_with_parent(data: dict, obj) -> dict:
 
 async def _validate_document_parent(
     job_id: uuid.UUID | None,
-    exam_id: uuid.UUID | None,
+    admission_id: uuid.UUID | None,
     db: AsyncSession,
 ) -> None:
-    """Raise 400 unless exactly one of job_id/exam_id is provided and the parent exists."""
-    if bool(job_id) == bool(exam_id):
+    """Raise 400 unless exactly one of job_id/admission_id is provided and the parent exists."""
+    if bool(job_id) == bool(admission_id):
         detail = (
-            "Cannot specify both job_id and exam_id"
+            "Cannot specify both job_id and admission_id"
             if job_id
-            else "Must specify either job_id or exam_id"
+            else "Must specify either job_id or admission_id"
         )
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=detail)
     if job_id:
@@ -114,10 +114,10 @@ async def _validate_document_parent(
             )
     else:
         if not (
-            await db.execute(select(EntranceExam.id).where(EntranceExam.id == exam_id))
+            await db.execute(select(Admission.id).where(Admission.id == admission_id))
         ).scalar():
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Entrance exam not found"
+                status_code=status.HTTP_404_NOT_FOUND, detail="Admission not found"
             )
 
 
@@ -334,11 +334,11 @@ async def admin_create_admit_card(
     admin: Annotated[Any, Depends(require_operator)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    """Create a new admit card. Must specify either job_id or exam_id."""
-    await _validate_document_parent(body.job_id, body.exam_id, db)
+    """Create a new admit card. Must specify either job_id or admission_id."""
+    await _validate_document_parent(body.job_id, body.admission_id, db)
     doc = AdmitCard(
         job_id=body.job_id,
-        exam_id=body.exam_id,
+        admission_id=body.admission_id,
         phase_number=body.phase_number,
         title=body.title,
         download_url=body.download_url,
@@ -421,11 +421,11 @@ async def admin_create_answer_key(
     admin: Annotated[Any, Depends(require_operator)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    """Create a new answer key. Must specify either job_id or exam_id."""
-    await _validate_document_parent(body.job_id, body.exam_id, db)
+    """Create a new answer key. Must specify either job_id or admission_id."""
+    await _validate_document_parent(body.job_id, body.admission_id, db)
     doc = AnswerKey(
         job_id=body.job_id,
-        exam_id=body.exam_id,
+        admission_id=body.admission_id,
         phase_number=body.phase_number,
         title=body.title,
         answer_key_type=body.answer_key_type,
@@ -508,11 +508,11 @@ async def admin_create_result(
     admin: Annotated[Any, Depends(require_operator)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    """Create a new result. Must specify either job_id or exam_id."""
-    await _validate_document_parent(body.job_id, body.exam_id, db)
+    """Create a new result. Must specify either job_id or admission_id."""
+    await _validate_document_parent(body.job_id, body.admission_id, db)
     doc = Result(
         job_id=body.job_id,
-        exam_id=body.exam_id,
+        admission_id=body.admission_id,
         phase_number=body.phase_number,
         title=body.title,
         result_type=body.result_type,

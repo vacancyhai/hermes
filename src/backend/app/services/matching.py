@@ -2,9 +2,9 @@
 
 from datetime import date, timedelta
 
+from app.models.admission import Admission
 from app.models.admit_card import AdmitCard
 from app.models.answer_key import AnswerKey
-from app.models.entrance_exam import EntranceExam
 from app.models.job import Job
 from app.models.result import Result
 from app.models.user_profile import UserProfile
@@ -190,7 +190,7 @@ async def get_recommended_jobs(
 
 
 async def _get_watched_ids(user_id, db: AsyncSession) -> tuple[list, list]:
-    """Return (watched_job_ids, watched_exam_ids) for a user."""
+    """Return (watched_job_ids, watched_admission_ids) for a user."""
     from app.models.user_watch import UserWatch
 
     result = await db.execute(
@@ -200,8 +200,8 @@ async def _get_watched_ids(user_id, db: AsyncSession) -> tuple[list, list]:
     )
     rows = result.all()
     job_ids = [r.entity_id for r in rows if r.entity_type == "job"]
-    exam_ids = [r.entity_id for r in rows if r.entity_type == "exam"]
-    return job_ids, exam_ids
+    admission_ids = [r.entity_id for r in rows if r.entity_type == "exam"]
+    return job_ids, admission_ids
 
 
 async def get_recommended_admit_cards(
@@ -211,12 +211,12 @@ async def get_recommended_admit_cards(
     offset: int = 0,
 ) -> tuple[list, int]:
     """Return admit cards for jobs/exams the user is watching."""
-    job_ids, exam_ids = await _get_watched_ids(user_id, db)
-    if not job_ids and not exam_ids:
+    job_ids, admission_ids = await _get_watched_ids(user_id, db)
+    if not job_ids and not admission_ids:
         return [], 0
     predicate = or_(
         AdmitCard.job_id.in_(job_ids) if job_ids else False,
-        AdmitCard.exam_id.in_(exam_ids) if exam_ids else False,
+        AdmitCard.admission_id.in_(admission_ids) if admission_ids else False,
     )
     total = (
         await db.execute(select(func.count(AdmitCard.id)).where(predicate))
@@ -238,12 +238,12 @@ async def get_recommended_answer_keys(
     offset: int = 0,
 ) -> tuple[list, int]:
     """Return answer keys for jobs/exams the user is watching."""
-    job_ids, exam_ids = await _get_watched_ids(user_id, db)
-    if not job_ids and not exam_ids:
+    job_ids, admission_ids = await _get_watched_ids(user_id, db)
+    if not job_ids and not admission_ids:
         return [], 0
     predicate = or_(
         AnswerKey.job_id.in_(job_ids) if job_ids else False,
-        AnswerKey.exam_id.in_(exam_ids) if exam_ids else False,
+        AnswerKey.admission_id.in_(admission_ids) if admission_ids else False,
     )
     total = (
         await db.execute(select(func.count(AnswerKey.id)).where(predicate))
@@ -265,12 +265,12 @@ async def get_recommended_results(
     offset: int = 0,
 ) -> tuple[list, int]:
     """Return results for jobs/exams the user is watching."""
-    job_ids, exam_ids = await _get_watched_ids(user_id, db)
-    if not job_ids and not exam_ids:
+    job_ids, admission_ids = await _get_watched_ids(user_id, db)
+    if not job_ids and not admission_ids:
         return [], 0
     predicate = or_(
         Result.job_id.in_(job_ids) if job_ids else False,
-        Result.exam_id.in_(exam_ids) if exam_ids else False,
+        Result.admission_id.in_(admission_ids) if admission_ids else False,
     )
     total = (
         await db.execute(select(func.count(Result.id)).where(predicate))
@@ -285,13 +285,13 @@ async def get_recommended_results(
     return list(result.scalars().all()), total
 
 
-async def get_recommended_entrance_exams(
+async def get_recommended_admissions(
     user_id,
     db: AsyncSession,
     limit: int = 20,
     offset: int = 0,
 ) -> tuple[list[dict], int]:
-    """Return entrance exams ranked by profile match score.
+    """Return admissions ranked by profile match score.
 
     Scoring criteria (descending priority):
       - User's reservation category is eligible:                +4
@@ -309,8 +309,8 @@ async def get_recommended_entrance_exams(
     # Base query: active exams with future (or null) exam dates
     today = date.today()
     base_filter = (
-        EntranceExam.status == "active",
-        (EntranceExam.exam_date >= today) | (EntranceExam.exam_date.is_(None)),
+        Admission.status == "active",
+        (Admission.exam_date >= today) | (Admission.exam_date.is_(None)),
     )
 
     has_prefs = profile and (
@@ -323,21 +323,21 @@ async def get_recommended_entrance_exams(
     if not has_prefs:
         # No preferences — return newest active exams using DB-level pagination
         total = (
-            await db.execute(select(func.count(EntranceExam.id)).where(*base_filter))
+            await db.execute(select(func.count(Admission.id)).where(*base_filter))
         ).scalar() or 0
         result = await db.execute(
-            select(EntranceExam)
+            select(Admission)
             .where(*base_filter)
-            .order_by(EntranceExam.created_at.desc())
+            .order_by(Admission.created_at.desc())
             .offset(offset)
             .limit(limit)
         )
         return list(result.scalars().all()), total
 
     result = await db.execute(
-        select(EntranceExam)
+        select(Admission)
         .where(*base_filter)
-        .order_by(EntranceExam.created_at.desc())
+        .order_by(Admission.created_at.desc())
         .limit(CANDIDATE_LIMIT)
     )
     exams = result.scalars().all()
@@ -349,7 +349,7 @@ async def get_recommended_entrance_exams(
     user_age = _user_age(profile.date_of_birth)
     recency_cutoff = today - timedelta(days=RECENCY_DAYS)
 
-    scored: list[tuple[int, date | None, EntranceExam]] = []
+    scored: list[tuple[int, date | None, Admission]] = []
     for exam in exams:
         score = 0
 

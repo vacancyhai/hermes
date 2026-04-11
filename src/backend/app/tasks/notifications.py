@@ -242,7 +242,7 @@ def send_deadline_reminders():
 
     Covers two groups:
       1. Users watching a job via user_watches
-      2. Users watching an entrance exam via user_watches
+      2. Users watching an admission via user_watches
 
     Runs daily at 08:00 UTC via Beat schedule.
     Delegates to smart_notify for multi-channel delivery.
@@ -314,7 +314,7 @@ def send_deadline_reminders():
                     """
                     SELECT uw.user_id, ee.id, ee.exam_name, ee.slug, ee.conducting_body, ee.application_end
                     FROM user_watches uw
-                    JOIN entrance_exams ee ON ee.id = uw.entity_id
+                    JOIN admissions ee ON ee.id = uw.entity_id
                     WHERE uw.entity_type = 'exam'
                       AND ee.application_end = :target_date
                       AND ee.status != 'cancelled'
@@ -325,7 +325,7 @@ def send_deadline_reminders():
 
             for (
                 user_id,
-                exam_id,
+                admission_id,
                 exam_name,
                 slug,
                 conducting_body,
@@ -336,7 +336,7 @@ def send_deadline_reminders():
                     text(
                         "SELECT 1 FROM notifications WHERE user_id=:uid AND entity_id=:eid AND type=:t LIMIT 1"
                     ),
-                    {"uid": str(user_id), "eid": str(exam_id), "t": ntype},
+                    {"uid": str(user_id), "eid": str(admission_id), "t": ntype},
                 ).fetchone()
                 if existing:
                     continue
@@ -351,8 +351,8 @@ def send_deadline_reminders():
                     notification_type=ntype,
                     priority=priority,
                     entity_type="exam",
-                    entity_id=str(exam_id),
-                    action_url=f"/entrance-exams/{slug}",
+                    entity_id=str(admission_id),
+                    action_url=f"/admissions/{slug}",
                     email_template="deadline_reminder.html",
                     email_context={
                         "title": title,
@@ -392,14 +392,14 @@ def notify_watchers_on_update(entity_type: str, entity_id: str):
         else:
             row = session.execute(
                 text(
-                    "SELECT exam_name, slug, conducting_body, application_end FROM entrance_exams WHERE id = :eid"
+                    "SELECT exam_name, slug, conducting_body, application_end FROM admissions WHERE id = :eid"
                 ),
                 {"eid": entity_id},
             ).fetchone()
             if not row:
                 return
             name, slug, org, _ = row
-            action_url = f"/entrance-exams/{slug}"
+            action_url = f"/admissions/{slug}"
             title = f"Update: {name}"
             msg = f"{name} by {org} has been updated."
 

@@ -1,5 +1,5 @@
 {% extends "shared/base.html" %}
-{% block title %}Entrance Exams 2025 — Hermes{% endblock %}
+{% block title %}Admissions 2025 — Hermes{% endblock %}
 
 {% block head %}
 <style>
@@ -21,7 +21,7 @@
 
 {% block content %}
 <div class="page-hero">
-    <h1>Entrance Exams</h1>
+    <h1>Admissions</h1>
     <p>NEET, JEE, CLAT, CAT, GATE and more — track applications and exam dates</p>
 </div>
 
@@ -54,7 +54,7 @@
     {% for exam in recommended_exams %}
     <div class="exam-card">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem;margin-bottom:.35rem">
-            <h3><a href="/entrance-exams/{{ exam.id }}">{{ exam.exam_name }}</a></h3>
+            <h3><a href="/admissions/{{ exam.id }}">{{ exam.exam_name }}</a></h3>
         </div>
         <div class="exam-card-meta">
             <span>🏛 {{ exam.conducting_body }}</span>
@@ -71,13 +71,13 @@
             </div>
             <div style="display:flex;gap:.4rem;align-items:center">
                 {% set is_watching = exam.id|string in watched_exam_ids %}
-                <form method="post" action="/entrance-exams/{{ exam.id }}/{{ 'unwatch' if is_watching else 'watch' }}" style="display:inline">
+                <form method="post" action="/admissions/{{ exam.id }}/{{ 'unwatch' if is_watching else 'watch' }}" style="display:inline">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <button type="submit" class="{{ 'btn-watching' if is_watching else 'btn btn-outline' }}" style="font-size:.8rem;padding:.3rem .7rem">
                         {{ '★ Watching' if is_watching else '☆ Watch' }}
                     </button>
                 </form>
-                <a href="/entrance-exams/{{ exam.id }}" class="btn btn-outline" style="font-size:.8rem;padding:.3rem .7rem">View Details →</a>
+                <a href="/admissions/{{ exam.id }}" class="btn btn-outline" style="font-size:.8rem;padding:.3rem .7rem">View Details →</a>
             </div>
         </div>
     </div>
@@ -95,7 +95,7 @@
 </div>
 
 <div id="exam-list">
-    {% include "entrance_exams/_cards.html" %}
+    {% include "admissions/_cards.html" %}
 </div>
 
 </div><!-- end all-exams tab -->

@@ -5,10 +5,10 @@
 {% endblock %}
 
 {% block content %}
-<a href="/entrance-exams" class="back-link">← Back to Entrance Exams</a>
+<a href="/admissions" class="back-link">← Back to Admissions</a>
 
 <!-- Hero -->
-<div class="detail-hero hero-entrance-exam">
+<div class="detail-hero hero-admission">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.75rem;flex-wrap:wrap">
         <div style="flex:1;min-width:0">
             <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.5rem">
@@ -36,14 +36,14 @@
 <div class="action-bar">
     {% if session.get('token') %}
         {% if watching %}
-        <form method="post" action="/entrance-exams/{{ exam.id }}/unwatch" style="display:inline">
+        <form method="post" action="/admissions/{{ exam.id }}/unwatch" style="display:inline">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <button type="submit" class="share-btn" style="background:#ede9fe;color:#5b21b6;border-color:#c4b5fd">
                 ★ Watching — Remove
             </button>
         </form>
         {% else %}
-        <form method="post" action="/entrance-exams/{{ exam.id }}/watch" style="display:inline">
+        <form method="post" action="/admissions/{{ exam.id }}/watch" style="display:inline">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <button type="submit" class="share-btn" style="background:#ede9fe;color:#5b21b6;border-color:#c4b5fd">
                 ☆ Watch for Reminders
@@ -51,7 +51,7 @@
         </form>
         {% endif %}
     {% else %}
-    <a href="/login?next=/entrance-exams/{{ exam.id }}" class="share-btn" style="background:#ede9fe;color:#5b21b6;border-color:#c4b5fd">☆ Watch for Reminders</a>
+    <a href="/login?next=/admissions/{{ exam.id }}" class="share-btn" style="background:#ede9fe;color:#5b21b6;border-color:#c4b5fd">☆ Watch for Reminders</a>
     {% endif %}
     {% if exam.source_url %}
     <a href="{{ exam.source_url }}" target="_blank" rel="noopener" class="share-btn">🔗 Official Website</a>

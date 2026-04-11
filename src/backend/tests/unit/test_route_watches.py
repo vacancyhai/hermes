@@ -188,7 +188,7 @@ async def test_watch_exam_not_found():
     user = _make_user()
     db = _db_single(None)
     with pytest.raises(HTTPException) as exc:
-        await watch_exam(exam_id=uuid.uuid4(), current_user=(user, {}), db=db)
+        await watch_admission(admission_id=uuid.uuid4(), current_user=(user, {}), db=db)
     assert exc.value.status_code == 404
     assert "exam" in exc.value.detail.lower()
 
@@ -208,7 +208,7 @@ async def test_watch_exam_already_watching():
 
     db = AsyncMock()
     db.execute = AsyncMock(side_effect=[exam_res, watch_res])
-    result = await watch_exam(exam_id=exam.id, current_user=(user, {}), db=db)
+    result = await watch_admission(admission_id=exam.id, current_user=(user, {}), db=db)
 
     assert result["watching"] is True
     assert "already" in result["message"].lower()
@@ -233,7 +233,7 @@ async def test_watch_exam_max_watches_exceeded():
     db = AsyncMock()
     db.execute = AsyncMock(side_effect=[exam_res, no_watch_res, count_res])
     with pytest.raises(HTTPException) as exc:
-        await watch_exam(exam_id=exam.id, current_user=(user, {}), db=db)
+        await watch_admission(admission_id=exam.id, current_user=(user, {}), db=db)
     assert exc.value.status_code == 400
 
 
@@ -253,7 +253,7 @@ async def test_watch_exam_success():
 
     db = AsyncMock()
     db.execute = AsyncMock(side_effect=[exam_res, no_watch_res, count_res])
-    result = await watch_exam(exam_id=exam.id, current_user=(user, {}), db=db)
+    result = await watch_admission(admission_id=exam.id, current_user=(user, {}), db=db)
 
     assert result["watching"] is True
     db.add.assert_called_once()
@@ -273,7 +273,9 @@ async def test_unwatch_exam_not_watching():
     user = _make_user()
     db = _db_single(None)
     with pytest.raises(HTTPException) as exc:
-        await unwatch_exam(exam_id=uuid.uuid4(), current_user=(user, {}), db=db)
+        await unwatch_admission(
+            admission_id=uuid.uuid4(), current_user=(user, {}), db=db
+        )
     assert exc.value.status_code == 404
 
 
@@ -286,7 +288,9 @@ async def test_unwatch_exam_success():
     watch = _make_watch("exam", exam.id)
     db = _db_single(watch)
 
-    result = await unwatch_exam(exam_id=exam.id, current_user=(user, {}), db=db)
+    result = await unwatch_admission(
+        admission_id=exam.id, current_user=(user, {}), db=db
+    )
 
     assert result["watching"] is False
     db.delete.assert_called_once_with(watch)

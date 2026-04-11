@@ -20,7 +20,7 @@ async def test_admin_stats(client: AsyncClient, admin_token: str):
     assert "jobs" in data
     assert "users" in data
     assert "admit_cards" in data
-    assert "entrance_exams" in data
+    assert "admissions" in data
     assert "new_this_week" in data["users"]
 
 

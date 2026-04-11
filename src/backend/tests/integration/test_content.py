@@ -124,7 +124,7 @@ async def test_admin_create_admit_card_both_parents_fails(
         json={
             "title": "Both Parents",
             "job_id": active_job["id"],
-            "exam_id": active_exam["id"],
+            "admission_id": active_exam["id"],
             "download_url": "https://example.com/admit.pdf",
         },
         headers=auth_header(admin_token),
