@@ -2,7 +2,7 @@
 
 Scheduled:
   close_expired_job_listings  — Daily 02:30 UTC
-  update_exam_statuses        — Daily 02:35 UTC
+  update_admission_statuses        — Daily 02:35 UTC
 """
 
 import logging
@@ -52,12 +52,12 @@ def close_expired_job_listings(self):
 
 
 @celery.task(
-    name="app.tasks.jobs.update_exam_statuses",
+    name="app.tasks.jobs.update_admission_statuses",
     bind=True,
     max_retries=3,
     default_retry_delay=60,
 )
-def update_exam_statuses(self):
+def update_admission_statuses(self):
     """Mark admissions as 'completed' after admission_date passes. Daily 02:35 UTC."""
     try:
         with Session(sync_engine) as session:
@@ -76,7 +76,7 @@ def update_exam_statuses(self):
             completed_ids = [str(row[0]) for row in result.fetchall()]
             session.commit()
     except Exception as exc:
-        logger.error(f"update_exam_statuses failed: {exc}")
+        logger.error(f"update_admission_statuses failed: {exc}")
         raise self.retry(exc=exc)
 
     logger.info(f"Marked {len(completed_ids)} admissions as completed")

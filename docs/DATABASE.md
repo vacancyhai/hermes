@@ -72,7 +72,7 @@ docker exec hermes_backend alembic -c /app/alembic.ini upgrade head
   │ id           │        │ id               │      │ entity_type = 'job'     │
   │ email        │        │ user_id ─────────┼─────►│   entity_id → JOBS.id   │
   │ status       │        │ entity_type      │      │                         │
-  └──────┬───────┘        │ entity_id        │      │ entity_type = 'exam'    │
+  └──────┬───────┘        │ entity_id        │      │ entity_type = 'admission'    │
          │                └──────────────────┘      │   entity_id → ADMISSIONS│
          │ 1                                        └─────────────────────────┘
          ├──────────────────────┐
@@ -443,7 +443,7 @@ Tracks which jobs or admissions a user is watching for notification delivery.
 |--------|------|----------|-------------|
 | `id` | UUID (PK) | No | Auto-generated |
 | `user_id` | UUID (FK → `users.id`) | No | CASCADE delete |
-| `entity_type` | String(10) | No | `ck_user_watches_entity_type`: `job` \| `exam` |
+| `entity_type` | String(10) | No | `ck_user_watches_entity_type`: `job` \| `admission`|`ck_user_watches_entity_type`: `job` \| `admission` |
 | `entity_id` | UUID | No | ID of the watched job or admission |
 | `created_at` | DateTime | No | When the watch was created |
 

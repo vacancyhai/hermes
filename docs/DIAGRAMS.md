@@ -403,7 +403,7 @@ Admin/Operator → Admin Frontend (port 8081)
 ┌─────────────────────┐
 │ Fetch user_watches  │
 │ WHERE entity_type=  │
-│ 'job' or 'exam'     │
+│ 'job' or 'admission'│
 └─────────┬───────────┘
           │
           ▼
@@ -888,7 +888,7 @@ SCHEDULED TASKS (beat_schedule in celery_app.py):
    Run: Daily 02:30 UTC
    Purpose: Set status='expired' on jobs past application_end
 
-6. app.tasks.jobs.update_exam_statuses
+6. app.tasks.jobs.update_admission_statuses
    Run: Daily 02:35 UTC
    Purpose: Set status='completed' on admissions past admission_date
 

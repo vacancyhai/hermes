@@ -199,7 +199,7 @@ async def test_watch_admission_already_watching():
 
     user = _make_user()
     admission = _make_admission()
-    watch = _make_watch("exam", admission.id)
+    watch = _make_watch("admission", admission.id)
 
     admission_res = MagicMock()
     admission_res.scalar_one_or_none.return_value = admission
@@ -289,7 +289,7 @@ async def test_unwatch_admission_success():
 
     user = _make_user()
     admission = _make_admission()
-    watch = _make_watch("exam", admission.id)
+    watch = _make_watch("admission", admission.id)
     db = _db_single(watch)
 
     result = await unwatch_admission(
@@ -351,7 +351,7 @@ async def test_list_watched_with_admission():
 
     user = _make_user()
     admission = _make_admission()
-    watch = _make_watch("exam", admission.id)
+    watch = _make_watch("admission", admission.id)
 
     watches_res = MagicMock()
     watches_res.scalars.return_value.all.return_value = [watch]
@@ -376,7 +376,7 @@ async def test_list_watched_mixed_jobs_and_admissions():
     job = _make_job()
     admission = _make_admission()
     job_watch = _make_watch("job", job.id)
-    admission_watch = _make_watch("exam", admission.id)
+    admission_watch = _make_watch("admission", admission.id)
 
     watches_res = MagicMock()
     watches_res.scalars.return_value.all.return_value = [job_watch, admission_watch]

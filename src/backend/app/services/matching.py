@@ -200,7 +200,7 @@ async def _get_watched_ids(user_id, db: AsyncSession) -> tuple[list, list]:
     )
     rows = result.all()
     job_ids = [r.entity_id for r in rows if r.entity_type == "job"]
-    admission_ids = [r.entity_id for r in rows if r.entity_type == "exam"]
+    admission_ids = [r.entity_id for r in rows if r.entity_type == "admission"]
     return job_ids, admission_ids
 
 

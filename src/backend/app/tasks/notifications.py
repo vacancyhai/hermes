@@ -315,7 +315,7 @@ def send_deadline_reminders():
                     SELECT uw.user_id, ee.id, ee.admission_name, ee.slug, ee.conducting_body, ee.application_end
                     FROM user_watches uw
                     JOIN admissions ee ON ee.id = uw.entity_id
-                    WHERE uw.entity_type = 'exam'
+                    WHERE uw.entity_type = 'admission'
                       AND ee.application_end = :target_date
                       AND ee.status != 'cancelled'
                 """
@@ -350,7 +350,7 @@ def send_deadline_reminders():
                     message=msg,
                     notification_type=ntype,
                     priority=priority,
-                    entity_type="exam",
+                    entity_type="admission",
                     entity_id=str(admission_id),
                     action_url=f"/admissions/{slug}",
                     email_template="deadline_reminder.html",

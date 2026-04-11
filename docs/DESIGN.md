@@ -237,7 +237,7 @@ All errors follow a consistent structure:
 | 403  | `FORBIDDEN_ADMIN_ONLY`        | Admin access required                |
 | 404  | `NOT_FOUND_USER`              | User doesn't exist                   |
 | 404  | `NOT_FOUND_JOB`               | Job doesn't exist                    |
-| 404  | `NOT_FOUND_EXAM`              | Exam not found                       |
+| 404  | `NOT_FOUND_ADMISSION`         | Admission not found                  |
 | 429  | `RATE_LIMIT_EXCEEDED`         | Too many requests                    |
 | 500  | `SERVER_ERROR`                | Internal server error                |
 
@@ -333,7 +333,7 @@ For email/password and Google login, create a test user via the Firebase Console
 | `purge-expired-admin-logs`      | Daily 01:30 UTC | Delete admin logs past `expires_at`    |
 | `purge-soft-deleted-jobs`       | Daily 02:00 UTC | Hard-delete `cancelled` (manually deleted) jobs > 90 days |
 | `close-expired-job-listings`    | Daily 02:30 UTC | Set `status='expired'` on jobs past `application_end` |
-| `update-exam-statuses`          | Daily 02:35 UTC | Set `status='completed'` on admissions whose `admission_date` has passed |
+| `update-admission-statuses`     | Daily 02:35 UTC | Set `status='completed'` on admissions whose `admission_date` has passed |
 | `generate-sitemap`              | Daily 04:00 UTC | Regenerate `/sitemap.xml` — active jobs, active/upcoming admissions, all 5 section pages |
 
 ### hermes-worker (Event-Triggered Tasks)

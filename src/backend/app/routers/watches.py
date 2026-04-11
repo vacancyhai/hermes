@@ -116,7 +116,7 @@ async def watch_admission(
             status_code=status.HTTP_404_NOT_FOUND, detail="Admission not found"
         )
 
-    if await _get_watch(user.id, "exam", admission_id, db):
+    if await _get_watch(user.id, "admission", admission_id, db):
         return {"message": "Already watching this admission", "watching": True}
 
     if await _count_watches(user.id, db) >= MAX_WATCHES:
@@ -125,7 +125,7 @@ async def watch_admission(
             detail=f"Maximum {MAX_WATCHES} watched items allowed",
         )
 
-    db.add(UserWatch(user_id=user.id, entity_type="exam", entity_id=admission_id))
+    db.add(UserWatch(user_id=user.id, entity_type="admission", entity_id=admission_id))
     await db.commit()
     return {"message": "Now watching this admission", "watching": True}
 
@@ -141,7 +141,7 @@ async def unwatch_admission(
     """Stop watching an admission."""
     user, _ = current_user
 
-    watch = await _get_watch(user.id, "exam", admission_id, db)
+    watch = await _get_watch(user.id, "admission", admission_id, db)
     if not watch:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Not watching this admission"
@@ -171,7 +171,7 @@ async def list_watched(
     watches = watches_result.scalars().all()
 
     job_ids = [w.entity_id for w in watches if w.entity_type == "job"]
-    admission_ids = [w.entity_id for w in watches if w.entity_type == "exam"]
+    admission_ids = [w.entity_id for w in watches if w.entity_type == "admission"]
 
     # Fetch into lookup dicts to allow re-ordering by watch.created_at
     jobs_by_id: dict = {}
@@ -219,7 +219,7 @@ async def list_watched(
     admissions = [
         admissions_by_id[w.entity_id]
         for w in watches
-        if w.entity_type == "exam" and w.entity_id in admissions_by_id
+        if w.entity_type == "admission" and w.entity_id in admissions_by_id
     ]
 
     return {
