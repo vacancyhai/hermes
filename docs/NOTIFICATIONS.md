@@ -75,7 +75,7 @@ MAIL_DEFAULT_SENDER=noreply@hermes.com
 | Add/update phone number | `phone_added.html` | Marks phone as unverified |
 | Verify phone with OTP | `phone_verified.html` | Sets `is_phone_verified = true` |
 | Link email to phone account | `email_linked.html` | Sets Firebase email provider |
-| 7/3/1 day before `application_end` | `deadline_reminder.html` | Sent to all watchers of the job/exam |
+| 7/3/1 day before `application_end` | `deadline_reminder.html` | Sent to all watchers of the job/admission |
 | New job from followed organization | `new_job_alert.html` | **Not yet triggered** — `send_new_job_notifications` is a registered Celery task but is a no-op stub (`pass` body). Template exists for future use. |
 
 ### Admin Actions

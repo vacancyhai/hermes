@@ -570,7 +570,7 @@ Admin/Operator → Admin Frontend (port 8081)
      │
      ▼
 ┌────────────────────────────────────┐
-│ User views job or exam detail page │
+│ User views job or admission detail page │
 └────┬───────────────────────────────┘
      │
      ▼
@@ -636,12 +636,12 @@ Admin/Operator → Admin Frontend (port 8081)
 
 ┌─────────────────────────────────┐
 │ Trigger: Admin approves or     │
-│ updates a job/exam             │
+│ updates a job/admission             │
 └───────────────┬─────────────────┘
                 │
                 ▼
 ┌─────────────────────────────────┐
-│ Save updated job/exam to DB     │
+│ Save updated job/admission to DB     │
 └───────────────┬─────────────────┘
                 │
                 ▼
@@ -657,7 +657,7 @@ Admin/Operator → Admin Frontend (port 8081)
 ┌─────────────────────────────────┐
 │ Find all user_watches rows      │
 │ WHERE entity_type AND entity_id │
-│ match the updated job/exam      │
+│ match the updated job/admission      │
 └───────────────┬─────────────────┘
                 │
                 ▼
@@ -674,7 +674,7 @@ Admin/Operator → Admin Frontend (port 8081)
      │  │ Build notification:       │  │
      │  │ type='watched_item_       │  │
      │  │       updated'            │  │
-     │  │ title = job/exam title    │  │
+     │  │ title = job/admission title    │  │
      │  │ action_url = detail page │  │
      │  └────────────┬─────────────┘  │
      │               │                │
@@ -900,7 +900,7 @@ EVENT-TRIGGERED TASKS:
 ═══════════════════════
 
 • notify_watchers_on_update(entity_type, entity_id)
-  Triggered when job/exam is approved or updated → notifies all watchers
+  Triggered when job/admission is approved or updated → notifies all watchers
 
 • smart_notify(user_id, ...)
   Unified delivery entry — instant or staggered, 5 channels

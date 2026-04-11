@@ -213,7 +213,7 @@ Firebase tests mock `app.firebase.verify_id_token` via `unittest.mock.patch` —
 
 - **`routers/auth.py`** — Firebase-dependent paths covered at integration level; OAuth flows require live credentials.
 - **`routers/watches.py`** — IntegrityError rollback path covered at integration level.
-- **`routers/content.py`** — Rarely-reached branches (e.g. both-job-and-exam parent edge cases).
+- **`routers/content.py`** — Rarely-reached branches (e.g. both-job-and-admission parent edge cases).
 - **`firebase.py`** — Real `verify_id_token()` requires a live Firebase project.
 - **`routers/admin.py`** — PDF file-write + Celery dispatch block; covered at integration level.
 - **`tasks/notifications.py`** — Firebase FCM send in `smart_notify` requires `FIREBASE_CREDENTIALS_PATH`.

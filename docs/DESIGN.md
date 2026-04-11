@@ -134,7 +134,7 @@ responses from the server drive UI updates:
 | Notification badge count | `hx-get="/notifications/count" hx-trigger="every 30s"` | None |
 | Deadline countdown on job cards | Jinja2 `{{ (job.application_end - today).days }} days left` + `hx-get` refresh | None |
 | Application fee for user's category | Jinja2 reads `eligibility.fee` + user's `category` → shows "Your fee: ₹0" | None |
-| Share job / exam / card | `navigator.share({title, url})` (Web Share API); clipboard fallback on desktop | Inline `onclick` |
+| Share job / admission / card | `navigator.share({title, url})` (Web Share API); clipboard fallback on desktop | Inline `onclick` |
 
 The backend returns **HTML partials** (Jinja2 fragments) for HTMX requests
 (detected via `HX-Request` header) and **full pages** for normal requests.
@@ -199,7 +199,7 @@ All endpoints versioned under `/api/v1/`. List responses: `{ "data": [...], "pag
 | `notifications.py` | `/api/v1/notifications` | List, count, mark read, delete |
 | `admin.py` | `/api/v1/admin` | Job CRUD + approve, user mgmt, stats, audit logs, admin-user creation |
 | `content.py` | `/api/v1/admit-cards`, `/api/v1/answer-keys`, `/api/v1/results` | Public + admin CRUD for admit cards, answer keys, results |
-| `admissions.py` | `/api/v1/admissions`, `/api/v1/admin/admissions` | Public exam listing + detail; admin exam CRUD + per-exam docs |
+| `admissions.py` | `/api/v1/admissions`, `/api/v1/admin/admissions` | Public admission listing + detail; admin admission CRUD + per-admission docs |
 | `health.py` | `/api/v1/health` | Service health check |
 
 ---
@@ -341,7 +341,7 @@ For email/password and Google login, create a test user via the Firebase Console
 | Trigger                       | Task                           | Description                            |
 | ----------------------------- | ------------------------------ | -------------------------------------- |
 | Any notification needed       | `smart_notify`                 | Unified entry — instant or staggered delivery to all 5 channels |
-| Job/exam approved or updated  | `notify_watchers_on_update`    | Notify all users watching that job/exam via `smart_notify(staggered)` |
+| Job/exam approved or updated  | `notify_watchers_on_update`    | Notify all users watching that job/admission via `smart_notify(staggered)` |
 | Staggered email delivery      | `deliver_delayed_email`        | Fires after `NOTIFY_EMAIL_DELAY` — sends the email |
 | Staggered WhatsApp            | `deliver_delayed_whatsapp`     | Fires after `NOTIFY_WHATSAPP_DELAY` — sends the WhatsApp |
 | Staggered Telegram            | `deliver_delayed_telegram`     | Fires after `NOTIFY_TELEGRAM_DELAY` — sends the Telegram message |
@@ -396,7 +396,7 @@ Admin/Operator on creation page (/jobs/new, /admit-cards/new, etc.)
 │ All form fields populated with:          │
 │   ├─ Job title, org, department          │
 │   ├─ Eligibility (age, education, etc.)  │
-│   ├─ Dates (application, exam, result)   │
+│   ├─ Dates (application, admission, result)   │
 │   ├─ Vacancies, salary, fee              │
 │   └─ Source URL                          │
 │                                          │
@@ -654,7 +654,7 @@ CONSTRAINT ck_doc_source CHECK (
 Both jobs and admissions share the same detail page template structure with type-aware heroes:
 
 - **Jobs**: Navy/Blue gradient, employment-focused sections (salary, eligibility, selection process)
-- **Admissions**: Purple gradient, education-focused sections (exam pattern, counselling, seats)
+- **Admissions**: Purple gradient, education-focused sections (admission pattern, counselling, seats)
 
 ### HTMX Document Tabs
 

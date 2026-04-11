@@ -321,7 +321,7 @@ async def get_recommended_admissions(
     )
 
     if not has_prefs:
-        # No preferences — return newest active exams using DB-level pagination
+        # No preferences — return newest active admissions using DB-level pagination
         total = (
             await db.execute(select(func.count(Admission.id)).where(*base_filter))
         ).scalar() or 0

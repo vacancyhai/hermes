@@ -19,7 +19,7 @@
             <h1>{{ key.title }}</h1>
             {% if key.get('job') %}
             <div class="org">🏛 {{ key.job.organization }} · {{ key.job.job_title }}</div>
-            {% elif key.get('exam') %}
+            {% elif key.get('admission') %}
             <div class="org">🏛 {{ key.exam.conducting_body }} · {{ key.exam.exam_name }}</div>
             {% endif %}
         </div>
@@ -39,8 +39,8 @@
     {% endif %}
     {% if key.get('job') %}
     <a href="/jobs/{{ key.job.id }}" class="share-btn">View Job Details →</a>
-    {% elif key.get('exam') %}
-    <a href="/admissions/{{ key.exam.id }}" class="share-btn">View Exam Details →</a>
+    {% elif key.get('admission') %}
+    <a href="/admissions/{{ key.admission.id }}" class="share-btn">View Admission Details →</a>
     {% endif %}
     <button type="button" class="share-btn" onclick="if(navigator.share){navigator.share({title:document.title,url:window.location.href})}else{navigator.clipboard.writeText(window.location.href);alert('Link copied!')}">⬆ Share</button>
 </div>
