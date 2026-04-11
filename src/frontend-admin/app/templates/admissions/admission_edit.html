@@ -312,7 +312,7 @@ Biology, 100, 360"></textarea>
         </div>
     </div>
 
-    <input type="hidden" name="exam_details_json" id="exam_details_json">
+    <input type="hidden" name="admission_details_json" id="admission_details_json">
     <input type="hidden" name="eligibility_json" id="eligibility_json">
     <input type="hidden" name="seats_info_json" id="seats_info_json">
     <input type="hidden" name="selection_process_json" id="selection_process_json">
@@ -638,7 +638,7 @@ document.getElementById('admission-edit-form').addEventListener('submit', functi
         const p = line.split(',').map(s => s.trim());
         return { name: p[0] || '', questions: parseInt(p[1]) || 0, marks: parseInt(p[2]) || 0 };
     });
-    document.getElementById('exam_details_json').value = JSON.stringify({
+    document.getElementById('admission_details_json').value = JSON.stringify({
         mode: g('ed_mode') || null,
         duration_minutes: gi('ed_duration'),
         total_marks: gi('ed_total_marks'),
@@ -661,9 +661,9 @@ document.getElementById('admission-edit-form').addEventListener('submit', functi
     document.getElementById('selection_process_json').value = JSON.stringify(serializePhases());
     document.getElementById('links_json').value = JSON.stringify(serializeLinks());
     // Embed links into admission_details too
-    const edParsed = JSON.parse(document.getElementById('exam_details_json').value || '{}');
+    const edParsed = JSON.parse(document.getElementById('admission_details_json').value || '{}');
     edParsed.important_links = serializeLinks();
-    document.getElementById('exam_details_json').value = JSON.stringify(edParsed);
+    document.getElementById('admission_details_json').value = JSON.stringify(edParsed);
 });
 
 function serializeLinks() {

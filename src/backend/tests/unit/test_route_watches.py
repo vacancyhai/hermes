@@ -190,7 +190,7 @@ async def test_watch_admission_not_found():
     with pytest.raises(HTTPException) as exc:
         await watch_admission(admission_id=uuid.uuid4(), current_user=(user, {}), db=db)
     assert exc.value.status_code == 404
-    assert "exam" in exc.value.detail.lower()
+    assert "admission" in exc.value.detail.lower()
 
 
 @pytest.mark.asyncio

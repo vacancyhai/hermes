@@ -560,7 +560,7 @@ def new_admission():
         _set_optional(form, ["application_start", "application_end", "admission_date",
                               "result_date", "counselling_start"], payload)
         import json as _json
-        for json_field, key in [("exam_details_json", "admission_details"),
+        for json_field, key in [("admission_details_json", "admission_details"),
                                   ("eligibility_json", "eligibility"),
                                   ("seats_info_json", "seats_info"),
                                   ("selection_process_json", "selection_process")]:
@@ -596,7 +596,7 @@ def edit_admission(admission_id):
         _set_optional(form, ["application_start", "application_end", "admission_date",
                               "result_date", "counselling_start"], update)
         import json as _json
-        for json_field, key in [("exam_details_json", "admission_details"),
+        for json_field, key in [("admission_details_json", "admission_details"),
                                   ("eligibility_json", "eligibility"),
                                   ("seats_info_json", "seats_info"),
                                   ("selection_process_json", "selection_process")]:

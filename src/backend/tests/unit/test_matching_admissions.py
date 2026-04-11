@@ -28,7 +28,7 @@ def _make_admission(
 
     admission = MagicMock()
     admission.eligibility = eligibility or {}
-    exam.admission_type = admission_type
+    admission.admission_type = admission_type
     admission.stream = stream
     admission.created_at = created_at or datetime(2024, 1, 1, tzinfo=timezone.utc)
     admission.admission_date = admission_date
@@ -180,7 +180,7 @@ async def test_get_recommended_admissions_category_match():
 
 @pytest.mark.asyncio
 async def test_get_recommended_admissions_education_match():
-    """Education match: user qualifies when user_edu_rank >= exam_edu_rank."""
+    """Education match: user qualifies when user_edu_rank >= admission_edu_rank."""
     from unittest.mock import AsyncMock, MagicMock
 
     db = AsyncMock()

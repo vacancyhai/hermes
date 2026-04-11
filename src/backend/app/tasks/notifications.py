@@ -309,7 +309,7 @@ def send_deadline_reminders():
                 )
 
             # ── 2. Watch-based admission reminders ─────────────────────────────────
-            watch_exam_rows = session.execute(
+            watch_admission_rows = session.execute(
                 text(
                     """
                     SELECT uw.user_id, ee.id, ee.admission_name, ee.slug, ee.conducting_body, ee.application_end
@@ -330,7 +330,7 @@ def send_deadline_reminders():
                 slug,
                 conducting_body,
                 app_end,
-            ) in watch_exam_rows:
+            ) in watch_admission_rows:
                 ntype = f"deadline_reminder_{days_before}d"
                 existing = session.execute(
                     text(
