@@ -3,38 +3,75 @@
 
 {% block head %}
 <style>
-    .auth-box{max-width:420px;margin:3rem auto;background:#fff;border:1px solid #e2e8f0;border-radius:.5rem;padding:2rem}
-    .auth-box h1{font-size:1.5rem;margin-bottom:1.5rem;text-align:center}
-    .form-group{margin-bottom:1rem}
-    .form-group label{display:block;font-size:.875rem;font-weight:500;margin-bottom:.35rem;color:#334155}
-    .form-group input{width:100%;padding:.5rem .75rem;border:1px solid #cbd5e1;border-radius:.375rem;font-size:.9rem}
-    .form-group input:focus{outline:none;border-color:#2563eb;box-shadow:0 0 0 2px rgba(37,99,235,.15)}
-    .auth-error{background:#fee2e2;color:#991b1b;padding:.5rem .75rem;border-radius:.375rem;font-size:.85rem;margin-bottom:1rem;display:none}
-    .auth-success{background:#d1fae5;color:#065f46;padding:.5rem .75rem;border-radius:.375rem;font-size:.85rem;margin-bottom:1rem;display:none}
-    .divider{display:flex;align-items:center;gap:.75rem;margin:1.25rem 0;color:#94a3b8;font-size:.8rem}
+    *{box-sizing:border-box}
+    /* two-column card */
+    .auth-card{display:flex;width:100%;max-width:860px;border-radius:.85rem;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.4)}
+    .auth-left{flex:0 0 340px;background:linear-gradient(160deg,#0f172a 0%,#1e3a5f 60%,#2563eb 100%);padding:2.5rem 2rem;display:flex;flex-direction:column;justify-content:center;color:#fff}
+    .auth-left .logo-icon{display:inline-flex;align-items:center;justify-content:center;width:52px;height:52px;background:rgba(255,255,255,.15);border-radius:.75rem;margin-bottom:1.25rem;backdrop-filter:blur(4px)}
+    .auth-left h1{font-size:1.5rem;font-weight:700;margin-bottom:.4rem}
+    .auth-left p{font-size:.85rem;opacity:.8;line-height:1.6;margin-bottom:1.75rem}
+    .auth-feature{display:flex;align-items:center;gap:.6rem;font-size:.82rem;margin-bottom:.75rem;opacity:.9}
+    .auth-feature-dot{width:7px;height:7px;border-radius:50%;background:#60a5fa;flex-shrink:0}
+    .auth-right{flex:1;background:#fff;padding:2rem 2rem 1.5rem;overflow-y:auto;max-height:100vh}
+    .auth-right-inner{max-width:340px;margin:0 auto}
+    .form-group{margin-bottom:.7rem}
+    .form-group label{display:block;font-size:.78rem;font-weight:600;color:#374151;margin-bottom:.25rem}
+    .form-group input{width:100%;padding:.5rem .75rem;border:1.5px solid #e2e8f0;border-radius:.4rem;font-size:.875rem;color:#1e293b;background:#f8fafc;transition:border-color .15s,box-shadow .15s}
+    .form-group input:focus{outline:none;border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.12);background:#fff}
+    .pw-wrap{position:relative}
+    .pw-wrap input{padding-right:2.5rem}
+    .pw-toggle{position:absolute;right:.6rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#94a3b8;padding:0;line-height:1;font-size:.95rem}
+    .pw-toggle:hover{color:#475569}
+    .auth-error{background:#fee2e2;color:#991b1b;padding:.4rem .7rem;border-radius:.35rem;font-size:.8rem;margin-bottom:.75rem;display:none;border:1px solid #fecaca}
+    .auth-success{background:#d1fae5;color:#065f46;padding:.4rem .7rem;border-radius:.35rem;font-size:.8rem;margin-bottom:.75rem;display:none;border:1px solid #a7f3d0}
+    .divider{display:flex;align-items:center;gap:.6rem;margin:.9rem 0;color:#94a3b8;font-size:.78rem}
     .divider::before,.divider::after{content:"";flex:1;height:1px;background:#e2e8f0}
-    .auth-tabs{display:flex;border-bottom:2px solid #e2e8f0;margin-bottom:1.5rem}
-    .auth-tab{flex:1;text-align:center;padding:.5rem;font-size:.875rem;font-weight:500;color:#94a3b8;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px}
+    .auth-tabs{display:flex;border-bottom:2px solid #e2e8f0;margin-bottom:1rem}
+    .auth-tab{flex:1;text-align:center;padding:.4rem;font-size:.82rem;font-weight:500;color:#94a3b8;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:color .15s}
     .auth-tab.active{color:#2563eb;border-bottom-color:#2563eb}
     .auth-panel{display:none}
     .auth-panel.active{display:block}
-    .btn-google{display:flex;align-items:center;justify-content:center;gap:.5rem;width:100%;padding:.6rem;border:1px solid #cbd5e1;border-radius:.375rem;background:#fff;font-size:.875rem;cursor:pointer;font-weight:500;color:#334155}
+    .btn-google{display:flex;align-items:center;justify-content:center;gap:.5rem;width:100%;padding:.5rem;border:1.5px solid #e2e8f0;border-radius:.4rem;background:#fff;font-size:.82rem;cursor:pointer;font-weight:500;color:#334155;transition:border-color .15s,background .15s}
     .btn-google:hover{background:#f8fafc;border-color:#94a3b8}
-    .btn-google svg{width:18px;height:18px}
+    .btn-google svg{width:16px;height:16px}
     .btn-phone{background:#059669;color:#fff;border:none}
     .btn-phone:hover{background:#047857}
-    .link-btn{background:none;border:none;color:#2563eb;cursor:pointer;font-size:.85rem;padding:0}
+    .btn-primary{background:linear-gradient(135deg,#1e3a5f,#2563eb);border:none}
+    .btn-primary:hover{opacity:.9}
+    .btn-submit{width:100%;padding:.55rem;margin-top:.4rem;border-radius:.4rem;background:linear-gradient(135deg,#1e3a5f,#2563eb);color:#fff;font-size:.875rem;font-weight:600;border:none;cursor:pointer;transition:opacity .15s}
+    .btn-submit:hover{opacity:.9}
+    .link-btn{background:none;border:none;color:#2563eb;cursor:pointer;font-size:.82rem;padding:0}
     .link-btn:hover{text-decoration:underline}
     #phone-section .form-group input{letter-spacing:.05em}
-    .otp-input{text-align:center;font-size:1.25rem;letter-spacing:.3em!important}
-    .spinner{display:inline-block;width:16px;height:16px;border:2px solid #fff;border-top-color:transparent;border-radius:50%;animation:spin .6s linear infinite}
+    .otp-input{text-align:center;font-size:1.1rem;letter-spacing:.25em!important}
+    .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite}
     @keyframes spin{to{transform:rotate(360deg)}}
+    .auth-footer{text-align:center;margin-top:1rem;font-size:.75rem;color:#94a3b8}
+    @media(max-width:640px){.auth-card{flex-direction:column}.auth-left{flex:none;padding:1.5rem}.auth-right{padding:1.5rem}}
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="auth-box">
-    <h1>Welcome to Hermes</h1>
+<div class="auth-card">
+
+    <!-- Left branding panel -->
+    <div class="auth-left">
+        <div class="logo-icon">
+            <svg width="26" height="26" fill="none" viewBox="0 0 24 24" stroke="#fff" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+            </svg>
+        </div>
+        <h1>Hermes</h1>
+        <p>Your one-stop platform for government jobs &amp; entrance exam notifications.</p>
+        <div class="auth-feature"><span class="auth-feature-dot"></span>Latest central &amp; state govt jobs</div>
+        <div class="auth-feature"><span class="auth-feature-dot"></span>NEET, JEE, GATE, CAT &amp; more</div>
+        <div class="auth-feature"><span class="auth-feature-dot"></span>Admit cards, answer keys &amp; results</div>
+        <div class="auth-feature"><span class="auth-feature-dot"></span>Personalised job &amp; exam alerts</div>
+    </div>
+
+    <!-- Right form panel -->
+    <div class="auth-right">
+    <div class="auth-right-inner">
 
     <div id="auth-error" class="auth-error"></div>
     <div id="auth-success" class="auth-success"></div>
@@ -57,14 +94,17 @@
     <div id="email-section" class="auth-panel active">
         <div id="email-signin-form">
             <div class="form-group">
-                <label for="email">Email</label>
-                <input type="email" id="email" placeholder="you@example.com" required>
+                <label for="email">Email address</label>
+                <input type="email" id="email" placeholder="you@example.com" required autocomplete="email">
             </div>
             <div class="form-group">
                 <label for="password">Password</label>
-                <input type="password" id="password" placeholder="Your password" required>
+                <div class="pw-wrap">
+                    <input type="password" id="password" placeholder="Your password" required autocomplete="current-password">
+                    <button type="button" class="pw-toggle" onclick="togglePw('password','pw-eye1')" aria-label="Toggle password"><span id="pw-eye1">👁</span></button>
+                </div>
             </div>
-            <button type="button" class="btn btn-primary" style="width:100%;margin-top:.5rem" onclick="loginWithEmail()">Sign In</button>
+            <button type="button" class="btn-submit" onclick="loginWithEmail()">Sign In →</button>
             <div style="display:flex;justify-content:space-between;margin-top:.75rem;font-size:.85rem">
                 <button type="button" class="link-btn" onclick="showRegister()">Create account</button>
                 <button type="button" class="link-btn" onclick="forgotPassword()">Forgot password?</button>
@@ -74,11 +114,11 @@
         <div id="email-register-form" style="display:none">
             <div class="form-group">
                 <label for="reg-name">Full Name</label>
-                <input type="text" id="reg-name" placeholder="Your full name" required>
+                <input type="text" id="reg-name" placeholder="Your full name" required autocomplete="name">
             </div>
             <div class="form-group">
-                <label for="reg-email">Email</label>
-                <input type="email" id="reg-email" placeholder="you@example.com" required>
+                <label for="reg-email">Email address</label>
+                <input type="email" id="reg-email" placeholder="you@example.com" required autocomplete="email">
             </div>
             <div class="form-group">
                 <label for="reg-phone">Phone Number <span style="color:#94a3b8;font-weight:400">(optional)</span></label>
@@ -86,9 +126,12 @@
             </div>
             <div class="form-group">
                 <label for="reg-password">Password <span style="color:#94a3b8;font-weight:400">(min 8 chars, 1 uppercase, 1 special)</span></label>
-                <input type="password" id="reg-password" placeholder="Choose a password" required minlength="8">
+                <div class="pw-wrap">
+                    <input type="password" id="reg-password" placeholder="Choose a password" required minlength="8" autocomplete="new-password">
+                    <button type="button" class="pw-toggle" onclick="togglePw('reg-password','pw-eye2')" aria-label="Toggle password"><span id="pw-eye2">👁</span></button>
+                </div>
             </div>
-            <button type="button" class="btn btn-primary" style="width:100%;margin-top:.5rem" onclick="registerWithEmail()">Create Account</button>
+            <button type="button" class="btn-submit" onclick="registerWithEmail()">Create Account →</button>
             <div style="text-align:center;margin-top:.75rem;font-size:.85rem">
                 <button type="button" class="link-btn" onclick="showSignIn()">Back to sign in</button>
             </div>
@@ -166,7 +209,10 @@
         </div>
         <div id="recaptcha-container"></div>
     </div>
-</div>
+    <div class="auth-footer">Hermes &copy; 2025 — Government Jobs &amp; Exam Tracker</div>
+    </div><!-- auth-right-inner -->
+    </div><!-- auth-right -->
+</div><!-- auth-card -->
 
 <!-- Firebase JS SDK (compat v10 — CDN, no build step) -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -254,10 +300,10 @@
         var code = error.code || "";
         var map = {
             "auth/user-not-found": "No account found with this email.",
-            "auth/wrong-password": "Incorrect password.",
+            "auth/wrong-password": "Incorrect password.", // pragma: allowlist secret
             "auth/invalid-credential": "Invalid email or password.",
             "auth/email-already-in-use": "An account with this email already exists.",
-            "auth/weak-password": "Password must be at least 6 characters.",
+            "auth/weak-password": "Password must be at least 6 characters.", // pragma: allowlist secret
             "auth/invalid-email": "Please enter a valid email address.",
             "auth/too-many-requests": "Too many attempts. Please try again later.",
             "auth/popup-closed-by-user": "Google sign-in was cancelled.",
@@ -706,5 +752,12 @@
         if (e.key === "Enter") verifyPhoneOTP();
     });
 })();
+
+function togglePw(inputId, eyeId) {
+    var inp = document.getElementById(inputId);
+    var eye = document.getElementById(eyeId);
+    if (inp.type === 'password') { inp.type = 'text'; eye.textContent = '🙈'; }
+    else { inp.type = 'password'; eye.textContent = '👁'; }
+}
 </script>
 {% endblock %}
