@@ -195,7 +195,7 @@ All endpoints versioned under `/api/v1/`. List responses: `{ "data": [...], "pag
 | `auth.py` | `/api/v1/auth` | Firebase verify-token, logout, refresh; admin login/logout/refresh; email OTP registration |
 | `users.py` | `/api/v1/users` | Profile CRUD, FCM tokens, phone, password management |
 | `jobs.py` | `/api/v1/jobs` | Public listing (FTS + filters), recommended, detail by slug |
-| `watches.py` | `/api/v1/jobs/{id}/watch`, `/api/v1/admissions/{id}/watch` | Watch/unwatch jobs and exams; list watched |
+| `watches.py` | `/api/v1/jobs/{id}/watch`, `/api/v1/admissions/{id}/watch` | Watch/unwatch jobs and admissions; list watched |
 | `notifications.py` | `/api/v1/notifications` | List, count, mark read, delete |
 | `admin.py` | `/api/v1/admin` | Job CRUD + approve, user mgmt, stats, audit logs, admin-user creation |
 | `content.py` | `/api/v1/admit-cards`, `/api/v1/answer-keys`, `/api/v1/results` | Public + admin CRUD for admit cards, answer keys, results |
@@ -334,7 +334,7 @@ For email/password and Google login, create a test user via the Firebase Console
 | `purge-soft-deleted-jobs`       | Daily 02:00 UTC | Hard-delete `cancelled` (manually deleted) jobs > 90 days |
 | `close-expired-job-listings`    | Daily 02:30 UTC | Set `status='expired'` on jobs past `application_end` |
 | `update-exam-statuses`          | Daily 02:35 UTC | Set `status='completed'` on admissions whose `exam_date` has passed |
-| `generate-sitemap`              | Daily 04:00 UTC | Regenerate `/sitemap.xml` — active jobs, active/upcoming exams, all 5 section pages |
+| `generate-sitemap`              | Daily 04:00 UTC | Regenerate `/sitemap.xml` — active jobs, active/upcoming admissions, all 5 section pages |
 
 ### hermes-worker (Event-Triggered Tasks)
 
@@ -667,7 +667,7 @@ Detail pages include dynamic tabbed panels for per-phase documents:
 </div>
 ```
 
-These work for both jobs and exams using the same backend endpoints.
+These work for both jobs and admissions using the same backend endpoints.
 
 ---
 

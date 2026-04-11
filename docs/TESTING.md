@@ -173,7 +173,7 @@ pre-commit run --all-files
 | `test_route_jobs.py` | Listing filters (active-only default), recommended, detail |
 | `test_route_content.py` | Admit cards, answer keys, results — public list/detail + admin CRUD; `_validate_document_parent` |
 | `test_route_admissions.py` | Public list (filters, pagination, search) + detail; admin list/get/create (slug collision)/update/delete |
-| `test_route_watches.py` | Watch/unwatch jobs & exams (limit enforcement, duplicate guard); list_watched (empty, job-only, exam-only, mixed) |
+| `test_route_watches.py` | Watch/unwatch jobs & admissions (limit enforcement, duplicate guard); list_watched (empty, job-only, admission-only, mixed) |
 | `test_route_health.py` | Health check endpoint |
 | `test_dependencies.py` | `_decode_and_validate_token` (valid, expired, wrong type, blocklist, scope); `get_current_user/admin`; `require_admin/operator` |
 | `test_matching.py` | Job recommendation scoring (state, category, education, age, recency) |
@@ -197,7 +197,7 @@ pre-commit run --all-files
 | `test_notifications.py` | Notification API |
 | `test_security.py` | JWT structure (HS256/exp/iat/jti), RBAC, token revocation, admin bcrypt, XSS, SQLi, CORS |
 | `test_users.py` | User profile API |
-| `test_watches.py` | Watch/unwatch jobs & exams via HTTP + real DB |
+| `test_watches.py` | Watch/unwatch jobs & admissions via HTTP + real DB |
 
 ### Backend Test Strategy
 

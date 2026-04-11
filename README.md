@@ -259,7 +259,7 @@ hermes/
 │   ├── staging/                  # .env.backend, .env.frontend, .env.frontend-admin (committed placeholders)
 │   └── production/               # .env.backend, .env.frontend, .env.frontend-admin (committed placeholders)
 ├── scripts/
-│   ├── seed_jobs.py              # Seed: 10 jobs + 9 exams + 32 phase docs (run manually)
+│   ├── seed_jobs.py              # Seed: 10 jobs + 9 admissions + 32 phase docs (run manually)
 │   └── seed_creds.py             # Seed: admin + test user accounts
 ├── sonar-project.properties      # SonarCloud config (3 source roots, 4 test roots, 3 coverage XMLs)
 ├── .pre-commit-config.yaml       # Pre-commit hooks (black, isort, flake8, mypy, detect-secrets)

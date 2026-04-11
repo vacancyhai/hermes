@@ -94,7 +94,7 @@ Users can watch specific jobs or admissions to receive automatic notifications.
 | DELETE | `/jobs/{job_id}/watch` | User | Unwatch a job (404 if not watching) |
 | POST | `/admissions/{admission_id}/watch` | User | Watch an admission (idempotent) |
 | DELETE | `/admissions/{admission_id}/watch` | User | Unwatch an admission |
-| GET | `/users/me/watched` | User | List all watched jobs + exams |
+| GET | `/users/me/watched` | User | List all watched jobs + admissions |
 
 **Automatic notifications triggered by watching:**
 - `deadline_reminder_7d` — 7 days before `application_end`
@@ -106,7 +106,7 @@ Users can watch specific jobs or admissions to receive automatic notifications.
 ```json
 {
   "jobs": [{ "id": "uuid", "job_title": "...", "slug": "...", "organization": "...", "application_end": "2026-05-01", "status": "active" }],
-  "exams": [{ "id": "uuid", "exam_name": "...", "slug": "...", "conducting_body": "...", "application_end": "2026-06-01", "status": "active" }],
+  "admissions": [{ "id": "uuid", "exam_name": "...", "slug": "...", "conducting_body": "...", "application_end": "2026-06-01", "status": "active" }],
   "total": 2
 }
 ```
@@ -686,7 +686,7 @@ The user frontend supports Progressive Web App features:
 Admissions (NEET, JEE, CLAT, CAT, GATE etc.) are stored in the `admissions` table, separate from `jobs`.
 They have exam-specific fields: `stream`, `exam_type`, `counselling_body`, `seats_info`, exam pattern.
 
-### Public (read-only, active exams only)
+### Public (read-only, active admissions only)
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
@@ -706,13 +706,13 @@ They have exam-specific fields: `stream`, `exam_type`, `counselling_body`, `seat
 | `limit` | int | 1-100, default: 20 |
 | `offset` | int | Default: 0 |
 
-**Note:** `status='upcoming'` exams are excluded from public listing (only `status='active'` returned).
+**Note:** `status='upcoming'` admissions are excluded from public listing (only `status='active'` returned).
 
 ### Admin CRUD (operator+)
 
 | Method | Endpoint | Description |
 |--------|----------|-----------|
-| GET | `/admin/admissions` | List all exams (any status, filterable by stream/exam_type/status) |
+| GET | `/admin/admissions` | List all admissions (any status, filterable by stream/exam_type/status) |
 | GET | `/admin/admissions/{id}` | Get single admission detail by ID (any status) |
 | POST | `/admin/admissions` | Create admission |
 | PUT | `/admin/admissions/{id}` | Update admission |
@@ -841,7 +841,7 @@ Authorization: Bearer <admin_token>
 | `notification_delivery_log` | Per-channel delivery tracking (push/email/whatsapp/telegram) |
 | `user_devices` | Device registry (FCM token, fingerprint de-duplication) |
 | `admin_logs` | Admin audit trail |
-| `user_watches` | Jobs and exams a user is tracking (for notifications) |
+| `user_watches` | Jobs and admissions a user is tracking (for notifications) |
 | `admit_cards` | Per-phase admit cards (linked to job OR admission via polymorphic FK) |
 | `answer_keys` | Per-phase answer keys — provisional/final, multi-paper files JSONB |
 | `results` | Per-phase results — shortlist/cutoff/merit_list/final, cutoff_marks JSONB |

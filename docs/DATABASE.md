@@ -437,7 +437,7 @@ These are educational admissioninations, not government job recruitments.
 ---
 
 ### 13. `user_watches`
-Tracks which jobs or exams a user is watching for notification delivery.
+Tracks which jobs or admissions a user is watching for notification delivery.
 
 | Column | Type | Nullable | Description |
 |--------|------|----------|-------------|

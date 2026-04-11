@@ -894,7 +894,7 @@ SCHEDULED TASKS (beat_schedule in celery_app.py):
 
 7. app.tasks.seo.generate_sitemap
    Run: Daily 04:00 UTC
-   Purpose: Regenerate /sitemap.xml with active jobs + exams
+   Purpose: Regenerate /sitemap.xml with active jobs + admissions
 
 EVENT-TRIGGERED TASKS:
 ═══════════════════════
@@ -1436,7 +1436,7 @@ document tables (`admit_cards`, `answer_keys`, `results`) are
   SEEDED DATA (current):
   ──────────────────────
   jobs:  10 jobs + (admit_cards/answer_keys/results linked via job_id FK)
-  admissions: 9 exams
+  admissions: 9 admissions
     • NEET PG 2026 (medical, pg)     → 3 phase docs (admit card + answer key + result)
     • NEET UG 2026 (medical, ug)     → 4 phase docs
     • JEE Main 2026 (engineering)    → 7 phase docs (2 sessions, each with docs)
@@ -1504,10 +1504,10 @@ listing page, gradient hero colour, and detail page design.
         │                                       │
         ▼                                       ▼
   Doc tabs section shown                 Doc tabs section shown
-  if job_type == 'latest_job'            (always shown for exams)
+  if job_type == 'latest_job'            (always shown for admissions)
         │                                       │
         ▼                                       ▼
-  HTMX loads /partials/jobs/             HTMX loads /partials/exams/
+  HTMX loads /partials/jobs/             HTMX loads /partials/admissions/
   {job_id}/admit-cards                   {admission_id}/admit-cards
   (on tab click)                         (on tab click)
 ```
