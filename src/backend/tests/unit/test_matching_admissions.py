@@ -82,10 +82,12 @@ async def test_get_recommended_admissions_no_profile():
     count_result.scalar.return_value = 2
 
     # DB returns newest first (ORDER BY created_at DESC at DB level)
-    exams_result = MagicMock()
-    exams_result.scalars.return_value.all.return_value = [admission2, admission1]
+    admissions_result = MagicMock()
+    admissions_result.scalars.return_value.all.return_value = [admission2, admission1]
 
-    db.execute = AsyncMock(side_effect=[profile_result, count_result, exams_result])
+    db.execute = AsyncMock(
+        side_effect=[profile_result, count_result, admissions_result]
+    )
 
     admissions, total = await get_recommended_admissions(
         user_id="some-uuid", db=db, limit=10, offset=0
@@ -109,10 +111,12 @@ async def test_get_recommended_admissions_no_profile_pagination():
     count_result = MagicMock()
     count_result.scalar.return_value = 5
 
-    exams_result = MagicMock()
-    exams_result.scalars.return_value.all.return_value = paged_admissions
+    admissions_result = MagicMock()
+    admissions_result.scalars.return_value.all.return_value = paged_admissions
 
-    db.execute = AsyncMock(side_effect=[profile_result, count_result, exams_result])
+    db.execute = AsyncMock(
+        side_effect=[profile_result, count_result, admissions_result]
+    )
 
     admissions, total = await get_recommended_admissions(
         user_id="uid", db=db, limit=2, offset=2
@@ -138,12 +142,12 @@ async def test_get_recommended_admissions_state_match():
 
     profile_result = MagicMock()
     profile_result.scalar_one_or_none.return_value = profile
-    exams_result = MagicMock()
-    exams_result.scalars.return_value.all.return_value = [
+    admissions_result = MagicMock()
+    admissions_result.scalars.return_value.all.return_value = [
         admission_no_match,
         admission_match,
     ]
-    db.execute = AsyncMock(side_effect=[profile_result, exams_result])
+    db.execute = AsyncMock(side_effect=[profile_result, admissions_result])
 
     admissions, total = await get_recommended_admissions(user_id="uid", db=db, limit=10)
     assert total == 2
@@ -163,12 +167,12 @@ async def test_get_recommended_admissions_category_match():
 
     profile_result = MagicMock()
     profile_result.scalar_one_or_none.return_value = profile
-    exams_result = MagicMock()
-    exams_result.scalars.return_value.all.return_value = [
+    admissions_result = MagicMock()
+    admissions_result.scalars.return_value.all.return_value = [
         admission_no_match,
         admission_match,
     ]
-    db.execute = AsyncMock(side_effect=[profile_result, exams_result])
+    db.execute = AsyncMock(side_effect=[profile_result, admissions_result])
 
     admissions, _ = await get_recommended_admissions(user_id="uid", db=db, limit=10)
     assert admissions[0] == admission_match
@@ -186,12 +190,12 @@ async def test_get_recommended_admissions_education_match():
 
     profile_result = MagicMock()
     profile_result.scalar_one_or_none.return_value = profile
-    exams_result = MagicMock()
-    exams_result.scalars.return_value.all.return_value = [
+    admissions_result = MagicMock()
+    admissions_result.scalars.return_value.all.return_value = [
         admission_overqualified,
         admission_qualifies,
     ]
-    db.execute = AsyncMock(side_effect=[profile_result, exams_result])
+    db.execute = AsyncMock(side_effect=[profile_result, admissions_result])
 
     admissions, _ = await get_recommended_admissions(user_id="uid", db=db, limit=10)
     # admission_qualifies gets education bonus, so it ranks first
@@ -213,12 +217,12 @@ async def test_get_recommended_admissions_age_match():
 
     profile_result = MagicMock()
     profile_result.scalar_one_or_none.return_value = profile
-    exams_result = MagicMock()
-    exams_result.scalars.return_value.all.return_value = [
+    admissions_result = MagicMock()
+    admissions_result.scalars.return_value.all.return_value = [
         admission_no_match,
         admission_match,
     ]
-    db.execute = AsyncMock(side_effect=[profile_result, exams_result])
+    db.execute = AsyncMock(side_effect=[profile_result, admissions_result])
 
     admissions, _ = await get_recommended_admissions(user_id="uid", db=db, limit=10)
     assert admissions[0] == admission_match
@@ -243,9 +247,12 @@ async def test_get_recommended_admissions_recency_bonus():
 
     profile_result = MagicMock()
     profile_result.scalar_one_or_none.return_value = profile
-    exams_result = MagicMock()
-    exams_result.scalars.return_value.all.return_value = [old_admission, new_admission]
-    db.execute = AsyncMock(side_effect=[profile_result, exams_result])
+    admissions_result = MagicMock()
+    admissions_result.scalars.return_value.all.return_value = [
+        old_admission,
+        new_admission,
+    ]
+    db.execute = AsyncMock(side_effect=[profile_result, admissions_result])
 
     admissions, _ = await get_recommended_admissions(user_id="uid", db=db, limit=10)
     # new_admission gets recency bonus (both get edu match, new_admission gets +1 recency)
@@ -292,12 +299,12 @@ async def test_get_recommended_admissions_combined_scoring():
 
     profile_result = MagicMock()
     profile_result.scalar_one_or_none.return_value = profile
-    exams_result = MagicMock()
-    exams_result.scalars.return_value.all.return_value = [
+    admissions_result = MagicMock()
+    admissions_result.scalars.return_value.all.return_value = [
         admission_poor,
         admission_perfect,
     ]
-    db.execute = AsyncMock(side_effect=[profile_result, exams_result])
+    db.execute = AsyncMock(side_effect=[profile_result, admissions_result])
 
     admissions, _ = await get_recommended_admissions(user_id="uid", db=db, limit=10)
     # admission_perfect should rank first with high combined score
@@ -325,9 +332,11 @@ async def test_get_recommended_admissions_empty_profile_no_scoring():
     count_result = MagicMock()
     count_result.scalar.return_value = 1
 
-    exams_result = MagicMock()
-    exams_result.scalars.return_value.all.return_value = [admission]
-    db.execute = AsyncMock(side_effect=[profile_result, count_result, exams_result])
+    admissions_result = MagicMock()
+    admissions_result.scalars.return_value.all.return_value = [admission]
+    db.execute = AsyncMock(
+        side_effect=[profile_result, count_result, admissions_result]
+    )
 
     admissions, total = await get_recommended_admissions(user_id="uid", db=db, limit=10)
     assert total == 1
@@ -344,9 +353,9 @@ async def test_get_recommended_admissions_category_string():
 
     profile_result = MagicMock()
     profile_result.scalar_one_or_none.return_value = profile
-    exams_result = MagicMock()
-    exams_result.scalars.return_value.all.return_value = [admission]
-    db.execute = AsyncMock(side_effect=[profile_result, exams_result])
+    admissions_result = MagicMock()
+    admissions_result.scalars.return_value.all.return_value = [admission]
+    db.execute = AsyncMock(side_effect=[profile_result, admissions_result])
 
     admissions, total = await get_recommended_admissions(user_id="uid", db=db, limit=10)
     assert total == 1
@@ -363,9 +372,9 @@ async def test_get_recommended_admissions_state_string():
 
     profile_result = MagicMock()
     profile_result.scalar_one_or_none.return_value = profile
-    exams_result = MagicMock()
-    exams_result.scalars.return_value.all.return_value = [admission]
-    db.execute = AsyncMock(side_effect=[profile_result, exams_result])
+    admissions_result = MagicMock()
+    admissions_result.scalars.return_value.all.return_value = [admission]
+    db.execute = AsyncMock(side_effect=[profile_result, admissions_result])
 
     admissions, total = await get_recommended_admissions(user_id="uid", db=db, limit=10)
     assert total == 1
@@ -382,9 +391,9 @@ async def test_get_recommended_admissions_min_qualification_key():
 
     profile_result = MagicMock()
     profile_result.scalar_one_or_none.return_value = profile
-    exams_result = MagicMock()
-    exams_result.scalars.return_value.all.return_value = [admission]
-    db.execute = AsyncMock(side_effect=[profile_result, exams_result])
+    admissions_result = MagicMock()
+    admissions_result.scalars.return_value.all.return_value = [admission]
+    db.execute = AsyncMock(side_effect=[profile_result, admissions_result])
 
     admissions, _ = await get_recommended_admissions(user_id="uid", db=db, limit=10)
     assert len(admissions) == 1
@@ -402,9 +411,9 @@ async def test_get_recommended_admissions_age_flexible_keys():
 
     profile_result = MagicMock()
     profile_result.scalar_one_or_none.return_value = profile
-    exams_result = MagicMock()
-    exams_result.scalars.return_value.all.return_value = [admission]
-    db.execute = AsyncMock(side_effect=[profile_result, exams_result])
+    admissions_result = MagicMock()
+    admissions_result.scalars.return_value.all.return_value = [admission]
+    db.execute = AsyncMock(side_effect=[profile_result, admissions_result])
 
     admissions, _ = await get_recommended_admissions(user_id="uid", db=db, limit=10)
     assert len(admissions) == 1
@@ -424,9 +433,9 @@ async def test_get_recommended_admissions_pagination():
 
     profile_result = MagicMock()
     profile_result.scalar_one_or_none.return_value = profile
-    exams_result = MagicMock()
-    exams_result.scalars.return_value.all.return_value = admissions
-    db.execute = AsyncMock(side_effect=[profile_result, exams_result])
+    admissions_result = MagicMock()
+    admissions_result.scalars.return_value.all.return_value = admissions
+    db.execute = AsyncMock(side_effect=[profile_result, admissions_result])
 
     page, total = await get_recommended_admissions(
         user_id="uid", db=db, limit=5, offset=0
@@ -437,9 +446,9 @@ async def test_get_recommended_admissions_pagination():
     # Second page
     profile_result2 = MagicMock()
     profile_result2.scalar_one_or_none.return_value = profile
-    exams_result2 = MagicMock()
-    exams_result2.scalars.return_value.all.return_value = admissions
-    db.execute = AsyncMock(side_effect=[profile_result2, exams_result2])
+    admissions_result2 = MagicMock()
+    admissions_result2.scalars.return_value.all.return_value = admissions
+    db.execute = AsyncMock(side_effect=[profile_result2, admissions_result2])
 
     page2, total2 = await get_recommended_admissions(
         user_id="uid", db=db, limit=5, offset=5

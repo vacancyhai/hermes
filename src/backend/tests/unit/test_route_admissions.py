@@ -67,15 +67,15 @@ def _mock_item(id_val):
 
 
 # ═══════════════════════════════════════════════════════════════
-# Public — list_exams
+# Public — list_admissions
 # ═══════════════════════════════════════════════════════════════
 
 
 @pytest.mark.asyncio
-async def test_list_exams_empty():
-    from app.routers.admissions import list_exams
+async def test_list_admissions_empty():
+    from app.routers.admissions import list_admissions
 
-    result = await list_exams(
+    result = await list_admissions(
         q=None,
         stream=None,
         exam_type=None,
@@ -89,15 +89,15 @@ async def test_list_exams_empty():
 
 
 @pytest.mark.asyncio
-async def test_list_exams_returns_items():
-    from app.routers.admissions import list_exams
+async def test_list_admissions_returns_items():
+    from app.routers.admissions import list_admissions
     from app.schemas.admissions import AdmissionListItem
 
     admission = _make_admission()
     with patch.object(
         AdmissionListItem, "model_validate", return_value=_mock_item(admission.id)
     ):
-        result = await list_exams(
+        result = await list_admissions(
             q=None,
             stream=None,
             exam_type=None,
@@ -110,15 +110,15 @@ async def test_list_exams_returns_items():
 
 
 @pytest.mark.asyncio
-async def test_list_exams_pagination_has_more():
-    from app.routers.admissions import list_exams
+async def test_list_admissions_pagination_has_more():
+    from app.routers.admissions import list_admissions
     from app.schemas.admissions import AdmissionListItem
 
     admission = _make_admission()
     with patch.object(
         AdmissionListItem, "model_validate", return_value=_mock_item(admission.id)
     ):
-        result = await list_exams(
+        result = await list_admissions(
             q=None,
             stream=None,
             exam_type=None,
@@ -130,10 +130,10 @@ async def test_list_exams_pagination_has_more():
 
 
 @pytest.mark.asyncio
-async def test_list_exams_with_search_query():
-    from app.routers.admissions import list_exams
+async def test_list_admissions_with_search_query():
+    from app.routers.admissions import list_admissions
 
-    result = await list_exams(
+    result = await list_admissions(
         q="NEET",
         stream=None,
         exam_type=None,
@@ -145,10 +145,10 @@ async def test_list_exams_with_search_query():
 
 
 @pytest.mark.asyncio
-async def test_list_exams_with_stream_filter():
-    from app.routers.admissions import list_exams
+async def test_list_admissions_with_stream_filter():
+    from app.routers.admissions import list_admissions
 
-    result = await list_exams(
+    result = await list_admissions(
         q=None,
         stream="medical",
         exam_type=None,
@@ -160,10 +160,10 @@ async def test_list_exams_with_stream_filter():
 
 
 @pytest.mark.asyncio
-async def test_list_exams_with_all_filters():
-    from app.routers.admissions import list_exams
+async def test_list_admissions_with_all_filters():
+    from app.routers.admissions import list_admissions
 
-    result = await list_exams(
+    result = await list_admissions(
         q=None,
         stream="engineering",
         exam_type="national",
@@ -175,13 +175,13 @@ async def test_list_exams_with_all_filters():
 
 
 # ═══════════════════════════════════════════════════════════════
-# Public — get_exam (detail)
+# Public — get_admission (detail)
 # ═══════════════════════════════════════════════════════════════
 
 
 @pytest.mark.asyncio
-async def test_get_exam_not_found():
-    from app.routers.admissions import get_exam
+async def test_get_admission_not_found():
+    from app.routers.admissions import get_admission
     from fastapi import HTTPException
 
     with pytest.raises(HTTPException) as exc:
@@ -191,8 +191,8 @@ async def test_get_exam_not_found():
 
 
 @pytest.mark.asyncio
-async def test_get_exam_found_increments_views_and_returns_docs():
-    from app.routers.admissions import get_exam
+async def test_get_admission_found_increments_views_and_returns_docs():
+    from app.routers.admissions import get_admission
     from app.schemas.admissions import AdmissionResponse
 
     admission = _make_admission()
@@ -227,15 +227,15 @@ async def test_get_exam_found_increments_views_and_returns_docs():
 
 
 # ═══════════════════════════════════════════════════════════════
-# Admin — admin_list_exams
+# Admin — admin_list_admissions
 # ═══════════════════════════════════════════════════════════════
 
 
 @pytest.mark.asyncio
-async def test_admin_list_exams_empty():
-    from app.routers.admissions import admin_list_exams
+async def test_admin_list_admissions_empty():
+    from app.routers.admissions import admin_list_admissions
 
-    result = await admin_list_exams(
+    result = await admin_list_admissions(
         limit=20,
         offset=0,
         stream=None,
@@ -249,15 +249,15 @@ async def test_admin_list_exams_empty():
 
 
 @pytest.mark.asyncio
-async def test_admin_list_exams_with_results():
-    from app.routers.admissions import admin_list_exams
+async def test_admin_list_admissions_with_results():
+    from app.routers.admissions import admin_list_admissions
     from app.schemas.admissions import AdmissionListItem
 
     admission = _make_admission()
     with patch.object(
         AdmissionListItem, "model_validate", return_value=_mock_item(admission.id)
     ):
-        result = await admin_list_exams(
+        result = await admin_list_admissions(
             limit=20,
             offset=0,
             stream=None,
@@ -270,10 +270,10 @@ async def test_admin_list_exams_with_results():
 
 
 @pytest.mark.asyncio
-async def test_admin_list_exams_with_filters():
-    from app.routers.admissions import admin_list_exams
+async def test_admin_list_admissions_with_filters():
+    from app.routers.admissions import admin_list_admissions
 
-    result = await admin_list_exams(
+    result = await admin_list_admissions(
         limit=10,
         offset=0,
         stream="medical",
@@ -286,44 +286,44 @@ async def test_admin_list_exams_with_filters():
 
 
 # ═══════════════════════════════════════════════════════════════
-# Admin — admin_get_exam
+# Admin — admin_get_admission
 # ═══════════════════════════════════════════════════════════════
 
 
 @pytest.mark.asyncio
-async def test_admin_get_exam_not_found():
-    from app.routers.admissions import admin_get_exam
+async def test_admin_get_admission_not_found():
+    from app.routers.admissions import admin_get_admission
     from fastapi import HTTPException
 
     with pytest.raises(HTTPException) as exc:
-        await admin_get_exam(
+        await admin_get_admission(
             admission_id=uuid.uuid4(), admin=MagicMock(), db=_db_single(None)
         )
     assert exc.value.status_code == 404
 
 
 @pytest.mark.asyncio
-async def test_admin_get_exam_found():
-    from app.routers.admissions import admin_get_exam
+async def test_admin_get_admission_found():
+    from app.routers.admissions import admin_get_admission
     from app.schemas.admissions import AdmissionResponse
 
     admission = _make_admission()
     mock_resp = _mock_item(admission.id)
     with patch.object(AdmissionResponse, "model_validate", return_value=mock_resp):
-        result = await admin_get_exam(
+        result = await admin_get_admission(
             admission_id=admission.id, admin=MagicMock(), db=_db_single(admission)
         )
     assert result == {"id": str(admission.id)}
 
 
 # ═══════════════════════════════════════════════════════════════
-# Admin — create_exam
+# Admin — create_admission
 # ═══════════════════════════════════════════════════════════════
 
 
 @pytest.mark.asyncio
-async def test_create_exam_success():
-    from app.routers.admissions import create_exam
+async def test_create_admission_success():
+    from app.routers.admissions import create_admission
     from app.schemas.admissions import AdmissionCreateRequest, AdmissionResponse
 
     body = AdmissionCreateRequest(
@@ -339,15 +339,15 @@ async def test_create_exam_success():
 
     mock_resp = _mock_item(uuid.uuid4())
     with patch.object(AdmissionResponse, "model_validate", return_value=mock_resp):
-        await create_exam(body=body, admin=MagicMock(), db=db)
+        await create_admission(body=body, admin=MagicMock(), db=db)
 
     db.add.assert_called_once()
     db.flush.assert_called_once()
 
 
 @pytest.mark.asyncio
-async def test_create_exam_slug_collision_increments():
-    from app.routers.admissions import create_exam
+async def test_create_admission_slug_collision_increments():
+    from app.routers.admissions import create_admission
     from app.schemas.admissions import AdmissionCreateRequest, AdmissionResponse
 
     body = AdmissionCreateRequest(
@@ -363,15 +363,15 @@ async def test_create_exam_slug_collision_increments():
 
     mock_resp = _mock_item(uuid.uuid4())
     with patch.object(AdmissionResponse, "model_validate", return_value=mock_resp):
-        await create_exam(body=body, admin=MagicMock(), db=db)
+        await create_admission(body=body, admin=MagicMock(), db=db)
 
-    added_exam = db.add.call_args[0][0]
-    assert added_exam.slug == "neet-1"
+    added_admission = db.add.call_args[0][0]
+    assert added_admission.slug == "neet-1"
 
 
 @pytest.mark.asyncio
-async def test_create_exam_active_sets_published_at():
-    from app.routers.admissions import create_exam
+async def test_create_admission_active_sets_published_at():
+    from app.routers.admissions import create_admission
     from app.schemas.admissions import AdmissionCreateRequest, AdmissionResponse
 
     body = AdmissionCreateRequest(
@@ -388,15 +388,15 @@ async def test_create_exam_active_sets_published_at():
 
     mock_resp = _mock_item(uuid.uuid4())
     with patch.object(AdmissionResponse, "model_validate", return_value=mock_resp):
-        await create_exam(body=body, admin=MagicMock(), db=db)
+        await create_admission(body=body, admin=MagicMock(), db=db)
 
-    added_exam = db.add.call_args[0][0]
-    assert added_exam.published_at is not None
+    added_admission = db.add.call_args[0][0]
+    assert added_admission.published_at is not None
 
 
 @pytest.mark.asyncio
-async def test_create_exam_non_active_no_published_at():
-    from app.routers.admissions import create_exam
+async def test_create_admission_non_active_no_published_at():
+    from app.routers.admissions import create_admission
     from app.schemas.admissions import AdmissionCreateRequest, AdmissionResponse
 
     body = AdmissionCreateRequest(
@@ -413,25 +413,25 @@ async def test_create_exam_non_active_no_published_at():
 
     mock_resp = _mock_item(uuid.uuid4())
     with patch.object(AdmissionResponse, "model_validate", return_value=mock_resp):
-        await create_exam(body=body, admin=MagicMock(), db=db)
+        await create_admission(body=body, admin=MagicMock(), db=db)
 
-    added_exam = db.add.call_args[0][0]
-    assert added_exam.published_at is None
+    added_admission = db.add.call_args[0][0]
+    assert added_admission.published_at is None
 
 
 # ═══════════════════════════════════════════════════════════════
-# Admin — update_exam
+# Admin — update_admission
 # ═══════════════════════════════════════════════════════════════
 
 
 @pytest.mark.asyncio
-async def test_update_exam_not_found():
-    from app.routers.admissions import update_exam
+async def test_update_admission_not_found():
+    from app.routers.admissions import update_admission
     from app.schemas.admissions import AdmissionUpdateRequest
     from fastapi import HTTPException
 
     with pytest.raises(HTTPException) as exc:
-        await update_exam(
+        await update_admission(
             admission_id=uuid.uuid4(),
             body=AdmissionUpdateRequest(),
             admin=MagicMock(),
@@ -441,14 +441,14 @@ async def test_update_exam_not_found():
 
 
 @pytest.mark.asyncio
-async def test_update_exam_success():
-    from app.routers.admissions import update_exam
+async def test_update_admission_success():
+    from app.routers.admissions import update_admission
     from app.schemas.admissions import AdmissionResponse, AdmissionUpdateRequest
 
     admission = _make_admission()
     mock_resp = _mock_item(admission.id)
     with patch.object(AdmissionResponse, "model_validate", return_value=mock_resp):
-        result = await update_exam(
+        result = await update_admission(
             admission_id=admission.id,
             body=AdmissionUpdateRequest(exam_name="Updated NEET"),
             admin=MagicMock(),
@@ -458,27 +458,27 @@ async def test_update_exam_success():
 
 
 # ═══════════════════════════════════════════════════════════════
-# Admin — delete_exam
+# Admin — delete_admission
 # ═══════════════════════════════════════════════════════════════
 
 
 @pytest.mark.asyncio
-async def test_delete_exam_not_found():
-    from app.routers.admissions import delete_exam
+async def test_delete_admission_not_found():
+    from app.routers.admissions import delete_admission
     from fastapi import HTTPException
 
     with pytest.raises(HTTPException) as exc:
-        await delete_exam(
+        await delete_admission(
             admission_id=uuid.uuid4(), admin=MagicMock(), db=_db_single(None)
         )
     assert exc.value.status_code == 404
 
 
 @pytest.mark.asyncio
-async def test_delete_exam_success():
-    from app.routers.admissions import delete_exam
+async def test_delete_admission_success():
+    from app.routers.admissions import delete_admission
 
     admission = _make_admission()
     db = _db_single(admission)
-    await delete_exam(admission_id=admission.id, admin=MagicMock(), db=db)
+    await delete_admission(admission_id=admission.id, admin=MagicMock(), db=db)
     db.delete.assert_called_once_with(admission)
