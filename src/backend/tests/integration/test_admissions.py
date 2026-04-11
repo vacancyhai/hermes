@@ -103,7 +103,7 @@ async def test_admin_create_admission(client: AsyncClient, admin_token: str):
     resp = await client.post(
         "/api/v1/admin/admissions",
         json={
-            "exam_name": f"JEE Main {uuid.uuid4().hex[:4]}",
+            "admission_name": f"JEE Main {uuid.uuid4().hex[:4]}",
             "conducting_body": "NTA",
             "stream": "engineering",
             "status": "upcoming",
@@ -123,12 +123,12 @@ async def test_admin_create_admission_slug_unique(
     name = f"Slug Exam {uuid.uuid4().hex[:4]}"
     resp1 = await client.post(
         "/api/v1/admin/admissions",
-        json={"exam_name": name, "conducting_body": "NTA", "status": "upcoming"},
+        json={"admission_name": name, "conducting_body": "NTA", "status": "upcoming"},
         headers=auth_header(admin_token),
     )
     resp2 = await client.post(
         "/api/v1/admin/admissions",
-        json={"exam_name": name, "conducting_body": "NTA", "status": "upcoming"},
+        json={"admission_name": name, "conducting_body": "NTA", "status": "upcoming"},
         headers=auth_header(admin_token),
     )
     assert resp1.status_code == 201
@@ -140,7 +140,7 @@ async def test_operator_can_create_admission(client: AsyncClient, operator_token
     resp = await client.post(
         "/api/v1/admin/admissions",
         json={
-            "exam_name": f"Operator Exam {uuid.uuid4().hex[:4]}",
+            "admission_name": f"Operator Exam {uuid.uuid4().hex[:4]}",
             "conducting_body": "NTA",
             "status": "upcoming",
         },
@@ -182,7 +182,7 @@ async def test_admin_delete_admission(client: AsyncClient, admin_token: str):
     create_resp = await client.post(
         "/api/v1/admin/admissions",
         json={
-            "exam_name": f"Delete Me {uuid.uuid4().hex[:4]}",
+            "admission_name": f"Delete Me {uuid.uuid4().hex[:4]}",
             "conducting_body": "NTA",
             "status": "upcoming",
         },

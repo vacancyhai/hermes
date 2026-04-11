@@ -388,7 +388,7 @@ async def create_job(
         exam_start=body.exam_start,
         exam_end=body.exam_end,
         result_date=body.result_date,
-        exam_details=body.exam_details,
+        admission_details=body.admission_details,
         salary_initial=body.salary_initial,
         salary_max=body.salary_max,
         salary=body.salary,

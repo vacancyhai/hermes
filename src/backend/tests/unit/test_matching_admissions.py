@@ -17,10 +17,10 @@ from app.services.matching import (
 
 def _make_admission(
     eligibility=None,
-    exam_type="pg",
+    admission_type="pg",
     stream="general",
     created_at=None,
-    exam_date=None,
+    admission_date=None,
     status="active",
 ):
     """Helper to create mock Admission."""
@@ -28,10 +28,10 @@ def _make_admission(
 
     admission = MagicMock()
     admission.eligibility = eligibility or {}
-    exam.exam_type = exam_type
+    exam.admission_type = admission_type
     admission.stream = stream
     admission.created_at = created_at or datetime(2024, 1, 1, tzinfo=timezone.utc)
-    admission.exam_date = exam_date
+    admission.admission_date = admission_date
     admission.status = status
     return admission
 
@@ -68,11 +68,11 @@ async def test_get_recommended_admissions_no_profile():
     today = date.today()
     admission1 = _make_admission(
         created_at=datetime(2024, 1, 10, tzinfo=timezone.utc),
-        exam_date=today + timedelta(days=30),
+        admission_date=today + timedelta(days=30),
     )
     admission2 = _make_admission(
         created_at=datetime(2024, 1, 20, tzinfo=timezone.utc),
-        exam_date=today + timedelta(days=60),
+        admission_date=today + timedelta(days=60),
     )
 
     profile_result = MagicMock()

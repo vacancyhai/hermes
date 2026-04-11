@@ -88,7 +88,7 @@ def _enrich_with_parent(data: dict, obj) -> dict:
         data["admission"] = {
             "id": str(obj.admission.id),
             "slug": obj.admission.slug,
-            "exam_name": obj.exam.exam_name,
+            "admission_name": obj.admission.admission_name,
             "conducting_body": obj.admission.conducting_body,
         }
     return data

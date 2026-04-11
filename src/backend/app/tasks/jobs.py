@@ -58,7 +58,7 @@ def close_expired_job_listings(self):
     default_retry_delay=60,
 )
 def update_exam_statuses(self):
-    """Mark admissions as 'completed' after exam_date passes. Daily 02:35 UTC."""
+    """Mark admissions as 'completed' after admission_date passes. Daily 02:35 UTC."""
     try:
         with Session(sync_engine) as session:
             result = session.execute(
@@ -67,8 +67,8 @@ def update_exam_statuses(self):
                     UPDATE admissions
                     SET status = 'completed', updated_at = NOW()
                     WHERE status = 'active'
-                      AND exam_date IS NOT NULL
-                      AND exam_date < CURRENT_DATE
+                      AND admission_date IS NOT NULL
+                      AND admission_date < CURRENT_DATE
                     RETURNING id
                 """
                 )

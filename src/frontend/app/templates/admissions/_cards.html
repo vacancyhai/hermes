@@ -1,11 +1,11 @@
 {% for admission in admissions %}
 <div class="admission-card">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem;margin-bottom:.35rem">
-        <h3><a href="/admissions/{{ admission.id }}">{{ admission.exam_name }}</a></h3>
+        <h3><a href="/admissions/{{ admission.id }}">{{ admission.admission_name }}</a></h3>
     </div>
     <div class="admission-card-meta">
         <span>🏛 {{ admission.conducting_body }}</span>
-        <span class="meta-pill pill-purple">{{ admission.exam_type|upper }}</span>
+        <span class="meta-pill pill-purple">{{ admission.admission_type|upper }}</span>
         <span class="meta-pill pill-blue">{{ admission.stream|replace('_',' ')|title }}</span>
     </div>
     {% if admission.short_description %}
@@ -16,8 +16,8 @@
             {% if admission.application_end %}
             <span class="deadline">Apply by: {{ admission.application_end }}</span>
             {% endif %}
-            {% if admission.exam_date %}
-            <span class="meta-pill pill-purple" style="margin-left:.4rem">Exam: {{ admission.exam_date }}</span>
+            {% if admission.admission_date %}
+            <span class="meta-pill pill-purple" style="margin-left:.4rem">Exam: {{ admission.admission_date }}</span>
             {% endif %}
         </div>
         <div style="display:flex;gap:.4rem;align-items:center">
@@ -44,7 +44,7 @@
 {% if has_more %}
 <div class="load-more-wrap" id="load-more-admissions">
     <button class="btn btn-outline"
-            hx-get="/partials/admissions?offset={{ next_offset }}{% if q %}&q={{ q }}{% endif %}{% if stream %}&stream={{ stream }}{% endif %}{% if exam_type %}&exam_type={{ exam_type }}{% endif %}"
+            hx-get="/partials/admissions?offset={{ next_offset }}{% if q %}&q={{ q }}{% endif %}{% if stream %}&stream={{ stream }}{% endif %}{% if admission_type %}&admission_type={{ admission_type }}{% endif %}"
             hx-target="#admission-list"
             hx-swap="beforeend"
             hx-on::after-request="document.getElementById('load-more-admissions')?.remove()">

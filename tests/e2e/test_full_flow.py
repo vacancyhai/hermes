@@ -228,7 +228,7 @@ def test_admission_lifecycle(backend_url, admin_api_token, user_api_token):
     resp = requests.post(
         f"{backend_url}/api/v1/admin/admissions",
         json={
-            "exam_name": admission_name,
+            "admission_name": admission_name,
             "conducting_body": "NTA",
             "stream": "engineering",
             "status": "active",
@@ -249,7 +249,7 @@ def test_admission_lifecycle(backend_url, admin_api_token, user_api_token):
     # Public detail must be accessible
     resp = requests.get(f"{backend_url}/api/v1/admissions/{admission_id}", timeout=10)
     assert resp.status_code == 200
-    assert resp.json()["exam_name"] == admission_name
+    assert resp.json()["admission_name"] == admission_name
 
     # Update
     resp = requests.put(

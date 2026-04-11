@@ -199,7 +199,7 @@ async def list_watched(
         admissions_by_id = {
             e.id: {
                 "id": str(e.id),
-                "exam_name": e.exam_name,
+                "admission_name": e.admission_name,
                 "slug": e.slug,
                 "conducting_body": e.conducting_body,
                 "application_end": (

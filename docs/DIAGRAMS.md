@@ -773,7 +773,7 @@ Admin/Operator → Admin Frontend (port 8081)
                                                                           ┌─────────▼──────────┐
                                                                           │   admissions   │
                                                                           │  - id UUID PK      │
-                                                                          │  - exam_name       │
+                                                                          │  - admission_name       │
                                                                           │  - conducting_body │
                                                                           │  - status          │
                                                                           └────────────────────┘
@@ -796,7 +796,7 @@ jobs:
   - slug (unique)
 
 admissions:
-  - status, exam_date
+  - status, admission_date
   - search_vector GIN (full-text)
   - slug (unique)
 
@@ -890,7 +890,7 @@ SCHEDULED TASKS (beat_schedule in celery_app.py):
 
 6. app.tasks.jobs.update_exam_statuses
    Run: Daily 02:35 UTC
-   Purpose: Set status='completed' on admissions past exam_date
+   Purpose: Set status='completed' on admissions past admission_date
 
 7. app.tasks.seo.generate_sitemap
    Run: Daily 04:00 UTC
@@ -1383,7 +1383,7 @@ document tables (`admit_cards`, `answer_keys`, `results`) are
   ─────────────────────         ─────────────────────────────
   total_vacancies        ≠      seats_info (seats by college)
   salary_initial/max     ≠      (no salary — it's education)
-  employment_type        ≠      exam_type (ug/pg/doctoral)
+  employment_type        ≠      admission_type (ug/pg/doctoral)
   qualification_level    ≠      stream (medical/engineering/law)
   organization/dept      ≠      conducting_body + counselling_body
   application tracking   ≠      seat allotment via counselling
@@ -1396,13 +1396,13 @@ document tables (`admit_cards`, `answer_keys`, `results`) are
   │  (Government Jobs)       │         │  (NEET/JEE/CLAT/CAT/GATE)   │
   │                          │         │                              │
   │  id UUID PK              │         │  id UUID PK                  │
-  │  job_title               │         │  exam_name                   │
+  │  job_title               │         │  admission_name                   │
   │  organization            │         │  conducting_body             │
   │  total_vacancies         │         │  counselling_body            │
-  │  salary_initial/max      │         │  exam_type (ug/pg/doctoral)  │
+  │  salary_initial/max      │         │  admission_type (ug/pg/doctoral)  │
   │  employment_type         │         │  stream (medical/engg/law)   │
   │  qualification_level     │         │  eligibility JSONB           │
-  │  vacancy_breakdown JSONB │         │  exam_details JSONB          │
+  │  vacancy_breakdown JSONB │         │  admission_details JSONB          │
   │  fee_general/obc/sc_st/  │         │  selection_process JSONB     │
   │    ews/female (integers) │         │  seats_info JSONB            │
   │  source (manual/         │         │  fee_* (5 columns)           │

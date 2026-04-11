@@ -262,7 +262,7 @@ async def test_get_admit_card_found_with_exam():
     card.admission = MagicMock()
     card.admission.id = admission_id
     card.admission.slug = "neet-2025"
-    card.exam.exam_name = "NEET"
+    card.exam.admission_name = "NEET"
     card.admission.conducting_body = "NTA"
     mock_r = _mock_resp(card.id)
     with patch.object(AdmitCardResponse, "model_validate", return_value=mock_r):
@@ -461,7 +461,7 @@ async def test_get_answer_key_found_with_exam():
     key.admission = MagicMock()
     key.admission.id = admission_id
     key.admission.slug = "jee-2025"
-    key.exam.exam_name = "JEE"
+    key.exam.admission_name = "JEE"
     key.admission.conducting_body = "NTA"
     mock_r = _mock_resp(key.id)
     with patch.object(AnswerKeyResponse, "model_validate", return_value=mock_r):
@@ -642,7 +642,7 @@ async def test_get_result_found_with_exam():
     res_obj.admission = MagicMock()
     res_obj.admission.id = admission_id
     res_obj.admission.slug = "clat-2025"
-    res_obj.exam.exam_name = "CLAT"
+    res_obj.exam.admission_name = "CLAT"
     res_obj.admission.conducting_body = "NLU"
     mock_r = _mock_resp(res_obj.id)
     with patch.object(ResultResponse, "model_validate", return_value=mock_r):

@@ -19,7 +19,7 @@ multi-channel notifications, and an admin panel.
 > (Jobs / Admit Cards / Answer Keys / Results / Admissions); type-aware gradient detail pages with shared
 > CSS design system; single Web Share API button replacing WhatsApp/Telegram share links; 9 admission seed
 > entries with full metadata and 32 linked phase documents; fixed frontend detail pages to correctly render
-> nested JSON fields (`exam_details`, `eligibility`, `seats_info`, `vacancy_breakdown`, `selection_process`);
+> nested JSON fields (`admission_details`, `eligibility`, `seats_info`, `vacancy_breakdown`, `selection_process`);
 > removed standalone admit-cards/answer-keys/results management pages from admin frontend — all phase
 > document management is now consolidated within the parent job/admission edit pages.
 
@@ -81,7 +81,7 @@ PostgreSQL and Redis are isolated inside Docker networks — never exposed to th
 - **CSRF Protection** — All user frontend POST forms include a session-bound CSRF token validated on the server. The Firebase callback endpoint is exempt (authenticated by Firebase ID token).
 - **Two-Tier RBAC** — Regular users (`users` table, user frontend port 8080) and Operator/Admin (`admin_users` table with role column, admin frontend port 8081); JWT `user_type` claim (`"user"` | `"admin"`) enforces strict scope isolation — admin tokens are rejected by user endpoints and vice versa.
 - **Organisation Follow** — Follow SSC, UPSC, Railway, etc. (stored in `user_profiles.followed_organizations`) to get notified on every new vacancy from that organisation.
-- **Admissions** — Separate `admissions` table for NEET, JEE, CLAT, CAT, CUET, GATE etc.; distinct from government job vacancies with exam-specific fields: `stream`, `exam_type`, `counselling_body`, `seats_info`, eligibility, exam pattern.
+- **Admissions** — Separate `admissions` table for NEET, JEE, CLAT, CAT, CUET, GATE etc.; distinct from government job vacancies with exam-specific fields: `stream`, `admission_type`, `counselling_body`, `seats_info`, eligibility, exam pattern.
 - **Polymorphic Document Tables** — `admit_cards`, `answer_keys`, `results` each link to either a job (`job_id`) or admission (`admission_id`) via DB CHECK constraint — exactly one parent per row.
 - **5-Section Navigation** — Jobs, Admit Cards, Answer Keys, Results, Admissions — each with its own section page, search, and type-matching gradient hero color.
 - **Unified Detail Pages** — Type-aware gradient heroes (navy/blue/amber/green/purple per section); structured sections for eligibility, selection process, admission pattern, vacancy breakdown, fee table; Web Share API button (with clipboard fallback).

@@ -60,7 +60,7 @@ docker exec hermes_backend alembic -c /app/alembic.ini upgrade head
   │    JOBS      │        │   ADMISSIONS     │
   │              │        │ (NEET/JEE/CLAT)  │
   │  (see above) │        │ id               │
-  └──────────────┘        │ exam_name        │
+  └──────────────┘        │ admission_name        │
                           │ conducting_body  │
                           │ stream           │
                           │ status           │
@@ -206,7 +206,7 @@ Government job vacancies. Document releases (admit cards, answer keys, results) 
 | `exam_start` | Date | Yes | Date of first phase exam |
 | `exam_end` | Date | Yes | Date of last phase exam |
 | `result_date` | Date | Yes | Expected result date |
-| `exam_details` | JSONB | No | Exam pattern, phases; default `{}` |
+| `admission_details` | JSONB | No | Exam pattern, phases; default `{}` |
 | `salary_initial` | Integer | Yes | Minimum pay (INR) |
 | `salary_max` | Integer | Yes | Maximum pay (INR) |
 | `salary` | JSONB | No | Pay scale, level, allowances; default `{}` |
@@ -394,18 +394,18 @@ These are educational admissioninations, not government job recruitments.
 |--------|------|----------|-------------|
 | `id` | UUID (PK) | No | Auto-generated |
 | `slug` | String(500) | No | URL slug (unique) |
-| `exam_name` | String(500) | No | E.g. "NTA NEET PG 2026 — Medical PG Entrance" |
+| `admission_name` | String(500) | No | E.g. "NTA NEET PG 2026 — Medical PG Entrance" |
 | `conducting_body` | String(255) | No | E.g. "National Testing Agency" |
 | `counselling_body` | String(255) | Yes | E.g. "MCC", "JoSAA", "CLAT Consortium" |
-| `exam_type` | String(20) | No | `ck_admission_type`: `ug` \| `pg` \| `doctoral` \| `lateral`; default `pg` |
+| `admission_type` | String(20) | No | `ck_admission_type`: `ug` \| `pg` \| `doctoral` \| `lateral`; default `pg` |
 | `stream` | String(30) | No | `ck_admission_stream`: `medical` \| `engineering` \| `law` \| `management` \| `arts_science` \| `general`; default `general` |
 | `eligibility` | JSONB | No | `{min_qualification, attempts_limit, age_limit, ...}`; default `{}` |
-| `exam_details` | JSONB | No | `{exam_pattern: [{phase, subjects, total_marks, duration_minutes, negative_marking, exam_mode}]}`; default `{}` |
+| `admission_details` | JSONB | No | `{exam_pattern: [{phase, subjects, total_marks, duration_minutes, negative_marking, exam_mode}]}`; default `{}` |
 | `selection_process` | JSONB | No | `[{phase, name, qualifying}]`; default `[]` |
 | `seats_info` | JSONB | Yes | `{total_seats, by_category, note}` — institution/seat counts |
 | `application_start` | Date | Yes | Registration opens |
 | `application_end` | Date | Yes | Registration deadline |
-| `exam_date` | Date | Yes | Date of main exam |
+| `admission_date` | Date | Yes | Date of main exam |
 | `result_date` | Date | Yes | Expected result date |
 | `counselling_start` | Date | Yes | Counselling round start |
 | `fee_general` | Integer | Yes | Application fee — General/UR (INR) |
@@ -420,7 +420,7 @@ These are educational admissioninations, not government job recruitments.
 | `published_at` | DateTime | Yes | When first published |
 | `created_at` | DateTime | No | Creation timestamp |
 | `updated_at` | DateTime | No | Last update timestamp |
-| `search_vector` | tsvector | — | GENERATED ALWAYS (exam_name A, conducting_body B, description C) — GIN indexed |
+| `search_vector` | tsvector | — | GENERATED ALWAYS (admission_name A, conducting_body B, description C) — GIN indexed |
 
 **Indexes:** `idx_admissions_slug` (unique), `idx_admissions_stream_status`, `idx_admissions_search` (GIN)
 

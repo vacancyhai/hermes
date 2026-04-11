@@ -310,7 +310,7 @@ async def get_recommended_admissions(
     today = date.today()
     base_filter = (
         Admission.status == "active",
-        (Admission.exam_date >= today) | (Admission.exam_date.is_(None)),
+        (Admission.admission_date >= today) | (Admission.admission_date.is_(None)),
     )
 
     has_prefs = profile and (
@@ -414,9 +414,9 @@ async def get_recommended_admissions(
         if admission.created_at and admission.created_at.date() >= recency_cutoff:
             score += RECENCY_BONUS
 
-        scored.append((score, admission.exam_date, admission))
+        scored.append((score, admission.admission_date, admission))
 
-    # Sort: score DESC, then exam_date ASC (None exam_dates last)
+    # Sort: score DESC, then admission_date ASC (None exam_dates last)
     far_future = date(9999, 12, 31)
     scored.sort(key=lambda t: (-t[0], t[1] or far_future))
 

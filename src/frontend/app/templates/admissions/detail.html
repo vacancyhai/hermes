@@ -1,7 +1,7 @@
 {% extends "shared/base.html" %}
-{% block title %}{{ admission.exam_name }} — Hermes{% endblock %}
+{% block title %}{{ admission.admission_name }} — Hermes{% endblock %}
 {% block meta %}
-<meta name="description" content="{{ admission.short_description or exam.exam_name }}">
+<meta name="description" content="{{ admission.short_description or exam.admission_name }}">
 {% endblock %}
 
 {% block content %}
@@ -12,10 +12,10 @@
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.75rem;flex-wrap:wrap">
         <div style="flex:1;min-width:0">
             <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.5rem">
-                <span style="background:rgba(255,255,255,.2);color:#fff;padding:.15rem .55rem;border-radius:9999px;font-size:.75rem;font-weight:600">{{ admission.exam_type|upper }}</span>
+                <span style="background:rgba(255,255,255,.2);color:#fff;padding:.15rem .55rem;border-radius:9999px;font-size:.75rem;font-weight:600">{{ admission.admission_type|upper }}</span>
                 <span style="background:rgba(255,255,255,.2);color:#fff;padding:.15rem .55rem;border-radius:9999px;font-size:.75rem;font-weight:600">{{ admission.stream|replace('_',' ')|title }}</span>
             </div>
-            <h1>{{ admission.exam_name }}</h1>
+            <h1>{{ admission.admission_name }}</h1>
             <div class="org">🏛 {{ admission.conducting_body }}{% if admission.counselling_body and admission.counselling_body != admission.conducting_body %} · Counselling: {{ admission.counselling_body }}{% endif %}</div>
         </div>
         <div style="flex-shrink:0">
@@ -73,10 +73,10 @@
         <div class="value {{ 'urgent' if admission.status == 'active' else '' }}">{{ admission.application_end }}</div>
     </div>
     {% endif %}
-    {% if admission.exam_date %}
+    {% if admission.admission_date %}
     <div class="detail-item">
         <div class="label">Exam Date</div>
-        <div class="value">{{ admission.exam_date }}</div>
+        <div class="value">{{ admission.admission_date }}</div>
     </div>
     {% endif %}
     {% if admission.result_date %}
@@ -135,10 +135,10 @@
 
 <!-- Admission Pattern & Details -->
 {#
-  exam_details: {mode, duration_minutes, total_marks, total_questions, negative_marking,
+  admission_details: {mode, duration_minutes, total_marks, total_questions, negative_marking,
                  language:[], subjects:[{name,questions,marks}]}
 #}
-{% set ed = admission.exam_details or {} %}
+{% set ed = admission.admission_details or {} %}
 {% if ed.get('mode') or ed.get('total_marks') or ed.get('subjects') %}
 <div class="detail-section">
     <h2>📝 Admission Pattern</h2>

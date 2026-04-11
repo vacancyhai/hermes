@@ -610,7 +610,7 @@ def test_new_admission_post_success(auth_client):
     client, mock_api = auth_client
     mock_api.post.return_value = _ok({"id": "exam-1"})
     resp = client.post("/admissions/new", data={
-        "exam_name": "JEE Main", "conducting_body": "NTA", "status": "active",
+        "admission_name": "JEE Main", "conducting_body": "NTA", "status": "active",
     })
     assert resp.status_code == 302
     assert "exam-1" in resp.headers["Location"]
@@ -619,7 +619,7 @@ def test_new_admission_post_success(auth_client):
 def test_new_admission_post_failure(auth_client):
     client, mock_api = auth_client
     mock_api.post.return_value = _fail({"detail": "Error"})
-    resp = client.post("/admissions/new", data={"exam_name": "Exam"})
+    resp = client.post("/admissions/new", data={"admission_name": "Exam"})
     assert resp.status_code == 200
 
 
@@ -632,7 +632,7 @@ def test_edit_admission_get_no_token(client, mock_api):
 
 def test_edit_admission_get(auth_client):
     client, mock_api = auth_client
-    mock_api.get.return_value = _ok({"id": "exam-1", "exam_name": "JEE Main"})
+    mock_api.get.return_value = _ok({"id": "exam-1", "admission_name": "JEE Main"})
     resp = client.get("/admissions/exam-1/edit")
     assert resp.status_code == 200
 
@@ -648,8 +648,8 @@ def test_edit_admission_get_not_found(auth_client):
 def test_edit_admission_post(auth_client):
     client, mock_api = auth_client
     mock_api.put.return_value = _ok({})
-    mock_api.get.return_value = _ok({"id": "exam-1", "exam_name": "JEE Main Updated"})
-    resp = client.post("/admissions/exam-1/edit", data={"exam_name": "JEE Main Updated"})
+    mock_api.get.return_value = _ok({"id": "exam-1", "admission_name": "JEE Main Updated"})
+    resp = client.post("/admissions/exam-1/edit", data={"admission_name": "JEE Main Updated"})
     assert resp.status_code == 302
     mock_api.put.assert_called_once()
 

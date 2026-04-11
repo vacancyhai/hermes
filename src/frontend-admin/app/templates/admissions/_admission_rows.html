@@ -15,12 +15,12 @@
     {% for admission in admissions %}
     <tr>
         <td>
-            <strong>{{ admission.exam_name }}</strong>
+            <strong>{{ admission.admission_name }}</strong>
         </td>
         <td><span style="text-transform:capitalize">{{ admission.stream | replace('_',' ') }}</span></td>
-        <td><span style="text-transform:uppercase;font-size:.8rem">{{ admission.exam_type }}</span></td>
+        <td><span style="text-transform:uppercase;font-size:.8rem">{{ admission.admission_type }}</span></td>
         <td style="font-size:.875rem;color:#6b7280">{{ admission.conducting_body }}</td>
-        <td style="font-size:.875rem">{{ admission.exam_date or '—' }}</td>
+        <td style="font-size:.875rem">{{ admission.admission_date or '—' }}</td>
         <td>
             <span class="status-badge status-{{ admission.status }}">{{ admission.status }}</span>
         </td>
@@ -29,7 +29,7 @@
                 <a href="/admissions/{{ admission.id }}/edit" class="btn btn-sm btn-outline">Edit</a>
                 {% if session.get('admin_role') == 'admin' %}
                 <form method="POST" action="/admissions/{{ admission.id }}/delete"
-                      onsubmit="return confirm('Delete {{ admission.exam_name }}? This will also delete all linked phase documents.')">
+                      onsubmit="return confirm('Delete {{ admission.admission_name }}? This will also delete all linked phase documents.')">
                     <button type="submit" class="btn btn-sm btn-danger">Delete</button>
                 </form>
                 {% endif %}

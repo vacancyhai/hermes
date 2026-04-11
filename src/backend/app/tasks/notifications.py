@@ -312,7 +312,7 @@ def send_deadline_reminders():
             watch_exam_rows = session.execute(
                 text(
                     """
-                    SELECT uw.user_id, ee.id, ee.exam_name, ee.slug, ee.conducting_body, ee.application_end
+                    SELECT uw.user_id, ee.id, ee.admission_name, ee.slug, ee.conducting_body, ee.application_end
                     FROM user_watches uw
                     JOIN admissions ee ON ee.id = uw.entity_id
                     WHERE uw.entity_type = 'exam'
@@ -326,7 +326,7 @@ def send_deadline_reminders():
             for (
                 user_id,
                 admission_id,
-                exam_name,
+                admission_name,
                 slug,
                 conducting_body,
                 app_end,
@@ -342,7 +342,7 @@ def send_deadline_reminders():
                     continue
 
                 title, msg, priority = _build_reminder_text(
-                    days_before, exam_name, conducting_body
+                    days_before, admission_name, conducting_body
                 )
                 smart_notify.delay(
                     user_id=str(user_id),
@@ -357,7 +357,7 @@ def send_deadline_reminders():
                     email_context={
                         "title": title,
                         "message": msg,
-                        "job_title": exam_name,
+                        "job_title": admission_name,
                         "organization": conducting_body,
                         "slug": slug,
                         "deadline": str(app_end),
@@ -392,7 +392,7 @@ def notify_watchers_on_update(entity_type: str, entity_id: str):
         else:
             row = session.execute(
                 text(
-                    "SELECT exam_name, slug, conducting_body, application_end FROM admissions WHERE id = :eid"
+                    "SELECT admission_name, slug, conducting_body, application_end FROM admissions WHERE id = :eid"
                 ),
                 {"eid": entity_id},
             ).fetchone()

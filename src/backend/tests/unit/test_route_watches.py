@@ -29,7 +29,7 @@ def _make_job(**kwargs):
 def _make_admission(**kwargs):
     e = MagicMock()
     e.id = uuid.uuid4()
-    e.exam_name = kwargs.get("exam_name", "NEET")
+    e.admission_name = kwargs.get("admission_name", "NEET")
     e.slug = kwargs.get("slug", "neet-2025")
     e.conducting_body = "NTA"
     e.application_end = None

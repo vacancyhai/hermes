@@ -838,7 +838,7 @@ def result_detail(result_id):
 @bp.route("/admissions", methods=["GET"])
 def admissions():
     params = {}
-    for key in ("q", "stream", "exam_type"):
+    for key in ("q", "stream", "admission_type"):
         val = request.args.get(key)
         if val:
             params[key] = val
@@ -866,14 +866,14 @@ def admissions():
         watched_admission_ids=watched_admission_ids,
         q=request.args.get("q", ""),
         stream=request.args.get("stream", ""),
-        exam_type=request.args.get("exam_type", ""),
+        admission_type=request.args.get("admission_type", ""),
     )
 
 
 @bp.route("/partials/admissions", methods=["GET"])
 def admissions_partial():
     params = {}
-    for key in ("q", "stream", "exam_type"):
+    for key in ("q", "stream", "admission_type"):
         val = request.args.get(key)
         if val:
             params[key] = val
@@ -891,7 +891,7 @@ def admissions_partial():
         next_offset=next_offset,
         q=request.args.get("q", ""),
         stream=request.args.get("stream", ""),
-        exam_type=request.args.get("exam_type", ""),
+        admission_type=request.args.get("admission_type", ""),
     )
 
 

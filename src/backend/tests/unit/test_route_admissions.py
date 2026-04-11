@@ -13,18 +13,18 @@ def _make_admission(**kwargs):
     e = MagicMock()
     e.id = uuid.uuid4()
     e.slug = kwargs.get("slug", "neet-2025")
-    e.exam_name = kwargs.get("exam_name", "NEET")
+    e.admission_name = kwargs.get("admission_name", "NEET")
     e.conducting_body = "NTA"
     e.counselling_body = None
-    e.exam_type = "national"
+    e.admission_type = "national"
     e.stream = "medical"
     e.eligibility = {}
-    e.exam_details = {}
+    e.admission_details = {}
     e.selection_process = []
     e.seats_info = None
     e.application_start = None
     e.application_end = None
-    e.exam_date = None
+    e.admission_date = None
     e.result_date = None
     e.counselling_start = None
     e.fee_general = None
@@ -78,7 +78,7 @@ async def test_list_admissions_empty():
     result = await list_admissions(
         q=None,
         stream=None,
-        exam_type=None,
+        admission_type=None,
         limit=20,
         offset=0,
         db=_db_list([], count=0),
@@ -100,7 +100,7 @@ async def test_list_admissions_returns_items():
         result = await list_admissions(
             q=None,
             stream=None,
-            exam_type=None,
+            admission_type=None,
             limit=20,
             offset=0,
             db=_db_list([admission]),
@@ -121,7 +121,7 @@ async def test_list_admissions_pagination_has_more():
         result = await list_admissions(
             q=None,
             stream=None,
-            exam_type=None,
+            admission_type=None,
             limit=1,
             offset=0,
             db=_db_list([admission], count=3),
@@ -136,7 +136,7 @@ async def test_list_admissions_with_search_query():
     result = await list_admissions(
         q="NEET",
         stream=None,
-        exam_type=None,
+        admission_type=None,
         limit=20,
         offset=0,
         db=_db_list([], count=0),
@@ -151,7 +151,7 @@ async def test_list_admissions_with_stream_filter():
     result = await list_admissions(
         q=None,
         stream="medical",
-        exam_type=None,
+        admission_type=None,
         limit=20,
         offset=0,
         db=_db_list([], count=0),
@@ -166,7 +166,7 @@ async def test_list_admissions_with_all_filters():
     result = await list_admissions(
         q=None,
         stream="engineering",
-        exam_type="national",
+        admission_type="national",
         limit=10,
         offset=0,
         db=_db_list([], count=0),
@@ -239,7 +239,7 @@ async def test_admin_list_admissions_empty():
         limit=20,
         offset=0,
         stream=None,
-        exam_type=None,
+        admission_type=None,
         status=None,
         admin=MagicMock(),
         db=_db_list([], count=0),
@@ -261,7 +261,7 @@ async def test_admin_list_admissions_with_results():
             limit=20,
             offset=0,
             stream=None,
-            exam_type=None,
+            admission_type=None,
             status=None,
             admin=MagicMock(),
             db=_db_list([admission]),
@@ -277,7 +277,7 @@ async def test_admin_list_admissions_with_filters():
         limit=10,
         offset=0,
         stream="medical",
-        exam_type="national",
+        admission_type="national",
         status="active",
         admin=MagicMock(),
         db=_db_list([], count=0),
@@ -327,9 +327,9 @@ async def test_create_admission_success():
     from app.schemas.admissions import AdmissionCreateRequest, AdmissionResponse
 
     body = AdmissionCreateRequest(
-        exam_name="NEET 2025",
+        admission_name="NEET 2025",
         conducting_body="NTA",
-        exam_type="ug",
+        admission_type="ug",
         stream="medical",
     )
     slug_res = MagicMock()
@@ -351,9 +351,9 @@ async def test_create_admission_slug_collision_increments():
     from app.schemas.admissions import AdmissionCreateRequest, AdmissionResponse
 
     body = AdmissionCreateRequest(
-        exam_name="NEET",
+        admission_name="NEET",
         conducting_body="NTA",
-        exam_type="ug",
+        admission_type="ug",
         stream="medical",
     )
     slug_res = MagicMock()
@@ -375,9 +375,9 @@ async def test_create_admission_active_sets_published_at():
     from app.schemas.admissions import AdmissionCreateRequest, AdmissionResponse
 
     body = AdmissionCreateRequest(
-        exam_name="JEE Main",
+        admission_name="JEE Main",
         conducting_body="NTA",
-        exam_type="ug",
+        admission_type="ug",
         stream="engineering",
         status="active",
     )
@@ -400,9 +400,9 @@ async def test_create_admission_non_active_no_published_at():
     from app.schemas.admissions import AdmissionCreateRequest, AdmissionResponse
 
     body = AdmissionCreateRequest(
-        exam_name="CAT 2025",
+        admission_name="CAT 2025",
         conducting_body="IIM",
-        exam_type="pg",
+        admission_type="pg",
         stream="management",
         status="upcoming",
     )
@@ -450,7 +450,7 @@ async def test_update_admission_success():
     with patch.object(AdmissionResponse, "model_validate", return_value=mock_resp):
         result = await update_admission(
             admission_id=admission.id,
-            body=AdmissionUpdateRequest(exam_name="Updated NEET"),
+            body=AdmissionUpdateRequest(admission_name="Updated NEET"),
             admin=MagicMock(),
             db=_db_single(admission),
         )

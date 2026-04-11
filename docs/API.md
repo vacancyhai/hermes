@@ -106,7 +106,7 @@ Users can watch specific jobs or admissions to receive automatic notifications.
 ```json
 {
   "jobs": [{ "id": "uuid", "job_title": "...", "slug": "...", "organization": "...", "application_end": "2026-05-01", "status": "active" }],
-  "admissions": [{ "id": "uuid", "exam_name": "...", "slug": "...", "conducting_body": "...", "application_end": "2026-06-01", "status": "active" }],
+  "admissions": [{ "id": "uuid", "admission_name": "...", "slug": "...", "conducting_body": "...", "application_end": "2026-06-01", "status": "active" }],
   "total": 2
 }
 ```
@@ -684,13 +684,13 @@ The user frontend supports Progressive Web App features:
 ## Admissions
 
 Admissions (NEET, JEE, CLAT, CAT, GATE etc.) are stored in the `admissions` table, separate from `jobs`.
-They have exam-specific fields: `stream`, `exam_type`, `counselling_body`, `seats_info`, exam pattern.
+They have exam-specific fields: `stream`, `admission_type`, `counselling_body`, `seats_info`, exam pattern.
 
 ### Public (read-only, active admissions only)
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/admissions` | List active admissions (stream/exam_type/search filters) |
+| GET | `/admissions` | List active admissions (stream/admission_type/search filters) |
 | GET | `/admissions/{slug}` | Exam detail by slug |
 | GET | `/admissions/{admission_id}/admit-cards` | Per-phase admit cards (admission status must not be `cancelled`) |
 | GET | `/admissions/{admission_id}/answer-keys` | Per-phase answer keys (admission status must not be `cancelled`) |
@@ -702,7 +702,7 @@ They have exam-specific fields: `stream`, `exam_type`, `counselling_body`, `seat
 |-------|------|-------------|
 | `q` | string | Full-text search on admission name, conducting body, description |
 | `stream` | string | `medical`, `engineering`, `law`, `management`, `arts_science`, `general` |
-| `exam_type` | string | `ug`, `pg`, `doctoral`, `lateral` |
+| `admission_type` | string | `ug`, `pg`, `doctoral`, `lateral` |
 | `limit` | int | 1-100, default: 20 |
 | `offset` | int | Default: 0 |
 
@@ -712,7 +712,7 @@ They have exam-specific fields: `stream`, `exam_type`, `counselling_body`, `seat
 
 | Method | Endpoint | Description |
 |--------|----------|-----------|
-| GET | `/admin/admissions` | List all admissions (any status, filterable by stream/exam_type/status) |
+| GET | `/admin/admissions` | List all admissions (any status, filterable by stream/admission_type/status) |
 | GET | `/admin/admissions/{id}` | Get single admission detail by ID (any status) |
 | POST | `/admin/admissions` | Create admission |
 | PUT | `/admin/admissions/{id}` | Update admission |
@@ -734,13 +734,13 @@ GET /api/v1/admissions?stream=medical&limit=10
   "data": [
     {
       "slug": "nta-neet-pg-2026",
-      "exam_name": "NTA NEET PG 2026 — Medical PG Admissionination",
+      "admission_name": "NTA NEET PG 2026 — Medical PG Admissionination",
       "conducting_body": "National Testing Agency",
       "counselling_body": "Medical Counselling Committee (MCC)",
-      "exam_type": "pg",
+      "admission_type": "pg",
       "stream": "medical",
       "application_end": "2025-11-30",
-      "exam_date": "2026-03-09",
+      "admission_date": "2026-03-09",
       "fee_general": 4250
     },
     ...
@@ -751,7 +751,7 @@ GET /api/v1/admissions?stream=medical&limit=10
 
 ### Admission JSON Field Structures
 
-**`exam_details`** — Exam pattern and paper structure:
+**`admission_details`** — Exam pattern and paper structure:
 ```json
 {
   "mode": "Online",
@@ -796,10 +796,10 @@ GET /api/v1/admissions?stream=medical&limit=10
 POST /api/v1/admin/admissions
 Authorization: Bearer <admin_token>
 {
-  "exam_name": "JEE Advanced 2026",
+  "admission_name": "JEE Advanced 2026",
   "conducting_body": "IIT Bombay",
   "counselling_body": "JoSAA",
-  "exam_type": "ug",
+  "admission_type": "ug",
   "stream": "engineering",
   "eligibility": {
     "qualification": "12th Pass with PCM",
@@ -808,7 +808,7 @@ Authorization: Bearer <admin_token>
     "attempts_allowed": 2
   },
   "seats_info": { "total": 17385, "UR": 7850, "OBC": 4680, "EWS": 1740, "SC": 2610, "ST": 505 },
-  "exam_details": {
+  "admission_details": {
     "mode": "Online",
     "duration_minutes": 180,
     "total_marks": 360,
@@ -818,7 +818,7 @@ Authorization: Bearer <admin_token>
       { "name": "Mathematics", "questions": 30, "marks": 120 }
     ]
   },
-  "exam_date": "2026-05-25",
+  "admission_date": "2026-05-25",
   "fee_general": 3200,
   "fee_sc_st": 1600,
   "status": "active"

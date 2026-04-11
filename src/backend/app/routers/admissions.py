@@ -59,7 +59,7 @@ async def list_admissions(
     db: Annotated[AsyncSession, Depends(get_db)],
     q: Annotated[str | None, Query()] = None,
     stream: Annotated[str | None, Query()] = None,
-    exam_type: Annotated[str | None, Query()] = None,
+    admission_type: Annotated[str | None, Query()] = None,
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
     offset: Annotated[int, Query(ge=0)] = 0,
 ):
@@ -85,9 +85,9 @@ async def list_admissions(
     if stream:
         query = query.where(Admission.stream == stream)
         count_query = count_query.where(Admission.stream == stream)
-    if exam_type:
-        query = query.where(Admission.exam_type == exam_type)
-        count_query = count_query.where(Admission.exam_type == exam_type)
+    if admission_type:
+        query = query.where(Admission.admission_type == admission_type)
+        count_query = count_query.where(Admission.admission_type == admission_type)
     total = (await db.execute(count_query)).scalar()
     rows = (await db.execute(query.offset(offset).limit(limit))).scalars().all()
 
@@ -189,7 +189,7 @@ async def admin_list_admissions(
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
     offset: Annotated[int, Query(ge=0)] = 0,
     stream: Annotated[str | None, Query()] = None,
-    exam_type: Annotated[str | None, Query()] = None,
+    admission_type: Annotated[str | None, Query()] = None,
     status: Annotated[str | None, Query()] = None,
 ):
     q = select(Admission)
@@ -197,9 +197,9 @@ async def admin_list_admissions(
     if stream:
         q = q.where(Admission.stream == stream)
         cq = cq.where(Admission.stream == stream)
-    if exam_type:
-        q = q.where(Admission.exam_type == exam_type)
-        cq = cq.where(Admission.exam_type == exam_type)
+    if admission_type:
+        q = q.where(Admission.admission_type == admission_type)
+        cq = cq.where(Admission.admission_type == admission_type)
     if status:
         q = q.where(Admission.status == status)
         cq = cq.where(Admission.status == status)
@@ -241,7 +241,7 @@ async def create_admission(
     admin: Annotated[Any, Depends(require_operator)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    base_slug = _slugify(body.exam_name)
+    base_slug = _slugify(body.admission_name)
     existing = {
         r[0]
         for r in (

@@ -970,7 +970,7 @@ def test_admissions_list_with_filters(client, mock_api):
 
 def test_admission_detail_found(client, mock_api):
     mock_api.get.return_value = _ok({
-        "id": "exam-1", "exam_name": "JEE Main", "slug": "jee-main",
+        "id": "exam-1", "admission_name": "JEE Main", "slug": "jee-main",
         "conducting_body": "NTA", "status": "active",
         "admit_cards": [], "answer_keys": [], "results": [],
     })

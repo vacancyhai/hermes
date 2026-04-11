@@ -331,9 +331,9 @@ def edit_job(job_id):
         if zones_raw:
             try:
                 parsed_zones = _json.loads(zones_raw)
-                existing_details = update.get("exam_details") or {}
+                existing_details = update.get("admission_details") or {}
                 existing_details["zonewise_vacancy"] = parsed_zones
-                update["exam_details"] = existing_details
+                update["admission_details"] = existing_details
             except ValueError:
                 pass
         if update:
@@ -554,13 +554,13 @@ def new_admission():
     if request.method == "POST":
         form = request.form.to_dict()
         payload = {}
-        _set_or_none(form, ["exam_name", "conducting_body", "counselling_body", "exam_type",
+        _set_or_none(form, ["admission_name", "conducting_body", "counselling_body", "admission_type",
                              "stream", "description", "short_description", "source_url", "status"], payload)
         _set_int_fields(form, ["fee_general", "fee_obc", "fee_sc_st", "fee_ews", "fee_female"], payload)
-        _set_optional(form, ["application_start", "application_end", "exam_date",
+        _set_optional(form, ["application_start", "application_end", "admission_date",
                               "result_date", "counselling_start"], payload)
         import json as _json
-        for json_field, key in [("exam_details_json", "exam_details"),
+        for json_field, key in [("exam_details_json", "admission_details"),
                                   ("eligibility_json", "eligibility"),
                                   ("seats_info_json", "seats_info"),
                                   ("selection_process_json", "selection_process")]:
@@ -590,13 +590,13 @@ def edit_admission(exam_id):
     if request.method == "POST":
         form = request.form.to_dict()
         update = {}
-        _pick_text_fields(form, ["exam_name", "conducting_body", "counselling_body", "exam_type",
+        _pick_text_fields(form, ["admission_name", "conducting_body", "counselling_body", "admission_type",
                                   "stream", "description", "short_description", "source_url", "status"], update)
         _set_int_fields(form, ["fee_general", "fee_obc", "fee_sc_st", "fee_ews", "fee_female"], update)
-        _set_optional(form, ["application_start", "application_end", "exam_date",
+        _set_optional(form, ["application_start", "application_end", "admission_date",
                               "result_date", "counselling_start"], update)
         import json as _json
-        for json_field, key in [("exam_details_json", "exam_details"),
+        for json_field, key in [("exam_details_json", "admission_details"),
                                   ("eligibility_json", "eligibility"),
                                   ("seats_info_json", "seats_info"),
                                   ("selection_process_json", "selection_process")]:
