@@ -181,7 +181,7 @@ async def test_unwatch_job_success():
 
 
 @pytest.mark.asyncio
-async def test_watch_exam_not_found():
+async def test_watch_admission_not_found():
     from app.routers.watches import watch_admission
     from fastapi import HTTPException
 
@@ -194,7 +194,7 @@ async def test_watch_exam_not_found():
 
 
 @pytest.mark.asyncio
-async def test_watch_exam_already_watching():
+async def test_watch_admission_already_watching():
     from app.routers.watches import watch_admission
 
     user = _make_user()
@@ -218,7 +218,7 @@ async def test_watch_exam_already_watching():
 
 
 @pytest.mark.asyncio
-async def test_watch_exam_max_watches_exceeded():
+async def test_watch_admission_max_watches_exceeded():
     from app.routers.watches import MAX_WATCHES, watch_admission
     from fastapi import HTTPException
 
@@ -240,7 +240,7 @@ async def test_watch_exam_max_watches_exceeded():
 
 
 @pytest.mark.asyncio
-async def test_watch_exam_success():
+async def test_watch_admission_success():
     from app.routers.watches import watch_admission
 
     user = _make_user()
@@ -270,7 +270,7 @@ async def test_watch_exam_success():
 
 
 @pytest.mark.asyncio
-async def test_unwatch_exam_not_watching():
+async def test_unwatch_admission_not_watching():
     from app.routers.watches import unwatch_admission
     from fastapi import HTTPException
 
@@ -284,7 +284,7 @@ async def test_unwatch_exam_not_watching():
 
 
 @pytest.mark.asyncio
-async def test_unwatch_exam_success():
+async def test_unwatch_admission_success():
     from app.routers.watches import unwatch_admission
 
     user = _make_user()
@@ -346,7 +346,7 @@ async def test_list_watched_with_job():
 
 
 @pytest.mark.asyncio
-async def test_list_watched_with_exam():
+async def test_list_watched_with_admission():
     from app.routers.watches import list_watched
 
     user = _make_user()

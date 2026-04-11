@@ -895,9 +895,9 @@ def admissions_partial():
     )
 
 
-@bp.route("/admissions/<exam_id>", methods=["GET"])
-def admission_detail(exam_id):
-    resp = current_app.api_client.get(f"/admissions/{exam_id}")
+@bp.route("/admissions/<admission_id>", methods=["GET"])
+def admission_detail(admission_id):
+    resp = current_app.api_client.get(f"/admissions/{admission_id}")
     if not resp.ok:
         return render_template(_TEMPLATE_404), 404
     admission = resp.json()
@@ -906,24 +906,24 @@ def admission_detail(exam_id):
     if token:
         w_resp = current_app.api_client.get(_API_WATCHED, token=token)
         if w_resp.ok:
-            watching = any(str(e["id"]) == exam_id for e in w_resp.json().get("admissions", []))
+            watching = any(str(e["id"]) == admission_id for e in w_resp.json().get("admissions", []))
     return render_template("admissions/detail.html", admission=admission, watching=watching)
 
 
-@bp.route("/admissions/<exam_id>/watch", methods=["POST"])
-def watch_admission(exam_id):
-    _, authed = _try_with_refresh(lambda t: current_app.api_client.post(f"/admissions/{exam_id}/watch", token=t))
+@bp.route("/admissions/<admission_id>/watch", methods=["POST"])
+def watch_admission(admission_id):
+    _, authed = _try_with_refresh(lambda t: current_app.api_client.post(f"/admissions/{admission_id}/watch", token=t))
     if not authed:
-        return redirect(f"/login?next=/admissions/{exam_id}")
-    return redirect(request.form.get("next") or request.referrer or f"/admissions/{exam_id}")
+        return redirect(f"/login?next=/admissions/{admission_id}")
+    return redirect(request.form.get("next") or request.referrer or f"/admissions/{admission_id}")
 
 
-@bp.route("/admissions/<exam_id>/unwatch", methods=["POST"])
-def unwatch_admission(exam_id):
-    _, authed = _try_with_refresh(lambda t: current_app.api_client.delete(f"/admissions/{exam_id}/watch", token=t))
+@bp.route("/admissions/<admission_id>/unwatch", methods=["POST"])
+def unwatch_admission(admission_id):
+    _, authed = _try_with_refresh(lambda t: current_app.api_client.delete(f"/admissions/{admission_id}/watch", token=t))
     if not authed:
-        return redirect(f"/login?next=/admissions/{exam_id}")
-    return redirect(request.form.get("next") or request.referrer or f"/admissions/{exam_id}")
+        return redirect(f"/login?next=/admissions/{admission_id}")
+    return redirect(request.form.get("next") or request.referrer or f"/admissions/{admission_id}")
 
 
 def create_app():
