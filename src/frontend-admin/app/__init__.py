@@ -530,7 +530,7 @@ def admissions():
             return redirect(_URL_LOGIN)
         resp = current_app.api_client.get(_API_ADMIN_ADMISSIONS, token=token, params=params)
     data = resp.json() if resp.ok else {"data": [], "pagination": {}}
-    return render_template("admissions/admissions.html", exams=data["data"], pagination=data.get("pagination", {}))
+    return render_template("admissions/admissions.html", admissions=data["data"], pagination=data.get("pagination", {}))
 
 
 @bp.route("/admissions/list", methods=["GET"])
@@ -542,7 +542,7 @@ def admissions_list_partial():
     params = {"limit": 20, "offset": _int_arg("offset", 0)}
     resp = current_app.api_client.get(_API_ADMIN_ADMISSIONS, token=token, params=params)
     data = resp.json() if resp.ok else {"data": [], "pagination": {}}
-    return render_template("admissions/_admission_rows.html", exams=data["data"], pagination=data.get("pagination", {}))
+    return render_template("admissions/_admission_rows.html", admissions=data["data"], pagination=data.get("pagination", {}))
 
 
 @bp.route("/admissions/new", methods=["GET", "POST"])  # NOSONAR
