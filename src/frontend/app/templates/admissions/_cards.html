@@ -36,19 +36,19 @@
 </div>
 {% else %}
 <div style="text-align:center;padding:3rem 1rem;color:#64748b">
-    <p style="font-size:1.1rem;margin-bottom:.5rem">No exams found.</p>
+    <p style="font-size:1.1rem;margin-bottom:.5rem">No admissions found.</p>
     <p>Try a different search term or remove filters.</p>
 </div>
 {% endfor %}
 
 {% if has_more %}
-<div class="load-more-wrap" id="load-more-exams">
+<div class="load-more-wrap" id="load-more-admissions">
     <button class="btn btn-outline"
             hx-get="/partials/admissions?offset={{ next_offset }}{% if q %}&q={{ q }}{% endif %}{% if stream %}&stream={{ stream }}{% endif %}{% if exam_type %}&exam_type={{ exam_type }}{% endif %}"
             hx-target="#admission-list"
             hx-swap="beforeend"
-            hx-on::after-request="document.getElementById('load-more-exams')?.remove()">
-        Load More Exams
+            hx-on::after-request="document.getElementById('load-more-admissions')?.remove()">
+        Load More Admissions
     </button>
 </div>
 {% endif %}

@@ -152,7 +152,7 @@ def index():
 
 @bp.route("/dashboard", methods=["GET"])
 def dashboard():
-    """Watched items dashboard — shows jobs and exams the user is watching."""
+    """Watched items dashboard — shows jobs and admissions the user is watching."""
     token = session.get("token")
     if not token:
         return render_template(_TEMPLATE_LOGIN, next="/dashboard",
@@ -847,22 +847,22 @@ def admissions():
     token = session.get("token")
     resp = current_app.api_client.get("/admissions", token=token, params=params)
     data = resp.json() if resp.ok else {"data": [], "pagination": {}}
-    recommended_exams = []
+    recommended_admissions = []
     watched_admission_ids = set()
     if token:
         rec_resp, authed = _try_with_refresh(
             lambda t: current_app.api_client.get("/admissions/recommended", token=t, params={"limit": 20, "offset": 0})
         )
         if authed and rec_resp and rec_resp.ok:
-            recommended_exams = rec_resp.json().get("data", [])
+            recommended_admissions = rec_resp.json().get("data", [])
         w_resp = current_app.api_client.get(_API_WATCHED, token=session.get("token"))
         if w_resp.ok:
             watched_admission_ids = {str(e["id"]) for e in w_resp.json().get("admissions", [])}
     return render_template(
         "admissions/list.html",
-        exams=data.get("data", []),
+        admissions=data.get("data", []),
         pagination=data.get("pagination", {}),
-        recommended_exams=recommended_exams,
+        recommended_admissions=recommended_admissions,
         watched_admission_ids=watched_admission_ids,
         q=request.args.get("q", ""),
         stream=request.args.get("stream", ""),
@@ -886,7 +886,7 @@ def admissions_partial():
     next_offset = params["offset"] + params["limit"] if has_more else 0
     return render_template(
         "admissions/_cards.html",
-        exams=data.get("data", []),
+        admissions=data.get("data", []),
         has_more=has_more,
         next_offset=next_offset,
         q=request.args.get("q", ""),
