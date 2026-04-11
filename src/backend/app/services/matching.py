@@ -298,9 +298,9 @@ async def get_recommended_admissions(
       - State match:                                             +3
       - Education level qualifies:                               +2
       - Age within admission's eligibility range:                     +2
-      - Exam posted within last 7 days:                          +1
+      - Admission posted within last 7 days:                     +1
 
-    Returns (scored_exams, total_count).
+    Returns (scored_admissions, total_count).
     """
     # Load profile
     result = await db.execute(select(UserProfile).where(UserProfile.user_id == user_id))
