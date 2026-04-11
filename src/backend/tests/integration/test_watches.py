@@ -78,8 +78,8 @@ async def test_unwatch_job_requires_auth(client: AsyncClient, active_job):
 # ── Admission watch ──────────────────────────────────────────────────────────────
 
 
-async def test_watch_exam(client: AsyncClient, user_token: str, active_exam):
-    admission_id = active_exam["id"]
+async def test_watch_admission(client: AsyncClient, user_token: str, active_admission):
+    admission_id = active_admission["id"]
     resp = await client.post(
         f"/api/v1/admissions/{admission_id}/watch", headers=auth_header(user_token)
     )
@@ -87,8 +87,10 @@ async def test_watch_exam(client: AsyncClient, user_token: str, active_exam):
     assert resp.json()["watching"] is True
 
 
-async def test_watch_exam_idempotent(client: AsyncClient, user_token: str, active_exam):
-    admission_id = active_exam["id"]
+async def test_watch_admission_idempotent(
+    client: AsyncClient, user_token: str, active_admission
+):
+    admission_id = active_admission["id"]
     await client.post(
         f"/api/v1/admissions/{admission_id}/watch", headers=auth_header(user_token)
     )
@@ -99,7 +101,7 @@ async def test_watch_exam_idempotent(client: AsyncClient, user_token: str, activ
     assert "already" in resp.json()["message"].lower()
 
 
-async def test_watch_exam_not_found(client: AsyncClient, user_token: str):
+async def test_watch_admission_not_found(client: AsyncClient, user_token: str):
     fake_id = uuid.uuid4()
     resp = await client.post(
         f"/api/v1/admissions/{fake_id}/watch", headers=auth_header(user_token)
@@ -107,8 +109,10 @@ async def test_watch_exam_not_found(client: AsyncClient, user_token: str):
     assert resp.status_code == 404
 
 
-async def test_unwatch_exam(client: AsyncClient, user_token: str, active_exam):
-    admission_id = active_exam["id"]
+async def test_unwatch_admission(
+    client: AsyncClient, user_token: str, active_admission
+):
+    admission_id = active_admission["id"]
     await client.post(
         f"/api/v1/admissions/{admission_id}/watch", headers=auth_header(user_token)
     )
@@ -119,10 +123,10 @@ async def test_unwatch_exam(client: AsyncClient, user_token: str, active_exam):
     assert resp.json()["watching"] is False
 
 
-async def test_unwatch_exam_not_watching(
-    client: AsyncClient, user_token: str, active_exam
+async def test_unwatch_admission_not_watching(
+    client: AsyncClient, user_token: str, active_admission
 ):
-    admission_id = active_exam["id"]
+    admission_id = active_admission["id"]
     resp = await client.delete(
         f"/api/v1/admissions/{admission_id}/watch", headers=auth_header(user_token)
     )
@@ -152,10 +156,10 @@ async def test_list_watched_includes_job(
     assert job_id in watched_ids
 
 
-async def test_list_watched_includes_exam(
-    client: AsyncClient, user_token: str, active_exam
+async def test_list_watched_includes_admission(
+    client: AsyncClient, user_token: str, active_admission
 ):
-    admission_id = active_exam["id"]
+    admission_id = active_admission["id"]
     await client.post(
         f"/api/v1/admissions/{admission_id}/watch", headers=auth_header(user_token)
     )

@@ -9,7 +9,7 @@ import pytest
 # ── fixtures ──────────────────────────────────────────────────────────────────
 
 
-def _make_exam(**kwargs):
+def _make_admission(**kwargs):
     e = MagicMock()
     e.id = uuid.uuid4()
     e.slug = kwargs.get("slug", "neet-2025")
@@ -93,9 +93,9 @@ async def test_list_exams_returns_items():
     from app.routers.admissions import list_exams
     from app.schemas.admissions import AdmissionListItem
 
-    exam = _make_exam()
+    admission = _make_admission()
     with patch.object(
-        AdmissionListItem, "model_validate", return_value=_mock_item(exam.id)
+        AdmissionListItem, "model_validate", return_value=_mock_item(admission.id)
     ):
         result = await list_exams(
             q=None,
@@ -103,7 +103,7 @@ async def test_list_exams_returns_items():
             exam_type=None,
             limit=20,
             offset=0,
-            db=_db_list([exam]),
+            db=_db_list([admission]),
         )
     assert len(result["data"]) == 1
     assert result["pagination"]["total"] == 1
@@ -114,9 +114,9 @@ async def test_list_exams_pagination_has_more():
     from app.routers.admissions import list_exams
     from app.schemas.admissions import AdmissionListItem
 
-    exam = _make_exam()
+    admission = _make_admission()
     with patch.object(
-        AdmissionListItem, "model_validate", return_value=_mock_item(exam.id)
+        AdmissionListItem, "model_validate", return_value=_mock_item(admission.id)
     ):
         result = await list_exams(
             q=None,
@@ -124,7 +124,7 @@ async def test_list_exams_pagination_has_more():
             exam_type=None,
             limit=1,
             offset=0,
-            db=_db_list([exam], count=3),
+            db=_db_list([admission], count=3),
         )
     assert result["pagination"]["has_more"] is True
 
@@ -195,10 +195,10 @@ async def test_get_exam_found_increments_views_and_returns_docs():
     from app.routers.admissions import get_exam
     from app.schemas.admissions import AdmissionResponse
 
-    exam = _make_exam()
+    admission = _make_admission()
 
     select_res = MagicMock()
-    select_res.scalar_one_or_none.return_value = exam
+    select_res.scalar_one_or_none.return_value = admission
     empty_res = MagicMock()
     empty_res.scalars.return_value.all.return_value = []
 
@@ -213,10 +213,13 @@ async def test_get_exam_found_increments_views_and_returns_docs():
     )
 
     mock_resp = MagicMock()
-    mock_resp.model_dump.return_value = {"id": str(exam.id), "slug": exam.slug}
+    mock_resp.model_dump.return_value = {
+        "id": str(admission.id),
+        "slug": admission.slug,
+    }
 
     with patch.object(AdmissionResponse, "model_validate", return_value=mock_resp):
-        result = await get_admission(admission_id=exam.id, db=db)
+        result = await get_admission(admission_id=admission.id, db=db)
 
     assert result["admit_cards"] == []
     assert result["answer_keys"] == []
@@ -250,9 +253,9 @@ async def test_admin_list_exams_with_results():
     from app.routers.admissions import admin_list_exams
     from app.schemas.admissions import AdmissionListItem
 
-    exam = _make_exam()
+    admission = _make_admission()
     with patch.object(
-        AdmissionListItem, "model_validate", return_value=_mock_item(exam.id)
+        AdmissionListItem, "model_validate", return_value=_mock_item(admission.id)
     ):
         result = await admin_list_exams(
             limit=20,
@@ -261,7 +264,7 @@ async def test_admin_list_exams_with_results():
             exam_type=None,
             status=None,
             admin=MagicMock(),
-            db=_db_list([exam]),
+            db=_db_list([admission]),
         )
     assert result["pagination"]["total"] == 1
 
@@ -304,13 +307,13 @@ async def test_admin_get_exam_found():
     from app.routers.admissions import admin_get_exam
     from app.schemas.admissions import AdmissionResponse
 
-    exam = _make_exam()
-    mock_resp = _mock_item(exam.id)
+    admission = _make_admission()
+    mock_resp = _mock_item(admission.id)
     with patch.object(AdmissionResponse, "model_validate", return_value=mock_resp):
         result = await admin_get_exam(
-            admission_id=exam.id, admin=MagicMock(), db=_db_single(exam)
+            admission_id=admission.id, admin=MagicMock(), db=_db_single(admission)
         )
-    assert result == {"id": str(exam.id)}
+    assert result == {"id": str(admission.id)}
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -442,16 +445,16 @@ async def test_update_exam_success():
     from app.routers.admissions import update_exam
     from app.schemas.admissions import AdmissionResponse, AdmissionUpdateRequest
 
-    exam = _make_exam()
-    mock_resp = _mock_item(exam.id)
+    admission = _make_admission()
+    mock_resp = _mock_item(admission.id)
     with patch.object(AdmissionResponse, "model_validate", return_value=mock_resp):
         result = await update_exam(
-            admission_id=exam.id,
+            admission_id=admission.id,
             body=AdmissionUpdateRequest(exam_name="Updated NEET"),
             admin=MagicMock(),
-            db=_db_single(exam),
+            db=_db_single(admission),
         )
-    assert result == {"id": str(exam.id)}
+    assert result == {"id": str(admission.id)}
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -475,7 +478,7 @@ async def test_delete_exam_not_found():
 async def test_delete_exam_success():
     from app.routers.admissions import delete_exam
 
-    exam = _make_exam()
-    db = _db_single(exam)
-    await delete_exam(admission_id=exam.id, admin=MagicMock(), db=db)
-    db.delete.assert_called_once_with(exam)
+    admission = _make_admission()
+    db = _db_single(admission)
+    await delete_exam(admission_id=admission.id, admin=MagicMock(), db=db)
+    db.delete.assert_called_once_with(admission)

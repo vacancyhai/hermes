@@ -117,14 +117,14 @@ async def test_admin_create_admit_card_no_parent_fails(
 
 
 async def test_admin_create_admit_card_both_parents_fails(
-    client: AsyncClient, admin_token: str, active_job, active_exam
+    client: AsyncClient, admin_token: str, active_job, active_admission
 ):
     resp = await client.post(
         "/api/v1/admin/admit-cards",
         json={
             "title": "Both Parents",
             "job_id": active_job["id"],
-            "admission_id": active_exam["id"],
+            "admission_id": active_admission["id"],
             "download_url": "https://example.com/admit.pdf",
         },
         headers=auth_header(admin_token),

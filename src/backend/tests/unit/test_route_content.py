@@ -24,7 +24,7 @@ def _make_card(**kwargs):
     c.created_at = datetime.now(timezone.utc)
     c.updated_at = datetime.now(timezone.utc)
     c.job = None
-    c.exam = None
+    c.admission = None
     return c
 
 
@@ -43,7 +43,7 @@ def _make_key(**kwargs):
     k.created_at = datetime.now(timezone.utc)
     k.updated_at = datetime.now(timezone.utc)
     k.job = None
-    k.exam = None
+    k.admission = None
     return k
 
 
@@ -63,7 +63,7 @@ def _make_result(**kwargs):
     r.created_at = datetime.now(timezone.utc)
     r.updated_at = datetime.now(timezone.utc)
     r.job = None
-    r.exam = None
+    r.admission = None
     return r
 
 
@@ -142,7 +142,7 @@ async def test_validate_parent_exam_not_found_raises_404():
     with pytest.raises(HTTPException) as exc:
         await _validate_document_parent(None, uuid.uuid4(), db)
     assert exc.value.status_code == 404
-    assert "exam" in exc.value.detail.lower()
+    assert "admission" in exc.value.detail.lower()
 
 
 @pytest.mark.asyncio
@@ -231,7 +231,7 @@ async def test_get_admit_card_found_no_parent():
         result = await get_admit_card(card_id=card.id, db=_db_single(card))
     assert result["id"] == str(card.id)
     assert "job" not in result
-    assert "exam" not in result
+    assert "admission" not in result
 
 
 @pytest.mark.asyncio
@@ -259,15 +259,15 @@ async def test_get_admit_card_found_with_exam():
 
     admission_id = uuid.uuid4()
     card = _make_card(admission_id=admission_id)
-    card.exam = MagicMock()
+    card.admission = MagicMock()
     card.admission.id = admission_id
-    card.exam.slug = "neet-2025"
+    card.admission.slug = "neet-2025"
     card.exam.exam_name = "NEET"
-    card.exam.conducting_body = "NTA"
+    card.admission.conducting_body = "NTA"
     mock_r = _mock_resp(card.id)
     with patch.object(AdmitCardResponse, "model_validate", return_value=mock_r):
         result = await get_admit_card(card_id=card.id, db=_db_single(card))
-    assert result["exam"]["slug"] == "neet-2025"
+    assert result["admission"]["slug"] == "neet-2025"
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -458,15 +458,15 @@ async def test_get_answer_key_found_with_exam():
 
     admission_id = uuid.uuid4()
     key = _make_key(admission_id=admission_id)
-    key.exam = MagicMock()
+    key.admission = MagicMock()
     key.admission.id = admission_id
-    key.exam.slug = "jee-2025"
+    key.admission.slug = "jee-2025"
     key.exam.exam_name = "JEE"
-    key.exam.conducting_body = "NTA"
+    key.admission.conducting_body = "NTA"
     mock_r = _mock_resp(key.id)
     with patch.object(AnswerKeyResponse, "model_validate", return_value=mock_r):
         result = await get_answer_key(key_id=key.id, db=_db_single(key))
-    assert result["exam"]["slug"] == "jee-2025"
+    assert result["admission"]["slug"] == "jee-2025"
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -639,15 +639,15 @@ async def test_get_result_found_with_exam():
 
     admission_id = uuid.uuid4()
     res_obj = _make_result(admission_id=admission_id)
-    res_obj.exam = MagicMock()
+    res_obj.admission = MagicMock()
     res_obj.admission.id = admission_id
-    res_obj.exam.slug = "clat-2025"
+    res_obj.admission.slug = "clat-2025"
     res_obj.exam.exam_name = "CLAT"
-    res_obj.exam.conducting_body = "NLU"
+    res_obj.admission.conducting_body = "NLU"
     mock_r = _mock_resp(res_obj.id)
     with patch.object(ResultResponse, "model_validate", return_value=mock_r):
         result = await get_result(result_id=res_obj.id, db=_db_single(res_obj))
-    assert result["exam"]["slug"] == "clat-2025"
+    assert result["admission"]["slug"] == "clat-2025"
 
 
 # ═══════════════════════════════════════════════════════════════

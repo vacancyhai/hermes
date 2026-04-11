@@ -26,7 +26,7 @@ def _make_job(**kwargs):
     return j
 
 
-def _make_exam(**kwargs):
+def _make_admission(**kwargs):
     e = MagicMock()
     e.id = uuid.uuid4()
     e.exam_name = kwargs.get("exam_name", "NEET")
@@ -198,17 +198,19 @@ async def test_watch_exam_already_watching():
     from app.routers.watches import watch_exam
 
     user = _make_user()
-    exam = _make_exam()
+    admission = _make_admission()
     watch = _make_watch("exam", exam.id)
 
     exam_res = MagicMock()
-    exam_res.scalar_one_or_none.return_value = exam
+    exam_res.scalar_one_or_none.return_value = admission
     watch_res = MagicMock()
     watch_res.scalar_one_or_none.return_value = watch
 
     db = AsyncMock()
     db.execute = AsyncMock(side_effect=[exam_res, watch_res])
-    result = await watch_admission(admission_id=exam.id, current_user=(user, {}), db=db)
+    result = await watch_admission(
+        admission_id=admission.id, current_user=(user, {}), db=db
+    )
 
     assert result["watching"] is True
     assert "already" in result["message"].lower()
@@ -221,10 +223,10 @@ async def test_watch_exam_max_watches_exceeded():
     from fastapi import HTTPException
 
     user = _make_user()
-    exam = _make_exam()
+    admission = _make_admission()
 
     exam_res = MagicMock()
-    exam_res.scalar_one_or_none.return_value = exam
+    exam_res.scalar_one_or_none.return_value = admission
     no_watch_res = MagicMock()
     no_watch_res.scalar_one_or_none.return_value = None
     count_res = MagicMock()
@@ -233,7 +235,7 @@ async def test_watch_exam_max_watches_exceeded():
     db = AsyncMock()
     db.execute = AsyncMock(side_effect=[exam_res, no_watch_res, count_res])
     with pytest.raises(HTTPException) as exc:
-        await watch_admission(admission_id=exam.id, current_user=(user, {}), db=db)
+        await watch_admission(admission_id=admission.id, current_user=(user, {}), db=db)
     assert exc.value.status_code == 400
 
 
@@ -242,10 +244,10 @@ async def test_watch_exam_success():
     from app.routers.watches import watch_exam
 
     user = _make_user()
-    exam = _make_exam()
+    admission = _make_admission()
 
     exam_res = MagicMock()
-    exam_res.scalar_one_or_none.return_value = exam
+    exam_res.scalar_one_or_none.return_value = admission
     no_watch_res = MagicMock()
     no_watch_res.scalar_one_or_none.return_value = None
     count_res = MagicMock()
@@ -253,7 +255,9 @@ async def test_watch_exam_success():
 
     db = AsyncMock()
     db.execute = AsyncMock(side_effect=[exam_res, no_watch_res, count_res])
-    result = await watch_admission(admission_id=exam.id, current_user=(user, {}), db=db)
+    result = await watch_admission(
+        admission_id=admission.id, current_user=(user, {}), db=db
+    )
 
     assert result["watching"] is True
     db.add.assert_called_once()
@@ -284,12 +288,12 @@ async def test_unwatch_exam_success():
     from app.routers.watches import unwatch_exam
 
     user = _make_user()
-    exam = _make_exam()
+    admission = _make_admission()
     watch = _make_watch("exam", exam.id)
     db = _db_single(watch)
 
     result = await unwatch_admission(
-        admission_id=exam.id, current_user=(user, {}), db=db
+        admission_id=admission.id, current_user=(user, {}), db=db
     )
 
     assert result["watching"] is False
@@ -346,13 +350,13 @@ async def test_list_watched_with_exam():
     from app.routers.watches import list_watched
 
     user = _make_user()
-    exam = _make_exam()
+    admission = _make_admission()
     watch = _make_watch("exam", exam.id)
 
     watches_res = MagicMock()
     watches_res.scalars.return_value.all.return_value = [watch]
     exams_res = MagicMock()
-    exams_res.scalars.return_value.all.return_value = [exam]
+    exams_res.scalars.return_value.all.return_value = [admission]
 
     db = AsyncMock()
     db.execute = AsyncMock(side_effect=[watches_res, exams_res])
@@ -370,7 +374,7 @@ async def test_list_watched_mixed_jobs_and_exams():
 
     user = _make_user()
     job = _make_job()
-    exam = _make_exam()
+    admission = _make_admission()
     job_watch = _make_watch("job", job.id)
     exam_watch = _make_watch("exam", exam.id)
 
@@ -379,7 +383,7 @@ async def test_list_watched_mixed_jobs_and_exams():
     jobs_res = MagicMock()
     jobs_res.scalars.return_value.all.return_value = [job]
     exams_res = MagicMock()
-    exams_res.scalars.return_value.all.return_value = [exam]
+    exams_res.scalars.return_value.all.return_value = [admission]
 
     db = AsyncMock()
     db.execute = AsyncMock(side_effect=[watches_res, jobs_res, exams_res])

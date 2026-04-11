@@ -268,7 +268,7 @@ async def draft_job(client: AsyncClient, admin_token: str):
 
 
 @pytest_asyncio.fixture
-async def active_exam(client: AsyncClient, admin_token: str):
+async def active_admission(client: AsyncClient, admin_token: str):
     """Create an active admission and return the full response dict."""
     resp = await client.post(
         "/api/v1/admin/admissions",
