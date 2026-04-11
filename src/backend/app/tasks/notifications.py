@@ -308,7 +308,7 @@ def send_deadline_reminders():
                     },
                 )
 
-            # ── 2. Watch-based exam reminders ─────────────────────────────────
+            # ── 2. Watch-based admission reminders ─────────────────────────────────
             watch_exam_rows = session.execute(
                 text(
                     """

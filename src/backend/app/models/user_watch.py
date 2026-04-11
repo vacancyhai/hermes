@@ -23,7 +23,7 @@ class UserWatch(Base):
     )
     entity_type: Mapped[str] = mapped_column(
         String(10), nullable=False
-    )  # 'job' | 'exam'
+    )  # 'job' | 'admission'
     entity_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()

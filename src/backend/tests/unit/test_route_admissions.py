@@ -205,7 +205,7 @@ async def test_get_exam_found_increments_views_and_returns_docs():
     db = AsyncMock()
     db.execute = AsyncMock(
         side_effect=[
-            select_res,  # select exam
+            select_res,  # select admission
             empty_res,  # admit_cards
             empty_res,  # answer_keys
             empty_res,  # results

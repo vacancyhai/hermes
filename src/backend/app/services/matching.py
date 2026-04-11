@@ -306,7 +306,7 @@ async def get_recommended_admissions(
     result = await db.execute(select(UserProfile).where(UserProfile.user_id == user_id))
     profile = result.scalar_one_or_none()
 
-    # Base query: active exams with future (or null) exam dates
+    # Base query: active admissions with future (or null) exam dates
     today = date.today()
     base_filter = (
         Admission.status == "active",
@@ -353,7 +353,7 @@ async def get_recommended_admissions(
     for exam in exams:
         score = 0
 
-        # Build exam's eligible category set from eligibility dict
+        # Build admission's eligible category set from eligibility dict
         exam_cats = set()
         if exam.eligibility and isinstance(exam.eligibility, dict):
             cat_val = exam.eligibility.get("category")
@@ -362,7 +362,7 @@ async def get_recommended_admissions(
             elif isinstance(cat_val, str):
                 exam_cats.add(cat_val.lower())
 
-        # Category eligibility: user's actual reservation category is in the exam's categories
+        # Category eligibility: user's actual reservation category is in the admission's categories
         if user_category and (not exam_cats or user_category in exam_cats):
             score += CATEGORY_ELIGIBILITY_MATCH
 
@@ -389,7 +389,7 @@ async def get_recommended_admissions(
         if user_edu_rank >= 0 and exam_edu_rank >= 0 and user_edu_rank >= exam_edu_rank:
             score += EDUCATION_MATCH
 
-        # Age match: user's age is within the exam's eligibility range
+        # Age match: user's age is within the admission's eligibility range
         if (
             user_age is not None
             and exam.eligibility

@@ -649,7 +649,7 @@ def delete_admission(exam_id):
     return redirect("/admissions")
 
 
-# Per-exam phase document management
+# Per-admission phase document management
 
 
 @bp.route("/admissions/<exam_id>/docs/admit-cards", methods=["POST"])

@@ -179,7 +179,7 @@ async def get_admission(
     return admission_data
 
 
-# ADMIN — exam CRUD
+# ADMIN — admission CRUD
 
 
 @admin_router.get("")
