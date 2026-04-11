@@ -76,7 +76,7 @@ def _paginated_response(
 
 
 def _enrich_with_parent(data: dict, obj) -> dict:
-    """Attach a minimal job or exam context dict to a document response."""
+    """Attach a minimal job or admission context dict to a document response."""
     if getattr(obj, "job", None):
         data["job"] = {
             "id": str(obj.job.id),
@@ -84,12 +84,12 @@ def _enrich_with_parent(data: dict, obj) -> dict:
             "job_title": obj.job.job_title,
             "organization": obj.job.organization,
         }
-    elif getattr(obj, "exam", None):
-        data["exam"] = {
-            "id": str(obj.exam.id),
-            "slug": obj.exam.slug,
+    elif getattr(obj, "admission", None):
+        data["admission"] = {
+            "id": str(obj.admission.id),
+            "slug": obj.admission.slug,
             "exam_name": obj.exam.exam_name,
-            "conducting_body": obj.exam.conducting_body,
+            "conducting_body": obj.admission.conducting_body,
         }
     return data
 
@@ -170,10 +170,10 @@ async def get_admit_card(
     card_id: uuid.UUID,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    """Get single admit card by ID with related job/exam."""
+    """Get single admit card by ID with related job/admission."""
     query = (
         select(AdmitCard)
-        .options(joinedload(AdmitCard.job), joinedload(AdmitCard.exam))
+        .options(joinedload(AdmitCard.job), joinedload(AdmitCard.admission))
         .where(AdmitCard.id == card_id)
     )
 
@@ -228,10 +228,10 @@ async def get_answer_key(
     key_id: uuid.UUID,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    """Get single answer key by ID with related job/exam."""
+    """Get single answer key by ID with related job/admission."""
     query = (
         select(AnswerKey)
-        .options(joinedload(AnswerKey.job), joinedload(AnswerKey.exam))
+        .options(joinedload(AnswerKey.job), joinedload(AnswerKey.admission))
         .where(AnswerKey.id == key_id)
     )
 
@@ -284,10 +284,10 @@ async def get_result(
     result_id: uuid.UUID,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    """Get single result by ID with related job/exam."""
+    """Get single result by ID with related job/admission."""
     query = (
         select(Result)
-        .options(joinedload(Result.job), joinedload(Result.exam))
+        .options(joinedload(Result.job), joinedload(Result.admission))
         .where(Result.id == result_id)
     )
 

@@ -848,7 +848,7 @@ def admissions():
     resp = current_app.api_client.get("/admissions", token=token, params=params)
     data = resp.json() if resp.ok else {"data": [], "pagination": {}}
     recommended_exams = []
-    watched_exam_ids = set()
+    watched_admission_ids = set()
     if token:
         rec_resp, authed = _try_with_refresh(
             lambda t: current_app.api_client.get("/admissions/recommended", token=t, params={"limit": 20, "offset": 0})
@@ -857,13 +857,13 @@ def admissions():
             recommended_exams = rec_resp.json().get("data", [])
         w_resp = current_app.api_client.get(_API_WATCHED, token=session.get("token"))
         if w_resp.ok:
-            watched_exam_ids = {str(e["id"]) for e in w_resp.json().get("exams", [])}
+            watched_admission_ids = {str(e["id"]) for e in w_resp.json().get("exams", [])}
     return render_template(
         "admissions/list.html",
         exams=data.get("data", []),
         pagination=data.get("pagination", {}),
         recommended_exams=recommended_exams,
-        watched_exam_ids=watched_exam_ids,
+        watched_admission_ids=watched_admission_ids,
         q=request.args.get("q", ""),
         stream=request.args.get("stream", ""),
         exam_type=request.args.get("exam_type", ""),
@@ -900,14 +900,14 @@ def admission_detail(exam_id):
     resp = current_app.api_client.get(f"/admissions/{exam_id}")
     if not resp.ok:
         return render_template(_TEMPLATE_404), 404
-    exam = resp.json()
+    admission = resp.json()
     watching = False
     token = session.get("token")
     if token:
         w_resp = current_app.api_client.get(_API_WATCHED, token=token)
         if w_resp.ok:
             watching = any(str(e["id"]) == exam_id for e in w_resp.json().get("exams", []))
-    return render_template("admissions/detail.html", exam=exam, watching=watching)
+    return render_template("admissions/detail.html", admission=admission, watching=watching)
 
 
 @bp.route("/admissions/<exam_id>/watch", methods=["POST"])

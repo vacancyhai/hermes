@@ -1,36 +1,36 @@
-{% for exam in exams %}
-<div class="exam-card">
+{% for admission in admissions %}
+<div class="admission-card">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem;margin-bottom:.35rem">
-        <h3><a href="/admissions/{{ exam.id }}">{{ exam.exam_name }}</a></h3>
+        <h3><a href="/admissions/{{ admission.id }}">{{ admission.exam_name }}</a></h3>
     </div>
-    <div class="exam-card-meta">
-        <span>🏛 {{ exam.conducting_body }}</span>
-        <span class="meta-pill pill-purple">{{ exam.exam_type|upper }}</span>
-        <span class="meta-pill pill-blue">{{ exam.stream|replace('_',' ')|title }}</span>
+    <div class="admission-card-meta">
+        <span>🏛 {{ admission.conducting_body }}</span>
+        <span class="meta-pill pill-purple">{{ admission.exam_type|upper }}</span>
+        <span class="meta-pill pill-blue">{{ admission.stream|replace('_',' ')|title }}</span>
     </div>
-    {% if exam.short_description %}
-    <div class="exam-card-desc">{{ exam.short_description }}</div>
+    {% if admission.short_description %}
+    <div class="admission-card-desc">{{ admission.short_description }}</div>
     {% endif %}
-    <div class="exam-card-footer">
+    <div class="admission-card-footer">
         <div>
-            {% if exam.application_end %}
-            <span class="deadline">Apply by: {{ exam.application_end }}</span>
+            {% if admission.application_end %}
+            <span class="deadline">Apply by: {{ admission.application_end }}</span>
             {% endif %}
-            {% if exam.exam_date %}
-            <span class="meta-pill pill-purple" style="margin-left:.4rem">Exam: {{ exam.exam_date }}</span>
+            {% if admission.exam_date %}
+            <span class="meta-pill pill-purple" style="margin-left:.4rem">Exam: {{ admission.exam_date }}</span>
             {% endif %}
         </div>
         <div style="display:flex;gap:.4rem;align-items:center">
-            {% if watched_exam_ids is defined %}
-            {% set is_watching = exam.id|string in watched_exam_ids %}
-            <form method="post" action="/admissions/{{ exam.id }}/{{ 'unwatch' if is_watching else 'watch' }}" style="display:inline">
+            {% if watched_admission_ids is defined %}
+            {% set is_watching = admission.id|string in watched_admission_ids %}
+            <form method="post" action="/admissions/{{ admission.id }}/{{ 'unwatch' if is_watching else 'watch' }}" style="display:inline">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                 <button type="submit" class="{{ 'btn-watching' if is_watching else 'btn btn-outline' }}" style="font-size:.8rem;padding:.3rem .7rem">
                     {{ '★ Watching' if is_watching else '☆ Watch' }}
                 </button>
             </form>
             {% endif %}
-            <a href="/admissions/{{ exam.id }}" class="btn btn-outline" style="font-size:.8rem;padding:.3rem .7rem">View Details →</a>
+            <a href="/admissions/{{ admission.id }}" class="btn btn-outline" style="font-size:.8rem;padding:.3rem .7rem">View Details →</a>
         </div>
     </div>
 </div>
@@ -45,7 +45,7 @@
 <div class="load-more-wrap" id="load-more-exams">
     <button class="btn btn-outline"
             hx-get="/partials/admissions?offset={{ next_offset }}{% if q %}&q={{ q }}{% endif %}{% if stream %}&stream={{ stream }}{% endif %}{% if exam_type %}&exam_type={{ exam_type }}{% endif %}"
-            hx-target="#exam-list"
+            hx-target="#admission-list"
             hx-swap="beforeend"
             hx-on::after-request="document.getElementById('load-more-exams')?.remove()">
         Load More Exams

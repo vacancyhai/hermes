@@ -1,7 +1,7 @@
 {% extends "shared/base.html" %}
-{% block title %}{{ exam.exam_name }} — Hermes{% endblock %}
+{% block title %}{{ admission.exam_name }} — Hermes{% endblock %}
 {% block meta %}
-<meta name="description" content="{{ exam.short_description or exam.exam_name }}">
+<meta name="description" content="{{ admission.short_description or exam.exam_name }}">
 {% endblock %}
 
 {% block content %}
@@ -12,21 +12,21 @@
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.75rem;flex-wrap:wrap">
         <div style="flex:1;min-width:0">
             <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.5rem">
-                <span style="background:rgba(255,255,255,.2);color:#fff;padding:.15rem .55rem;border-radius:9999px;font-size:.75rem;font-weight:600">{{ exam.exam_type|upper }}</span>
-                <span style="background:rgba(255,255,255,.2);color:#fff;padding:.15rem .55rem;border-radius:9999px;font-size:.75rem;font-weight:600">{{ exam.stream|replace('_',' ')|title }}</span>
+                <span style="background:rgba(255,255,255,.2);color:#fff;padding:.15rem .55rem;border-radius:9999px;font-size:.75rem;font-weight:600">{{ admission.exam_type|upper }}</span>
+                <span style="background:rgba(255,255,255,.2);color:#fff;padding:.15rem .55rem;border-radius:9999px;font-size:.75rem;font-weight:600">{{ admission.stream|replace('_',' ')|title }}</span>
             </div>
-            <h1>{{ exam.exam_name }}</h1>
-            <div class="org">🏛 {{ exam.conducting_body }}{% if exam.counselling_body and exam.counselling_body != exam.conducting_body %} · Counselling: {{ exam.counselling_body }}{% endif %}</div>
+            <h1>{{ admission.exam_name }}</h1>
+            <div class="org">🏛 {{ admission.conducting_body }}{% if admission.counselling_body and admission.counselling_body != admission.conducting_body %} · Counselling: {{ admission.counselling_body }}{% endif %}</div>
         </div>
         <div style="flex-shrink:0">
-            {% if exam.status == 'active' %}
+            {% if admission.status == 'active' %}
             <span style="background:#22c55e;color:#fff;padding:.25rem .65rem;border-radius:9999px;font-size:.78rem;font-weight:600">Active</span>
-            {% elif exam.status == 'completed' %}
+            {% elif admission.status == 'completed' %}
             <span style="background:#64748b;color:#fff;padding:.25rem .65rem;border-radius:9999px;font-size:.78rem;font-weight:600">Completed</span>
-            {% elif exam.status == 'upcoming' %}
+            {% elif admission.status == 'upcoming' %}
             <span style="background:#f59e0b;color:#fff;padding:.25rem .65rem;border-radius:9999px;font-size:.78rem;font-weight:600">Upcoming</span>
             {% else %}
-            <span style="background:rgba(255,255,255,.3);color:#fff;padding:.25rem .65rem;border-radius:9999px;font-size:.78rem;font-weight:600">{{ exam.status|title }}</span>
+            <span style="background:rgba(255,255,255,.3);color:#fff;padding:.25rem .65rem;border-radius:9999px;font-size:.78rem;font-weight:600">{{ admission.status|title }}</span>
             {% endif %}
         </div>
     </div>
@@ -36,14 +36,14 @@
 <div class="action-bar">
     {% if session.get('token') %}
         {% if watching %}
-        <form method="post" action="/admissions/{{ exam.id }}/unwatch" style="display:inline">
+        <form method="post" action="/admissions/{{ admission.id }}/unwatch" style="display:inline">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <button type="submit" class="share-btn" style="background:#ede9fe;color:#5b21b6;border-color:#c4b5fd">
                 ★ Watching — Remove
             </button>
         </form>
         {% else %}
-        <form method="post" action="/admissions/{{ exam.id }}/watch" style="display:inline">
+        <form method="post" action="/admissions/{{ admission.id }}/watch" style="display:inline">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <button type="submit" class="share-btn" style="background:#ede9fe;color:#5b21b6;border-color:#c4b5fd">
                 ☆ Watch for Reminders
@@ -51,53 +51,53 @@
         </form>
         {% endif %}
     {% else %}
-    <a href="/login?next=/admissions/{{ exam.id }}" class="share-btn" style="background:#ede9fe;color:#5b21b6;border-color:#c4b5fd">☆ Watch for Reminders</a>
+    <a href="/login?next=/admissions/{{ admission.id }}" class="share-btn" style="background:#ede9fe;color:#5b21b6;border-color:#c4b5fd">☆ Watch for Reminders</a>
     {% endif %}
-    {% if exam.source_url %}
-    <a href="{{ exam.source_url }}" target="_blank" rel="noopener" class="share-btn">🔗 Official Website</a>
+    {% if admission.source_url %}
+    <a href="{{ admission.source_url }}" target="_blank" rel="noopener" class="share-btn">🔗 Official Website</a>
     {% endif %}
     <button type="button" class="share-btn" onclick="shareExam()">⬆ Share</button>
 </div>
 
 <!-- Key Dates -->
 <div class="detail-grid">
-    {% if exam.application_start %}
+    {% if admission.application_start %}
     <div class="detail-item">
         <div class="label">Apply From</div>
-        <div class="value">{{ exam.application_start }}</div>
+        <div class="value">{{ admission.application_start }}</div>
     </div>
     {% endif %}
-    {% if exam.application_end %}
+    {% if admission.application_end %}
     <div class="detail-item">
         <div class="label">Last Date to Apply</div>
-        <div class="value {{ 'urgent' if exam.status == 'active' else '' }}">{{ exam.application_end }}</div>
+        <div class="value {{ 'urgent' if admission.status == 'active' else '' }}">{{ admission.application_end }}</div>
     </div>
     {% endif %}
-    {% if exam.exam_date %}
+    {% if admission.exam_date %}
     <div class="detail-item">
         <div class="label">Exam Date</div>
-        <div class="value">{{ exam.exam_date }}</div>
+        <div class="value">{{ admission.exam_date }}</div>
     </div>
     {% endif %}
-    {% if exam.result_date %}
+    {% if admission.result_date %}
     <div class="detail-item">
         <div class="label">Result Date</div>
-        <div class="value">{{ exam.result_date }}</div>
+        <div class="value">{{ admission.result_date }}</div>
     </div>
     {% endif %}
-    {% if exam.counselling_start %}
+    {% if admission.counselling_start %}
     <div class="detail-item">
         <div class="label">Counselling Starts</div>
-        <div class="value">{{ exam.counselling_start }}</div>
+        <div class="value">{{ admission.counselling_start }}</div>
     </div>
     {% endif %}
 </div>
 
 <!-- Description -->
-{% if exam.description %}
+{% if admission.description %}
 <div class="detail-section">
     <h2>📋 About This Exam</h2>
-    <div>{{ exam.description|safe }}</div>
+    <div>{{ admission.description|safe }}</div>
 </div>
 {% endif %}
 
@@ -105,7 +105,7 @@
 {#
   eligibility: {qualification, min_percentage, age_limit:{min,max}, attempts_allowed, notes}
 #}
-{% set elig = exam.eligibility or {} %}
+{% set elig = admission.eligibility or {} %}
 {% if elig.get('qualification') or elig.get('age_limit') or elig.get('attempts_allowed') or elig.get('notes') %}
 <div class="detail-section">
     <h2>✅ Eligibility</h2>
@@ -138,7 +138,7 @@
   exam_details: {mode, duration_minutes, total_marks, total_questions, negative_marking,
                  language:[], subjects:[{name,questions,marks}]}
 #}
-{% set ed = exam.exam_details or {} %}
+{% set ed = admission.exam_details or {} %}
 {% if ed.get('mode') or ed.get('total_marks') or ed.get('subjects') %}
 <div class="detail-section">
     <h2>📝 Exam Pattern</h2>
@@ -183,7 +183,7 @@
 {#
   seats_info: {total, UR, OBC, EWS, SC, ST}
 #}
-{% set si = exam.seats_info or {} %}
+{% set si = admission.seats_info or {} %}
 {% if si.get('total') or si.get('UR') or si.get('OBC') %}
 <div class="detail-section">
     <h2>🎓 Seats Information</h2>
@@ -201,11 +201,11 @@
 {% endif %}
 
 <!-- Selection Process -->
-{% if exam.selection_process %}
+{% if admission.selection_process %}
 <div class="detail-section">
     <h2>🎯 Selection Process</h2>
     <ol style="padding-left:1.2rem">
-        {% for step in exam.selection_process %}
+        {% for step in admission.selection_process %}
         <li style="margin-bottom:.3rem">{{ step.get('name', step) if step is mapping else step }}</li>
         {% endfor %}
     </ol>
@@ -213,33 +213,33 @@
 {% endif %}
 
 <!-- Application Fee -->
-{% if exam.fee_general is not none %}
+{% if admission.fee_general is not none %}
 <div class="detail-section">
     <h2>💳 Application Fee</h2>
     <table class="fee-table">
         <thead><tr><th>Category</th><th>Fee</th></tr></thead>
         <tbody>
-            {% if exam.fee_general is not none %}<tr><td>General / EWS / OBC</td><td>{% if exam.fee_general == 0 %}Free{% else %}₹{{ exam.fee_general }}{% endif %}</td></tr>{% endif %}
-            {% if exam.fee_sc_st is not none %}<tr><td>SC / ST</td><td>{% if exam.fee_sc_st == 0 %}Free{% else %}₹{{ exam.fee_sc_st }}{% endif %}</td></tr>{% endif %}
-            {% if exam.fee_female is not none %}<tr><td>Female (all categories)</td><td>{% if exam.fee_female == 0 %}Free{% else %}₹{{ exam.fee_female }}{% endif %}</td></tr>{% endif %}
+            {% if admission.fee_general is not none %}<tr><td>General / EWS / OBC</td><td>{% if admission.fee_general == 0 %}Free{% else %}₹{{ admission.fee_general }}{% endif %}</td></tr>{% endif %}
+            {% if admission.fee_sc_st is not none %}<tr><td>SC / ST</td><td>{% if admission.fee_sc_st == 0 %}Free{% else %}₹{{ admission.fee_sc_st }}{% endif %}</td></tr>{% endif %}
+            {% if admission.fee_female is not none %}<tr><td>Female (all categories)</td><td>{% if admission.fee_female == 0 %}Free{% else %}₹{{ admission.fee_female }}{% endif %}</td></tr>{% endif %}
         </tbody>
     </table>
 </div>
 {% endif %}
 
 <!-- Phase Documents (Admit Cards, Answer Keys, Results) -->
-{% if exam.admit_cards or exam.answer_keys or exam.results %}
+{% if admission.admit_cards or admission.answer_keys or admission.results %}
 <div class="detail-section">
     <h2>📂 Phase Documents</h2>
-    <div x-data="{tab: '{{ 'admit' if exam.admit_cards else ('answer' if exam.answer_keys else 'result') }}'}">
+    <div x-data="{tab: '{{ 'admit' if admission.admit_cards else ('answer' if admission.answer_keys else 'result') }}'}">
         <div class="doc-tabs-bar">
-            {% if exam.admit_cards %}<button class="doc-tab-btn" :class="{active:tab==='admit'}" @click="tab='admit'">Admit Cards ({{ exam.admit_cards|length }})</button>{% endif %}
-            {% if exam.answer_keys %}<button class="doc-tab-btn" :class="{active:tab==='answer'}" @click="tab='answer'">Answer Keys ({{ exam.answer_keys|length }})</button>{% endif %}
-            {% if exam.results %}<button class="doc-tab-btn" :class="{active:tab==='result'}" @click="tab='result'">Results ({{ exam.results|length }})</button>{% endif %}
+            {% if admission.admit_cards %}<button class="doc-tab-btn" :class="{active:tab==='admit'}" @click="tab='admit'">Admit Cards ({{ admission.admit_cards|length }})</button>{% endif %}
+            {% if admission.answer_keys %}<button class="doc-tab-btn" :class="{active:tab==='answer'}" @click="tab='answer'">Answer Keys ({{ admission.answer_keys|length }})</button>{% endif %}
+            {% if admission.results %}<button class="doc-tab-btn" :class="{active:tab==='result'}" @click="tab='result'">Results ({{ admission.results|length }})</button>{% endif %}
         </div>
-        {% if exam.admit_cards %}
+        {% if admission.admit_cards %}
         <div class="doc-panel" x-show="tab==='admit'">
-            {% for card in exam.admit_cards %}
+            {% for card in admission.admit_cards %}
             <div class="doc-card doc-card-admit">
                 <div class="doc-card-body">
                     {% if card.phase_number %}<span class="doc-phase-pill phase-blue">Phase {{ card.phase_number }}</span>{% endif %}
@@ -254,9 +254,9 @@
             {% endfor %}
         </div>
         {% endif %}
-        {% if exam.answer_keys %}
+        {% if admission.answer_keys %}
         <div class="doc-panel" x-show="tab==='answer'">
-            {% for key in exam.answer_keys %}
+            {% for key in admission.answer_keys %}
             <div class="doc-card doc-card-answer">
                 <div class="doc-card-body">
                     {% if key.phase_number %}<span class="doc-phase-pill phase-amber">Phase {{ key.phase_number }}</span>{% endif %}
@@ -271,9 +271,9 @@
             {% endfor %}
         </div>
         {% endif %}
-        {% if exam.results %}
+        {% if admission.results %}
         <div class="doc-panel" x-show="tab==='result'">
-            {% for res in exam.results %}
+            {% for res in admission.results %}
             <div class="doc-card doc-card-result">
                 <div class="doc-card-body">
                     {% if res.phase_number %}<span class="doc-phase-pill phase-green">Phase {{ res.phase_number }}</span>{% endif %}

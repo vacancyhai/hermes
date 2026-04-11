@@ -297,7 +297,7 @@ async def get_recommended_admissions(
       - User's reservation category is eligible:                +4
       - State match:                                             +3
       - Education level qualifies:                               +2
-      - Age within exam's eligibility range:                     +2
+      - Age within admission's eligibility range:                     +2
       - Exam posted within last 7 days:                          +1
 
     Returns (scored_exams, total_count).
@@ -350,13 +350,13 @@ async def get_recommended_admissions(
     recency_cutoff = today - timedelta(days=RECENCY_DAYS)
 
     scored: list[tuple[int, date | None, Admission]] = []
-    for exam in exams:
+    for admission in exams:
         score = 0
 
         # Build admission's eligible category set from eligibility dict
         exam_cats = set()
-        if exam.eligibility and isinstance(exam.eligibility, dict):
-            cat_val = exam.eligibility.get("category")
+        if admission.eligibility and isinstance(admission.eligibility, dict):
+            cat_val = admission.eligibility.get("category")
             if isinstance(cat_val, list):
                 exam_cats = {c.lower() for c in cat_val}
             elif isinstance(cat_val, str):
@@ -368,9 +368,9 @@ async def get_recommended_admissions(
 
         # State match via eligibility dict
         exam_states = set()
-        if exam.eligibility and isinstance(exam.eligibility, dict):
+        if admission.eligibility and isinstance(admission.eligibility, dict):
             for key in ("states", "state", "location", "conducting_states"):
-                val = exam.eligibility.get(key)
+                val = admission.eligibility.get(key)
                 if isinstance(val, list):
                     exam_states.update(s.lower() for s in val)
                 elif isinstance(val, str):
@@ -380,10 +380,10 @@ async def get_recommended_admissions(
 
         # Education match: extract qualification from eligibility dict
         exam_edu_rank = -1
-        if exam.eligibility and isinstance(exam.eligibility, dict):
-            qual = exam.eligibility.get("qualification") or exam.eligibility.get(
-                "min_qualification"
-            )
+        if admission.eligibility and isinstance(admission.eligibility, dict):
+            qual = admission.eligibility.get(
+                "qualification"
+            ) or admission.eligibility.get("min_qualification")
             if qual:
                 exam_edu_rank = _education_rank(qual)
         if user_edu_rank >= 0 and exam_edu_rank >= 0 and user_edu_rank >= exam_edu_rank:
@@ -392,11 +392,15 @@ async def get_recommended_admissions(
         # Age match: user's age is within the admission's eligibility range
         if (
             user_age is not None
-            and exam.eligibility
-            and isinstance(exam.eligibility, dict)
+            and admission.eligibility
+            and isinstance(admission.eligibility, dict)
         ):
-            age_min = exam.eligibility.get("age_min") or exam.eligibility.get("min_age")
-            age_max = exam.eligibility.get("age_max") or exam.eligibility.get("max_age")
+            age_min = admission.eligibility.get("age_min") or admission.eligibility.get(
+                "min_age"
+            )
+            age_max = admission.eligibility.get("age_max") or admission.eligibility.get(
+                "max_age"
+            )
             if age_min is not None or age_max is not None:
                 age_ok = True
                 if age_min is not None:
@@ -407,10 +411,10 @@ async def get_recommended_admissions(
                     score += AGE_MATCH
 
         # Recency bonus
-        if exam.created_at and exam.created_at.date() >= recency_cutoff:
+        if admission.created_at and admission.created_at.date() >= recency_cutoff:
             score += RECENCY_BONUS
 
-        scored.append((score, exam.exam_date, exam))
+        scored.append((score, admission.exam_date, admission))
 
     # Sort: score DESC, then exam_date ASC (None exam_dates last)
     far_future = date(9999, 12, 31)

@@ -21,7 +21,7 @@ multi-channel notifications, and an admin panel.
 > entries with full metadata and 32 linked phase documents; fixed frontend detail pages to correctly render
 > nested JSON fields (`exam_details`, `eligibility`, `seats_info`, `vacancy_breakdown`, `selection_process`);
 > removed standalone admit-cards/answer-keys/results management pages from admin frontend — all phase
-> document management is now consolidated within the parent job/exam edit pages.
+> document management is now consolidated within the parent job/admission edit pages.
 
 ## Tech Stack
 
@@ -69,7 +69,7 @@ PostgreSQL and Redis are isolated inside Docker networks — never exposed to th
 - **Job Matching** — Scores jobs against user profile: reservation category eligibility (+4), state preference (+3), preferred categories (+2), education level (+2), age eligibility vs. `age_min`/`age_max` in job eligibility (+2), and recency bonus (+1); scoring engine in `services/matching.py`. The candidate pool is capped at the 500 most-recent active jobs (a known trade-off documented in the code).
 - **Watch Jobs & Exams** — Users watch specific jobs or admissions (`user_watches` table, max 100 per user) to receive automatic deadline reminders and update notifications.
 - **Multi-Channel Notifications** — In-app, FCM push (tokens stored in `user_profiles.fcm_tokens`), email (OCI Email Delivery), **WhatsApp** (infrastructure ready, pending `WHATSAPP_API_TOKEN` + `WHATSAPP_PHONE_NUMBER_ID`), and **Telegram** (Bot API `sendMessage`; activated when `TELEGRAM_BOT_TOKEN` is set, user stores `telegram_chat_id` via preferences API); instant mode for OTP/auth, staggered mode for job alerts with configurable delays per channel.
-- **Deadline Reminders** — Celery task `send_deadline_reminders` fires automatic alerts at T-7, T-3, and T-1 days before `application_end` for all watchers of a job or exam. Scheduled daily at 08:00 UTC via `hermes-scheduler` (`celery_app.py` beat_schedule).
+- **Deadline Reminders** — Celery task `send_deadline_reminders` fires automatic alerts at T-7, T-3, and T-1 days before `application_end` for all watchers of a job or admission. Scheduled daily at 08:00 UTC via `hermes-scheduler` (`celery_app.py` beat_schedule).
 - **Dynamic UI** — HTMX for live search, infinite scroll, and real-time updates without JavaScript frameworks.
 - **Full-Text Search** — PostgreSQL tsvector/GIN-indexed ranked search on job titles, organisations, and descriptions (no Elasticsearch needed).
 - **SEO Optimized** — Dynamic sitemap, meta tags, and Google JobPosting JSON-LD structured data for organic traffic.
@@ -84,7 +84,7 @@ PostgreSQL and Redis are isolated inside Docker networks — never exposed to th
 - **Admissions** — Separate `admissions` table for NEET, JEE, CLAT, CAT, CUET, GATE etc.; distinct from government job vacancies with exam-specific fields: `stream`, `exam_type`, `counselling_body`, `seats_info`, eligibility, exam pattern.
 - **Polymorphic Document Tables** — `admit_cards`, `answer_keys`, `results` each link to either a job (`job_id`) or admission (`admission_id`) via DB CHECK constraint — exactly one parent per row.
 - **5-Section Navigation** — Jobs, Admit Cards, Answer Keys, Results, Admissions — each with its own section page, search, and type-matching gradient hero color.
-- **Unified Detail Pages** — Type-aware gradient heroes (navy/blue/amber/green/purple per section); structured sections for eligibility, selection process, exam pattern, vacancy breakdown, fee table; Web Share API button (with clipboard fallback).
+- **Unified Detail Pages** — Type-aware gradient heroes (navy/blue/amber/green/purple per section); structured sections for eligibility, selection process, admission pattern, vacancy breakdown, fee table; Web Share API button (with clipboard fallback).
 - **HTMX Doc Tabs** — Per-phase admit cards, answer keys, and results loaded on-demand in tabbed panels on both job detail and admission detail pages.
 - **Social Share** — Single Share button (Web Share API + clipboard fallback) on every card and detail page.
 - **Fee by Category** — Shows personalised application fee (₹0 for SC/ST/EWS, reduced for OBC) based on the logged-in user's category.
@@ -219,7 +219,7 @@ hermes/
 │   │   │   └── tasks/            # Celery tasks
 │   │   │       ├── notifications.py  # smart_notify, deadline reminders, job alerts
 │   │   │       ├── cleanup.py        # Purge expired notifications + logs
-│   │   │       ├── jobs.py           # Close expired listings, PDF extraction, exam status update
+│   │   │       ├── jobs.py           # Close expired listings, PDF extraction, admission status update
 │   │   │       └── seo.py            # Generate sitemap.xml
 │   │   └── tests/                # unit/ (16 files) + integration/ (10 files)
 │   ├── frontend/                 # User Frontend (Flask + HTMX + Alpine.js, port 8080)
@@ -242,7 +242,7 @@ hermes/
 │   │   │   │                     # /jobs/<id>/edit#docs and /admissions/<id>/edit#docs only
 │   │   │   ├── _base_api_client.py  # Shared HTTP client base class
 │   │   │   ├── api_client.py     # Extends BaseApiClient + inherits post_file() for PDF uploads
-│   │   │   └── templates/        # Job/exam CRUD, user management, audit logs (no standalone doc pages)
+│   │   │   └── templates/        # Job/admission CRUD, user management, audit logs (no standalone doc pages)
 │   │   └── tests/                # unit/test_api_client.py + integration/test_routes.py
 │   └── nginx/                    # Reverse Proxy (port 80/443)
 │       ├── nginx.conf            # Rate limiting, routing, security headers
@@ -252,7 +252,7 @@ hermes/
 │       ├── conftest.py           # URL + credential fixtures (reads from env vars)
 │       ├── requirements.txt      # pytest, pytest-cov, requests
 │       ├── test_health.py        # Smoke: all 3 /health endpoints
-│       └── test_full_flow.py     # Job lifecycle, admin login flow, watch flow, exam lifecycle
+│       └── test_full_flow.py     # Job lifecycle, admin login flow, watch flow, admission lifecycle
 ├── config/
 │   ├── development/              # .env.backend, .env.frontend, .env.frontend-admin (gitignored)
 │   ├── test/                     # .env.backend, .env.frontend, .env.frontend-admin (CI, gitignored)

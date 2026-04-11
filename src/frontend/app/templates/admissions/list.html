@@ -7,14 +7,14 @@
     .page-hero h1{font-size:1.35rem;font-weight:700;margin-bottom:.25rem}
     .page-hero p{font-size:.875rem;opacity:.85}
     .results-meta{font-size:.85rem;color:#64748b;margin-bottom:.75rem}
-    .exam-card{background:#fff;border:1px solid #e2e8f0;border-left:3px solid #7c3aed;border-radius:.5rem;padding:1rem;margin-bottom:.75rem;transition:box-shadow .15s}
-    .exam-card:hover{box-shadow:0 2px 8px rgba(0,0,0,.08)}
-    .exam-card h3{font-size:.975rem;font-weight:600;margin-bottom:.25rem}
-    .exam-card h3 a{color:#1e293b}
-    .exam-card h3 a:hover{color:#7c3aed;text-decoration:none}
-    .exam-card-meta{display:flex;flex-wrap:wrap;gap:.4rem;margin:.4rem 0;font-size:.8rem;color:#64748b}
-    .exam-card-desc{font-size:.85rem;color:#475569;margin:.35rem 0;line-height:1.5}
-    .exam-card-footer{display:flex;justify-content:space-between;align-items:center;margin-top:.6rem;flex-wrap:wrap;gap:.4rem}
+    .admission-card{background:#fff;border:1px solid #e2e8f0;border-left:3px solid #7c3aed;border-radius:.5rem;padding:1rem;margin-bottom:.75rem;transition:box-shadow .15s}
+    .admission-card:hover{box-shadow:0 2px 8px rgba(0,0,0,.08)}
+    .admission-card h3{font-size:.975rem;font-weight:600;margin-bottom:.25rem}
+    .admission-card h3 a{color:#1e293b}
+    .admission-card h3 a:hover{color:#7c3aed;text-decoration:none}
+    .admission-card-meta{display:flex;flex-wrap:wrap;gap:.4rem;margin:.4rem 0;font-size:.8rem;color:#64748b}
+    .admission-card-desc{font-size:.85rem;color:#475569;margin:.35rem 0;line-height:1.5}
+    .admission-card-footer{display:flex;justify-content:space-between;align-items:center;margin-top:.6rem;flex-wrap:wrap;gap:.4rem}
     .load-more-wrap{text-align:center;padding:1.25rem 0}
 </style>
 {% endblock %}
@@ -51,33 +51,33 @@
         Personalised picks based on your stream, qualification and preferences.
         <a href="/profile" style="color:#7c3aed">Update profile →</a>
     </p>
-    {% for exam in recommended_exams %}
-    <div class="exam-card">
+    {% for admission in recommended_exams %}
+    <div class="admission-card">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem;margin-bottom:.35rem">
-            <h3><a href="/admissions/{{ exam.id }}">{{ exam.exam_name }}</a></h3>
+            <h3><a href="/admissions/{{ admission.id }}">{{ exam.exam_name }}</a></h3>
         </div>
-        <div class="exam-card-meta">
-            <span>🏛 {{ exam.conducting_body }}</span>
+        <div class="admission-card-meta">
+            <span>🏛 {{ admission.conducting_body }}</span>
             <span class="meta-pill pill-purple">{{ exam.exam_type|upper }}</span>
-            <span class="meta-pill pill-blue">{{ exam.stream|replace('_',' ')|title }}</span>
+            <span class="meta-pill pill-blue">{{ admission.stream|replace('_',' ')|title }}</span>
         </div>
-        {% if exam.short_description %}
-        <div class="exam-card-desc">{{ exam.short_description }}</div>
+        {% if admission.short_description %}
+        <div class="admission-card-desc">{{ admission.short_description }}</div>
         {% endif %}
-        <div class="exam-card-footer">
+        <div class="admission-card-footer">
             <div>
-                {% if exam.application_end %}<span class="deadline">Apply by: {{ exam.application_end }}</span>{% endif %}
+                {% if admission.application_end %}<span class="deadline">Apply by: {{ admission.application_end }}</span>{% endif %}
                 {% if exam.exam_date %}<span class="meta-pill pill-purple" style="margin-left:.4rem">Exam: {{ exam.exam_date }}</span>{% endif %}
             </div>
             <div style="display:flex;gap:.4rem;align-items:center">
-                {% set is_watching = exam.id|string in watched_exam_ids %}
-                <form method="post" action="/admissions/{{ exam.id }}/{{ 'unwatch' if is_watching else 'watch' }}" style="display:inline">
+                {% set is_watching = admission.id|string in watched_admission_ids %}
+                <form method="post" action="/admissions/{{ admission.id }}/{{ 'unwatch' if is_watching else 'watch' }}" style="display:inline">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <button type="submit" class="{{ 'btn-watching' if is_watching else 'btn btn-outline' }}" style="font-size:.8rem;padding:.3rem .7rem">
                         {{ '★ Watching' if is_watching else '☆ Watch' }}
                     </button>
                 </form>
-                <a href="/admissions/{{ exam.id }}" class="btn btn-outline" style="font-size:.8rem;padding:.3rem .7rem">View Details →</a>
+                <a href="/admissions/{{ admission.id }}" class="btn btn-outline" style="font-size:.8rem;padding:.3rem .7rem">View Details →</a>
             </div>
         </div>
     </div>
@@ -90,11 +90,11 @@
 
 <div class="results-meta">
     {% if pagination.total is defined %}
-        {{ pagination.total }} exam{{ 's' if pagination.total != 1 else '' }} found
+        {{ pagination.total }} admission{{ 's' if pagination.total != 1 else '' }} found
     {% endif %}
 </div>
 
-<div id="exam-list">
+<div id="admission-list">
     {% include "admissions/_cards.html" %}
 </div>
 

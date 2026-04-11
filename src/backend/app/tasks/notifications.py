@@ -2,7 +2,7 @@
 
 smart_notify                — Unified entry: routes to in-app + FCM + email + WhatsApp + Telegram
 send_deadline_reminders     — Daily Beat task: T-7, T-3, T-1 deadline reminders for watched jobs + exams
-notify_watchers_on_update   — Event: notify watchers when a job/exam is approved or updated
+notify_watchers_on_update   — Event: notify watchers when a job/admission is approved or updated
 send_email_notification     — Sync email via SMTP (retries 3x)
 deliver_delayed_telegram    — Delayed Telegram delivery for staggered mode (T+15min)
 """
@@ -370,9 +370,9 @@ def send_deadline_reminders():
 
 @celery.task(name="app.tasks.notifications.notify_watchers_on_update")
 def notify_watchers_on_update(entity_type: str, entity_id: str):
-    """Notify all users watching a job or exam when it is approved or updated.
+    """Notify all users watching a job or admission when it is approved or updated.
 
-    entity_type: 'job' | 'exam'
+    entity_type: 'job' | 'admission'
     Delegates to smart_notify for multi-channel delivery.
     """
     with Session(sync_engine) as session:
