@@ -619,7 +619,7 @@ def test_new_admission_post_success(auth_client):
 def test_new_admission_post_failure(auth_client):
     client, mock_api = auth_client
     mock_api.post.return_value = _fail({"detail": "Error"})
-    resp = client.post("/admissions/new", data={"admission_name": "Exam"})
+    resp = client.post("/admissions/new", data={"admission_name": "Test Admission"})
     assert resp.status_code == 200
 
 

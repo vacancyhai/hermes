@@ -120,7 +120,7 @@ async def test_admin_create_admission(client: AsyncClient, admin_token: str):
 async def test_admin_create_admission_slug_unique(
     client: AsyncClient, admin_token: str
 ):
-    name = f"Slug Exam {uuid.uuid4().hex[:4]}"
+    name = f"Slug Admission {uuid.uuid4().hex[:4]}"
     resp1 = await client.post(
         "/api/v1/admin/admissions",
         json={"admission_name": name, "conducting_body": "NTA", "status": "upcoming"},
@@ -140,7 +140,7 @@ async def test_operator_can_create_admission(client: AsyncClient, operator_token
     resp = await client.post(
         "/api/v1/admin/admissions",
         json={
-            "admission_name": f"Operator Exam {uuid.uuid4().hex[:4]}",
+            "admission_name": f"Operator Admission {uuid.uuid4().hex[:4]}",
             "conducting_body": "NTA",
             "status": "upcoming",
         },

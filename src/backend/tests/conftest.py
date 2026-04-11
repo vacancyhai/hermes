@@ -273,7 +273,7 @@ async def active_admission(client: AsyncClient, admin_token: str):
     resp = await client.post(
         "/api/v1/admin/admissions",
         json={
-            "admission_name": f"Test Exam {uuid.uuid4().hex[:6]}",
+            "admission_name": f"Test Admission {uuid.uuid4().hex[:6]}",
             "conducting_body": "NTA",
             "stream": "engineering",
             "status": "active",

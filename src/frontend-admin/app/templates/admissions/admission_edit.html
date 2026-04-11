@@ -6,10 +6,10 @@
     <a href="/admissions" class="back-link">&#8592; Back to Admissions</a>
     <div class="page-header-row">
         <div>
-            <h1 class="page-title">&#127979; {{ exam.admission_name }}</h1>
+            <h1 class="page-title">&#127979; {{ admission.admission_name }}</h1>
             <p class="page-subtitle">
                 <span class="status-badge status-{{ admission.status }}">{{ admission.status | title }}</span>
-                &nbsp;{{ exam.admission_type | upper }} &middot; {{ exam.stream | replace('_',' ') | title }}
+                &nbsp;{{ admission.admission_type | upper }} &middot; {{ admission.stream | replace('_',' ') | title }}
             </p>
         </div>
         <div class="header-actions">
@@ -42,9 +42,9 @@
         <div class="section-body">
             <div class="form-grid-3">
                 <div class="form-group col-span-3">
-                    <label>Exam Name <span class="req">*</span></label>
+                    <label>Admission Name <span class="req">*</span></label>
                     <input type="text" name="admission_name" required
-                           value="{{ exam.admission_name }}"
+                           value="{{ admission.admission_name }}"
                            placeholder="e.g. NTA NEET PG 2026 — Medical PG Admission Examination">
                 </div>
                 <div class="form-group col-span-2">
@@ -60,10 +60,10 @@
                            placeholder="e.g. MCC, JoSAA">
                 </div>
                 <div class="form-group">
-                    <label>Exam Type <span class="req">*</span></label>
+                    <label>Admission Type <span class="req">*</span></label>
                     <select name="admission_type" required>
                         {% for val, lbl in [('ug','UG — Undergraduate'),('pg','PG — Postgraduate'),('doctoral','Doctoral'),('lateral','Lateral Entry')] %}
-                        <option value="{{ val }}" {{ 'selected' if exam.admission_type == val }}>{{ lbl }}</option>
+                        <option value="{{ val }}" {{ 'selected' if admission.admission_type == val }}>{{ lbl }}</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -121,8 +121,8 @@
                     <input type="date" name="application_end" value="{{ admission.application_end or '' }}">
                 </div>
                 <div class="form-group">
-                    <label>Exam Date</label>
-                    <input type="date" name="admission_date" value="{{ exam.admission_date or '' }}">
+                    <label>Admission Date</label>
+                    <input type="date" name="admission_date" value="{{ admission.admission_date or '' }}">
                 </div>
                 <div class="form-group">
                     <label>Result Date</label>
@@ -161,7 +161,7 @@
     <div class="section-card">
         <div class="section-header" style="background:linear-gradient(90deg,#0f766e,#14b8a6)">
             <span class="section-icon">&#128221;</span>
-            <span>Exam Pattern &amp; Details</span>
+            <span>Admission Pattern &amp; Details</span>
         </div>
         <div class="section-body">
             <div class="form-grid-3">
