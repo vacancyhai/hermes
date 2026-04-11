@@ -405,7 +405,7 @@ These are educational admissioninations, not government job recruitments.
 | `seats_info` | JSONB | Yes | `{total_seats, by_category, note}` — institution/seat counts |
 | `application_start` | Date | Yes | Registration opens |
 | `application_end` | Date | Yes | Registration deadline |
-| `admission_date` | Date | Yes | Date of main exam |
+| `admission_date` | Date | Yes | Date of main admission |
 | `result_date` | Date | Yes | Expected result date |
 | `counselling_start` | Date | Yes | Counselling round start |
 | `fee_general` | Integer | Yes | Application fee — General/UR (INR) |

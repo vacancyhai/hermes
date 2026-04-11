@@ -20,7 +20,7 @@
             {% if result.get('job') %}
             <div class="org">🏛 {{ result.job.organization }} · {{ result.job.job_title }}</div>
             {% elif result.get('admission') %}
-            <div class="org">🏛 {{ result.exam.conducting_body }} · {{ result.exam.admission_name }}</div>
+            <div class="org">🏛 {{ result.admission.conducting_body }} · {{ result.admission.admission_name }}</div>
             {% endif %}
         </div>
     </div>

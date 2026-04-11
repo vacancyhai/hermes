@@ -54,11 +54,11 @@
     {% for admission in recommended_admissions %}
     <div class="admission-card">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem;margin-bottom:.35rem">
-            <h3><a href="/admissions/{{ admission.id }}">{{ exam.admission_name }}</a></h3>
+            <h3><a href="/admissions/{{ admission.id }}">{{ admission.admission_name }}</a></h3>
         </div>
         <div class="admission-card-meta">
             <span>🏛 {{ admission.conducting_body }}</span>
-            <span class="meta-pill pill-purple">{{ exam.admission_type|upper }}</span>
+            <span class="meta-pill pill-purple">{{ admission.admission_type|upper }}</span>
             <span class="meta-pill pill-blue">{{ admission.stream|replace('_',' ')|title }}</span>
         </div>
         {% if admission.short_description %}
@@ -67,7 +67,7 @@
         <div class="admission-card-footer">
             <div>
                 {% if admission.application_end %}<span class="deadline">Apply by: {{ admission.application_end }}</span>{% endif %}
-                {% if exam.admission_date %}<span class="meta-pill pill-purple" style="margin-left:.4rem">Exam: {{ exam.admission_date }}</span>{% endif %}
+                {% if admission.admission_date %}<span class="meta-pill pill-purple" style="margin-left:.4rem">Exam: {{ admission.admission_date }}</span>{% endif %}
             </div>
             <div style="display:flex;gap:.4rem;align-items:center">
                 {% set is_watching = admission.id|string in watched_admission_ids %}

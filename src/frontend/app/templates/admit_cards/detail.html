@@ -17,7 +17,7 @@
             {% if card.get('job') %}
             <div class="org">🏛 {{ card.job.organization }} · {{ card.job.job_title }}</div>
             {% elif card.get('admission') %}
-            <div class="org">🏛 {{ card.exam.conducting_body }} · {{ card.exam.admission_name }}</div>
+            <div class="org">🏛 {{ card.admission.conducting_body }} · {{ card.admission.admission_name }}</div>
             {% endif %}
         </div>
     </div>

@@ -684,7 +684,7 @@ The user frontend supports Progressive Web App features:
 ## Admissions
 
 Admissions (NEET, JEE, CLAT, CAT, GATE etc.) are stored in the `admissions` table, separate from `jobs`.
-They have exam-specific fields: `stream`, `admission_type`, `counselling_body`, `seats_info`, exam pattern.
+They have admission-specific fields: `stream`, `admission_type`, `counselling_body`, `seats_info`, exam pattern.
 
 ### Public (read-only, active admissions only)
 
