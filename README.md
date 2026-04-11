@@ -18,7 +18,10 @@ multi-channel notifications, and an admin panel.
 > support both jobs and entrance exams via `job_id`/`exam_id` FK; 5-section frontend navigation
 > (Jobs / Admit Cards / Answer Keys / Results / Entrance Exams); type-aware gradient detail pages with shared
 > CSS design system; single Web Share API button replacing WhatsApp/Telegram share links; 9 entrance exam seed
-> entries with full metadata and 32 linked phase documents.
+> entries with full metadata and 32 linked phase documents; fixed frontend detail pages to correctly render
+> nested JSON fields (`exam_details`, `eligibility`, `seats_info`, `vacancy_breakdown`, `selection_process`);
+> removed standalone admit-cards/answer-keys/results management pages from admin frontend — all phase
+> document management is now consolidated within the parent job/exam edit pages.
 
 ## Tech Stack
 
@@ -235,9 +238,11 @@ hermes/
 │   │   ├── requirements.txt
 │   │   ├── app/
 │   │   │   ├── __init__.py       # Routes: dashboard, jobs CRUD, entrance exams CRUD, users, logs
+│   │   │   │                     # Phase documents (admit cards, answer keys, results) managed via
+│   │   │   │                     # /jobs/<id>/edit#docs and /entrance-exams/<id>/edit#docs only
 │   │   │   ├── _base_api_client.py  # Shared HTTP client base class
 │   │   │   ├── api_client.py     # Extends BaseApiClient + inherits post_file() for PDF uploads
-│   │   │   └── templates/        # 15+ templates including entrance exam edit, job review
+│   │   │   └── templates/        # Job/exam CRUD, user management, audit logs (no standalone doc pages)
 │   │   └── tests/                # unit/test_api_client.py + integration/test_routes.py
 │   └── nginx/                    # Reverse Proxy (port 80/443)
 │       ├── nginx.conf            # Rate limiting, routing, security headers

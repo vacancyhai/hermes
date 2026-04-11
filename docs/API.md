@@ -154,23 +154,35 @@ Content is stored across four dedicated tables: `jobs`, `admit_cards`, `answer_k
 #### Admit Cards
 
 | Method | Endpoint | Role | Description |
-|--------|----------|------|-------------|
+|--------|----------|------|---------|
 | GET | `/admin/admit-cards` | Operator+ | List all admit cards |
 | POST | `/admin/admit-cards` | Operator+ | Create admit card (must specify `job_id` OR `exam_id`) |
+| PUT | `/admin/admit-cards/{id}` | Operator+ | Update admit card |
+| DELETE | `/admin/admit-cards/{id}` | Operator+ | Delete admit card |
+
+> **Admin UI:** Admit cards are managed from the parent job or entrance exam edit page (`/jobs/<id>/edit#docs` or `/entrance-exams/<id>/edit#docs`). There is no standalone `/admit-cards` management page.
 
 #### Answer Keys
 
 | Method | Endpoint | Role | Description |
-|--------|----------|------|-------------|
+|--------|----------|------|---------|
 | GET | `/admin/answer-keys` | Operator+ | List all answer keys |
 | POST | `/admin/answer-keys` | Operator+ | Create answer key (must specify `job_id` OR `exam_id`) |
+| PUT | `/admin/answer-keys/{id}` | Operator+ | Update answer key |
+| DELETE | `/admin/answer-keys/{id}` | Operator+ | Delete answer key |
+
+> **Admin UI:** Answer keys are managed from the parent job or entrance exam edit page. There is no standalone `/answer-keys` management page.
 
 #### Results
 
 | Method | Endpoint | Role | Description |
-|--------|----------|------|-------------|
+|--------|----------|------|---------|
 | GET | `/admin/results` | Operator+ | List all results |
 | POST | `/admin/results` | Operator+ | Create result (must specify `job_id` OR `exam_id`) |
+| PUT | `/admin/results/{id}` | Operator+ | Update result |
+| DELETE | `/admin/results/{id}` | Operator+ | Delete result |
+
+> **Admin UI:** Results are managed from the parent job or entrance exam edit page. There is no standalone `/results` management page.
 
 #### Common Job Operations
 
@@ -544,7 +556,7 @@ file: <pdf_file>
 6. Admin reviews and edits extracted data
 7. Admin submits form to create content
 
-**Use Case:** Used in creation pages (`/jobs/new`, `/admit-cards/new`, `/answer-keys/new`, `/results/new`) to automatically populate form fields from uploaded PDF notifications. Does not create any database records.
+**Use Case:** Used in the job creation page (`/jobs/new`) to automatically populate form fields from uploaded PDF notifications. Does not create any database records.
 
 **Extracted fields:** job_title, organization, department, qualification_level, employment_type, total_vacancies, description, short_description, notification_date, application_start, application_end, exam_start, exam_end, result_date, fees (general/obc/sc_st/ews/female), salary (initial/max), source_url, eligibility, selection_process.
 
@@ -571,9 +583,6 @@ These are now top-level resources, independent of jobs and entrance exams. Each 
 | POST | `/admin/admit-cards` | Create admit card (must specify job_id OR exam_id) |
 | PUT | `/admin/admit-cards/{id}` | Update admit card |
 | DELETE | `/admin/admit-cards/{id}` | Delete admit card |
-| POST | `/admin/jobs/{job_id}/admit-cards` | Legacy: Add admit card to a job |
-| PUT | `/admin/jobs/{job_id}/admit-cards/{doc_id}` | Legacy: Update admit card |
-| DELETE | `/admin/jobs/{job_id}/admit-cards/{doc_id}` | Legacy: Delete admit card |
 
 ### Answer Keys
 
@@ -592,9 +601,6 @@ These are now top-level resources, independent of jobs and entrance exams. Each 
 | POST | `/admin/answer-keys` | Create answer key (must specify job_id OR exam_id) |
 | PUT | `/admin/answer-keys/{id}` | Update answer key |
 | DELETE | `/admin/answer-keys/{id}` | Delete answer key |
-| POST | `/admin/jobs/{job_id}/answer-keys` | Legacy: Add answer key to a job |
-| PUT | `/admin/jobs/{job_id}/answer-keys/{doc_id}` | Legacy: Update answer key |
-| DELETE | `/admin/jobs/{job_id}/answer-keys/{doc_id}` | Legacy: Delete answer key |
 
 ### Results
 
@@ -613,9 +619,6 @@ These are now top-level resources, independent of jobs and entrance exams. Each 
 | POST | `/admin/results` | Create result (must specify job_id OR exam_id) |
 | PUT | `/admin/results/{id}` | Update result |
 | DELETE | `/admin/results/{id}` | Delete result |
-| POST | `/admin/jobs/{job_id}/results` | Legacy: Add result to a job |
-| PUT | `/admin/jobs/{job_id}/results/{doc_id}` | Legacy: Update result |
-| DELETE | `/admin/jobs/{job_id}/results/{doc_id}` | Legacy: Delete result |
 
 ### Document Creation
 
@@ -746,6 +749,48 @@ GET /api/v1/entrance-exams?stream=medical&limit=10
 }
 ```
 
+### Entrance Exam JSON Field Structures
+
+**`exam_details`** — Exam pattern and paper structure:
+```json
+{
+  "mode": "Online",
+  "duration_minutes": 180,
+  "total_marks": 360,
+  "total_questions": 90,
+  "negative_marking": 1.0,
+  "language": ["Hindi", "English"],
+  "subjects": [
+    { "name": "Physics", "questions": 30, "marks": 120 },
+    { "name": "Chemistry", "questions": 30, "marks": 120 },
+    { "name": "Mathematics", "questions": 30, "marks": 120 }
+  ]
+}
+```
+
+**`eligibility`** — Candidate eligibility criteria:
+```json
+{
+  "qualification": "12th Pass with Physics, Chemistry, Mathematics from a recognised board",
+  "min_percentage": 75,
+  "age_limit": { "min": 17, "max": 25 },
+  "attempts_allowed": 2,
+  "notes": "SC/ST candidates: 65% aggregate. Age relaxation as per govt norms."
+}
+```
+
+**`seats_info`** — Category-wise seat breakdown:
+```json
+{
+  "total": 17385,
+  "UR": 7850,
+  "OBC": 4680,
+  "EWS": 1740,
+  "SC": 2610,
+  "ST": 505
+}
+```
+
 ### Example — Create Entrance Exam (Admin)
 ```
 POST /api/v1/admin/entrance-exams
@@ -756,8 +801,23 @@ Authorization: Bearer <admin_token>
   "counselling_body": "JoSAA",
   "exam_type": "ug",
   "stream": "engineering",
-  "eligibility": { "min_qualification": "12th", "attempts_limit": "2 consecutive years" },
-  "seats_info": { "iit_seats": 17385 },
+  "eligibility": {
+    "qualification": "12th Pass with PCM",
+    "min_percentage": 75,
+    "age_limit": { "min": 17, "max": 25 },
+    "attempts_allowed": 2
+  },
+  "seats_info": { "total": 17385, "UR": 7850, "OBC": 4680, "EWS": 1740, "SC": 2610, "ST": 505 },
+  "exam_details": {
+    "mode": "Online",
+    "duration_minutes": 180,
+    "total_marks": 360,
+    "subjects": [
+      { "name": "Physics", "questions": 30, "marks": 120 },
+      { "name": "Chemistry", "questions": 30, "marks": 120 },
+      { "name": "Mathematics", "questions": 30, "marks": 120 }
+    ]
+  },
   "exam_date": "2026-05-25",
   "fee_general": 3200,
   "fee_sc_st": 1600,
