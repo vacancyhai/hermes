@@ -620,13 +620,13 @@ def edit_admission(exam_id):
     resp_detail = resp_detail_req.json()
 
     ac_resp = current_app.api_client.get(
-        f"{_API_ADMIN_ADMIT_CARDS}?exam_id={exam_id}&limit=100", token=token
+        f"{_API_ADMIN_ADMIT_CARDS}?admission_id={exam_id}&limit=100", token=token
     )
     ak_resp = current_app.api_client.get(
-        f"{_API_ADMIN_ANSWER_KEYS}?exam_id={exam_id}&limit=100", token=token
+        f"{_API_ADMIN_ANSWER_KEYS}?admission_id={exam_id}&limit=100", token=token
     )
     re_resp = current_app.api_client.get(
-        f"{_API_ADMIN_RESULTS}?exam_id={exam_id}&limit=100", token=token
+        f"{_API_ADMIN_RESULTS}?admission_id={exam_id}&limit=100", token=token
     )
 
     return render_template(
@@ -659,7 +659,7 @@ def admission_add_admit_card(exam_id):
         return redirect(_URL_LOGIN)
     form = request.form.to_dict()
     payload = {
-        "exam_id": exam_id,
+        "admission_id": exam_id,
         "title": form.get("title", ""),
         "download_url": form.get("download_url", ""),
         "phase_number": int(form["phase_number"]) if form.get("phase_number") else None,
@@ -683,7 +683,7 @@ def admission_add_answer_key(exam_id):
     except Exception:
         files = []
     payload = {
-        "exam_id": exam_id,
+        "admission_id": exam_id,
         "title": form.get("title", ""),
         "answer_key_type": form.get("answer_key_type", "provisional"),
         "phase_number": int(form["phase_number"]) if form.get("phase_number") else None,
@@ -703,7 +703,7 @@ def admission_add_result(exam_id):
         return redirect(_URL_LOGIN)
     form = request.form.to_dict()
     payload = {
-        "exam_id": exam_id,
+        "admission_id": exam_id,
         "title": form.get("title", ""),
         "result_type": form.get("result_type", "merit_list"),
         "phase_number": int(form["phase_number"]) if form.get("phase_number") else None,
