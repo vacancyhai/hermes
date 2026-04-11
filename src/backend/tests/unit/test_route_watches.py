@@ -176,13 +176,13 @@ async def test_unwatch_job_success():
 
 
 # ═══════════════════════════════════════════════════════════════
-# watch_exam
+# watch_admission
 # ═══════════════════════════════════════════════════════════════
 
 
 @pytest.mark.asyncio
 async def test_watch_exam_not_found():
-    from app.routers.watches import watch_exam
+    from app.routers.watches import watch_admission
     from fastapi import HTTPException
 
     user = _make_user()
@@ -195,19 +195,19 @@ async def test_watch_exam_not_found():
 
 @pytest.mark.asyncio
 async def test_watch_exam_already_watching():
-    from app.routers.watches import watch_exam
+    from app.routers.watches import watch_admission
 
     user = _make_user()
     admission = _make_admission()
-    watch = _make_watch("exam", exam.id)
+    watch = _make_watch("exam", admission.id)
 
-    exam_res = MagicMock()
-    exam_res.scalar_one_or_none.return_value = admission
+    admission_res = MagicMock()
+    admission_res.scalar_one_or_none.return_value = admission
     watch_res = MagicMock()
     watch_res.scalar_one_or_none.return_value = watch
 
     db = AsyncMock()
-    db.execute = AsyncMock(side_effect=[exam_res, watch_res])
+    db.execute = AsyncMock(side_effect=[admission_res, watch_res])
     result = await watch_admission(
         admission_id=admission.id, current_user=(user, {}), db=db
     )
@@ -219,21 +219,21 @@ async def test_watch_exam_already_watching():
 
 @pytest.mark.asyncio
 async def test_watch_exam_max_watches_exceeded():
-    from app.routers.watches import MAX_WATCHES, watch_exam
+    from app.routers.watches import MAX_WATCHES, watch_admission
     from fastapi import HTTPException
 
     user = _make_user()
     admission = _make_admission()
 
-    exam_res = MagicMock()
-    exam_res.scalar_one_or_none.return_value = admission
+    admission_res = MagicMock()
+    admission_res.scalar_one_or_none.return_value = admission
     no_watch_res = MagicMock()
     no_watch_res.scalar_one_or_none.return_value = None
     count_res = MagicMock()
     count_res.scalar.return_value = MAX_WATCHES
 
     db = AsyncMock()
-    db.execute = AsyncMock(side_effect=[exam_res, no_watch_res, count_res])
+    db.execute = AsyncMock(side_effect=[admission_res, no_watch_res, count_res])
     with pytest.raises(HTTPException) as exc:
         await watch_admission(admission_id=admission.id, current_user=(user, {}), db=db)
     assert exc.value.status_code == 400
@@ -241,20 +241,20 @@ async def test_watch_exam_max_watches_exceeded():
 
 @pytest.mark.asyncio
 async def test_watch_exam_success():
-    from app.routers.watches import watch_exam
+    from app.routers.watches import watch_admission
 
     user = _make_user()
     admission = _make_admission()
 
-    exam_res = MagicMock()
-    exam_res.scalar_one_or_none.return_value = admission
+    admission_res = MagicMock()
+    admission_res.scalar_one_or_none.return_value = admission
     no_watch_res = MagicMock()
     no_watch_res.scalar_one_or_none.return_value = None
     count_res = MagicMock()
     count_res.scalar.return_value = 0
 
     db = AsyncMock()
-    db.execute = AsyncMock(side_effect=[exam_res, no_watch_res, count_res])
+    db.execute = AsyncMock(side_effect=[admission_res, no_watch_res, count_res])
     result = await watch_admission(
         admission_id=admission.id, current_user=(user, {}), db=db
     )
@@ -265,13 +265,13 @@ async def test_watch_exam_success():
 
 
 # ═══════════════════════════════════════════════════════════════
-# unwatch_exam
+# unwatch_admission
 # ═══════════════════════════════════════════════════════════════
 
 
 @pytest.mark.asyncio
 async def test_unwatch_exam_not_watching():
-    from app.routers.watches import unwatch_exam
+    from app.routers.watches import unwatch_admission
     from fastapi import HTTPException
 
     user = _make_user()
@@ -285,11 +285,11 @@ async def test_unwatch_exam_not_watching():
 
 @pytest.mark.asyncio
 async def test_unwatch_exam_success():
-    from app.routers.watches import unwatch_exam
+    from app.routers.watches import unwatch_admission
 
     user = _make_user()
     admission = _make_admission()
-    watch = _make_watch("exam", exam.id)
+    watch = _make_watch("exam", admission.id)
     db = _db_single(watch)
 
     result = await unwatch_admission(
@@ -351,15 +351,15 @@ async def test_list_watched_with_exam():
 
     user = _make_user()
     admission = _make_admission()
-    watch = _make_watch("exam", exam.id)
+    watch = _make_watch("exam", admission.id)
 
     watches_res = MagicMock()
     watches_res.scalars.return_value.all.return_value = [watch]
-    exams_res = MagicMock()
-    exams_res.scalars.return_value.all.return_value = [admission]
+    admissions_res = MagicMock()
+    admissions_res.scalars.return_value.all.return_value = [admission]
 
     db = AsyncMock()
-    db.execute = AsyncMock(side_effect=[watches_res, exams_res])
+    db.execute = AsyncMock(side_effect=[watches_res, admissions_res])
 
     result = await list_watched(current_user=(user, {}), db=db)
     assert len(result["admissions"]) == 1
@@ -376,17 +376,17 @@ async def test_list_watched_mixed_jobs_and_admissions():
     job = _make_job()
     admission = _make_admission()
     job_watch = _make_watch("job", job.id)
-    exam_watch = _make_watch("exam", exam.id)
+    admission_watch = _make_watch("exam", admission.id)
 
     watches_res = MagicMock()
-    watches_res.scalars.return_value.all.return_value = [job_watch, exam_watch]
+    watches_res.scalars.return_value.all.return_value = [job_watch, admission_watch]
     jobs_res = MagicMock()
     jobs_res.scalars.return_value.all.return_value = [job]
-    exams_res = MagicMock()
-    exams_res.scalars.return_value.all.return_value = [admission]
+    admissions_res = MagicMock()
+    admissions_res.scalars.return_value.all.return_value = [admission]
 
     db = AsyncMock()
-    db.execute = AsyncMock(side_effect=[watches_res, jobs_res, exams_res])
+    db.execute = AsyncMock(side_effect=[watches_res, jobs_res, admissions_res])
 
     result = await list_watched(current_user=(user, {}), db=db)
     assert len(result["jobs"]) == 1
