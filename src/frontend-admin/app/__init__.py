@@ -735,9 +735,12 @@ def logs():
 
     params = {"limit": 20, "offset": 0}
     resp = current_app.api_client.get("/admin/logs", token=token, params=params)
+    if resp.status_code == 403:
+        flash("Audit logs are only accessible to admin accounts.", "error")
+        return redirect("/")
     data = resp.json() if resp.ok else {"data": [], "pagination": {}}
 
-    return render_template("logs/logs.html", logs=data["data"], pagination=data.get("pagination", {}))
+    return render_template("audit_logs/logs.html", logs=data["data"], pagination=data.get("pagination", {}))
 
 
 @bp.route("/logs/list", methods=["GET"])
@@ -751,7 +754,7 @@ def logs_list_partial():
     resp = current_app.api_client.get("/admin/logs", token=token, params=params)
     data = resp.json() if resp.ok else {"data": [], "pagination": {}}
 
-    return render_template("logs/_log_rows.html", logs=data["data"], pagination=data.get("pagination", {}))
+    return render_template("audit_logs/_log_rows.html", logs=data["data"], pagination=data.get("pagination", {}))
 
 
 def _handle_unexpected_error(exc):
