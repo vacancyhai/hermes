@@ -646,7 +646,7 @@ async def test_admin_logs_with_data():
     log.id = uuid.uuid4()
     log.admin_id = uuid.uuid4()
     log.action = "create_job"
-    log.resource_type = "job_vacancy"
+    log.resource_type = "job"
     log.resource_id = uuid.uuid4()
     log.details = "Created job"
     log.changes = {}

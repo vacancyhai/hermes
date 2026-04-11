@@ -410,7 +410,7 @@ async def create_job(
         db,
         admin,
         "create_job",
-        "job_vacancy",
+        "job",
         job.id,
         details=f"Created job: {body.job_title}",
         request=request,
@@ -489,7 +489,7 @@ async def extract_pdf_data(
             db,
             admin,
             "extract_pdf",
-            "job_vacancy",
+            "job",
             details=f"PDF: {file.filename}",
             request=request,
         )
@@ -546,7 +546,7 @@ async def update_job(
         job.published_at = datetime.now(timezone.utc)
 
     await _log_action(
-        db, admin, "update_job", "job_vacancy", job.id, changes=changes, request=request
+        db, admin, "update_job", "job", job.id, changes=changes, request=request
     )
 
     # If status changed to active, also notify watchers
@@ -588,7 +588,7 @@ async def approve_job(
         db,
         admin,
         "approve_job",
-        "job_vacancy",
+        "job",
         job.id,
         details=f"Approved: {job.job_title}",
         request=request,
@@ -624,7 +624,7 @@ async def delete_job(
         db,
         admin,
         "delete_job",
-        "job_vacancy",
+        "job",
         job.id,
         details=f"Soft-deleted: {job.job_title}",
         request=request,
