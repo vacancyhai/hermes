@@ -573,16 +573,16 @@ def new_admission():
         payload.setdefault("status", "active")
         resp = current_app.api_client.post(_API_ADMIN_ADMISSIONS, token=token, json=payload)
         if resp.ok:
-            exam_id = resp.json().get("id")
+            admission_id = resp.json().get("id")
             flash("Admission created.", "success")
-            return redirect(f"/admissions/{exam_id}/edit")
+            return redirect(f"/admissions/{admission_id}/edit")
         detail = resp.json().get("detail", "Failed to create admission") if resp.headers.get("content-type", "").startswith(_CONTENT_TYPE_JSON) else "Failed to create admission"
         flash(detail, "error")
     return render_template("admissions/admission_create.html")
 
 
-@bp.route("/admissions/<exam_id>/edit", methods=["GET", "POST"])  # NOSONAR
-def edit_admission(exam_id):
+@bp.route("/admissions/<admission_id>/edit", methods=["GET", "POST"])  # NOSONAR
+def edit_admission(admission_id):
     """Edit an existing admission."""
     token = session.get("token")
     if not token:
@@ -606,27 +606,27 @@ def edit_admission(exam_id):
                     update[key] = _json.loads(raw)
                 except Exception:
                     pass
-        resp = current_app.api_client.put(f"/admin/admissions/{exam_id}", token=token, json=update)
+        resp = current_app.api_client.put(f"/admin/admissions/{admission_id}", token=token, json=update)
         if resp.ok:
             flash("Admission updated.", "success")
         else:
             flash("Failed to update admission.", "error")
-        return redirect(f"/admissions/{exam_id}/edit")
+        return redirect(f"/admissions/{admission_id}/edit")
 
-    resp_detail_req = current_app.api_client.get(f"/admin/admissions/{exam_id}", token=token)
+    resp_detail_req = current_app.api_client.get(f"/admin/admissions/{admission_id}", token=token)
     if not resp_detail_req.ok:
         flash("Admission not found.", "error")
         return redirect("/admissions")
     resp_detail = resp_detail_req.json()
 
     ac_resp = current_app.api_client.get(
-        f"{_API_ADMIN_ADMIT_CARDS}?admission_id={exam_id}&limit=100", token=token
+        f"{_API_ADMIN_ADMIT_CARDS}?admission_id={admission_id}&limit=100", token=token
     )
     ak_resp = current_app.api_client.get(
-        f"{_API_ADMIN_ANSWER_KEYS}?admission_id={exam_id}&limit=100", token=token
+        f"{_API_ADMIN_ANSWER_KEYS}?admission_id={admission_id}&limit=100", token=token
     )
     re_resp = current_app.api_client.get(
-        f"{_API_ADMIN_RESULTS}?admission_id={exam_id}&limit=100", token=token
+        f"{_API_ADMIN_RESULTS}?admission_id={admission_id}&limit=100", token=token
     )
 
     return render_template(
@@ -638,13 +638,13 @@ def edit_admission(exam_id):
     )
 
 
-@bp.route("/admissions/<exam_id>/delete", methods=["POST"])
-def delete_admission(exam_id):
+@bp.route("/admissions/<admission_id>/delete", methods=["POST"])
+def delete_admission(admission_id):
     """Delete an admission (admin only)."""
     token = session.get("token")
     if not token:
         return redirect(_URL_LOGIN)
-    current_app.api_client.delete(f"/admin/admissions/{exam_id}", token=token)
+    current_app.api_client.delete(f"/admin/admissions/{admission_id}", token=token)
     flash("Admission deleted.", "success")
     return redirect("/admissions")
 
@@ -652,14 +652,14 @@ def delete_admission(exam_id):
 # Per-admission phase document management
 
 
-@bp.route("/admissions/<exam_id>/docs/admit-cards", methods=["POST"])
-def admission_add_admit_card(exam_id):
+@bp.route("/admissions/<admission_id>/docs/admit-cards", methods=["POST"])
+def admission_add_admit_card(admission_id):
     token = session.get("token")
     if not token:
         return redirect(_URL_LOGIN)
     form = request.form.to_dict()
     payload = {
-        "admission_id": exam_id,
+        "admission_id": admission_id,
         "title": form.get("title", ""),
         "download_url": form.get("download_url", ""),
         "phase_number": int(form["phase_number"]) if form.get("phase_number") else None,
@@ -669,11 +669,11 @@ def admission_add_admit_card(exam_id):
     }
     current_app.api_client.post(_API_ADMIN_ADMIT_CARDS, token=token, json=payload)
     flash("Admit card added.", "success")
-    return redirect(f"/admissions/{exam_id}/edit#docs")
+    return redirect(f"/admissions/{admission_id}/edit#docs")
 
 
-@bp.route("/admissions/<exam_id>/docs/answer-keys", methods=["POST"])
-def admission_add_answer_key(exam_id):
+@bp.route("/admissions/<admission_id>/docs/answer-keys", methods=["POST"])
+def admission_add_answer_key(admission_id):
     token = session.get("token")
     if not token:
         return redirect(_URL_LOGIN)
@@ -683,7 +683,7 @@ def admission_add_answer_key(exam_id):
     except Exception:
         files = []
     payload = {
-        "admission_id": exam_id,
+        "admission_id": admission_id,
         "title": form.get("title", ""),
         "answer_key_type": form.get("answer_key_type", "provisional"),
         "phase_number": int(form["phase_number"]) if form.get("phase_number") else None,
@@ -693,17 +693,17 @@ def admission_add_answer_key(exam_id):
     }
     current_app.api_client.post(_API_ADMIN_ANSWER_KEYS, token=token, json=payload)
     flash("Answer key added.", "success")
-    return redirect(f"/admissions/{exam_id}/edit#docs")
+    return redirect(f"/admissions/{admission_id}/edit#docs")
 
 
-@bp.route("/admissions/<exam_id>/docs/results", methods=["POST"])
-def admission_add_result(exam_id):
+@bp.route("/admissions/<admission_id>/docs/results", methods=["POST"])
+def admission_add_result(admission_id):
     token = session.get("token")
     if not token:
         return redirect(_URL_LOGIN)
     form = request.form.to_dict()
     payload = {
-        "admission_id": exam_id,
+        "admission_id": admission_id,
         "title": form.get("title", ""),
         "result_type": form.get("result_type", "merit_list"),
         "phase_number": int(form["phase_number"]) if form.get("phase_number") else None,
@@ -713,17 +713,17 @@ def admission_add_result(exam_id):
     }
     current_app.api_client.post(_API_ADMIN_RESULTS, token=token, json=payload)
     flash("Result added.", "success")
-    return redirect(f"/admissions/{exam_id}/edit#docs")
+    return redirect(f"/admissions/{admission_id}/edit#docs")
 
 
-@bp.route("/admissions/<exam_id>/docs/<doc_type>/<doc_id>/delete", methods=["POST"])
-def admission_delete_doc(exam_id, doc_type, doc_id):
+@bp.route("/admissions/<admission_id>/docs/<doc_type>/<doc_id>/delete", methods=["POST"])
+def admission_delete_doc(admission_id, doc_type, doc_id):
     token = session.get("token")
     if not token:
         return redirect(_URL_LOGIN)
     current_app.api_client.delete(f"/admin/{doc_type}/{doc_id}", token=token)
     flash("Document deleted.", "success")
-    return redirect(f"/admissions/{exam_id}/edit#docs")
+    return redirect(f"/admissions/{admission_id}/edit#docs")
 
 
 # --- Audit Logs ---
