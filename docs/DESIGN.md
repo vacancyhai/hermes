@@ -341,7 +341,7 @@ For email/password and Google login, create a test user via the Firebase Console
 | Trigger                       | Task                           | Description                            |
 | ----------------------------- | ------------------------------ | -------------------------------------- |
 | Any notification needed       | `smart_notify`                 | Unified entry — instant or staggered delivery to all 5 channels |
-| Job/exam approved or updated  | `notify_watchers_on_update`    | Notify all users watching that job/admission via `smart_notify(staggered)` |
+| Job/admission approved or updated  | `notify_watchers_on_update`    | Notify all users watching that job/admission via `smart_notify(staggered)` |
 | Staggered email delivery      | `deliver_delayed_email`        | Fires after `NOTIFY_EMAIL_DELAY` — sends the email |
 | Staggered WhatsApp            | `deliver_delayed_whatsapp`     | Fires after `NOTIFY_WHATSAPP_DELAY` — sends the WhatsApp |
 | Staggered Telegram            | `deliver_delayed_telegram`     | Fires after `NOTIFY_TELEGRAM_DELAY` — sends the Telegram message |

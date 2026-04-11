@@ -236,7 +236,7 @@ Master records for all system notifications.
 |--------|------|----------|-------------|
 | `id` | UUID (PK) | No | Auto-generated |
 | `user_id` | UUID (FK → `users.id`) | No | Target user; CASCADE delete |
-| `entity_type` | String(50) | Yes | Type of entity that triggered this (`job`, `exam`, etc.) |
+| `entity_type` | String(50) | Yes | Type of entity that triggered this (`job`, `admission`, etc.) |
 | `entity_id` | UUID | Yes | ID of the triggering entity |
 | `type` | String(60) | No | Notification type (`job_alert`, `system`, etc.) |
 | `title` | String(500) | No | Short title |

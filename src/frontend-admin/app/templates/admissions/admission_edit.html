@@ -71,7 +71,7 @@
                     <label>Stream <span class="req">*</span></label>
                     <select name="stream" required>
                         {% for val, lbl in [('medical','Medical'),('engineering','Engineering'),('law','Law'),('management','Management'),('arts_science','Arts & Science'),('general','General')] %}
-                        <option value="{{ val }}" {{ 'selected' if exam.stream == val }}>{{ lbl }}</option>
+                        <option value="{{ val }}" {{ 'selected' if admission.stream == val }}>{{ lbl }}</option>
                         {% endfor %}
                     </select>
                 </div>
