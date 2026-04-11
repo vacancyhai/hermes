@@ -60,7 +60,7 @@ def _make_profile(
 
 @pytest.mark.asyncio
 async def test_get_recommended_admissions_no_profile():
-    """When user has no profile, return newest exams sorted by created_at (DB-paginated)."""
+    """When user has no profile, return newest admissions sorted by created_at (DB-paginated)."""
     from unittest.mock import AsyncMock, MagicMock
 
     db = AsyncMock()
@@ -87,11 +87,11 @@ async def test_get_recommended_admissions_no_profile():
 
     db.execute = AsyncMock(side_effect=[profile_result, count_result, exams_result])
 
-    exams, total = await get_recommended_admissions(
+    admissions, total = await get_recommended_admissions(
         user_id="some-uuid", db=db, limit=10, offset=0
     )
     assert total == 2
-    assert exams[0] == admission2
+    assert admissions[0] == admission2
 
 
 @pytest.mark.asyncio
@@ -101,7 +101,7 @@ async def test_get_recommended_admissions_no_profile_pagination():
 
     db = AsyncMock()
 
-    paged_exams = [MagicMock(), MagicMock()]
+    paged_admissions = [MagicMock(), MagicMock()]
 
     profile_result = MagicMock()
     profile_result.scalar_one_or_none.return_value = None
@@ -110,15 +110,15 @@ async def test_get_recommended_admissions_no_profile_pagination():
     count_result.scalar.return_value = 5
 
     exams_result = MagicMock()
-    exams_result.scalars.return_value.all.return_value = paged_exams
+    exams_result.scalars.return_value.all.return_value = paged_admissions
 
     db.execute = AsyncMock(side_effect=[profile_result, count_result, exams_result])
 
-    exams, total = await get_recommended_admissions(
+    admissions, total = await get_recommended_admissions(
         user_id="uid", db=db, limit=2, offset=2
     )
     assert total == 5
-    assert len(exams) == 2
+    assert len(admissions) == 2
 
 
 # --- get_recommended_admissions — with profile / scoring ---
@@ -145,10 +145,10 @@ async def test_get_recommended_admissions_state_match():
     ]
     db.execute = AsyncMock(side_effect=[profile_result, exams_result])
 
-    exams, total = await get_recommended_admissions(user_id="uid", db=db, limit=10)
+    admissions, total = await get_recommended_admissions(user_id="uid", db=db, limit=10)
     assert total == 2
     # admission_match should come first (higher score)
-    assert exams[0] == admission_match
+    assert admissions[0] == admission_match
 
 
 @pytest.mark.asyncio
@@ -170,8 +170,8 @@ async def test_get_recommended_admissions_category_match():
     ]
     db.execute = AsyncMock(side_effect=[profile_result, exams_result])
 
-    exams, _ = await get_recommended_admissions(user_id="uid", db=db, limit=10)
-    assert exams[0] == admission_match
+    admissions, _ = await get_recommended_admissions(user_id="uid", db=db, limit=10)
+    assert admissions[0] == admission_match
 
 
 @pytest.mark.asyncio
@@ -193,9 +193,9 @@ async def test_get_recommended_admissions_education_match():
     ]
     db.execute = AsyncMock(side_effect=[profile_result, exams_result])
 
-    exams, _ = await get_recommended_admissions(user_id="uid", db=db, limit=10)
+    admissions, _ = await get_recommended_admissions(user_id="uid", db=db, limit=10)
     # admission_qualifies gets education bonus, so it ranks first
-    assert exams[0] == admission_qualifies
+    assert admissions[0] == admission_qualifies
 
 
 @pytest.mark.asyncio
@@ -220,13 +220,13 @@ async def test_get_recommended_admissions_age_match():
     ]
     db.execute = AsyncMock(side_effect=[profile_result, exams_result])
 
-    exams, _ = await get_recommended_admissions(user_id="uid", db=db, limit=10)
-    assert exams[0] == admission_match
+    admissions, _ = await get_recommended_admissions(user_id="uid", db=db, limit=10)
+    assert admissions[0] == admission_match
 
 
 @pytest.mark.asyncio
 async def test_get_recommended_admissions_recency_bonus():
-    """Recent exams (within 7 days) get RECENCY_BONUS score."""
+    """Recent admissions (within 7 days) get RECENCY_BONUS score."""
     from unittest.mock import AsyncMock, MagicMock
 
     db = AsyncMock()
@@ -247,9 +247,9 @@ async def test_get_recommended_admissions_recency_bonus():
     exams_result.scalars.return_value.all.return_value = [old_admission, new_admission]
     db.execute = AsyncMock(side_effect=[profile_result, exams_result])
 
-    exams, _ = await get_recommended_admissions(user_id="uid", db=db, limit=10)
+    admissions, _ = await get_recommended_admissions(user_id="uid", db=db, limit=10)
     # new_admission gets recency bonus (both get edu match, new_admission gets +1 recency)
-    assert exams[0] == new_admission
+    assert admissions[0] == new_admission
 
 
 @pytest.mark.asyncio
@@ -299,9 +299,9 @@ async def test_get_recommended_admissions_combined_scoring():
     ]
     db.execute = AsyncMock(side_effect=[profile_result, exams_result])
 
-    exams, _ = await get_recommended_admissions(user_id="uid", db=db, limit=10)
+    admissions, _ = await get_recommended_admissions(user_id="uid", db=db, limit=10)
     # admission_perfect should rank first with high combined score
-    assert exams[0] == admission_perfect
+    assert admissions[0] == admission_perfect
 
 
 @pytest.mark.asyncio
@@ -329,7 +329,7 @@ async def test_get_recommended_admissions_empty_profile_no_scoring():
     exams_result.scalars.return_value.all.return_value = [admission]
     db.execute = AsyncMock(side_effect=[profile_result, count_result, exams_result])
 
-    exams, total = await get_recommended_admissions(user_id="uid", db=db, limit=10)
+    admissions, total = await get_recommended_admissions(user_id="uid", db=db, limit=10)
     assert total == 1
 
 
@@ -348,7 +348,7 @@ async def test_get_recommended_admissions_category_string():
     exams_result.scalars.return_value.all.return_value = [admission]
     db.execute = AsyncMock(side_effect=[profile_result, exams_result])
 
-    exams, total = await get_recommended_admissions(user_id="uid", db=db, limit=10)
+    admissions, total = await get_recommended_admissions(user_id="uid", db=db, limit=10)
     assert total == 1
 
 
@@ -367,7 +367,7 @@ async def test_get_recommended_admissions_state_string():
     exams_result.scalars.return_value.all.return_value = [admission]
     db.execute = AsyncMock(side_effect=[profile_result, exams_result])
 
-    exams, total = await get_recommended_admissions(user_id="uid", db=db, limit=10)
+    admissions, total = await get_recommended_admissions(user_id="uid", db=db, limit=10)
     assert total == 1
 
 
@@ -386,8 +386,8 @@ async def test_get_recommended_admissions_min_qualification_key():
     exams_result.scalars.return_value.all.return_value = [admission]
     db.execute = AsyncMock(side_effect=[profile_result, exams_result])
 
-    exams, _ = await get_recommended_admissions(user_id="uid", db=db, limit=10)
-    assert len(exams) == 1
+    admissions, _ = await get_recommended_admissions(user_id="uid", db=db, limit=10)
+    assert len(admissions) == 1
 
 
 @pytest.mark.asyncio
@@ -406,8 +406,8 @@ async def test_get_recommended_admissions_age_flexible_keys():
     exams_result.scalars.return_value.all.return_value = [admission]
     db.execute = AsyncMock(side_effect=[profile_result, exams_result])
 
-    exams, _ = await get_recommended_admissions(user_id="uid", db=db, limit=10)
-    assert len(exams) == 1
+    admissions, _ = await get_recommended_admissions(user_id="uid", db=db, limit=10)
+    assert len(admissions) == 1
 
 
 @pytest.mark.asyncio
@@ -425,7 +425,7 @@ async def test_get_recommended_admissions_pagination():
     profile_result = MagicMock()
     profile_result.scalar_one_or_none.return_value = profile
     exams_result = MagicMock()
-    exams_result.scalars.return_value.all.return_value = exams
+    exams_result.scalars.return_value.all.return_value = admissions
     db.execute = AsyncMock(side_effect=[profile_result, exams_result])
 
     page, total = await get_recommended_admissions(
@@ -438,7 +438,7 @@ async def test_get_recommended_admissions_pagination():
     profile_result2 = MagicMock()
     profile_result2.scalar_one_or_none.return_value = profile
     exams_result2 = MagicMock()
-    exams_result2.scalars.return_value.all.return_value = exams
+    exams_result2.scalars.return_value.all.return_value = admissions
     db.execute = AsyncMock(side_effect=[profile_result2, exams_result2])
 
     page2, total2 = await get_recommended_admissions(
