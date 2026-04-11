@@ -56,7 +56,7 @@
     {% if admission.source_url %}
     <a href="{{ admission.source_url }}" target="_blank" rel="noopener" class="share-btn">🔗 Official Website</a>
     {% endif %}
-    <button type="button" class="share-btn" onclick="shareExam()">⬆ Share</button>
+    <button type="button" class="share-btn" onclick="shareAdmission()">⬆ Share</button>
 </div>
 
 <!-- Key Dates -->
@@ -292,7 +292,7 @@
 {% endif %}
 
 <script>
-function shareExam() {
+function shareAdmission() {
     if (navigator.share) {
         navigator.share({ title: document.title, url: window.location.href });
     } else {
