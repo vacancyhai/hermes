@@ -41,8 +41,17 @@ _TRUNCATE_TABLES = [
 
 
 def _get_test_database_url():
-    """Get test database URL from environment or fall back to settings."""
-    return os.getenv("TEST_DATABASE_URL", settings.DATABASE_URL)
+    """Get test database URL — uses hermes_test_db via direct PostgreSQL connection.
+
+    Bypasses pgbouncer (which only has hermes_db configured) by connecting
+    directly to the postgresql host on port 5432.
+    """
+    if url := os.getenv("TEST_DATABASE_URL"):
+        return url
+    # Build direct-to-postgres URL from env vars, bypassing pgbouncer
+    user = os.getenv("POSTGRES_USER", "hermes_user")
+    password = os.getenv("POSTGRES_PASSWORD", "hermes_dev_pass")
+    return f"postgresql+asyncpg://{user}:{password}@postgresql:5432/hermes_test_db"
 
 
 @pytest_asyncio.fixture(scope="session", autouse=True)
