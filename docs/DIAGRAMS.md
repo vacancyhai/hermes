@@ -952,12 +952,12 @@ Receive Notifications → Check Dashboard → Visit official site to apply
          ├─ Result Releases (when admin publishes results)
          └─ Job/Admission Updates (when admin modifies watched item)
 
-EXAM PHASE
-══════════
-Receive Admit Card Notification → Download from official site → Exam Reminder
+ADMISSION PHASE
+═══════════════
+Receive Admit Card Notification → Download from official site → Admission Reminder
                                                        │
                                                        ▼
-                                            Take Exam → Receive Result notification
+                                            Attend Admission → Receive Result notification
 
 RESULT PHASE
 ════════════
