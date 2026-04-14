@@ -3,10 +3,11 @@ services:
     image: postgres:16-alpine
     container_name: hermes_postgresql
     restart: unless-stopped
+    env_file:
+      - ./config/development/.env.backend
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-hermes_db}
       POSTGRES_USER: ${POSTGRES_USER:-hermes_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
