@@ -684,14 +684,14 @@ The user frontend supports Progressive Web App features:
 ## Admissions
 
 Admissions (NEET, JEE, CLAT, CAT, GATE etc.) are stored in the `admissions` table, separate from `jobs`.
-They have admission-specific fields: `stream`, `admission_type`, `counselling_body`, `seats_info`, exam pattern.
+They have admission-specific fields: `stream`, `admission_type`, `counselling_body`, `seats_info`, admission pattern.
 
 ### Public (read-only, active admissions only)
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/admissions` | List active admissions (stream/admission_type/search filters) |
-| GET | `/admissions/{slug}` | Exam detail by slug |
+| GET | `/admissions/{slug}` | Admission detail by slug |
 | GET | `/admissions/{admission_id}/admit-cards` | Per-phase admit cards (admission status must not be `cancelled`) |
 | GET | `/admissions/{admission_id}/answer-keys` | Per-phase answer keys (admission status must not be `cancelled`) |
 | GET | `/admissions/{admission_id}/results` | Per-phase results (admission status must not be `cancelled`) |

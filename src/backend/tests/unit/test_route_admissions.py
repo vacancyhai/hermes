@@ -187,7 +187,7 @@ async def test_get_admission_not_found():
     with pytest.raises(HTTPException) as exc:
         await get_admission(admission_id=uuid.uuid4(), db=_db_single(None))
     assert exc.value.status_code == 404
-    assert exc.value.detail == "Exam not found"
+    assert exc.value.detail == "Admission not found"
 
 
 @pytest.mark.asyncio
