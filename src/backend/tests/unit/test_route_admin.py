@@ -93,8 +93,8 @@ async def test_dashboard_stats():
         _scalar_result(20),  # admit_cards_total
         _scalar_result(15),  # answer_keys_total
         _scalar_result(12),  # results_total
-        _scalar_result(8),  # entrance_exams_total
-        _scalar_result(5),  # entrance_exams_active
+        _scalar_result(8),  # admissions_total
+        _scalar_result(5),  # admissions_active
         _scalar_result(100),  # users_total
         _scalar_result(90),  # users_active
         _scalar_result(6),  # users_new_this_week
@@ -107,8 +107,8 @@ async def test_dashboard_stats():
     assert output["admit_cards"]["total"] == 20
     assert output["answer_keys"]["total"] == 15
     assert output["results"]["total"] == 12
-    assert output["entrance_exams"]["total"] == 8
-    assert output["entrance_exams"]["active"] == 5
+    assert output["admissions"]["total"] == 8
+    assert output["admissions"]["active"] == 5
     assert output["users"]["total"] == 100
     assert output["users"]["new_this_week"] == 6
 
@@ -646,7 +646,7 @@ async def test_admin_logs_with_data():
     log.id = uuid.uuid4()
     log.admin_id = uuid.uuid4()
     log.action = "create_job"
-    log.resource_type = "job_vacancy"
+    log.resource_type = "job"
     log.resource_id = uuid.uuid4()
     log.details = "Created job"
     log.changes = {}

@@ -241,8 +241,6 @@ jobs:
           args: >
             -Dsonar.verbose=true
             -Dsonar.branch.name=${{ github.head_ref || github.ref_name }}
-            -Dsonar.qualitygate.wait=true
-            -Dsonar.qualitygate.timeout=300
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

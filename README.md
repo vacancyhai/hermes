@@ -13,12 +13,15 @@ multi-channel notifications, and an admin panel.
 > PDF upload with AI extraction (Anthropic Claude), draft review & approve workflow, CSRF protection,
 > PWA (manifest, service worker, offline fallback), comprehensive test suite, security audit.
 >
-> **Latest additions:** Separate `entrance_exams` table for entrance exams (NEET, JEE, CLAT, CAT, GATE, CUET etc.)
+> **Latest additions:** Separate `admissions` table for admissions (NEET, JEE, CLAT, CAT, GATE, CUET etc.)
 > decoupled from `jobs`; polymorphic document tables (`admit_cards`, `answer_keys`, `results`) now
-> support both jobs and entrance exams via `job_id`/`exam_id` FK; 5-section frontend navigation
-> (Jobs / Admit Cards / Answer Keys / Results / Entrance Exams); type-aware gradient detail pages with shared
-> CSS design system; single Web Share API button replacing WhatsApp/Telegram share links; 9 entrance exam seed
-> entries with full metadata and 32 linked phase documents.
+> support both jobs and admissions via `job_id`/`admission_id` FK; 5-section frontend navigation
+> (Jobs / Admit Cards / Answer Keys / Results / Admissions); type-aware gradient detail pages with shared
+> CSS design system; single Web Share API button replacing WhatsApp/Telegram share links; 9 admission seed
+> entries with full metadata and 32 linked phase documents; fixed frontend detail pages to correctly render
+> nested JSON fields (`admission_details`, `eligibility`, `seats_info`, `vacancy_breakdown`, `selection_process`);
+> removed standalone admit-cards/answer-keys/results management pages from admin frontend — all phase
+> document management is now consolidated within the parent job/admission edit pages.
 
 ## Tech Stack
 
@@ -64,25 +67,25 @@ PostgreSQL and Redis are isolated inside Docker networks — never exposed to th
 ## Features
 
 - **Job Matching** — Scores jobs against user profile: reservation category eligibility (+4), state preference (+3), preferred categories (+2), education level (+2), age eligibility vs. `age_min`/`age_max` in job eligibility (+2), and recency bonus (+1); scoring engine in `services/matching.py`. The candidate pool is capped at the 500 most-recent active jobs (a known trade-off documented in the code).
-- **Watch Jobs & Exams** — Users watch specific jobs or entrance exams (`user_watches` table, max 100 per user) to receive automatic deadline reminders and update notifications.
+- **Watch Jobs & Admissions** — Users watch specific jobs or admissions (`user_watches` table, max 100 per user) to receive automatic deadline reminders and update notifications.
 - **Multi-Channel Notifications** — In-app, FCM push (tokens stored in `user_profiles.fcm_tokens`), email (OCI Email Delivery), **WhatsApp** (infrastructure ready, pending `WHATSAPP_API_TOKEN` + `WHATSAPP_PHONE_NUMBER_ID`), and **Telegram** (Bot API `sendMessage`; activated when `TELEGRAM_BOT_TOKEN` is set, user stores `telegram_chat_id` via preferences API); instant mode for OTP/auth, staggered mode for job alerts with configurable delays per channel.
-- **Deadline Reminders** — Celery task `send_deadline_reminders` fires automatic alerts at T-7, T-3, and T-1 days before `application_end` for all watchers of a job or exam. Scheduled daily at 08:00 UTC via `hermes-scheduler` (`celery_app.py` beat_schedule).
+- **Deadline Reminders** — Celery task `send_deadline_reminders` fires automatic alerts at T-7, T-3, and T-1 days before `application_end` for all watchers of a job or admission. Scheduled daily at 08:00 UTC via `hermes-scheduler` (`celery_app.py` beat_schedule).
 - **Dynamic UI** — HTMX for live search, infinite scroll, and real-time updates without JavaScript frameworks.
 - **Full-Text Search** — PostgreSQL tsvector/GIN-indexed ranked search on job titles, organisations, and descriptions (no Elasticsearch needed).
 - **SEO Optimized** — Dynamic sitemap, meta tags, and Google JobPosting JSON-LD structured data for organic traffic.
 - **PDF Job Ingestion** — Upload government notification PDFs; AI (Claude) extracts structured data; operator reviews, edits, and publishes.
 - **PWA Support** — Add-to-home-screen, offline fallback page, and web push notifications via service worker.
-- **Admin Panel** — Job CRUD, draft/approve workflow, entrance exam management, user management, and audit log viewer on a separate frontend (port 8081).
+- **Admin Panel** — Job CRUD, draft/approve workflow, admission management, user management, and audit log viewer on a separate frontend (port 8081).
 - **Firebase Auth** — Email/password (OTP-verified), Google OAuth (popup), and Phone OTP login via Firebase JS SDK; backend verifies Firebase ID tokens and issues internal JWTs; auto-links existing accounts by email; supports legacy user migration. On logout, both the access token and (if provided) the refresh token are revoked in Redis so neither can be reused.
 - **Admin Account Management** — New admin/operator accounts are created via `POST /api/v1/admin/admin-users` (admin role only). The first admin must be seeded directly in the DB (see Development Quick Start below).
 - **CSRF Protection** — All user frontend POST forms include a session-bound CSRF token validated on the server. The Firebase callback endpoint is exempt (authenticated by Firebase ID token).
 - **Two-Tier RBAC** — Regular users (`users` table, user frontend port 8080) and Operator/Admin (`admin_users` table with role column, admin frontend port 8081); JWT `user_type` claim (`"user"` | `"admin"`) enforces strict scope isolation — admin tokens are rejected by user endpoints and vice versa.
 - **Organisation Follow** — Follow SSC, UPSC, Railway, etc. (stored in `user_profiles.followed_organizations`) to get notified on every new vacancy from that organisation.
-- **Entrance Exams** — Separate `entrance_exams` table for NEET, JEE, CLAT, CAT, CUET, GATE etc.; distinct from government job vacancies with exam-specific fields: `stream`, `exam_type`, `counselling_body`, `seats_info`, eligibility, exam pattern.
-- **Polymorphic Document Tables** — `admit_cards`, `answer_keys`, `results` each link to either a job (`job_id`) or entrance exam (`exam_id`) via DB CHECK constraint — exactly one parent per row.
-- **5-Section Navigation** — Jobs, Admit Cards, Answer Keys, Results, Entrance Exams — each with its own section page, search, and type-matching gradient hero color.
-- **Unified Detail Pages** — Type-aware gradient heroes (navy/blue/amber/green/purple per section); structured sections for eligibility, selection process, exam pattern, vacancy breakdown, fee table; Web Share API button (with clipboard fallback).
-- **HTMX Doc Tabs** — Per-phase admit cards, answer keys, and results loaded on-demand in tabbed panels on both job detail and entrance exam detail pages.
+- **Admissions** — Separate `admissions` table for NEET, JEE, CLAT, CAT, CUET, GATE etc.; distinct from government job vacancies with exam-specific fields: `stream`, `admission_type`, `counselling_body`, `seats_info`, eligibility, exam pattern.
+- **Polymorphic Document Tables** — `admit_cards`, `answer_keys`, `results` each link to either a job (`job_id`) or admission (`admission_id`) via DB CHECK constraint — exactly one parent per row.
+- **5-Section Navigation** — Jobs, Admit Cards, Answer Keys, Results, Admissions — each with its own section page, search, and type-matching gradient hero color.
+- **Unified Detail Pages** — Type-aware gradient heroes (navy/blue/amber/green/purple per section); structured sections for eligibility, selection process, admission pattern, vacancy breakdown, fee table; Web Share API button (with clipboard fallback).
+- **HTMX Doc Tabs** — Per-phase admit cards, answer keys, and results loaded on-demand in tabbed panels on both job detail and admission detail pages.
 - **Social Share** — Single Share button (Web Share API + clipboard fallback) on every card and detail page.
 - **Fee by Category** — Shows personalised application fee (₹0 for SC/ST/EWS, reduced for OBC) based on the logged-in user's category.
 
@@ -200,11 +203,11 @@ hermes/
 │   │   │   │   ├── auth.py           # /api/v1/auth/*
 │   │   │   │   ├── users.py          # /api/v1/users/*
 │   │   │   │   ├── jobs.py           # /api/v1/jobs/*
-│   │   │   │   ├── watches.py        # /api/v1/jobs/{id}/watch, /api/v1/entrance-exams/{id}/watch
+│   │   │   │   ├── watches.py        # /api/v1/jobs/{id}/watch, /api/v1/admissions/{id}/watch
 │   │   │   │   ├── notifications.py  # /api/v1/notifications/*
 │   │   │   │   ├── admin.py          # /api/v1/admin/*
 │   │   │   │   ├── content.py        # /api/v1/admit-cards, /answer-keys, /results
-│   │   │   │   ├── entrance_exams.py # /api/v1/entrance-exams/* + /api/v1/admin/entrance-exams/*
+│   │   │   │   ├── admissions.py # /api/v1/admissions/* + /api/v1/admin/admissions/*
 │   │   │   │   └── health.py         # /api/v1/health
 │   │   │   ├── models/           # SQLAlchemy 2.0 Mapped models (14 tables, see DATABASE.md)
 │   │   │   ├── schemas/          # Pydantic v2 request/response models
@@ -216,7 +219,7 @@ hermes/
 │   │   │   └── tasks/            # Celery tasks
 │   │   │       ├── notifications.py  # smart_notify, deadline reminders, job alerts
 │   │   │       ├── cleanup.py        # Purge expired notifications + logs
-│   │   │       ├── jobs.py           # Close expired listings, PDF extraction, exam status update
+│   │   │       ├── jobs.py           # Close expired listings, PDF extraction, admission status update
 │   │   │       └── seo.py            # Generate sitemap.xml
 │   │   └── tests/                # unit/ (16 files) + integration/ (10 files)
 │   ├── frontend/                 # User Frontend (Flask + HTMX + Alpine.js, port 8080)
@@ -224,7 +227,7 @@ hermes/
 │   │   ├── requirements.txt
 │   │   ├── app/
 │   │   │   ├── __init__.py       # All routes: /, /jobs, /admit-cards, /answer-keys, /results,
-│   │   │   │                     # /entrance-exams, /dashboard, /notifications, /profile, /login
+│   │   │   │                     # /admissions, /dashboard, /notifications, /profile, /login
 │   │   │   ├── _base_api_client.py  # Shared HTTP client base class
 │   │   │   ├── api_client.py     # Extends BaseApiClient (10s timeout, X-Request-ID)
 │   │   │   ├── static/           # PWA: manifest.json, sw.js, icons
@@ -234,10 +237,12 @@ hermes/
 │   │   ├── Dockerfile
 │   │   ├── requirements.txt
 │   │   ├── app/
-│   │   │   ├── __init__.py       # Routes: dashboard, jobs CRUD, entrance exams CRUD, users, logs
+│   │   │   ├── __init__.py       # Routes: dashboard, jobs CRUD, admissions CRUD, users, logs
+│   │   │   │                     # Phase documents (admit cards, answer keys, results) managed via
+│   │   │   │                     # /jobs/<id>/edit#docs and /admissions/<id>/edit#docs only
 │   │   │   ├── _base_api_client.py  # Shared HTTP client base class
 │   │   │   ├── api_client.py     # Extends BaseApiClient + inherits post_file() for PDF uploads
-│   │   │   └── templates/        # 15+ templates including entrance exam edit, job review
+│   │   │   └── templates/        # Job/admission CRUD, user management, audit logs (no standalone doc pages)
 │   │   └── tests/                # unit/test_api_client.py + integration/test_routes.py
 │   └── nginx/                    # Reverse Proxy (port 80/443)
 │       ├── nginx.conf            # Rate limiting, routing, security headers
@@ -247,14 +252,14 @@ hermes/
 │       ├── conftest.py           # URL + credential fixtures (reads from env vars)
 │       ├── requirements.txt      # pytest, pytest-cov, requests
 │       ├── test_health.py        # Smoke: all 3 /health endpoints
-│       └── test_full_flow.py     # Job lifecycle, admin login flow, watch flow, exam lifecycle
+│       └── test_full_flow.py     # Job lifecycle, admin login flow, watch flow, admission lifecycle
 ├── config/
 │   ├── development/              # .env.backend, .env.frontend, .env.frontend-admin (gitignored)
 │   ├── test/                     # .env.backend, .env.frontend, .env.frontend-admin (CI, gitignored)
 │   ├── staging/                  # .env.backend, .env.frontend, .env.frontend-admin (committed placeholders)
 │   └── production/               # .env.backend, .env.frontend, .env.frontend-admin (committed placeholders)
 ├── scripts/
-│   ├── seed_jobs.py              # Seed: 10 jobs + 9 exams + 32 phase docs (run manually)
+│   ├── seed_jobs.py              # Seed: 10 jobs + 9 admissions + 32 phase docs (run manually)
 │   └── seed_creds.py             # Seed: admin + test user accounts
 ├── sonar-project.properties      # SonarCloud config (3 source roots, 4 test roots, 3 coverage XMLs)
 ├── .pre-commit-config.yaml       # Pre-commit hooks (black, isort, flake8, mypy, detect-secrets)

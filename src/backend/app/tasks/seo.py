@@ -18,16 +18,16 @@ SITEMAP_PATH = os.environ.get("SITEMAP_PATH", "/app/sitemap.xml")
 
 @celery.task(name="app.tasks.seo.generate_sitemap")
 def generate_sitemap():
-    """Regenerate /sitemap.xml with all active job + entrance exam URLs. Daily 04:00 UTC."""
+    """Regenerate /sitemap.xml with all active job + admission URLs. Daily 04:00 UTC."""
     with Session(sync_engine) as session:
         jobs = session.execute(
             text(
                 "SELECT slug, updated_at FROM jobs WHERE status = 'active' ORDER BY updated_at DESC"
             )
         ).fetchall()
-        exams = session.execute(
+        admissions = session.execute(
             text(
-                "SELECT slug, updated_at FROM entrance_exams"
+                "SELECT slug, updated_at FROM admissions"
                 " WHERE status IN ('active','upcoming') ORDER BY updated_at DESC"
             )
         ).fetchall()
@@ -41,7 +41,7 @@ def generate_sitemap():
         ("/admit-cards", "daily", "0.9"),
         ("/answer-keys", "daily", "0.9"),
         ("/results", "daily", "0.9"),
-        ("/entrance-exams", "daily", "0.9"),
+        ("/admissions", "daily", "0.9"),
     ]:
         url_el = SubElement(urlset, "url")
         SubElement(url_el, "loc").text = f"{SITE_URL}{path}"
@@ -57,10 +57,10 @@ def generate_sitemap():
         SubElement(url_el, "changefreq").text = "daily"
         SubElement(url_el, "priority").text = "0.8"
 
-    # Entrance exam detail pages
-    for slug, updated_at in exams:
+    # Admission detail pages
+    for slug, updated_at in admissions:
         url_el = SubElement(urlset, "url")
-        SubElement(url_el, "loc").text = f"{SITE_URL}/entrance-exams/{slug}"
+        SubElement(url_el, "loc").text = f"{SITE_URL}/admissions/{slug}"
         if updated_at:
             SubElement(url_el, "lastmod").text = updated_at.strftime("%Y-%m-%d")
         SubElement(url_el, "changefreq").text = "weekly"
@@ -69,4 +69,8 @@ def generate_sitemap():
     tree = ElementTree(urlset)
     tree.write(SITEMAP_PATH, xml_declaration=True, encoding="UTF-8")
 
-    return {"jobs_count": len(jobs), "exams_count": len(exams), "path": SITEMAP_PATH}
+    return {
+        "jobs_count": len(jobs),
+        "admissions_count": len(admissions),
+        "path": SITEMAP_PATH,
+    }

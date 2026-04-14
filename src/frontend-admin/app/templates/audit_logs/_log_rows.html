@@ -1,0 +1,35 @@
+{% for log in logs %}
+<tr>
+    <td style="font-size:.75rem;color:#64748b;white-space:nowrap">{{ log.timestamp[:19].replace('T',' ') if log.timestamp else '—' }}</td>
+    <td>
+        <span class="badge
+            {%- if 'create' in log.action %} badge-active
+            {%- elif 'delete' in log.action %} badge-suspended
+            {%- elif 'update' in log.action or 'approve' in log.action %} badge-info
+            {%- else %} badge-draft{%- endif %}">
+            {{ log.action | replace('_',' ') | title }}
+        </span>
+    </td>
+    <td style="font-size:.82rem">{{ log.resource_type or '—' }}</td>
+    <td style="font-size:.78rem;color:#64748b;font-family:monospace">{{ log.resource_id[:8] ~ '…' if log.resource_id else '—' }}</td>
+    <td style="font-size:.82rem;max-width:280px">{{ log.details or '—' }}</td>
+    <td style="font-size:.78rem;color:#64748b">{{ log.ip_address or '—' }}</td>
+</tr>
+{% endfor %}
+
+{% if not logs %}
+<tr><td colspan="6" style="text-align:center;color:#94a3b8;padding:2rem">No log entries found.</td></tr>
+{% endif %}
+
+{% if pagination.get('has_more') %}
+<tr>
+    <td colspan="6" style="text-align:center;padding:1rem">
+        <button class="btn btn-outline"
+                hx-get="/logs/list?offset={{ pagination.offset + pagination.limit }}"
+                hx-target="#log-tbody"
+                hx-swap="beforeend">
+            Load more
+        </button>
+    </td>
+</tr>
+{% endif %}

@@ -1,17 +1,17 @@
-"""Watch (track) endpoints — watch jobs and entrance exams for deadline notifications.
+"""Watch (track) endpoints — watch jobs and admissions for deadline notifications.
 
-POST   /api/v1/jobs/{job_id}/watch            — Watch a job
-DELETE /api/v1/jobs/{job_id}/watch            — Unwatch a job
-POST   /api/v1/entrance-exams/{exam_id}/watch — Watch an entrance exam
-DELETE /api/v1/entrance-exams/{exam_id}/watch — Unwatch an entrance exam
-GET    /api/v1/users/me/watched               — List all watched jobs + exams
+POST   /api/v1/jobs/{job_id}/watch               — Watch a job
+DELETE /api/v1/jobs/{job_id}/watch               — Unwatch a job
+POST   /api/v1/admissions/{admission_id}/watch   — Watch an admission
+DELETE /api/v1/admissions/{admission_id}/watch   — Unwatch an admission
+GET    /api/v1/users/me/watched                  — List all watched jobs + admissions
 """
 
 import uuid
 from typing import Annotated, Any
 
 from app.dependencies import get_current_user, get_db
-from app.models.entrance_exam import EntranceExam
+from app.models.admission import Admission
 from app.models.job import Job
 from app.models.user_watch import UserWatch
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -98,26 +98,26 @@ async def unwatch_job(
     return {"message": "Unwatched job", "watching": False}
 
 
-# Entrance Exam Watch
+# Admission Watch
 
 
-@router.post("/api/v1/entrance-exams/{exam_id}/watch", status_code=status.HTTP_200_OK)
-async def watch_exam(
-    exam_id: uuid.UUID,
+@router.post("/api/v1/admissions/{admission_id}/watch", status_code=status.HTTP_200_OK)
+async def watch_admission(
+    admission_id: uuid.UUID,
     current_user: Annotated[Any, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    """Watch an entrance exam to receive deadline reminders and update notifications. Idempotent."""
+    """Watch an admission to receive deadline reminders and update notifications. Idempotent."""
     user, _ = current_user
 
-    result = await db.execute(select(EntranceExam).where(EntranceExam.id == exam_id))
+    result = await db.execute(select(Admission).where(Admission.id == admission_id))
     if not result.scalar_one_or_none():
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Entrance exam not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Admission not found"
         )
 
-    if await _get_watch(user.id, "exam", exam_id, db):
-        return {"message": "Already watching this exam", "watching": True}
+    if await _get_watch(user.id, "admission", admission_id, db):
+        return {"message": "Already watching this admission", "watching": True}
 
     if await _count_watches(user.id, db) >= MAX_WATCHES:
         raise HTTPException(
@@ -125,29 +125,31 @@ async def watch_exam(
             detail=f"Maximum {MAX_WATCHES} watched items allowed",
         )
 
-    db.add(UserWatch(user_id=user.id, entity_type="exam", entity_id=exam_id))
+    db.add(UserWatch(user_id=user.id, entity_type="admission", entity_id=admission_id))
     await db.commit()
-    return {"message": "Now watching this exam", "watching": True}
+    return {"message": "Now watching this admission", "watching": True}
 
 
-@router.delete("/api/v1/entrance-exams/{exam_id}/watch", status_code=status.HTTP_200_OK)
-async def unwatch_exam(
-    exam_id: uuid.UUID,
+@router.delete(
+    "/api/v1/admissions/{admission_id}/watch", status_code=status.HTTP_200_OK
+)
+async def unwatch_admission(
+    admission_id: uuid.UUID,
     current_user: Annotated[Any, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    """Stop watching an entrance exam."""
+    """Stop watching an admission."""
     user, _ = current_user
 
-    watch = await _get_watch(user.id, "exam", exam_id, db)
+    watch = await _get_watch(user.id, "admission", admission_id, db)
     if not watch:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Not watching this exam"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Not watching this admission"
         )
 
     await db.delete(watch)
     await db.commit()
-    return {"message": "Unwatched exam", "watching": False}
+    return {"message": "Unwatched admission", "watching": False}
 
 
 # List Watched
@@ -158,7 +160,7 @@ async def list_watched(
     current_user: Annotated[Any, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    """List all watched jobs and entrance exams for the current user."""
+    """List all watched jobs and admissions for the current user."""
     user, _ = current_user
 
     watches_result = await db.execute(
@@ -169,7 +171,7 @@ async def list_watched(
     watches = watches_result.scalars().all()
 
     job_ids = [w.entity_id for w in watches if w.entity_type == "job"]
-    exam_ids = [w.entity_id for w in watches if w.entity_type == "exam"]
+    admission_ids = [w.entity_id for w in watches if w.entity_type == "admission"]
 
     # Fetch into lookup dicts to allow re-ordering by watch.created_at
     jobs_by_id: dict = {}
@@ -189,15 +191,15 @@ async def list_watched(
             for j in result.scalars().all()
         }
 
-    exams_by_id: dict = {}
-    if exam_ids:
+    admissions_by_id: dict = {}
+    if admission_ids:
         result = await db.execute(
-            select(EntranceExam).where(EntranceExam.id.in_(exam_ids))
+            select(Admission).where(Admission.id.in_(admission_ids))
         )
-        exams_by_id = {
+        admissions_by_id = {
             e.id: {
                 "id": str(e.id),
-                "exam_name": e.exam_name,
+                "admission_name": e.admission_name,
                 "slug": e.slug,
                 "conducting_body": e.conducting_body,
                 "application_end": (
@@ -214,10 +216,14 @@ async def list_watched(
         for w in watches
         if w.entity_type == "job" and w.entity_id in jobs_by_id
     ]
-    exams = [
-        exams_by_id[w.entity_id]
+    admissions = [
+        admissions_by_id[w.entity_id]
         for w in watches
-        if w.entity_type == "exam" and w.entity_id in exams_by_id
+        if w.entity_type == "admission" and w.entity_id in admissions_by_id
     ]
 
-    return {"jobs": jobs, "exams": exams, "total": len(jobs) + len(exams)}
+    return {
+        "jobs": jobs,
+        "admissions": admissions,
+        "total": len(jobs) + len(admissions),
+    }

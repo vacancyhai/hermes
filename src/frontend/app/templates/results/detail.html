@@ -11,13 +11,16 @@
                 {% if result.phase_number %}
                 <span style="background:rgba(255,255,255,.2);color:#fff;padding:.15rem .55rem;border-radius:9999px;font-size:.75rem;font-weight:600">Phase {{ result.phase_number }}</span>
                 {% endif %}
+                {% if result.result_type %}
+                <span style="background:rgba(255,255,255,.25);color:#fff;padding:.15rem .55rem;border-radius:9999px;font-size:.75rem;font-weight:600">{{ result.result_type | replace('_',' ') | title }}</span>
+                {% endif %}
                 <span style="background:rgba(255,255,255,.2);color:#fff;padding:.15rem .55rem;border-radius:9999px;font-size:.75rem;font-weight:600">Result</span>
             </div>
             <h1>{{ result.title }}</h1>
             {% if result.get('job') %}
             <div class="org">🏛 {{ result.job.organization }} · {{ result.job.job_title }}</div>
-            {% elif result.get('exam') %}
-            <div class="org">🏛 {{ result.exam.conducting_body }} · {{ result.exam.exam_name }}</div>
+            {% elif result.get('admission') %}
+            <div class="org">🏛 {{ result.admission.conducting_body }} · {{ result.admission.admission_name }}</div>
             {% endif %}
         </div>
     </div>
@@ -25,23 +28,37 @@
 
 <!-- Action bar -->
 <div class="action-bar">
+    {% if result.download_url %}
     <a href="{{ result.download_url }}" target="_blank" rel="noopener" class="btn btn-primary" style="background:#16a34a;border-color:#16a34a;display:inline-flex;align-items:center;gap:.3rem">
         ⬇ Download Result
     </a>
+    {% endif %}
     {% if result.get('job') %}
     <a href="/jobs/{{ result.job.id }}" class="share-btn">View Job Details →</a>
-    {% elif result.get('exam') %}
-    <a href="/entrance-exams/{{ result.exam.id }}" class="share-btn">View Exam Details →</a>
+    {% elif result.get('admission') %}
+    <a href="/admissions/{{ result.admission.id }}" class="share-btn">View Admission Details →</a>
     {% endif %}
     <button type="button" class="share-btn" onclick="if(navigator.share){navigator.share({title:document.title,url:window.location.href})}else{navigator.clipboard.writeText(window.location.href);alert('Link copied!')}">⬆ Share</button>
 </div>
 
 <!-- Details grid -->
 <div class="detail-grid">
+    {% if result.result_type %}
+    <div class="detail-item">
+        <div class="label">Result Type</div>
+        <div class="value">{{ result.result_type | replace('_', ' ') | title }}</div>
+    </div>
+    {% endif %}
     {% if result.phase_number %}
     <div class="detail-item">
         <div class="label">Phase</div>
         <div class="value">Phase {{ result.phase_number }}</div>
+    </div>
+    {% endif %}
+    {% if result.total_qualified is not none and result.total_qualified != none %}
+    <div class="detail-item">
+        <div class="label">Total Qualified</div>
+        <div class="value">{{ "{:,}".format(result.total_qualified) }}</div>
     </div>
     {% endif %}
     {% if result.published_at %}
@@ -52,19 +69,51 @@
     {% endif %}
 </div>
 
-{% if result.notes %}
-<div class="detail-section">
-    <h2>📋 Important Notes</h2>
-    <p>{{ result.notes }}</p>
+<!-- Total Qualified highlight -->
+{% if result.total_qualified is not none %}
+<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:.5rem;padding:1rem 1.25rem;display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
+    <div style="font-size:2rem;font-weight:800;color:#16a34a">{{ "{:,}".format(result.total_qualified) }}</div>
+    <div>
+        <div style="font-size:.85rem;font-weight:700;color:#166534">Candidates Qualified</div>
+        {% if result.result_type %}<div style="font-size:.78rem;color:#64748b">{{ result.result_type | replace('_',' ') | title }}</div>{% endif %}
+    </div>
 </div>
 {% endif %}
 
-<!-- Download CTA -->
+{% if result.cutoff_marks %}
+<div class="detail-section">
+    <h2>📊 Cut-off Marks</h2>
+    <table class="fee-table">
+        <thead><tr><th>Category</th><th style="text-align:right">Cut-off</th></tr></thead>
+        <tbody>
+        {% for cat, mark in result.cutoff_marks.items() %}
+        <tr>
+            <td>{{ cat | replace('_',' ') | title }}</td>
+            <td style="text-align:right;font-weight:700;color:#1e293b">{{ mark }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+{% if result.notes %}
+<div class="detail-section" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:.5rem;padding:1rem 1.25rem">
+    <h2 style="color:#166534">📋 Important Notes</h2>
+    <p style="color:#14532d">{{ result.notes }}</p>
+</div>
+{% endif %}
+
+<!-- CTA -->
 <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:.5rem;padding:1.25rem;text-align:center;margin-top:1.5rem">
-    <p style="color:#166534;font-weight:500;margin-bottom:.75rem">Check your result on the official portal.</p>
+    <p style="color:#166534;font-weight:500;margin-bottom:.75rem">Check your result status on the official portal.</p>
+    {% if result.download_url %}
     <a href="{{ result.download_url }}" target="_blank" rel="noopener" class="btn btn-primary" style="background:#16a34a;border-color:#16a34a;font-size:.95rem;padding:.6rem 1.5rem">
-        ⬇ Download Result
+        ⬇ Download Result PDF
     </a>
     <p style="font-size:.78rem;color:#64748b;margin-top:.5rem">Opens official source in a new tab</p>
+    {% else %}
+    <p style="font-size:.875rem;color:#64748b">Result download link not yet available. Check the official website.</p>
+    {% endif %}
 </div>
 {% endblock %}

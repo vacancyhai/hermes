@@ -2,8 +2,8 @@
 <tr>
     <td>
         <strong>{{ job.job_title }}</strong>
+        {% if job.organization %}<div style="font-size:.75rem;color:#6b7280;margin-top:.1rem">{{ job.organization }}</div>{% endif %}
     </td>
-    <td>{{ job.organization }}</td>
     <td>
         {% if job.status == 'active' %}<span class="badge badge-active">Active</span>
         {% elif job.status == 'draft' %}<span class="badge badge-draft">Draft</span>
@@ -13,12 +13,14 @@
     <td>{{ job.total_vacancies or '—' }}</td>
     <td>{{ job.application_end or '—' }}</td>
     <td>
-        <a href="/jobs/{{ job.id }}/edit" class="btn btn-outline btn-sm">Edit</a>
-        {% if session.get('admin_role') == 'admin' and job.status != 'cancelled' %}
-        <form method="POST" action="/jobs/{{ job.id }}/delete" style="display:inline;" onsubmit="return confirm('Delete this job?')">
-            <button type="submit" class="btn btn-sm" style="color:#dc2626;border-color:#fca5a5;background:#fff;">Delete</button>
-        </form>
-        {% endif %}
+        <div style="display:flex;gap:.3rem">
+            <a href="/jobs/{{ job.id }}/edit" class="btn btn-outline btn-sm">Edit</a>
+            {% if session.get('admin_role') == 'admin' and job.status != 'cancelled' %}
+            <form method="POST" action="/jobs/{{ job.id }}/delete" style="display:inline;" onsubmit="return confirm('Delete this job?')">
+                <button type="submit" class="btn btn-sm" style="color:#dc2626;border-color:#fca5a5;background:#fff;">Delete</button>
+            </form>
+            {% endif %}
+        </div>
     </td>
 </tr>
 {% endfor %}

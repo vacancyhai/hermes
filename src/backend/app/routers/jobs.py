@@ -35,18 +35,12 @@ async def list_jobs(
     qualification_level: Annotated[str | None, Query()] = None,
     organization: Annotated[str | None, Query()] = None,
     department: Annotated[str | None, Query()] = None,
-    status_filter: Annotated[str | None, Query(alias="status")] = None,
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
     offset: Annotated[int, Query(ge=0)] = 0,
 ):
     """List job vacancies (latest_job type only) with filters and full-text search. Returns all jobs."""
     query = select(Job)
     count_query = select(func.count(Job.id))
-
-    # Default to active-only; allow explicit override
-    effective_status = status_filter or "active"
-    query = query.where(Job.status == effective_status)
-    count_query = count_query.where(Job.status == effective_status)
 
     # Full-text search
     if q:

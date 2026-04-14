@@ -53,8 +53,8 @@ celery.conf.beat_schedule = {
         "task": "app.tasks.jobs.close_expired_job_listings",
         "schedule": crontab(hour=2, minute=30),  # Daily 02:30 UTC
     },
-    "update-exam-statuses": {
-        "task": "app.tasks.jobs.update_exam_statuses",
+    "update-admission-statuses": {
+        "task": "app.tasks.jobs.update_admission_statuses",
         "schedule": crontab(hour=2, minute=35),  # Daily 02:35 UTC
     },
     "generate-sitemap": {

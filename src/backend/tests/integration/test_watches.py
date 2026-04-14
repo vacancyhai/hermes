@@ -1,4 +1,4 @@
-"""Integration tests for watch endpoints — watch/unwatch jobs & exams, list watched."""
+"""Integration tests for watch endpoints — watch/unwatch jobs & admissions, list watched."""
 
 import uuid
 
@@ -75,56 +75,60 @@ async def test_unwatch_job_requires_auth(client: AsyncClient, active_job):
     assert resp.status_code in (401, 403)
 
 
-# ── Entrance exam watch ────────────────────────────────────────────────────────
+# ── Admission watch ──────────────────────────────────────────────────────────────
 
 
-async def test_watch_exam(client: AsyncClient, user_token: str, active_exam):
-    exam_id = active_exam["id"]
+async def test_watch_admission(client: AsyncClient, user_token: str, active_admission):
+    admission_id = active_admission["id"]
     resp = await client.post(
-        f"/api/v1/entrance-exams/{exam_id}/watch", headers=auth_header(user_token)
+        f"/api/v1/admissions/{admission_id}/watch", headers=auth_header(user_token)
     )
     assert resp.status_code == 200
     assert resp.json()["watching"] is True
 
 
-async def test_watch_exam_idempotent(client: AsyncClient, user_token: str, active_exam):
-    exam_id = active_exam["id"]
+async def test_watch_admission_idempotent(
+    client: AsyncClient, user_token: str, active_admission
+):
+    admission_id = active_admission["id"]
     await client.post(
-        f"/api/v1/entrance-exams/{exam_id}/watch", headers=auth_header(user_token)
+        f"/api/v1/admissions/{admission_id}/watch", headers=auth_header(user_token)
     )
     resp = await client.post(
-        f"/api/v1/entrance-exams/{exam_id}/watch", headers=auth_header(user_token)
+        f"/api/v1/admissions/{admission_id}/watch", headers=auth_header(user_token)
     )
     assert resp.status_code == 200
     assert "already" in resp.json()["message"].lower()
 
 
-async def test_watch_exam_not_found(client: AsyncClient, user_token: str):
+async def test_watch_admission_not_found(client: AsyncClient, user_token: str):
     fake_id = uuid.uuid4()
     resp = await client.post(
-        f"/api/v1/entrance-exams/{fake_id}/watch", headers=auth_header(user_token)
+        f"/api/v1/admissions/{fake_id}/watch", headers=auth_header(user_token)
     )
     assert resp.status_code == 404
 
 
-async def test_unwatch_exam(client: AsyncClient, user_token: str, active_exam):
-    exam_id = active_exam["id"]
+async def test_unwatch_admission(
+    client: AsyncClient, user_token: str, active_admission
+):
+    admission_id = active_admission["id"]
     await client.post(
-        f"/api/v1/entrance-exams/{exam_id}/watch", headers=auth_header(user_token)
+        f"/api/v1/admissions/{admission_id}/watch", headers=auth_header(user_token)
     )
     resp = await client.delete(
-        f"/api/v1/entrance-exams/{exam_id}/watch", headers=auth_header(user_token)
+        f"/api/v1/admissions/{admission_id}/watch", headers=auth_header(user_token)
     )
     assert resp.status_code == 200
     assert resp.json()["watching"] is False
 
 
-async def test_unwatch_exam_not_watching(
-    client: AsyncClient, user_token: str, active_exam
+async def test_unwatch_admission_not_watching(
+    client: AsyncClient, user_token: str, active_admission
 ):
-    exam_id = active_exam["id"]
+    admission_id = active_admission["id"]
     resp = await client.delete(
-        f"/api/v1/entrance-exams/{exam_id}/watch", headers=auth_header(user_token)
+        f"/api/v1/admissions/{admission_id}/watch", headers=auth_header(user_token)
     )
     assert resp.status_code == 404
 
@@ -137,7 +141,7 @@ async def test_list_watched_empty(client: AsyncClient, user_token: str):
     assert resp.status_code == 200
     data = resp.json()
     assert "jobs" in data
-    assert "exams" in data
+    assert "admissions" in data
     assert "total" in data
 
 
@@ -152,17 +156,17 @@ async def test_list_watched_includes_job(
     assert job_id in watched_ids
 
 
-async def test_list_watched_includes_exam(
-    client: AsyncClient, user_token: str, active_exam
+async def test_list_watched_includes_admission(
+    client: AsyncClient, user_token: str, active_admission
 ):
-    exam_id = active_exam["id"]
+    admission_id = active_admission["id"]
     await client.post(
-        f"/api/v1/entrance-exams/{exam_id}/watch", headers=auth_header(user_token)
+        f"/api/v1/admissions/{admission_id}/watch", headers=auth_header(user_token)
     )
     resp = await client.get("/api/v1/users/me/watched", headers=auth_header(user_token))
     assert resp.status_code == 200
-    watched_ids = [e["id"] for e in resp.json()["exams"]]
-    assert exam_id in watched_ids
+    watched_ids = [e["id"] for e in resp.json()["admissions"]]
+    assert admission_id in watched_ids
 
 
 async def test_list_watched_after_unwatch(

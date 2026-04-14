@@ -27,9 +27,9 @@ class PhaseDocMixin:
         nullable=True,
         index=True,
     )
-    exam_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+    admission_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("entrance_exams.id", ondelete="CASCADE"),
+        ForeignKey("admissions.id", ondelete="CASCADE"),
         nullable=True,
         index=True,
     )

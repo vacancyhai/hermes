@@ -1,0 +1,305 @@
+{% extends "shared/base.html" %}
+{% block title %}{{ admission.admission_name }} — Hermes{% endblock %}
+{% block meta %}
+<meta name="description" content="{{ admission.short_description or admission.admission_name }}">
+{% endblock %}
+
+{% block content %}
+<a href="/admissions" class="back-link">← Back to Admissions</a>
+
+<!-- Hero -->
+<div class="detail-hero hero-admission">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.75rem;flex-wrap:wrap">
+        <div style="flex:1;min-width:0">
+            <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.5rem">
+                <span style="background:rgba(255,255,255,.2);color:#fff;padding:.15rem .55rem;border-radius:9999px;font-size:.75rem;font-weight:600">{{ admission.admission_type|upper }}</span>
+                <span style="background:rgba(255,255,255,.2);color:#fff;padding:.15rem .55rem;border-radius:9999px;font-size:.75rem;font-weight:600">{{ admission.stream|replace('_',' ')|title }}</span>
+            </div>
+            <h1>{{ admission.admission_name }}</h1>
+            <div class="org">🏛 {{ admission.conducting_body }}{% if admission.counselling_body and admission.counselling_body != admission.conducting_body %} · Counselling: {{ admission.counselling_body }}{% endif %}</div>
+        </div>
+        <div style="flex-shrink:0">
+            {% if admission.status == 'active' %}
+            <span style="background:#22c55e;color:#fff;padding:.25rem .65rem;border-radius:9999px;font-size:.78rem;font-weight:600">Active</span>
+            {% elif admission.status == 'completed' %}
+            <span style="background:#64748b;color:#fff;padding:.25rem .65rem;border-radius:9999px;font-size:.78rem;font-weight:600">Completed</span>
+            {% elif admission.status == 'upcoming' %}
+            <span style="background:#f59e0b;color:#fff;padding:.25rem .65rem;border-radius:9999px;font-size:.78rem;font-weight:600">Upcoming</span>
+            {% else %}
+            <span style="background:rgba(255,255,255,.3);color:#fff;padding:.25rem .65rem;border-radius:9999px;font-size:.78rem;font-weight:600">{{ admission.status|title }}</span>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Action bar -->
+<div class="action-bar">
+    {% if session.get('token') %}
+        {% if watching %}
+        <form method="post" action="/admissions/{{ admission.id }}/unwatch" style="display:inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button type="submit" class="share-btn" style="background:#ede9fe;color:#5b21b6;border-color:#c4b5fd">
+                ★ Watching — Remove
+            </button>
+        </form>
+        {% else %}
+        <form method="post" action="/admissions/{{ admission.id }}/watch" style="display:inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button type="submit" class="share-btn" style="background:#ede9fe;color:#5b21b6;border-color:#c4b5fd">
+                ☆ Watch for Reminders
+            </button>
+        </form>
+        {% endif %}
+    {% else %}
+    <a href="/login?next=/admissions/{{ admission.id }}" class="share-btn" style="background:#ede9fe;color:#5b21b6;border-color:#c4b5fd">☆ Watch for Reminders</a>
+    {% endif %}
+    {% if admission.source_url %}
+    <a href="{{ admission.source_url }}" target="_blank" rel="noopener" class="share-btn">🔗 Official Website</a>
+    {% endif %}
+    <button type="button" class="share-btn" onclick="shareAdmission()">⬆ Share</button>
+</div>
+
+<!-- Key Dates -->
+<div class="detail-grid">
+    {% if admission.application_start %}
+    <div class="detail-item">
+        <div class="label">Apply From</div>
+        <div class="value">{{ admission.application_start }}</div>
+    </div>
+    {% endif %}
+    {% if admission.application_end %}
+    <div class="detail-item">
+        <div class="label">Last Date to Apply</div>
+        <div class="value {{ 'urgent' if admission.status == 'active' else '' }}">{{ admission.application_end }}</div>
+    </div>
+    {% endif %}
+    {% if admission.admission_date %}
+    <div class="detail-item">
+        <div class="label">Admission Date</div>
+        <div class="value">{{ admission.admission_date }}</div>
+    </div>
+    {% endif %}
+    {% if admission.result_date %}
+    <div class="detail-item">
+        <div class="label">Result Date</div>
+        <div class="value">{{ admission.result_date }}</div>
+    </div>
+    {% endif %}
+    {% if admission.counselling_start %}
+    <div class="detail-item">
+        <div class="label">Counselling Starts</div>
+        <div class="value">{{ admission.counselling_start }}</div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Description -->
+{% if admission.description %}
+<div class="detail-section">
+    <h2>📋 About This Admission</h2>
+    <div>{{ admission.description|safe }}</div>
+</div>
+{% endif %}
+
+<!-- Eligibility -->
+{#
+  eligibility: {qualification, min_percentage, age_limit:{min,max}, attempts_allowed, notes}
+#}
+{% set elig = admission.eligibility or {} %}
+{% if elig.get('qualification') or elig.get('age_limit') or elig.get('attempts_allowed') or elig.get('notes') %}
+<div class="detail-section">
+    <h2>✅ Eligibility</h2>
+    {% if elig.get('qualification') %}
+    <p><strong>Qualification:</strong> {{ elig.qualification }}</p>
+    {% endif %}
+    {% if elig.get('min_percentage') %}
+    <p style="margin-top:.35rem"><strong>Minimum Marks in Qualifying:</strong> {{ elig.min_percentage }}%</p>
+    {% endif %}
+    {% if elig.get('age_limit') %}
+    {% set age = elig.age_limit %}
+    <p style="margin-top:.35rem"><strong>Age Limit:</strong>
+        {% if age.get('min') and age.get('max') %}{{ age.min }} – {{ age.max }} years
+        {% elif age.get('max') %}Up to {{ age.max }} years
+        {% elif age.get('min') %}Minimum {{ age.min }} years
+        {% endif %}
+    </p>
+    {% endif %}
+    {% if elig.get('attempts_allowed') %}
+    <p style="margin-top:.35rem"><strong>Maximum Attempts:</strong> {{ elig.attempts_allowed }}</p>
+    {% endif %}
+    {% if elig.get('notes') %}
+    <p style="margin-top:.35rem;font-size:.875rem;color:#475569">{{ elig.notes }}</p>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- Admission Pattern & Details -->
+{#
+  admission_details: {mode, duration_minutes, total_marks, total_questions, negative_marking,
+                 language:[], subjects:[{name,questions,marks}]}
+#}
+{% set ed = admission.admission_details or {} %}
+{% if ed.get('mode') or ed.get('total_marks') or ed.get('subjects') %}
+<div class="detail-section">
+    <h2>📝 Admission Pattern</h2>
+    <div class="detail-grid" style="margin-bottom:.75rem">
+        {% if ed.get('mode') %}
+        <div class="detail-item"><div class="label">Mode</div><div class="value">{{ ed.mode }}</div></div>
+        {% endif %}
+        {% if ed.get('duration_minutes') %}
+        <div class="detail-item"><div class="label">Duration</div><div class="value">{{ ed.duration_minutes }} minutes</div></div>
+        {% endif %}
+        {% if ed.get('total_marks') %}
+        <div class="detail-item"><div class="label">Total Marks</div><div class="value">{{ ed.total_marks }}</div></div>
+        {% endif %}
+        {% if ed.get('total_questions') %}
+        <div class="detail-item"><div class="label">Questions</div><div class="value">{{ ed.total_questions }}</div></div>
+        {% endif %}
+        {% if ed.get('negative_marking') %}
+        <div class="detail-item"><div class="label">Negative Marking</div><div class="value">&minus;{{ ed.negative_marking }} per wrong</div></div>
+        {% endif %}
+        {% if ed.get('language') %}
+        <div class="detail-item"><div class="label">Languages</div><div class="value">{{ ed.language | join(', ') }}</div></div>
+        {% endif %}
+    </div>
+    {% if ed.get('subjects') %}
+    <table class="fee-table">
+        <thead><tr><th>Subject</th><th style="text-align:right">Questions</th><th style="text-align:right">Marks</th></tr></thead>
+        <tbody>
+        {% for sub in ed.subjects %}
+        <tr>
+            <td>{{ sub.get('name','—') if sub is mapping else sub }}</td>
+            <td style="text-align:right">{{ sub.get('questions','—') if sub is mapping else '—' }}</td>
+            <td style="text-align:right">{{ sub.get('marks','—') if sub is mapping else '—' }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- Seats Info -->
+{#
+  seats_info: {total, UR, OBC, EWS, SC, ST}
+#}
+{% set si = admission.seats_info or {} %}
+{% if si.get('total') or si.get('UR') or si.get('OBC') %}
+<div class="detail-section">
+    <h2>🎓 Seats Information</h2>
+    <div style="display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:.25rem">
+        {% for cat in ['total','UR','OBC','EWS','SC','ST'] %}
+        {% if si.get(cat) %}
+        <div {% if cat == 'total' %}style="background:#dbeafe;border-radius:.35rem;padding:.3rem .7rem;text-align:center;min-width:52px"{% else %}style="background:#f1f5f9;border-radius:.35rem;padding:.3rem .7rem;text-align:center;min-width:52px"{% endif %}>
+            <div style="font-size:.875rem;font-weight:700;color:#1e293b">{{ "{:,}".format(si[cat]) if si[cat] is number else si[cat] }}</div>
+            <div style="font-size:.7rem;color:#64748b;text-transform:uppercase;letter-spacing:.04em">{{ cat }}</div>
+        </div>
+        {% endif %}
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Selection Process -->
+{% if admission.selection_process %}
+<div class="detail-section">
+    <h2>🎯 Selection Process</h2>
+    <ol style="padding-left:1.2rem">
+        {% for step in admission.selection_process %}
+        <li style="margin-bottom:.3rem">{{ step.get('name', step) if step is mapping else step }}</li>
+        {% endfor %}
+    </ol>
+</div>
+{% endif %}
+
+<!-- Application Fee -->
+{% if admission.fee_general is not none %}
+<div class="detail-section">
+    <h2>💳 Application Fee</h2>
+    <table class="fee-table">
+        <thead><tr><th>Category</th><th>Fee</th></tr></thead>
+        <tbody>
+            {% if admission.fee_general is not none %}<tr><td>General / EWS / OBC</td><td>{% if admission.fee_general == 0 %}Free{% else %}₹{{ admission.fee_general }}{% endif %}</td></tr>{% endif %}
+            {% if admission.fee_sc_st is not none %}<tr><td>SC / ST</td><td>{% if admission.fee_sc_st == 0 %}Free{% else %}₹{{ admission.fee_sc_st }}{% endif %}</td></tr>{% endif %}
+            {% if admission.fee_female is not none %}<tr><td>Female (all categories)</td><td>{% if admission.fee_female == 0 %}Free{% else %}₹{{ admission.fee_female }}{% endif %}</td></tr>{% endif %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<!-- Phase Documents (Admit Cards, Answer Keys, Results) -->
+{% if admission.admit_cards or admission.answer_keys or admission.results %}
+<div class="detail-section">
+    <h2>📂 Phase Documents</h2>
+    <div x-data="{tab: '{{ 'admit' if admission.admit_cards else ('answer' if admission.answer_keys else 'result') }}'}">
+        <div class="doc-tabs-bar">
+            {% if admission.admit_cards %}<button class="doc-tab-btn" :class="{active:tab==='admit'}" @click="tab='admit'">Admit Cards ({{ admission.admit_cards|length }})</button>{% endif %}
+            {% if admission.answer_keys %}<button class="doc-tab-btn" :class="{active:tab==='answer'}" @click="tab='answer'">Answer Keys ({{ admission.answer_keys|length }})</button>{% endif %}
+            {% if admission.results %}<button class="doc-tab-btn" :class="{active:tab==='result'}" @click="tab='result'">Results ({{ admission.results|length }})</button>{% endif %}
+        </div>
+        {% if admission.admit_cards %}
+        <div class="doc-panel" x-show="tab==='admit'">
+            {% for card in admission.admit_cards %}
+            <div class="doc-card doc-card-admit">
+                <div class="doc-card-body">
+                    {% if card.phase_number %}<span class="doc-phase-pill phase-blue">Phase {{ card.phase_number }}</span>{% endif %}
+                    <div class="doc-title">{{ card.title }}</div>
+                    {% if card.valid_from or card.valid_until %}<div class="doc-deadline">Valid: {{ card.valid_from or '?' }} – {{ card.valid_until or '?' }}</div>{% endif %}
+                    {% if card.notes %}<div class="doc-note">{{ card.notes }}</div>{% endif %}
+                </div>
+                <div class="doc-card-actions">
+                    <a href="{{ card.download_url }}" target="_blank" rel="noopener" class="doc-btn doc-btn-blue">⬇ Download</a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% if admission.answer_keys %}
+        <div class="doc-panel" x-show="tab==='answer'">
+            {% for key in admission.answer_keys %}
+            <div class="doc-card doc-card-answer">
+                <div class="doc-card-body">
+                    {% if key.phase_number %}<span class="doc-phase-pill phase-amber">Phase {{ key.phase_number }}</span>{% endif %}
+                    {% if key.answer_key_type %}<span class="doc-phase-pill {{ 'type-final' if key.answer_key_type == 'final' else 'type-prov' }}">{{ key.answer_key_type|title }}</span>{% endif %}
+                    <div class="doc-title">{{ key.title }}</div>
+                    {% if key.notes %}<div class="doc-note">{{ key.notes }}</div>{% endif %}
+                </div>
+                <div class="doc-card-actions">
+                    <a href="{{ key.download_url }}" target="_blank" rel="noopener" class="doc-btn doc-btn-amber">⬇ Download</a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% if admission.results %}
+        <div class="doc-panel" x-show="tab==='result'">
+            {% for res in admission.results %}
+            <div class="doc-card doc-card-result">
+                <div class="doc-card-body">
+                    {% if res.phase_number %}<span class="doc-phase-pill phase-green">Phase {{ res.phase_number }}</span>{% endif %}
+                    <div class="doc-title">{{ res.title }}</div>
+                    {% if res.notes %}<div class="doc-note">{{ res.notes }}</div>{% endif %}
+                </div>
+                <div class="doc-card-actions">
+                    <a href="{{ res.download_url }}" target="_blank" rel="noopener" class="doc-btn doc-btn-green">⬇ Download</a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+<script>
+function shareAdmission() {
+    if (navigator.share) {
+        navigator.share({ title: document.title, url: window.location.href });
+    } else {
+        navigator.clipboard.writeText(window.location.href).then(function() {
+            alert("Link copied to clipboard!");
+        });
+    }
+}
+</script>
+{% endblock %}

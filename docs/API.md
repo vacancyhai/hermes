@@ -84,29 +84,29 @@ If `refresh_token` is provided, its JTI is also added to the Redis blocklist so 
 
 ---
 
-## Watch (Track Jobs & Exams)
+## Watch (Track Jobs & Admissions)
 
-Users can watch specific jobs or entrance exams to receive automatic notifications.
+Users can watch specific jobs or admissions to receive automatic notifications.
 
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
 | POST | `/jobs/{job_id}/watch` | User | Watch a job (idempotent, max 100) |
 | DELETE | `/jobs/{job_id}/watch` | User | Unwatch a job (404 if not watching) |
-| POST | `/entrance-exams/{exam_id}/watch` | User | Watch an entrance exam (idempotent) |
-| DELETE | `/entrance-exams/{exam_id}/watch` | User | Unwatch an entrance exam |
-| GET | `/users/me/watched` | User | List all watched jobs + exams |
+| POST | `/admissions/{admission_id}/watch` | User | Watch an admission (idempotent) |
+| DELETE | `/admissions/{admission_id}/watch` | User | Unwatch an admission |
+| GET | `/users/me/watched` | User | List all watched jobs + admissions |
 
 **Automatic notifications triggered by watching:**
 - `deadline_reminder_7d` — 7 days before `application_end`
 - `deadline_reminder_3d` — 3 days before `application_end`
 - `deadline_reminder_1d` — Last day to apply (high priority)
-- `watched_item_updated` — When admin approves or updates the job/exam
+- `watched_item_updated` — When admin approves or updates the job/admission
 
 **Response for `GET /users/me/watched`:**
 ```json
 {
   "jobs": [{ "id": "uuid", "job_title": "...", "slug": "...", "organization": "...", "application_end": "2026-05-01", "status": "active" }],
-  "exams": [{ "id": "uuid", "exam_name": "...", "slug": "...", "conducting_body": "...", "application_end": "2026-06-01", "status": "active" }],
+  "admissions": [{ "id": "uuid", "admission_name": "...", "slug": "...", "conducting_body": "...", "application_end": "2026-06-01", "status": "active" }],
   "total": 2
 }
 ```
@@ -154,23 +154,35 @@ Content is stored across four dedicated tables: `jobs`, `admit_cards`, `answer_k
 #### Admit Cards
 
 | Method | Endpoint | Role | Description |
-|--------|----------|------|-------------|
+|--------|----------|------|---------|
 | GET | `/admin/admit-cards` | Operator+ | List all admit cards |
-| POST | `/admin/admit-cards` | Operator+ | Create admit card (must specify `job_id` OR `exam_id`) |
+| POST | `/admin/admit-cards` | Operator+ | Create admit card (must specify `job_id` OR `admission_id`) |
+| PUT | `/admin/admit-cards/{id}` | Operator+ | Update admit card |
+| DELETE | `/admin/admit-cards/{id}` | Operator+ | Delete admit card |
+
+> **Admin UI:** Admit cards are managed from the parent job or admission edit page (`/jobs/<id>/edit#docs` or `/admissions/<id>/edit#docs`). There is no standalone `/admit-cards` management page.
 
 #### Answer Keys
 
 | Method | Endpoint | Role | Description |
-|--------|----------|------|-------------|
+|--------|----------|------|---------|
 | GET | `/admin/answer-keys` | Operator+ | List all answer keys |
-| POST | `/admin/answer-keys` | Operator+ | Create answer key (must specify `job_id` OR `exam_id`) |
+| POST | `/admin/answer-keys` | Operator+ | Create answer key (must specify `job_id` OR `admission_id`) |
+| PUT | `/admin/answer-keys/{id}` | Operator+ | Update answer key |
+| DELETE | `/admin/answer-keys/{id}` | Operator+ | Delete answer key |
+
+> **Admin UI:** Answer keys are managed from the parent job or admission edit page. There is no standalone `/answer-keys` management page.
 
 #### Results
 
 | Method | Endpoint | Role | Description |
-|--------|----------|------|-------------|
+|--------|----------|------|---------|
 | GET | `/admin/results` | Operator+ | List all results |
-| POST | `/admin/results` | Operator+ | Create result (must specify `job_id` OR `exam_id`) |
+| POST | `/admin/results` | Operator+ | Create result (must specify `job_id` OR `admission_id`) |
+| PUT | `/admin/results/{id}` | Operator+ | Update result |
+| DELETE | `/admin/results/{id}` | Operator+ | Delete result |
+
+> **Admin UI:** Results are managed from the parent job or admission edit page. There is no standalone `/results` management page.
 
 #### Common Job Operations
 
@@ -452,7 +464,7 @@ Authorization: Bearer <admin_token>
   "admit_cards": { "total": 15 },
   "answer_keys": { "total": 3 },
   "results": { "total": 2 },
-  "entrance_exams": { "total": 5, "active": 4 },
+  "admissions": { "total": 5, "active": 4 },
   "users": { "total": 3, "active": 3, "new_this_week": 1 }
 }
 ```
@@ -462,7 +474,7 @@ Authorization: Bearer <admin_token>
 - `admit_cards` — Admit card releases (`admit_cards` table)
 - `answer_keys` — Answer key publications (`answer_keys` table)
 - `results` — Exam results (`results` table)
-- `entrance_exams` — Entrance exam information (`entrance_exams` table)
+- `admissions` — Admission information (`admissions` table)
 
 ---
 
@@ -544,7 +556,7 @@ file: <pdf_file>
 6. Admin reviews and edits extracted data
 7. Admin submits form to create content
 
-**Use Case:** Used in creation pages (`/jobs/new`, `/admit-cards/new`, `/answer-keys/new`, `/results/new`) to automatically populate form fields from uploaded PDF notifications. Does not create any database records.
+**Use Case:** Used in the job creation page (`/jobs/new`) to automatically populate form fields from uploaded PDF notifications. Does not create any database records.
 
 **Extracted fields:** job_title, organization, department, qualification_level, employment_type, total_vacancies, description, short_description, notification_date, application_start, application_end, exam_start, exam_end, result_date, fees (general/obc/sc_st/ews/female), salary (initial/max), source_url, eligibility, selection_process.
 
@@ -552,7 +564,7 @@ file: <pdf_file>
 
 ## Admit Cards, Answer Keys, and Results
 
-These are now top-level resources, independent of jobs and entrance exams. Each document can be linked to either a job OR an entrance exam via polymorphic foreign keys.
+These are now top-level resources, independent of jobs and admissions. Each document can be linked to either a job OR an admission via polymorphic foreign keys.
 
 ### Admit Cards
 
@@ -561,19 +573,16 @@ These are now top-level resources, independent of jobs and entrance exams. Each 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/admit-cards` | List all admit cards (paginated) |
-| GET | `/admit-cards/{id}` | Get single admit card by ID (includes job/exam context) |
+| GET | `/admit-cards/{id}` | Get single admit card by ID (includes job/admission context) |
 
 #### Admin Endpoints (operator+)
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/admin/admit-cards` | List all admit cards (any status) |
-| POST | `/admin/admit-cards` | Create admit card (must specify job_id OR exam_id) |
+| POST | `/admin/admit-cards` | Create admit card (must specify job_id OR admission_id) |
 | PUT | `/admin/admit-cards/{id}` | Update admit card |
 | DELETE | `/admin/admit-cards/{id}` | Delete admit card |
-| POST | `/admin/jobs/{job_id}/admit-cards` | Legacy: Add admit card to a job |
-| PUT | `/admin/jobs/{job_id}/admit-cards/{doc_id}` | Legacy: Update admit card |
-| DELETE | `/admin/jobs/{job_id}/admit-cards/{doc_id}` | Legacy: Delete admit card |
 
 ### Answer Keys
 
@@ -582,19 +591,16 @@ These are now top-level resources, independent of jobs and entrance exams. Each 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/answer-keys` | List all answer keys (paginated) |
-| GET | `/answer-keys/{id}` | Get single answer key by ID (includes job/exam context) |
+| GET | `/answer-keys/{id}` | Get single answer key by ID (includes job/admission context) |
 
 #### Admin Endpoints (operator+)
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/admin/answer-keys` | List all answer keys (any status) |
-| POST | `/admin/answer-keys` | Create answer key (must specify job_id OR exam_id) |
+| POST | `/admin/answer-keys` | Create answer key (must specify job_id OR admission_id) |
 | PUT | `/admin/answer-keys/{id}` | Update answer key |
 | DELETE | `/admin/answer-keys/{id}` | Delete answer key |
-| POST | `/admin/jobs/{job_id}/answer-keys` | Legacy: Add answer key to a job |
-| PUT | `/admin/jobs/{job_id}/answer-keys/{doc_id}` | Legacy: Update answer key |
-| DELETE | `/admin/jobs/{job_id}/answer-keys/{doc_id}` | Legacy: Delete answer key |
 
 ### Results
 
@@ -603,23 +609,20 @@ These are now top-level resources, independent of jobs and entrance exams. Each 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/results` | List all results (paginated) |
-| GET | `/results/{id}` | Get single result by ID (includes job/exam context) |
+| GET | `/results/{id}` | Get single result by ID (includes job/admission context) |
 
 #### Admin Endpoints (operator+)
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/admin/results` | List all results (any status) |
-| POST | `/admin/results` | Create result (must specify job_id OR exam_id) |
+| POST | `/admin/results` | Create result (must specify job_id OR admission_id) |
 | PUT | `/admin/results/{id}` | Update result |
 | DELETE | `/admin/results/{id}` | Delete result |
-| POST | `/admin/jobs/{job_id}/results` | Legacy: Add result to a job |
-| PUT | `/admin/jobs/{job_id}/results/{doc_id}` | Legacy: Update result |
-| DELETE | `/admin/jobs/{job_id}/results/{doc_id}` | Legacy: Delete result |
 
 ### Document Creation
 
-When creating a document via the top-level admin endpoints, you must specify **either** `job_id` OR `exam_id` in the request body:
+When creating a document via the top-level admin endpoints, you must specify **either** `job_id` OR `admission_id` in the request body:
 
 ```json
 // Create admit card for a job
@@ -633,10 +636,10 @@ POST /api/v1/admin/admit-cards
   "phase_number": 1
 }
 
-// Create answer key for an entrance exam
+// Create answer key for an admission
 POST /api/v1/admin/answer-keys
 {
-  "exam_id": "uuid-here",
+  "admission_id": "uuid-here",
   "title": "NEET UG 2026 Provisional Answer Key",
   "answer_key_type": "provisional",
   "files": [{"label": "Set A", "url": "https://..."}],
@@ -645,9 +648,9 @@ POST /api/v1/admin/answer-keys
 ```
 
 **Validation rules:**
-- Cannot specify both `job_id` and `exam_id`
+- Cannot specify both `job_id` and `admission_id`
 - Must specify at least one
-- Parent job/exam must exist in database
+- Parent job/admission must exist in database
 
 **`phase_number`** (optional integer 1–10) maps to the corresponding entry in the parent job's `selection_process` JSONB array — e.g. phase 1 = "Tier-1 CBT". `NULL` means the document applies to the whole job (e.g. a final merit list).
 
@@ -678,66 +681,66 @@ The user frontend supports Progressive Web App features:
 
 ---
 
-## Entrance Exams
+## Admissions
 
-Entrance exams (NEET, JEE, CLAT, CAT, GATE etc.) are stored in the `entrance_exams` table, separate from `jobs`.
-They have exam-specific fields: `stream`, `exam_type`, `counselling_body`, `seats_info`, exam pattern.
+Admissions (NEET, JEE, CLAT, CAT, GATE etc.) are stored in the `admissions` table, separate from `jobs`.
+They have admission-specific fields: `stream`, `admission_type`, `counselling_body`, `seats_info`, admission pattern.
 
-### Public (read-only, active exams only)
+### Public (read-only, active admissions only)
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/entrance-exams` | List active entrance exams (stream/exam_type/search filters) |
-| GET | `/entrance-exams/{slug}` | Exam detail by slug |
-| GET | `/entrance-exams/{exam_id}/admit-cards` | Per-phase admit cards (exam status must not be `cancelled`) |
-| GET | `/entrance-exams/{exam_id}/answer-keys` | Per-phase answer keys (exam status must not be `cancelled`) |
-| GET | `/entrance-exams/{exam_id}/results` | Per-phase results (exam status must not be `cancelled`) |
+| GET | `/admissions` | List active admissions (stream/admission_type/search filters) |
+| GET | `/admissions/{slug}` | Admission detail by slug |
+| GET | `/admissions/{admission_id}/admit-cards` | Per-phase admit cards (admission status must not be `cancelled`) |
+| GET | `/admissions/{admission_id}/answer-keys` | Per-phase answer keys (admission status must not be `cancelled`) |
+| GET | `/admissions/{admission_id}/results` | Per-phase results (admission status must not be `cancelled`) |
 
-**Query Parameters for `GET /entrance-exams`:**
+**Query Parameters for `GET /admissions`:**
 
 | Param | Type | Description |
 |-------|------|-------------|
-| `q` | string | Full-text search on exam name, conducting body, description |
+| `q` | string | Full-text search on admission name, conducting body, description |
 | `stream` | string | `medical`, `engineering`, `law`, `management`, `arts_science`, `general` |
-| `exam_type` | string | `ug`, `pg`, `doctoral`, `lateral` |
+| `admission_type` | string | `ug`, `pg`, `doctoral`, `lateral` |
 | `limit` | int | 1-100, default: 20 |
 | `offset` | int | Default: 0 |
 
-**Note:** `status='upcoming'` exams are excluded from public listing (only `status='active'` returned).
+**Note:** `status='upcoming'` admissions are excluded from public listing (only `status='active'` returned).
 
 ### Admin CRUD (operator+)
 
 | Method | Endpoint | Description |
 |--------|----------|-----------|
-| GET | `/admin/entrance-exams` | List all exams (any status, filterable by stream/exam_type/status) |
-| GET | `/admin/entrance-exams/{id}` | Get single exam detail by ID (any status) |
-| POST | `/admin/entrance-exams` | Create entrance exam |
-| PUT | `/admin/entrance-exams/{id}` | Update entrance exam |
-| DELETE | `/admin/entrance-exams/{id}` | Delete entrance exam (cascades to linked docs) |
-| POST | `/admin/entrance-exams/{id}/admit-cards` | Add admit card to exam |
-| PUT | `/admin/entrance-exams/{id}/admit-cards/{doc_id}` | Update admit card |
-| DELETE | `/admin/entrance-exams/{id}/admit-cards/{doc_id}` | Delete admit card |
-| POST | `/admin/entrance-exams/{id}/answer-keys` | Add answer key |
-| PUT | `/admin/entrance-exams/{id}/answer-keys/{doc_id}` | Update answer key |
-| DELETE | `/admin/entrance-exams/{id}/answer-keys/{doc_id}` | Delete answer key |
-| POST | `/admin/entrance-exams/{id}/results` | Add result |
-| PUT | `/admin/entrance-exams/{id}/results/{doc_id}` | Update result |
-| DELETE | `/admin/entrance-exams/{id}/results/{doc_id}` | Delete result |
+| GET | `/admin/admissions` | List all admissions (any status, filterable by stream/admission_type/status) |
+| GET | `/admin/admissions/{id}` | Get single admission detail by ID (any status) |
+| POST | `/admin/admissions` | Create admission |
+| PUT | `/admin/admissions/{id}` | Update admission |
+| DELETE | `/admin/admissions/{id}` | Delete admission (cascades to linked docs) |
+| POST | `/admin/admissions/{id}/admit-cards` | Add admit card to admission |
+| PUT | `/admin/admissions/{id}/admit-cards/{doc_id}` | Update admit card |
+| DELETE | `/admin/admissions/{id}/admit-cards/{doc_id}` | Delete admit card |
+| POST | `/admin/admissions/{id}/answer-keys` | Add answer key |
+| PUT | `/admin/admissions/{id}/answer-keys/{doc_id}` | Update answer key |
+| DELETE | `/admin/admissions/{id}/answer-keys/{doc_id}` | Delete answer key |
+| POST | `/admin/admissions/{id}/results` | Add result |
+| PUT | `/admin/admissions/{id}/results/{doc_id}` | Update result |
+| DELETE | `/admin/admissions/{id}/results/{doc_id}` | Delete result |
 
-### Example — List Medical Entrance Exams
+### Example — List Medical Admissions
 ```
-GET /api/v1/entrance-exams?stream=medical&limit=10
+GET /api/v1/admissions?stream=medical&limit=10
 → 200 {
   "data": [
     {
       "slug": "nta-neet-pg-2026",
-      "exam_name": "NTA NEET PG 2026 — Medical PG Entrance Examination",
+      "admission_name": "NTA NEET PG 2026 — Medical PG Admissionination",
       "conducting_body": "National Testing Agency",
       "counselling_body": "Medical Counselling Committee (MCC)",
-      "exam_type": "pg",
+      "admission_type": "pg",
       "stream": "medical",
       "application_end": "2025-11-30",
-      "exam_date": "2026-03-09",
+      "admission_date": "2026-03-09",
       "fee_general": 4250
     },
     ...
@@ -746,19 +749,76 @@ GET /api/v1/entrance-exams?stream=medical&limit=10
 }
 ```
 
-### Example — Create Entrance Exam (Admin)
+### Admission JSON Field Structures
+
+**`admission_details`** — Exam pattern and paper structure:
+```json
+{
+  "mode": "Online",
+  "duration_minutes": 180,
+  "total_marks": 360,
+  "total_questions": 90,
+  "negative_marking": 1.0,
+  "language": ["Hindi", "English"],
+  "subjects": [
+    { "name": "Physics", "questions": 30, "marks": 120 },
+    { "name": "Chemistry", "questions": 30, "marks": 120 },
+    { "name": "Mathematics", "questions": 30, "marks": 120 }
+  ]
+}
 ```
-POST /api/v1/admin/entrance-exams
+
+**`eligibility`** — Candidate eligibility criteria:
+```json
+{
+  "qualification": "12th Pass with Physics, Chemistry, Mathematics from a recognised board",
+  "min_percentage": 75,
+  "age_limit": { "min": 17, "max": 25 },
+  "attempts_allowed": 2,
+  "notes": "SC/ST candidates: 65% aggregate. Age relaxation as per govt norms."
+}
+```
+
+**`seats_info`** — Category-wise seat breakdown:
+```json
+{
+  "total": 17385,
+  "UR": 7850,
+  "OBC": 4680,
+  "EWS": 1740,
+  "SC": 2610,
+  "ST": 505
+}
+```
+
+### Example — Create Admission (Admin)
+```
+POST /api/v1/admin/admissions
 Authorization: Bearer <admin_token>
 {
-  "exam_name": "JEE Advanced 2026",
+  "admission_name": "JEE Advanced 2026",
   "conducting_body": "IIT Bombay",
   "counselling_body": "JoSAA",
-  "exam_type": "ug",
+  "admission_type": "ug",
   "stream": "engineering",
-  "eligibility": { "min_qualification": "12th", "attempts_limit": "2 consecutive years" },
-  "seats_info": { "iit_seats": 17385 },
-  "exam_date": "2026-05-25",
+  "eligibility": {
+    "qualification": "12th Pass with PCM",
+    "min_percentage": 75,
+    "age_limit": { "min": 17, "max": 25 },
+    "attempts_allowed": 2
+  },
+  "seats_info": { "total": 17385, "UR": 7850, "OBC": 4680, "EWS": 1740, "SC": 2610, "ST": 505 },
+  "admission_details": {
+    "mode": "Online",
+    "duration_minutes": 180,
+    "total_marks": 360,
+    "subjects": [
+      { "name": "Physics", "questions": 30, "marks": 120 },
+      { "name": "Chemistry", "questions": 30, "marks": 120 },
+      { "name": "Mathematics", "questions": 30, "marks": 120 }
+    ]
+  },
+  "admission_date": "2026-05-25",
   "fee_general": 3200,
   "fee_sc_st": 1600,
   "status": "active"
@@ -776,12 +836,12 @@ Authorization: Bearer <admin_token>
 | `admin_users` | Admin/operator accounts (role, department, permissions) |
 | `user_profiles` | Extended user profile (education, category, location, followed_organizations) |
 | `jobs` | Job vacancy postings with FTS vector |
-| `entrance_exams` | Entrance exams (NEET, JEE, CLAT, CAT, GATE etc.) |
+| `admissions` | Admissions (NEET, JEE, CLAT, CAT, GATE etc.) |
 | `notifications` | User notifications |
 | `notification_delivery_log` | Per-channel delivery tracking (push/email/whatsapp/telegram) |
 | `user_devices` | Device registry (FCM token, fingerprint de-duplication) |
 | `admin_logs` | Admin audit trail |
-| `user_watches` | Jobs and exams a user is tracking (for notifications) |
-| `admit_cards` | Per-phase admit cards (linked to job OR exam via polymorphic FK) |
+| `user_watches` | Jobs and admissions a user is tracking (for notifications) |
+| `admit_cards` | Per-phase admit cards (linked to job OR admission via polymorphic FK) |
 | `answer_keys` | Per-phase answer keys — provisional/final, multi-paper files JSONB |
 | `results` | Per-phase results — shortlist/cutoff/merit_list/final, cutoff_marks JSONB |

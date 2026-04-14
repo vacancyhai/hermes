@@ -299,7 +299,7 @@ def test_dashboard_no_token_shows_login(client, mock_api):
 
 def test_dashboard_with_token(auth_client):
     client, mock_api = auth_client
-    mock_api.get.return_value = _ok({"jobs": [], "exams": [], "total": 0})
+    mock_api.get.return_value = _ok({"jobs": [], "admissions": [], "total": 0})
     resp = client.get("/dashboard")
     assert resp.status_code == 200
 
@@ -951,66 +951,66 @@ def test_unwatch_job_redirects_after_success(auth_client):
     assert resp.status_code == 302
 
 
-# ─── /entrance-exams ──────────────────────────────────────────────────────────
+# ─── /admissions ──────────────────────────────────────────────────────────
 
-def test_entrance_exams_list(client, mock_api):
+def test_admissions_list(client, mock_api):
     mock_api.get.return_value = _ok({"data": [], "pagination": {}})
-    resp = client.get("/entrance-exams")
+    resp = client.get("/admissions")
     assert resp.status_code == 200
 
 
-def test_entrance_exams_list_with_filters(client, mock_api):
+def test_admissions_list_with_filters(client, mock_api):
     mock_api.get.return_value = _ok({"data": [], "pagination": {}})
-    resp = client.get("/entrance-exams?q=JEE&stream=engineering")
+    resp = client.get("/admissions?q=JEE&stream=engineering")
     assert resp.status_code == 200
     call_kwargs = mock_api.get.call_args[1]
     assert call_kwargs["params"]["q"] == "JEE"
     assert call_kwargs["params"]["stream"] == "engineering"
 
 
-def test_entrance_exam_detail_found(client, mock_api):
+def test_admission_detail_found(client, mock_api):
     mock_api.get.return_value = _ok({
-        "id": "exam-1", "exam_name": "JEE Main", "slug": "jee-main",
+        "id": "exam-1", "admission_name": "JEE Main", "slug": "jee-main",
         "conducting_body": "NTA", "status": "active",
         "admit_cards": [], "answer_keys": [], "results": [],
     })
-    resp = client.get("/entrance-exams/exam-1")
+    resp = client.get("/admissions/exam-1")
     assert resp.status_code == 200
 
 
-def test_entrance_exam_detail_not_found(client, mock_api):
+def test_admission_detail_not_found(client, mock_api):
     mock_api.get.return_value = _fail()
-    resp = client.get("/entrance-exams/nonexistent")
+    resp = client.get("/admissions/nonexistent")
     assert resp.status_code == 404
 
 
-def test_watch_exam_redirects_to_login_when_unauthenticated(client, mock_api):
+def test_watch_admission_redirects_to_login_when_unauthenticated(client, mock_api):
     with client.session_transaction() as sess:
         sess["csrf_token"] = "test-csrf"
-    resp = client.post("/entrance-exams/exam-1/watch", data={"csrf_token": "test-csrf"})
+    resp = client.post("/admissions/exam-1/watch", data={"csrf_token": "test-csrf"})
     assert resp.status_code == 302
     assert "/login" in resp.headers["Location"]
 
 
-def test_watch_exam_redirects_after_success(auth_client):
+def test_watch_admission_redirects_after_success(auth_client):
     client, mock_api = auth_client
     mock_api.post.return_value = _ok({"watching": True})
-    resp = client.post("/entrance-exams/exam-1/watch")
+    resp = client.post("/admissions/exam-1/watch")
     assert resp.status_code == 302
 
 
-def test_unwatch_exam_redirects_to_login_when_unauthenticated(client, mock_api):
+def test_unwatch_admission_redirects_to_login_when_unauthenticated(client, mock_api):
     with client.session_transaction() as sess:
         sess["csrf_token"] = "test-csrf"
-    resp = client.post("/entrance-exams/exam-1/unwatch", data={"csrf_token": "test-csrf"})
+    resp = client.post("/admissions/exam-1/unwatch", data={"csrf_token": "test-csrf"})
     assert resp.status_code == 302
     assert "/login" in resp.headers["Location"]
 
 
-def test_unwatch_exam_redirects_after_success(auth_client):
+def test_unwatch_admission_redirects_after_success(auth_client):
     client, mock_api = auth_client
     mock_api.delete.return_value = _ok({"watching": False})
-    resp = client.post("/entrance-exams/exam-1/unwatch")
+    resp = client.post("/admissions/exam-1/unwatch")
     assert resp.status_code == 302
 
 
@@ -1080,7 +1080,7 @@ def test_results_list(client, mock_api):
 
 def test_result_detail_found(client, mock_api):
     mock_api.get.return_value = _ok({
-        "id": "res-1", "title": "SSC CGL Result",
+        "id": "res-1", "title": "SSC CGL Result", "total_qualified": None,
     })
     resp = client.get("/results/res-1")
     assert resp.status_code == 200

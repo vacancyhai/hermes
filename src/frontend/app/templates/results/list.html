@@ -14,7 +14,7 @@
 {% block content %}
 <div class="page-hero">
     <h1>Results</h1>
-    <p>Official results for government job recruitments and entrance exams</p>
+    <p>Official results for government job recruitments and admissions</p>
 </div>
 
 <div x-data="{tab: 'all'}">
@@ -32,7 +32,7 @@
 {% if recommended_results %}
 <div x-show="tab==='foryou'" x-cloak>
     <p style="font-size:.85rem;color:#64748b;margin-bottom:.9rem">
-        Results for jobs and exams you are watching.
+        Results for jobs and admissions you are watching.
         <a href="/dashboard" style="color:#16a34a">View watchlist →</a>
     </p>
     {% for res in recommended_results %}

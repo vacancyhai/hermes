@@ -1,8 +1,8 @@
 """Notification-related Celery tasks.
 
 smart_notify                — Unified entry: routes to in-app + FCM + email + WhatsApp + Telegram
-send_deadline_reminders     — Daily Beat task: T-7, T-3, T-1 deadline reminders for watched jobs + exams
-notify_watchers_on_update   — Event: notify watchers when a job/exam is approved or updated
+send_deadline_reminders     — Daily Beat task: T-7, T-3, T-1 deadline reminders for watched jobs + admissions
+notify_watchers_on_update   — Event: notify watchers when a job/admission is approved or updated
 send_email_notification     — Sync email via SMTP (retries 3x)
 deliver_delayed_telegram    — Delayed Telegram delivery for staggered mode (T+15min)
 """
@@ -242,7 +242,7 @@ def send_deadline_reminders():
 
     Covers two groups:
       1. Users watching a job via user_watches
-      2. Users watching an entrance exam via user_watches
+      2. Users watching an admission via user_watches
 
     Runs daily at 08:00 UTC via Beat schedule.
     Delegates to smart_notify for multi-channel delivery.
@@ -308,14 +308,14 @@ def send_deadline_reminders():
                     },
                 )
 
-            # ── 2. Watch-based exam reminders ─────────────────────────────────
-            watch_exam_rows = session.execute(
+            # ── 2. Watch-based admission reminders ─────────────────────────────────
+            watch_admission_rows = session.execute(
                 text(
                     """
-                    SELECT uw.user_id, ee.id, ee.exam_name, ee.slug, ee.conducting_body, ee.application_end
+                    SELECT uw.user_id, ee.id, ee.admission_name, ee.slug, ee.conducting_body, ee.application_end
                     FROM user_watches uw
-                    JOIN entrance_exams ee ON ee.id = uw.entity_id
-                    WHERE uw.entity_type = 'exam'
+                    JOIN admissions ee ON ee.id = uw.entity_id
+                    WHERE uw.entity_type = 'admission'
                       AND ee.application_end = :target_date
                       AND ee.status != 'cancelled'
                 """
@@ -325,24 +325,24 @@ def send_deadline_reminders():
 
             for (
                 user_id,
-                exam_id,
-                exam_name,
+                admission_id,
+                admission_name,
                 slug,
                 conducting_body,
                 app_end,
-            ) in watch_exam_rows:
+            ) in watch_admission_rows:
                 ntype = f"deadline_reminder_{days_before}d"
                 existing = session.execute(
                     text(
                         "SELECT 1 FROM notifications WHERE user_id=:uid AND entity_id=:eid AND type=:t LIMIT 1"
                     ),
-                    {"uid": str(user_id), "eid": str(exam_id), "t": ntype},
+                    {"uid": str(user_id), "eid": str(admission_id), "t": ntype},
                 ).fetchone()
                 if existing:
                     continue
 
                 title, msg, priority = _build_reminder_text(
-                    days_before, exam_name, conducting_body
+                    days_before, admission_name, conducting_body
                 )
                 smart_notify.delay(
                     user_id=str(user_id),
@@ -350,14 +350,14 @@ def send_deadline_reminders():
                     message=msg,
                     notification_type=ntype,
                     priority=priority,
-                    entity_type="exam",
-                    entity_id=str(exam_id),
-                    action_url=f"/entrance-exams/{slug}",
+                    entity_type="admission",
+                    entity_id=str(admission_id),
+                    action_url=f"/admissions/{slug}",
                     email_template="deadline_reminder.html",
                     email_context={
                         "title": title,
                         "message": msg,
-                        "job_title": exam_name,
+                        "job_title": admission_name,
                         "organization": conducting_body,
                         "slug": slug,
                         "deadline": str(app_end),
@@ -370,9 +370,9 @@ def send_deadline_reminders():
 
 @celery.task(name="app.tasks.notifications.notify_watchers_on_update")
 def notify_watchers_on_update(entity_type: str, entity_id: str):
-    """Notify all users watching a job or exam when it is approved or updated.
+    """Notify all users watching a job or admission when it is approved or updated.
 
-    entity_type: 'job' | 'exam'
+    entity_type: 'job' | 'admission'
     Delegates to smart_notify for multi-channel delivery.
     """
     with Session(sync_engine) as session:
@@ -392,14 +392,14 @@ def notify_watchers_on_update(entity_type: str, entity_id: str):
         else:
             row = session.execute(
                 text(
-                    "SELECT exam_name, slug, conducting_body, application_end FROM entrance_exams WHERE id = :eid"
+                    "SELECT admission_name, slug, conducting_body, application_end FROM admissions WHERE id = :eid"
                 ),
                 {"eid": entity_id},
             ).fetchone()
             if not row:
                 return
             name, slug, org, _ = row
-            action_url = f"/entrance-exams/{slug}"
+            action_url = f"/admissions/{slug}"
             title = f"Update: {name}"
             msg = f"{name} by {org} has been updated."
 

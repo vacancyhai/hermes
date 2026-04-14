@@ -1,4 +1,4 @@
-"""EntranceExam model — maps to `entrance_exams` table."""
+"""Admission model — maps to `admissions` table."""
 
 import uuid
 from datetime import date, datetime
@@ -11,22 +11,24 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 _CASCADE_ALL_DELETE = "all, delete-orphan"
 
 
-class EntranceExam(Base):
-    __tablename__ = "entrance_exams"
+class Admission(Base):
+    __tablename__ = "admissions"
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     slug: Mapped[str] = mapped_column(String(500), unique=True, nullable=False)
-    exam_name: Mapped[str] = mapped_column(String(500), nullable=False)
+    admission_name: Mapped[str] = mapped_column(String(500), nullable=False)
     conducting_body: Mapped[str] = mapped_column(String(255), nullable=False)
     counselling_body: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    exam_type: Mapped[str] = mapped_column(String(20), nullable=False, default="pg")
+    admission_type: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="pg"
+    )
     stream: Mapped[str] = mapped_column(String(30), nullable=False, default="general")
     eligibility: Mapped[dict] = mapped_column(
         JSONB, nullable=False, server_default="{}"
     )
-    exam_details: Mapped[dict] = mapped_column(
+    admission_details: Mapped[dict] = mapped_column(
         JSONB, nullable=False, server_default="{}"
     )
     selection_process: Mapped[list] = mapped_column(
@@ -35,7 +37,7 @@ class EntranceExam(Base):
     seats_info: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     application_start: Mapped[date | None] = mapped_column(Date, nullable=True)
     application_end: Mapped[date | None] = mapped_column(Date, nullable=True)
-    exam_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    admission_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     result_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     counselling_start: Mapped[date | None] = mapped_column(Date, nullable=True)
     fee_general: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -62,19 +64,19 @@ class EntranceExam(Base):
 
     admit_cards = relationship(
         "AdmitCard",
-        back_populates="exam",
+        back_populates="admission",
         cascade=_CASCADE_ALL_DELETE,
         order_by="AdmitCard.phase_number",
     )
     answer_keys = relationship(
         "AnswerKey",
-        back_populates="exam",
+        back_populates="admission",
         cascade=_CASCADE_ALL_DELETE,
         order_by="AnswerKey.phase_number",
     )
     results = relationship(
         "Result",
-        back_populates="exam",
+        back_populates="admission",
         cascade=_CASCADE_ALL_DELETE,
         order_by="Result.phase_number",
     )

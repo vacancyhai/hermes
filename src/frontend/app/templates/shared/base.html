@@ -69,7 +69,7 @@
         .hero-admit{background:linear-gradient(135deg,#1e40af 0%,#3b82f6 100%)}
         .hero-answer{background:linear-gradient(135deg,#92400e 0%,#d97706 100%)}
         .hero-result{background:linear-gradient(135deg,#14532d 0%,#16a34a 100%)}
-        .hero-entrance-exam{background:linear-gradient(135deg,#4c1d95 0%,#7c3aed 100%)}
+        .hero-admission{background:linear-gradient(135deg,#4c1d95 0%,#7c3aed 100%)}
 
         /* Key dates grid */
         .detail-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:.65rem;margin-bottom:1.25rem}
@@ -167,7 +167,7 @@
         <a href="/admit-cards" class="{{ 'active' if request.path.startswith('/admit-cards') else '' }}">Admit Cards</a>
         <a href="/answer-keys" class="{{ 'active' if request.path.startswith('/answer-keys') else '' }}">Answer Keys</a>
         <a href="/results" class="{{ 'active' if request.path.startswith('/results') else '' }}">Results</a>
-        <a href="/entrance-exams" class="{{ 'active' if request.path.startswith('/entrance-exams') else '' }}">Entrance Exams</a>
+        <a href="/admissions" class="{{ 'active' if request.path.startswith('/admissions') else '' }}">Admissions</a>
     </nav>
     <main>
         {% block content %}{% endblock %}

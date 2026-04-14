@@ -2,10 +2,11 @@ services:
   postgresql:
     image: postgres:16-alpine
     container_name: test_postgresql
+    env_file:
+      - ./config/test/.env.backend
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-hermes_test_db}
       POSTGRES_USER: ${POSTGRES_USER:-hermes_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-hermes_user} -d ${POSTGRES_DB:-hermes_test_db}"]
       interval: 10s

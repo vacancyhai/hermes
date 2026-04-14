@@ -295,7 +295,7 @@ Admin/Operator → Admin Frontend (port 8081)
 │ ┌───────────────────────────────────┐  │       │
 │ │ Important Dates                   │  │       │
 │ │ - Application Start/End           │  │       │
-│ │ - Exam Date                       │  │       │
+│ │ - Admission Date                  │  │       │
 │ │ - Admit Card Date                 │  │       │
 │ │ - Result Date                     │  │       │
 │ └───────────────────────────────────┘  │       │
@@ -391,7 +391,7 @@ Admin/Operator → Admin Frontend (port 8081)
 ┌─────────────────────┐
 │ Trigger: Daily Beat  │
 │ Task at 08:00 UTC    │
-│ OR: Job/Exam updated │
+│ OR: Job/Admission updated │
 └─────────┬───────────┘
           │
           ▼
@@ -403,7 +403,7 @@ Admin/Operator → Admin Frontend (port 8081)
 ┌─────────────────────┐
 │ Fetch user_watches  │
 │ WHERE entity_type=  │
-│ 'job' or 'exam'     │
+│ 'job' or 'admission'│
 └─────────┬───────────┘
           │
           ▼
@@ -561,7 +561,7 @@ Admin/Operator → Admin Frontend (port 8081)
                       │ END            │
                       └────────────────┘
 
-## 5. Watch Job / Exam Flow
+## 5. Watch Job / Admission Flow
 
 ```
 ┌─────────┐
@@ -570,7 +570,7 @@ Admin/Operator → Admin Frontend (port 8081)
      │
      ▼
 ┌────────────────────────────────────┐
-│ User views job or exam detail page │
+│ User views job or admission detail page │
 └────┬───────────────────────────────┘
      │
      ▼
@@ -578,7 +578,7 @@ Admin/Operator → Admin Frontend (port 8081)
 │ Click [Watch] button               │
 │ POST /api/v1/jobs/{id}/watch       │
 │   OR                               │
-│ POST /api/v1/entrance-exams/       │
+│ POST /api/v1/admissions/       │
 │      {id}/watch                    │
 └────┬───────────────────────────────┘
      │
@@ -636,12 +636,12 @@ Admin/Operator → Admin Frontend (port 8081)
 
 ┌─────────────────────────────────┐
 │ Trigger: Admin approves or     │
-│ updates a job/exam             │
+│ updates a job/admission             │
 └───────────────┬─────────────────┘
                 │
                 ▼
 ┌─────────────────────────────────┐
-│ Save updated job/exam to DB     │
+│ Save updated job/admission to DB     │
 └───────────────┬─────────────────┘
                 │
                 ▼
@@ -657,7 +657,7 @@ Admin/Operator → Admin Frontend (port 8081)
 ┌─────────────────────────────────┐
 │ Find all user_watches rows      │
 │ WHERE entity_type AND entity_id │
-│ match the updated job/exam      │
+│ match the updated job/admission      │
 └───────────────┬─────────────────┘
                 │
                 ▼
@@ -674,7 +674,7 @@ Admin/Operator → Admin Frontend (port 8081)
      │  │ Build notification:       │  │
      │  │ type='watched_item_       │  │
      │  │       updated'            │  │
-     │  │ title = job/exam title    │  │
+     │  │ title = job/admission title    │  │
      │  │ action_url = detail page │  │
      │  └────────────┬─────────────┘  │
      │               │                │
@@ -771,9 +771,9 @@ Admin/Operator → Admin Frontend (port 8081)
                                                                           └────────────────────┘
                                                                                     │
                                                                           ┌─────────▼──────────┐
-                                                                          │   entrance_exams   │
+                                                                          │   admissions   │
                                                                           │  - id UUID PK      │
-                                                                          │  - exam_name       │
+                                                                          │  - admission_name       │
                                                                           │  - conducting_body │
                                                                           │  - status          │
                                                                           └────────────────────┘
@@ -795,8 +795,8 @@ jobs:
   - search_vector GIN (full-text)
   - slug (unique)
 
-entrance_exams:
-  - status, exam_date
+admissions:
+  - status, admission_date
   - search_vector GIN (full-text)
   - slug (unique)
 
@@ -888,19 +888,19 @@ SCHEDULED TASKS (beat_schedule in celery_app.py):
    Run: Daily 02:30 UTC
    Purpose: Set status='expired' on jobs past application_end
 
-6. app.tasks.jobs.update_exam_statuses
+6. app.tasks.jobs.update_admission_statuses
    Run: Daily 02:35 UTC
-   Purpose: Set status='completed' on entrance exams past exam_date
+   Purpose: Set status='completed' on admissions past admission_date
 
 7. app.tasks.seo.generate_sitemap
    Run: Daily 04:00 UTC
-   Purpose: Regenerate /sitemap.xml with active jobs + exams
+   Purpose: Regenerate /sitemap.xml with active jobs + admissions
 
 EVENT-TRIGGERED TASKS:
 ═══════════════════════
 
 • notify_watchers_on_update(entity_type, entity_id)
-  Triggered when job/exam is approved or updated → notifies all watchers
+  Triggered when job/admission is approved or updated → notifies all watchers
 
 • smart_notify(user_id, ...)
   Unified delivery entry — instant or staggered, 5 channels
@@ -939,7 +939,7 @@ User Dashboard → Browse Jobs → Filter by Eligibility → View Details
                     └───────────────────────────────────────┘
                                     │
                                     ▼
-                          Watch Jobs & Exams (user_watches table)
+                          Watch Jobs & Admissions (user_watches table)
                           max 100 watches per user
 
 ONGOING: NOTIFICATION & TRACKING
@@ -950,14 +950,14 @@ Receive Notifications → Check Dashboard → Visit official site to apply
          ├─ Admit Card Releases (when admin publishes admit_cards)
          ├─ Answer Key Releases (when admin publishes answer_keys)
          ├─ Result Releases (when admin publishes results)
-         └─ Job/Exam Updates (when admin modifies watched item)
+         └─ Job/Admission Updates (when admin modifies watched item)
 
-EXAM PHASE
-══════════
-Receive Admit Card Notification → Download from official site → Exam Reminder
+ADMISSION PHASE
+═══════════════
+Receive Admit Card Notification → Download from official site → Admission Reminder
                                                        │
                                                        ▼
-                                            Take Exam → Receive Result notification
+                                            Attend Admission → Receive Result notification
 
 RESULT PHASE
 ════════════
@@ -1365,25 +1365,25 @@ Suspicious Activity Detected
 
 ---
 
-## 12. Entrance Exam Data Model
+## 12. Admission Data Model
 
-Entrance exams (NEET, JEE, CLAT, CAT, GATE etc.) are stored in a
-separate `entrance_exams` table, distinct from `jobs`. The three
+Admissions (NEET, JEE, CLAT, CAT, GATE etc.) are stored in a
+separate `admissions` table, distinct from `jobs`. The three
 document tables (`admit_cards`, `answer_keys`, `results`) are
-**polymorphic** — each row links to either a job or an entrance exam.
+**polymorphic** — each row links to either a job or an admission.
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────┐
-│              ENTRANCE EXAM DATA MODEL                                    │
+│              ADMISSION DATA MODEL                                        │
 └──────────────────────────────────────────────────────────────────────────┘
 
   WHY SEPARATE?
   ─────────────
-  jobs fields                   entrance_exams fields
+  jobs fields                   admissions fields
   ─────────────────────         ─────────────────────────────
   total_vacancies        ≠      seats_info (seats by college)
   salary_initial/max     ≠      (no salary — it's education)
-  employment_type        ≠      exam_type (ug/pg/doctoral)
+  employment_type        ≠      admission_type (ug/pg/doctoral)
   qualification_level    ≠      stream (medical/engineering/law)
   organization/dept      ≠      conducting_body + counselling_body
   application tracking   ≠      seat allotment via counselling
@@ -1392,17 +1392,17 @@ document tables (`admit_cards`, `answer_keys`, `results`) are
   ─────────────────
 
   ┌──────────────────────────┐         ┌──────────────────────────────┐
-  │         jobs             │         │       entrance_exams         │
+  │         jobs             │         │       admissions         │
   │  (Government Jobs)       │         │  (NEET/JEE/CLAT/CAT/GATE)   │
   │                          │         │                              │
   │  id UUID PK              │         │  id UUID PK                  │
-  │  job_title               │         │  exam_name                   │
+  │  job_title               │         │  admission_name                   │
   │  organization            │         │  conducting_body             │
   │  total_vacancies         │         │  counselling_body            │
-  │  salary_initial/max      │         │  exam_type (ug/pg/doctoral)  │
+  │  salary_initial/max      │         │  admission_type (ug/pg/doctoral)  │
   │  employment_type         │         │  stream (medical/engg/law)   │
   │  qualification_level     │         │  eligibility JSONB           │
-  │  vacancy_breakdown JSONB │         │  exam_details JSONB          │
+  │  vacancy_breakdown JSONB │         │  admission_details JSONB          │
   │  fee_general/obc/sc_st/  │         │  selection_process JSONB     │
   │    ews/female (integers) │         │  seats_info JSONB            │
   │  source (manual/         │         │  fee_* (5 columns)           │
@@ -1419,24 +1419,24 @@ document tables (`admit_cards`, `answer_keys`, `results`) are
              │                          ┌──────────────────┐
              └─────────────────────────►│  job_admit_cards │
                                          │                  │
-  exam_id FK (nullable) ──────────────► │  id UUID PK      │ ◄── CHECK:
+  admission_id FK (nullable) ──────────────► │  id UUID PK      │ ◄── CHECK:
                                          │  job_id  UUID?   │ ◀── CHECK:
-                                         │  exam_id UUID?   │     (job_id IS NOT NULL
-                                         │  phase_number    │      AND exam_id IS NULL)
+                                         │  admission_id UUID?│     (job_id IS NOT NULL
+                                         │  phase_number    │      AND admission_id IS NULL)
                                          │  title           │     OR
                                          │  download_url    │     (job_id IS NULL
-                                         │  valid_from/until│      AND exam_id IS NOT NULL)
+                                         │  valid_from/until│      AND admission_id IS NOT NULL)
                                          │  notes           │
                                          └──────────────────┘
 
   Same polymorphic pattern applies to:
-    • answer_keys  (job_id XOR exam_id + phase docs)
-    • results      (job_id XOR exam_id + cutoff_marks JSONB)
+    • answer_keys  (job_id XOR admission_id + phase docs)
+    • results      (job_id XOR admission_id + cutoff_marks JSONB)
 
   SEEDED DATA (current):
   ──────────────────────
   jobs:  10 jobs + (admit_cards/answer_keys/results linked via job_id FK)
-  entrance_exams: 9 exams
+  admissions: 9 admissions
     • NEET PG 2026 (medical, pg)     → 3 phase docs (admit card + answer key + result)
     • NEET UG 2026 (medical, ug)     → 4 phase docs
     • JEE Main 2026 (engineering)    → 7 phase docs (2 sessions, each with docs)
@@ -1446,7 +1446,7 @@ document tables (`admit_cards`, `answer_keys`, `results`) are
     • CUET UG 2026 (general, ug)     → 4 phase docs
     • NEET SS 2025 (medical, doctoral)→3 phase docs
     • GATE 2026 (engineering, pg)    → 3 phase docs
-  Total: 32 phase documents seeded via exam_id FK
+  Total: 32 phase documents seeded via admission_id FK
 ```
 
 ---
@@ -1464,10 +1464,10 @@ listing page, gradient hero colour, and detail page design.
   SECTION NAV STRIP (shown on all pages):
   ─────────────────────────────────────────
   ┌───────────┬─────────────┬──────────────┬───────────┬──────────────┐
-  │ 💼 Jobs   │ 📄 Admit    │ ✏️ Answer    │ 🏆 Results│ 🎓 Entrance  │
-  │     /     │  Cards      │   Keys       │ /results  │    Exams     │
-  │           │/admit-cards │/answer-keys  │           │/entrance-    │
-  │           │             │              │           │  exams       │
+  │ 💼 Jobs   │ 📄 Admit    │ ✏️ Answer    │ 🏆 Results│ 🎓 Admissions│
+  │     /     │  Cards      │   Keys       │ /results  │              │
+  │           │/admit-cards │/answer-keys  │           │ /admissions  │
+  │           │             │              │           │              │
   └───────────┴─────────────┴──────────────┴───────────┴──────────────┘
   Active section highlighted with white border-bottom + white text
 
@@ -1479,7 +1479,7 @@ listing page, gradient hero colour, and detail page design.
   Admit Cards   /admit-cards     Blue → Sky Blue        admit_cards
   Answer Keys   /answer-keys     Brown → Amber          answer_keys
   Results       /results         Dark Green → Green     results
-  Entrance Exams /entrance-exams  Dark Purple → Purple   entrance_exams
+  Admissions /admissions  Dark Purple → Purple   admissions
 
   CARD ACCENT (list pages — section-specific CSS class):
   ────────────────────────────────────
@@ -1487,28 +1487,28 @@ listing page, gradient hero colour, and detail page design.
   Admit Cards section  → blue left border
   Answer Keys section  → amber left border
   Results section      → green left border
-  Entrance Exams       → purple left border
+  Admissions       → purple left border
 
   DETAIL PAGE FLOW:
   ─────────────────
-  User clicks job card                  User clicks entrance exam card
+  User clicks job card                  User clicks admission card
         │                                       │
         ▼                                       ▼
-  GET /jobs/<slug>                       GET /entrance-exams/<slug>
+  GET /jobs/<slug>                       GET /admissions/<slug>
         │                                       │
         ▼                                       ▼
-  Flask renders job_detail.html          Flask renders entrance_exam_detail.html
-  (type-aware hero: hero-job /           (hero-entrance-exam: purple gradient)
+  Flask renders job_detail.html          Flask renders admission_detail.html
+  (type-aware hero: hero-job /           (hero-admission: purple gradient)
    hero-admit / hero-answer /
    hero-result)
         │                                       │
         ▼                                       ▼
   Doc tabs section shown                 Doc tabs section shown
-  if job_type == 'latest_job'            (always shown for exams)
+  if job_type == 'latest_job'            (always shown for admissions)
         │                                       │
         ▼                                       ▼
-  HTMX loads /partials/jobs/             HTMX loads /partials/exams/
-  {job_id}/admit-cards                   {exam_id}/admit-cards
+  HTMX loads /partials/jobs/             HTMX loads /partials/admissions/
+  {job_id}/admit-cards                   {admission_id}/admit-cards
   (on tab click)                         (on tab click)
 ```
 
@@ -1517,7 +1517,7 @@ listing page, gradient hero colour, and detail page design.
 ## 15. HTMX Phase Document Tab Flow
 
 Phase documents (admit cards, answer keys, results) are loaded on-demand
-via HTMX into tabbed panels on job and entrance exam detail pages.
+via HTMX into tabbed panels on job and admission detail pages.
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────┐
@@ -1578,7 +1578,7 @@ via HTMX into tabbed panels on job and entrance exam detail pages.
         ▼
   FastAPI queries job_admit_cards WHERE job_id={id}
         │                 OR
-                    WHERE exam_id={id}  ← for entrance_exam_detail.html
+                    WHERE admission_id={id}  ← for admission_detail.html
         │
         ▼
   Returns list of admit card rows (JSON)
@@ -1629,5 +1629,5 @@ via HTMX into tabbed panels on job and entrance exam detail pages.
 user registration, job creation, matching & notifications, application
 tracking, priority job updates, admin dashboard, database schema,
 Celery task scheduling, user journey map, RBAC enforcement, JWT token
-lifecycle, entrance exam data model, 5-section frontend navigation,
+lifecycle, admission data model, 5-section frontend navigation,
 and HTMX phase document tab loading.*

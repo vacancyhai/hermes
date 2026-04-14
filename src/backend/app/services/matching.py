@@ -2,9 +2,9 @@
 
 from datetime import date, timedelta
 
+from app.models.admission import Admission
 from app.models.admit_card import AdmitCard
 from app.models.answer_key import AnswerKey
-from app.models.entrance_exam import EntranceExam
 from app.models.job import Job
 from app.models.result import Result
 from app.models.user_profile import UserProfile
@@ -190,7 +190,7 @@ async def get_recommended_jobs(
 
 
 async def _get_watched_ids(user_id, db: AsyncSession) -> tuple[list, list]:
-    """Return (watched_job_ids, watched_exam_ids) for a user."""
+    """Return (watched_job_ids, watched_admission_ids) for a user."""
     from app.models.user_watch import UserWatch
 
     result = await db.execute(
@@ -200,8 +200,8 @@ async def _get_watched_ids(user_id, db: AsyncSession) -> tuple[list, list]:
     )
     rows = result.all()
     job_ids = [r.entity_id for r in rows if r.entity_type == "job"]
-    exam_ids = [r.entity_id for r in rows if r.entity_type == "exam"]
-    return job_ids, exam_ids
+    admission_ids = [r.entity_id for r in rows if r.entity_type == "admission"]
+    return job_ids, admission_ids
 
 
 async def get_recommended_admit_cards(
@@ -210,13 +210,13 @@ async def get_recommended_admit_cards(
     limit: int = 20,
     offset: int = 0,
 ) -> tuple[list, int]:
-    """Return admit cards for jobs/exams the user is watching."""
-    job_ids, exam_ids = await _get_watched_ids(user_id, db)
-    if not job_ids and not exam_ids:
+    """Return admit cards for jobs/admissions the user is watching."""
+    job_ids, admission_ids = await _get_watched_ids(user_id, db)
+    if not job_ids and not admission_ids:
         return [], 0
     predicate = or_(
         AdmitCard.job_id.in_(job_ids) if job_ids else False,
-        AdmitCard.exam_id.in_(exam_ids) if exam_ids else False,
+        AdmitCard.admission_id.in_(admission_ids) if admission_ids else False,
     )
     total = (
         await db.execute(select(func.count(AdmitCard.id)).where(predicate))
@@ -237,13 +237,13 @@ async def get_recommended_answer_keys(
     limit: int = 20,
     offset: int = 0,
 ) -> tuple[list, int]:
-    """Return answer keys for jobs/exams the user is watching."""
-    job_ids, exam_ids = await _get_watched_ids(user_id, db)
-    if not job_ids and not exam_ids:
+    """Return answer keys for jobs/admissions the user is watching."""
+    job_ids, admission_ids = await _get_watched_ids(user_id, db)
+    if not job_ids and not admission_ids:
         return [], 0
     predicate = or_(
         AnswerKey.job_id.in_(job_ids) if job_ids else False,
-        AnswerKey.exam_id.in_(exam_ids) if exam_ids else False,
+        AnswerKey.admission_id.in_(admission_ids) if admission_ids else False,
     )
     total = (
         await db.execute(select(func.count(AnswerKey.id)).where(predicate))
@@ -264,13 +264,13 @@ async def get_recommended_results(
     limit: int = 20,
     offset: int = 0,
 ) -> tuple[list, int]:
-    """Return results for jobs/exams the user is watching."""
-    job_ids, exam_ids = await _get_watched_ids(user_id, db)
-    if not job_ids and not exam_ids:
+    """Return results for jobs/admissions the user is watching."""
+    job_ids, admission_ids = await _get_watched_ids(user_id, db)
+    if not job_ids and not admission_ids:
         return [], 0
     predicate = or_(
         Result.job_id.in_(job_ids) if job_ids else False,
-        Result.exam_id.in_(exam_ids) if exam_ids else False,
+        Result.admission_id.in_(admission_ids) if admission_ids else False,
     )
     total = (
         await db.execute(select(func.count(Result.id)).where(predicate))
@@ -285,32 +285,32 @@ async def get_recommended_results(
     return list(result.scalars().all()), total
 
 
-async def get_recommended_entrance_exams(
+async def get_recommended_admissions(
     user_id,
     db: AsyncSession,
     limit: int = 20,
     offset: int = 0,
 ) -> tuple[list[dict], int]:
-    """Return entrance exams ranked by profile match score.
+    """Return admissions ranked by profile match score.
 
     Scoring criteria (descending priority):
       - User's reservation category is eligible:                +4
       - State match:                                             +3
       - Education level qualifies:                               +2
-      - Age within exam's eligibility range:                     +2
-      - Exam posted within last 7 days:                          +1
+      - Age within admission's eligibility range:                     +2
+      - Admission posted within last 7 days:                     +1
 
-    Returns (scored_exams, total_count).
+    Returns (scored_admissions, total_count).
     """
     # Load profile
     result = await db.execute(select(UserProfile).where(UserProfile.user_id == user_id))
     profile = result.scalar_one_or_none()
 
-    # Base query: active exams with future (or null) exam dates
+    # Base query: active admissions with future (or null) exam dates
     today = date.today()
     base_filter = (
-        EntranceExam.status == "active",
-        (EntranceExam.exam_date >= today) | (EntranceExam.exam_date.is_(None)),
+        Admission.status == "active",
+        (Admission.admission_date >= today) | (Admission.admission_date.is_(None)),
     )
 
     has_prefs = profile and (
@@ -321,26 +321,26 @@ async def get_recommended_entrance_exams(
     )
 
     if not has_prefs:
-        # No preferences — return newest active exams using DB-level pagination
+        # No preferences — return newest active admissions using DB-level pagination
         total = (
-            await db.execute(select(func.count(EntranceExam.id)).where(*base_filter))
+            await db.execute(select(func.count(Admission.id)).where(*base_filter))
         ).scalar() or 0
         result = await db.execute(
-            select(EntranceExam)
+            select(Admission)
             .where(*base_filter)
-            .order_by(EntranceExam.created_at.desc())
+            .order_by(Admission.created_at.desc())
             .offset(offset)
             .limit(limit)
         )
         return list(result.scalars().all()), total
 
     result = await db.execute(
-        select(EntranceExam)
+        select(Admission)
         .where(*base_filter)
-        .order_by(EntranceExam.created_at.desc())
+        .order_by(Admission.created_at.desc())
         .limit(CANDIDATE_LIMIT)
     )
-    exams = result.scalars().all()
+    admissions = result.scalars().all()
 
     # Pre-compute user attributes for scoring
     pref_states = {s.lower() for s in (profile.preferred_states or [])}
@@ -349,54 +349,58 @@ async def get_recommended_entrance_exams(
     user_age = _user_age(profile.date_of_birth)
     recency_cutoff = today - timedelta(days=RECENCY_DAYS)
 
-    scored: list[tuple[int, date | None, EntranceExam]] = []
-    for exam in exams:
+    scored: list[tuple[int, date | None, Admission]] = []
+    for admission in admissions:
         score = 0
 
-        # Build exam's eligible category set from eligibility dict
-        exam_cats = set()
-        if exam.eligibility and isinstance(exam.eligibility, dict):
-            cat_val = exam.eligibility.get("category")
+        # Build admission's eligible category set from eligibility dict
+        admission_cats = set()
+        if admission.eligibility and isinstance(admission.eligibility, dict):
+            cat_val = admission.eligibility.get("category")
             if isinstance(cat_val, list):
-                exam_cats = {c.lower() for c in cat_val}
+                admission_cats = {c.lower() for c in cat_val}
             elif isinstance(cat_val, str):
-                exam_cats.add(cat_val.lower())
+                admission_cats.add(cat_val.lower())
 
-        # Category eligibility: user's actual reservation category is in the exam's categories
-        if user_category and (not exam_cats or user_category in exam_cats):
+        # Category eligibility: user's actual reservation category is in the admission's categories
+        if user_category and (not admission_cats or user_category in admission_cats):
             score += CATEGORY_ELIGIBILITY_MATCH
 
         # State match via eligibility dict
-        exam_states = set()
-        if exam.eligibility and isinstance(exam.eligibility, dict):
+        admission_states = set()
+        if admission.eligibility and isinstance(admission.eligibility, dict):
             for key in ("states", "state", "location", "conducting_states"):
-                val = exam.eligibility.get(key)
+                val = admission.eligibility.get(key)
                 if isinstance(val, list):
-                    exam_states.update(s.lower() for s in val)
+                    admission_states.update(s.lower() for s in val)
                 elif isinstance(val, str):
-                    exam_states.add(val.lower())
-        if pref_states and (not exam_states or pref_states & exam_states):
+                    admission_states.add(val.lower())
+        if pref_states and (not admission_states or pref_states & admission_states):
             score += STATE_MATCH
 
         # Education match: extract qualification from eligibility dict
         exam_edu_rank = -1
-        if exam.eligibility and isinstance(exam.eligibility, dict):
-            qual = exam.eligibility.get("qualification") or exam.eligibility.get(
-                "min_qualification"
-            )
+        if admission.eligibility and isinstance(admission.eligibility, dict):
+            qual = admission.eligibility.get(
+                "qualification"
+            ) or admission.eligibility.get("min_qualification")
             if qual:
                 exam_edu_rank = _education_rank(qual)
         if user_edu_rank >= 0 and exam_edu_rank >= 0 and user_edu_rank >= exam_edu_rank:
             score += EDUCATION_MATCH
 
-        # Age match: user's age is within the exam's eligibility range
+        # Age match: user's age is within the admission's eligibility range
         if (
             user_age is not None
-            and exam.eligibility
-            and isinstance(exam.eligibility, dict)
+            and admission.eligibility
+            and isinstance(admission.eligibility, dict)
         ):
-            age_min = exam.eligibility.get("age_min") or exam.eligibility.get("min_age")
-            age_max = exam.eligibility.get("age_max") or exam.eligibility.get("max_age")
+            age_min = admission.eligibility.get("age_min") or admission.eligibility.get(
+                "min_age"
+            )
+            age_max = admission.eligibility.get("age_max") or admission.eligibility.get(
+                "max_age"
+            )
             if age_min is not None or age_max is not None:
                 age_ok = True
                 if age_min is not None:
@@ -407,12 +411,12 @@ async def get_recommended_entrance_exams(
                     score += AGE_MATCH
 
         # Recency bonus
-        if exam.created_at and exam.created_at.date() >= recency_cutoff:
+        if admission.created_at and admission.created_at.date() >= recency_cutoff:
             score += RECENCY_BONUS
 
-        scored.append((score, exam.exam_date, exam))
+        scored.append((score, admission.admission_date, admission))
 
-    # Sort: score DESC, then exam_date ASC (None exam_dates last)
+    # Sort: score DESC, then admission_date ASC (None exam_dates last)
     far_future = date(9999, 12, 31)
     scored.sort(key=lambda t: (-t[0], t[1] or far_future))
 

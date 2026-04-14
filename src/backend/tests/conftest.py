@@ -33,7 +33,7 @@ _TRUNCATE_TABLES = [
     "answer_keys",
     "results",
     "jobs",
-    "entrance_exams",
+    "admissions",
     "user_profiles",
     "users",
     "admin_users",
@@ -41,8 +41,17 @@ _TRUNCATE_TABLES = [
 
 
 def _get_test_database_url():
-    """Get test database URL from environment or fall back to settings."""
-    return os.getenv("TEST_DATABASE_URL", settings.DATABASE_URL)
+    """Get test database URL — uses hermes_test_db via direct PostgreSQL connection.
+
+    Bypasses pgbouncer (which only has hermes_db configured) by connecting
+    directly to the postgresql host on port 5432.
+    """
+    if url := os.getenv("TEST_DATABASE_URL"):
+        return url
+    # Build direct-to-postgres URL from env vars, bypassing pgbouncer
+    user = os.getenv("POSTGRES_USER", "hermes_user")
+    password = os.getenv("POSTGRES_PASSWORD", "hermes_dev_pass")
+    return f"postgresql+asyncpg://{user}:{password}@postgresql:5432/hermes_test_db"
 
 
 @pytest_asyncio.fixture(scope="session", autouse=True)
@@ -268,12 +277,12 @@ async def draft_job(client: AsyncClient, admin_token: str):
 
 
 @pytest_asyncio.fixture
-async def active_exam(client: AsyncClient, admin_token: str):
-    """Create an active entrance exam and return the full response dict."""
+async def active_admission(client: AsyncClient, admin_token: str):
+    """Create an active admission and return the full response dict."""
     resp = await client.post(
-        "/api/v1/admin/entrance-exams",
+        "/api/v1/admin/admissions",
         json={
-            "exam_name": f"Test Exam {uuid.uuid4().hex[:6]}",
+            "admission_name": f"Test Admission {uuid.uuid4().hex[:6]}",
             "conducting_body": "NTA",
             "stream": "engineering",
             "status": "active",

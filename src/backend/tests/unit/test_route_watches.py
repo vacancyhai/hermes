@@ -1,4 +1,4 @@
-"""Unit tests for watch route handlers (watch/unwatch jobs & exams, list watched)."""
+"""Unit tests for watch route handlers (watch/unwatch jobs & admissions, list watched)."""
 
 import uuid
 from datetime import datetime, timezone
@@ -26,10 +26,10 @@ def _make_job(**kwargs):
     return j
 
 
-def _make_exam(**kwargs):
+def _make_admission(**kwargs):
     e = MagicMock()
     e.id = uuid.uuid4()
-    e.exam_name = kwargs.get("exam_name", "NEET")
+    e.admission_name = kwargs.get("admission_name", "NEET")
     e.slug = kwargs.get("slug", "neet-2025")
     e.conducting_body = "NTA"
     e.application_end = None
@@ -176,39 +176,41 @@ async def test_unwatch_job_success():
 
 
 # ═══════════════════════════════════════════════════════════════
-# watch_exam
+# watch_admission
 # ═══════════════════════════════════════════════════════════════
 
 
 @pytest.mark.asyncio
-async def test_watch_exam_not_found():
-    from app.routers.watches import watch_exam
+async def test_watch_admission_not_found():
+    from app.routers.watches import watch_admission
     from fastapi import HTTPException
 
     user = _make_user()
     db = _db_single(None)
     with pytest.raises(HTTPException) as exc:
-        await watch_exam(exam_id=uuid.uuid4(), current_user=(user, {}), db=db)
+        await watch_admission(admission_id=uuid.uuid4(), current_user=(user, {}), db=db)
     assert exc.value.status_code == 404
-    assert "exam" in exc.value.detail.lower()
+    assert "admission" in exc.value.detail.lower()
 
 
 @pytest.mark.asyncio
-async def test_watch_exam_already_watching():
-    from app.routers.watches import watch_exam
+async def test_watch_admission_already_watching():
+    from app.routers.watches import watch_admission
 
     user = _make_user()
-    exam = _make_exam()
-    watch = _make_watch("exam", exam.id)
+    admission = _make_admission()
+    watch = _make_watch("admission", admission.id)
 
-    exam_res = MagicMock()
-    exam_res.scalar_one_or_none.return_value = exam
+    admission_res = MagicMock()
+    admission_res.scalar_one_or_none.return_value = admission
     watch_res = MagicMock()
     watch_res.scalar_one_or_none.return_value = watch
 
     db = AsyncMock()
-    db.execute = AsyncMock(side_effect=[exam_res, watch_res])
-    result = await watch_exam(exam_id=exam.id, current_user=(user, {}), db=db)
+    db.execute = AsyncMock(side_effect=[admission_res, watch_res])
+    result = await watch_admission(
+        admission_id=admission.id, current_user=(user, {}), db=db
+    )
 
     assert result["watching"] is True
     assert "already" in result["message"].lower()
@@ -216,44 +218,46 @@ async def test_watch_exam_already_watching():
 
 
 @pytest.mark.asyncio
-async def test_watch_exam_max_watches_exceeded():
-    from app.routers.watches import MAX_WATCHES, watch_exam
+async def test_watch_admission_max_watches_exceeded():
+    from app.routers.watches import MAX_WATCHES, watch_admission
     from fastapi import HTTPException
 
     user = _make_user()
-    exam = _make_exam()
+    admission = _make_admission()
 
-    exam_res = MagicMock()
-    exam_res.scalar_one_or_none.return_value = exam
+    admission_res = MagicMock()
+    admission_res.scalar_one_or_none.return_value = admission
     no_watch_res = MagicMock()
     no_watch_res.scalar_one_or_none.return_value = None
     count_res = MagicMock()
     count_res.scalar.return_value = MAX_WATCHES
 
     db = AsyncMock()
-    db.execute = AsyncMock(side_effect=[exam_res, no_watch_res, count_res])
+    db.execute = AsyncMock(side_effect=[admission_res, no_watch_res, count_res])
     with pytest.raises(HTTPException) as exc:
-        await watch_exam(exam_id=exam.id, current_user=(user, {}), db=db)
+        await watch_admission(admission_id=admission.id, current_user=(user, {}), db=db)
     assert exc.value.status_code == 400
 
 
 @pytest.mark.asyncio
-async def test_watch_exam_success():
-    from app.routers.watches import watch_exam
+async def test_watch_admission_success():
+    from app.routers.watches import watch_admission
 
     user = _make_user()
-    exam = _make_exam()
+    admission = _make_admission()
 
-    exam_res = MagicMock()
-    exam_res.scalar_one_or_none.return_value = exam
+    admission_res = MagicMock()
+    admission_res.scalar_one_or_none.return_value = admission
     no_watch_res = MagicMock()
     no_watch_res.scalar_one_or_none.return_value = None
     count_res = MagicMock()
     count_res.scalar.return_value = 0
 
     db = AsyncMock()
-    db.execute = AsyncMock(side_effect=[exam_res, no_watch_res, count_res])
-    result = await watch_exam(exam_id=exam.id, current_user=(user, {}), db=db)
+    db.execute = AsyncMock(side_effect=[admission_res, no_watch_res, count_res])
+    result = await watch_admission(
+        admission_id=admission.id, current_user=(user, {}), db=db
+    )
 
     assert result["watching"] is True
     db.add.assert_called_once()
@@ -261,32 +265,36 @@ async def test_watch_exam_success():
 
 
 # ═══════════════════════════════════════════════════════════════
-# unwatch_exam
+# unwatch_admission
 # ═══════════════════════════════════════════════════════════════
 
 
 @pytest.mark.asyncio
-async def test_unwatch_exam_not_watching():
-    from app.routers.watches import unwatch_exam
+async def test_unwatch_admission_not_watching():
+    from app.routers.watches import unwatch_admission
     from fastapi import HTTPException
 
     user = _make_user()
     db = _db_single(None)
     with pytest.raises(HTTPException) as exc:
-        await unwatch_exam(exam_id=uuid.uuid4(), current_user=(user, {}), db=db)
+        await unwatch_admission(
+            admission_id=uuid.uuid4(), current_user=(user, {}), db=db
+        )
     assert exc.value.status_code == 404
 
 
 @pytest.mark.asyncio
-async def test_unwatch_exam_success():
-    from app.routers.watches import unwatch_exam
+async def test_unwatch_admission_success():
+    from app.routers.watches import unwatch_admission
 
     user = _make_user()
-    exam = _make_exam()
-    watch = _make_watch("exam", exam.id)
+    admission = _make_admission()
+    watch = _make_watch("admission", admission.id)
     db = _db_single(watch)
 
-    result = await unwatch_exam(exam_id=exam.id, current_user=(user, {}), db=db)
+    result = await unwatch_admission(
+        admission_id=admission.id, current_user=(user, {}), db=db
+    )
 
     assert result["watching"] is False
     db.delete.assert_called_once_with(watch)
@@ -310,7 +318,7 @@ async def test_list_watched_empty():
 
     result = await list_watched(current_user=(user, {}), db=db)
     assert result["jobs"] == []
-    assert result["exams"] == []
+    assert result["admissions"] == []
     assert result["total"] == 0
 
 
@@ -333,54 +341,54 @@ async def test_list_watched_with_job():
     result = await list_watched(current_user=(user, {}), db=db)
     assert len(result["jobs"]) == 1
     assert result["jobs"][0]["slug"] == "ssc-cgl"
-    assert result["exams"] == []
+    assert result["admissions"] == []
     assert result["total"] == 1
 
 
 @pytest.mark.asyncio
-async def test_list_watched_with_exam():
+async def test_list_watched_with_admission():
     from app.routers.watches import list_watched
 
     user = _make_user()
-    exam = _make_exam()
-    watch = _make_watch("exam", exam.id)
+    admission = _make_admission()
+    watch = _make_watch("admission", admission.id)
 
     watches_res = MagicMock()
     watches_res.scalars.return_value.all.return_value = [watch]
-    exams_res = MagicMock()
-    exams_res.scalars.return_value.all.return_value = [exam]
+    admissions_res = MagicMock()
+    admissions_res.scalars.return_value.all.return_value = [admission]
 
     db = AsyncMock()
-    db.execute = AsyncMock(side_effect=[watches_res, exams_res])
+    db.execute = AsyncMock(side_effect=[watches_res, admissions_res])
 
     result = await list_watched(current_user=(user, {}), db=db)
-    assert len(result["exams"]) == 1
-    assert result["exams"][0]["slug"] == "neet-2025"
+    assert len(result["admissions"]) == 1
+    assert result["admissions"][0]["slug"] == "neet-2025"
     assert result["jobs"] == []
     assert result["total"] == 1
 
 
 @pytest.mark.asyncio
-async def test_list_watched_mixed_jobs_and_exams():
+async def test_list_watched_mixed_jobs_and_admissions():
     from app.routers.watches import list_watched
 
     user = _make_user()
     job = _make_job()
-    exam = _make_exam()
+    admission = _make_admission()
     job_watch = _make_watch("job", job.id)
-    exam_watch = _make_watch("exam", exam.id)
+    admission_watch = _make_watch("admission", admission.id)
 
     watches_res = MagicMock()
-    watches_res.scalars.return_value.all.return_value = [job_watch, exam_watch]
+    watches_res.scalars.return_value.all.return_value = [job_watch, admission_watch]
     jobs_res = MagicMock()
     jobs_res.scalars.return_value.all.return_value = [job]
-    exams_res = MagicMock()
-    exams_res.scalars.return_value.all.return_value = [exam]
+    admissions_res = MagicMock()
+    admissions_res.scalars.return_value.all.return_value = [admission]
 
     db = AsyncMock()
-    db.execute = AsyncMock(side_effect=[watches_res, jobs_res, exams_res])
+    db.execute = AsyncMock(side_effect=[watches_res, jobs_res, admissions_res])
 
     result = await list_watched(current_user=(user, {}), db=db)
     assert len(result["jobs"]) == 1
-    assert len(result["exams"]) == 1
+    assert len(result["admissions"]) == 1
     assert result["total"] == 2

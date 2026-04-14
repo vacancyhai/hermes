@@ -190,17 +190,17 @@ def test_send_deadline_reminders_with_apps():
     empty_result = MagicMock()
     empty_result.fetchall.return_value = []
 
-    # 3 REMINDER_DAYS × 2 queries (job watches + exam watches) = 6 base calls
-    # T-7: job watches → 1 result; notif check; exam watches → empty
-    # T-3, T-1: job watches → empty; exam watches → empty
+    # 3 REMINDER_DAYS × 2 queries (job watches + admission watches) = 6 base calls
+    # T-7: job watches → 1 result; notif check; admission watches → empty
+    # T-3, T-1: job watches → empty; admission watches → empty
     call_sequence = [
         apps_result,  # T-7 job watches
         notif_check_result,  # check if already notified
-        empty_result,  # T-7 exam watches
+        empty_result,  # T-7 admission watches
         empty_result,  # T-3 job watches
-        empty_result,  # T-3 exam watches
+        empty_result,  # T-3 admission watches
         empty_result,  # T-1 job watches
-        empty_result,  # T-1 exam watches
+        empty_result,  # T-1 admission watches
     ]
     session.execute.side_effect = call_sequence
 
@@ -373,15 +373,15 @@ def test_send_deadline_reminders_already_notified_skips():
     empty_result = MagicMock()
     empty_result.fetchall.return_value = []
 
-    # T-7: job(1 row→already notified), notif_check, exam(empty); T-3: job(empty), exam(empty); T-1: job(empty), exam(empty)
+    # T-7: job(1 row→already notified), notif_check, admission(empty); T-3: job(empty), admission(empty); T-1: job(empty), admission(empty)
     session.execute.side_effect = [
         apps_result,  # T-7 job watches
         existing_result,  # notif check → already sent
-        empty_result,  # T-7 exam watches
+        empty_result,  # T-7 admission watches
         empty_result,  # T-3 job watches
-        empty_result,  # T-3 exam watches
+        empty_result,  # T-3 admission watches
         empty_result,  # T-1 job watches
-        empty_result,  # T-1 exam watches
+        empty_result,  # T-1 admission watches
     ]
     ctx = MagicMock()
     ctx.__enter__ = MagicMock(return_value=session)
@@ -426,15 +426,15 @@ def test_send_deadline_reminders_1d_uses_high_priority():
     no_existing = MagicMock()
     no_existing.fetchone.return_value = None
 
-    # T-7: job(empty), exam(empty); T-3: job(empty), exam(empty); T-1: job(1 row), notif_check, exam(empty)
+    # T-7: job(empty), admission(empty); T-3: job(empty), admission(empty); T-1: job(1 row), notif_check, admission(empty)
     session.execute.side_effect = [
         empty_result,  # T-7 job watches
-        empty_result,  # T-7 exam watches
+        empty_result,  # T-7 admission watches
         empty_result,  # T-3 job watches
-        empty_result,  # T-3 exam watches
+        empty_result,  # T-3 admission watches
         apps_result,  # T-1 job watches
         no_existing,  # notif check
-        empty_result,  # T-1 exam watches
+        empty_result,  # T-1 admission watches
     ]
     ctx = MagicMock()
     ctx.__enter__ = MagicMock(return_value=session)
@@ -481,15 +481,15 @@ def test_send_deadline_reminders_3d_uses_high_priority():
     no_existing = MagicMock()
     no_existing.fetchone.return_value = None
 
-    # T-7: job(empty), exam(empty); T-3: job(1 row), notif_check, exam(empty); T-1: job(empty), exam(empty)
+    # T-7: job(empty), admission(empty); T-3: job(1 row), notif_check, admission(empty); T-1: job(empty), admission(empty)
     session.execute.side_effect = [
         empty_result,  # T-7 job watches
-        empty_result,  # T-7 exam watches
+        empty_result,  # T-7 admission watches
         apps_result,  # T-3 job watches
         no_existing,  # notif check
-        empty_result,  # T-3 exam watches
+        empty_result,  # T-3 admission watches
         empty_result,  # T-1 job watches
-        empty_result,  # T-1 exam watches
+        empty_result,  # T-1 admission watches
     ]
     ctx = MagicMock()
     ctx.__enter__ = MagicMock(return_value=session)

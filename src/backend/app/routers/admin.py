@@ -32,9 +32,9 @@ from app.config import settings
 from app.dependencies import get_db, require_admin, require_operator
 from app.models.admin_log import AdminLog
 from app.models.admin_user import AdminUser
+from app.models.admission import Admission
 from app.models.admit_card import AdmitCard
 from app.models.answer_key import AnswerKey
-from app.models.entrance_exam import EntranceExam
 from app.models.job import Job
 from app.models.result import Result
 from app.models.user import User
@@ -137,7 +137,7 @@ async def dashboard_stats(
     admin: Annotated[Any, Depends(require_operator)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    """Dashboard stats: separate counts for jobs, admit cards, answer keys, results, entrance exams."""
+    """Dashboard stats: separate counts for jobs, admit cards, answer keys, results, admissions."""
     week_ago = datetime.now(timezone.utc) - timedelta(days=7)
     _r = await asyncio.gather(
         db.execute(select(func.count(Job.id))),
@@ -146,9 +146,9 @@ async def dashboard_stats(
         db.execute(select(func.count(AdmitCard.id))),
         db.execute(select(func.count(AnswerKey.id))),
         db.execute(select(func.count(Result.id))),
-        db.execute(select(func.count(EntranceExam.id))),
+        db.execute(select(func.count(Admission.id))),
         db.execute(
-            select(func.count(EntranceExam.id)).where(EntranceExam.status == "active")
+            select(func.count(Admission.id)).where(Admission.status == "active")
         ),
         db.execute(select(func.count(User.id))),
         db.execute(select(func.count(User.id)).where(User.status == "active")),
@@ -161,8 +161,8 @@ async def dashboard_stats(
         admit_cards_count,
         answer_keys_count,
         results_count,
-        entrance_exams_count,
-        entrance_exams_active,
+        admissions_count,
+        admissions_active,
         users_total,
         users_active,
         users_new_this_week,
@@ -173,9 +173,9 @@ async def dashboard_stats(
         "admit_cards": {"total": admit_cards_count},
         "answer_keys": {"total": answer_keys_count},
         "results": {"total": results_count},
-        "entrance_exams": {
-            "total": entrance_exams_count,
-            "active": entrance_exams_active,
+        "admissions": {
+            "total": admissions_count,
+            "active": admissions_active,
         },
         "users": {
             "total": users_total,
@@ -227,10 +227,20 @@ async def list_admit_cards(
     db: Annotated[AsyncSession, Depends(get_db)],
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
     offset: Annotated[int, Query(ge=0)] = 0,
+    job_id: uuid.UUID | None = None,
+    admission_id: uuid.UUID | None = None,
 ):
     """List all admit cards."""
-    query = select(AdmitCard).order_by(AdmitCard.created_at.desc())
+    query = select(AdmitCard).order_by(
+        AdmitCard.phase_number.nulls_last(), AdmitCard.created_at.desc()
+    )
     count_query = select(func.count(AdmitCard.id))
+    if job_id:
+        query = query.where(AdmitCard.job_id == job_id)
+        count_query = count_query.where(AdmitCard.job_id == job_id)
+    if admission_id:
+        query = query.where(AdmitCard.admission_id == admission_id)
+        count_query = count_query.where(AdmitCard.admission_id == admission_id)
 
     total = (await db.execute(count_query)).scalar()
     result = await db.execute(query.offset(offset).limit(limit))
@@ -253,10 +263,20 @@ async def list_answer_keys(
     db: Annotated[AsyncSession, Depends(get_db)],
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
     offset: Annotated[int, Query(ge=0)] = 0,
+    job_id: uuid.UUID | None = None,
+    admission_id: uuid.UUID | None = None,
 ):
     """List all answer keys."""
-    query = select(AnswerKey).order_by(AnswerKey.created_at.desc())
+    query = select(AnswerKey).order_by(
+        AnswerKey.phase_number.nulls_last(), AnswerKey.created_at.desc()
+    )
     count_query = select(func.count(AnswerKey.id))
+    if job_id:
+        query = query.where(AnswerKey.job_id == job_id)
+        count_query = count_query.where(AnswerKey.job_id == job_id)
+    if admission_id:
+        query = query.where(AnswerKey.admission_id == admission_id)
+        count_query = count_query.where(AnswerKey.admission_id == admission_id)
 
     total = (await db.execute(count_query)).scalar()
     result = await db.execute(query.offset(offset).limit(limit))
@@ -279,10 +299,20 @@ async def list_results(
     db: Annotated[AsyncSession, Depends(get_db)],
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
     offset: Annotated[int, Query(ge=0)] = 0,
+    job_id: uuid.UUID | None = None,
+    admission_id: uuid.UUID | None = None,
 ):
     """List all results."""
-    query = select(Result).order_by(Result.created_at.desc())
+    query = select(Result).order_by(
+        Result.phase_number.nulls_last(), Result.created_at.desc()
+    )
     count_query = select(func.count(Result.id))
+    if job_id:
+        query = query.where(Result.job_id == job_id)
+        count_query = count_query.where(Result.job_id == job_id)
+    if admission_id:
+        query = query.where(Result.admission_id == admission_id)
+        count_query = count_query.where(Result.admission_id == admission_id)
 
     total = (await db.execute(count_query)).scalar()
     result = await db.execute(query.offset(offset).limit(limit))
@@ -380,7 +410,7 @@ async def create_job(
         db,
         admin,
         "create_job",
-        "job_vacancy",
+        "job",
         job.id,
         details=f"Created job: {body.job_title}",
         request=request,
@@ -459,7 +489,7 @@ async def extract_pdf_data(
             db,
             admin,
             "extract_pdf",
-            "job_vacancy",
+            "job",
             details=f"PDF: {file.filename}",
             request=request,
         )
@@ -516,7 +546,7 @@ async def update_job(
         job.published_at = datetime.now(timezone.utc)
 
     await _log_action(
-        db, admin, "update_job", "job_vacancy", job.id, changes=changes, request=request
+        db, admin, "update_job", "job", job.id, changes=changes, request=request
     )
 
     # If status changed to active, also notify watchers
@@ -558,7 +588,7 @@ async def approve_job(
         db,
         admin,
         "approve_job",
-        "job_vacancy",
+        "job",
         job.id,
         details=f"Approved: {job.job_title}",
         request=request,
@@ -594,7 +624,7 @@ async def delete_job(
         db,
         admin,
         "delete_job",
-        "job_vacancy",
+        "job",
         job.id,
         details=f"Soft-deleted: {job.job_title}",
         request=request,

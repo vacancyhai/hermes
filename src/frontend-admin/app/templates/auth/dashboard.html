@@ -26,8 +26,8 @@
         <div class="label">Results</div>
     </div>
     <div class="stat-card">
-        <div class="value">{{ stats.get('entrance_exams', {}).get('total', 0) }}</div>
-        <div class="label">Entrance Exams</div>
+        <div class="value">{{ stats.get('admissions', {}).get('total', 0) }}</div>
+        <div class="label">Admissions</div>
     </div>
 </div>
 
@@ -53,10 +53,7 @@
         <h3 style="font-size:1rem;margin-bottom:.75rem;">Manage Content</h3>
         <div style="display:flex;flex-wrap:wrap;gap:.5rem;">
             <a href="/jobs" class="btn btn-outline">Manage Jobs</a>
-            <a href="/admit-cards" class="btn btn-outline">Manage Admit Cards</a>
-            <a href="/answer-keys" class="btn btn-outline">Manage Answer Keys</a>
-            <a href="/results" class="btn btn-outline">Manage Results</a>
-            <a href="/entrance-exams" class="btn btn-outline">Manage Entrance Exams</a>
+            <a href="/admissions" class="btn btn-outline">Manage Admissions</a>
             <a href="/users" class="btn btn-outline">Manage Users</a>
             <a href="/logs" class="btn btn-outline">View Audit Logs</a>
         </div>

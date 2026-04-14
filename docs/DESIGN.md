@@ -4,7 +4,7 @@
 > user profiles, job matching, org follow, application tracking, notifications
 > (email, push, in-app), admin panel, SEO, PDF AI extraction, PWA, test suite
 > (~500 tests — ~93/91/97% coverage), security audit + 24 bug fixes, 5-section navigation,
-> entrance exams, polymorphic document tables, email notifications for account actions — all implemented. Phase 8 (OCI deployment) next.
+> admissions, polymorphic document tables, email notifications for account actions — all implemented. Phase 8 (OCI deployment) next.
 
 ---
 
@@ -134,7 +134,7 @@ responses from the server drive UI updates:
 | Notification badge count | `hx-get="/notifications/count" hx-trigger="every 30s"` | None |
 | Deadline countdown on job cards | Jinja2 `{{ (job.application_end - today).days }} days left` + `hx-get` refresh | None |
 | Application fee for user's category | Jinja2 reads `eligibility.fee` + user's `category` → shows "Your fee: ₹0" | None |
-| Share job / exam / card | `navigator.share({title, url})` (Web Share API); clipboard fallback on desktop | Inline `onclick` |
+| Share job / admission / card | `navigator.share({title, url})` (Web Share API); clipboard fallback on desktop | Inline `onclick` |
 
 The backend returns **HTML partials** (Jinja2 fragments) for HTMX requests
 (detected via `HX-Request` header) and **full pages** for normal requests.
@@ -176,10 +176,10 @@ See **[DATABASE.md](DATABASE.md)** for the complete schema — ERD, all 14 table
 **4 Alembic migrations (`0001` → `0004`). Tables:**
 `users`, `admin_users`, `user_profiles`, `user_devices`, `jobs`,
 `notifications`, `notification_delivery_log`, `admin_logs`, `user_watches`,
-`admit_cards`, `answer_keys`, `results`, `entrance_exams`.
+`admit_cards`, `answer_keys`, `results`, `admissions`.
 
 **Polymorphic document tables:** `admit_cards`, `answer_keys`, `results` each
-link to either a `jobs` row (`job_id`) or an `entrance_exams` row (`exam_id`)
+link to either a `jobs` row (`job_id`) or an `admissions` row (`admission_id`)
 via a DB-level `CHECK` constraint — exactly one FK per row, never both, never neither.
 
 ---
@@ -195,11 +195,11 @@ All endpoints versioned under `/api/v1/`. List responses: `{ "data": [...], "pag
 | `auth.py` | `/api/v1/auth` | Firebase verify-token, logout, refresh; admin login/logout/refresh; email OTP registration |
 | `users.py` | `/api/v1/users` | Profile CRUD, FCM tokens, phone, password management |
 | `jobs.py` | `/api/v1/jobs` | Public listing (FTS + filters), recommended, detail by slug |
-| `watches.py` | `/api/v1/jobs/{id}/watch`, `/api/v1/entrance-exams/{id}/watch` | Watch/unwatch jobs and exams; list watched |
+| `watches.py` | `/api/v1/jobs/{id}/watch`, `/api/v1/admissions/{id}/watch` | Watch/unwatch jobs and admissions; list watched |
 | `notifications.py` | `/api/v1/notifications` | List, count, mark read, delete |
 | `admin.py` | `/api/v1/admin` | Job CRUD + approve, user mgmt, stats, audit logs, admin-user creation |
 | `content.py` | `/api/v1/admit-cards`, `/api/v1/answer-keys`, `/api/v1/results` | Public + admin CRUD for admit cards, answer keys, results |
-| `entrance_exams.py` | `/api/v1/entrance-exams`, `/api/v1/admin/entrance-exams` | Public exam listing + detail; admin exam CRUD + per-exam docs |
+| `admissions.py` | `/api/v1/admissions`, `/api/v1/admin/admissions` | Public admission listing + detail; admin admission CRUD + per-admission docs |
 | `health.py` | `/api/v1/health` | Service health check |
 
 ---
@@ -237,7 +237,7 @@ All errors follow a consistent structure:
 | 403  | `FORBIDDEN_ADMIN_ONLY`        | Admin access required                |
 | 404  | `NOT_FOUND_USER`              | User doesn't exist                   |
 | 404  | `NOT_FOUND_JOB`               | Job doesn't exist                    |
-| 404  | `NOT_FOUND_EXAM`              | Exam not found                       |
+| 404  | `NOT_FOUND_ADMISSION`         | Admission not found                  |
 | 429  | `RATE_LIMIT_EXCEEDED`         | Too many requests                    |
 | 500  | `SERVER_ERROR`                | Internal server error                |
 
@@ -333,15 +333,15 @@ For email/password and Google login, create a test user via the Firebase Console
 | `purge-expired-admin-logs`      | Daily 01:30 UTC | Delete admin logs past `expires_at`    |
 | `purge-soft-deleted-jobs`       | Daily 02:00 UTC | Hard-delete `cancelled` (manually deleted) jobs > 90 days |
 | `close-expired-job-listings`    | Daily 02:30 UTC | Set `status='expired'` on jobs past `application_end` |
-| `update-exam-statuses`          | Daily 02:35 UTC | Set `status='completed'` on entrance exams whose `exam_date` has passed |
-| `generate-sitemap`              | Daily 04:00 UTC | Regenerate `/sitemap.xml` — active jobs, active/upcoming exams, all 5 section pages |
+| `update-admission-statuses`     | Daily 02:35 UTC | Set `status='completed'` on admissions whose `admission_date` has passed |
+| `generate-sitemap`              | Daily 04:00 UTC | Regenerate `/sitemap.xml` — active jobs, active/upcoming admissions, all 5 section pages |
 
 ### hermes-worker (Event-Triggered Tasks)
 
 | Trigger                       | Task                           | Description                            |
 | ----------------------------- | ------------------------------ | -------------------------------------- |
 | Any notification needed       | `smart_notify`                 | Unified entry — instant or staggered delivery to all 5 channels |
-| Job/exam approved or updated  | `notify_watchers_on_update`    | Notify all users watching that job/exam via `smart_notify(staggered)` |
+| Job/admission approved or updated  | `notify_watchers_on_update`    | Notify all users watching that job/admission via `smart_notify(staggered)` |
 | Staggered email delivery      | `deliver_delayed_email`        | Fires after `NOTIFY_EMAIL_DELAY` — sends the email |
 | Staggered WhatsApp            | `deliver_delayed_whatsapp`     | Fires after `NOTIFY_WHATSAPP_DELAY` — sends the WhatsApp |
 | Staggered Telegram            | `deliver_delayed_telegram`     | Fires after `NOTIFY_TELEGRAM_DELAY` — sends the Telegram message |
@@ -396,7 +396,7 @@ Admin/Operator on creation page (/jobs/new, /admit-cards/new, etc.)
 │ All form fields populated with:          │
 │   ├─ Job title, org, department          │
 │   ├─ Eligibility (age, education, etc.)  │
-│   ├─ Dates (application, exam, result)   │
+│   ├─ Dates (application, admission, result)   │
 │   ├─ Vacancies, salary, fee              │
 │   └─ Source URL                          │
 │                                          │
@@ -552,7 +552,7 @@ Users manage this list by updating their profile via `PUT /api/v1/users/profile`
 
 ### Share Button (Web Share API)
 
-Every job card, admit card, answer key, result card, and entrance exam card/detail
+Every job card, admit card, answer key, result card, and admission card/detail
 page includes a single **Share** button using the Web Share API.
 
 ```html
@@ -615,7 +615,7 @@ The user frontend is organized into 5 main sections, each with its own page, sea
 | Admit Cards | `/admit-cards` | Exam admit cards | Sky Blue | `admit_cards` |
 | Answer Keys | `/answer-keys` | Answer keys | Brown → Amber | `answer_keys` |
 | Results | `/results` | Exam results | Dark Green → Green | `results` |
-| Entrance Exams | `/entrance-exams` | Entrance exams | Dark Purple → Purple | `entrance_exams` |
+| Admissions | `/admissions` | Admissions | Dark Purple → Purple | `admissions` |
 
 ### Type-Aware Design System
 
@@ -639,22 +639,22 @@ Each section uses a gradient hero and consistent card design:
 The three document tables (`admit_cards`, `answer_keys`, `results`) are **polymorphic** — each row links to either:
 
 - A job vacancy via `job_id` (traditional recruitment docs)
-- An entrance exam via `exam_id` (entrance exam phase docs)
+- An admission via `admission_id` (admission phase docs)
 
 Database constraint ensures exactly one reference:
 ```sql
 CONSTRAINT ck_doc_source CHECK (
-  (job_id IS NOT NULL AND exam_id IS NULL) OR
-  (job_id IS NULL AND exam_id IS NOT NULL)
+  (job_id IS NOT NULL AND admission_id IS NULL) OR
+  (job_id IS NULL AND admission_id IS NOT NULL)
 )
 ```
 
 ### Unified Detail Pages
 
-Both jobs and entrance exams share the same detail page template structure with type-aware heroes:
+Both jobs and admissions share the same detail page template structure with type-aware heroes:
 
 - **Jobs**: Navy/Blue gradient, employment-focused sections (salary, eligibility, selection process)
-- **Entrance Exams**: Purple gradient, education-focused sections (exam pattern, counselling, seats)
+- **Admissions**: Purple gradient, education-focused sections (admission pattern, counselling, seats)
 
 ### HTMX Document Tabs
 
@@ -667,7 +667,7 @@ Detail pages include dynamic tabbed panels for per-phase documents:
 </div>
 ```
 
-These work for both jobs and exams using the same backend endpoints.
+These work for both jobs and admissions using the same backend endpoints.
 
 ---
 

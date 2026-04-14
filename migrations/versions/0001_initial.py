@@ -2,7 +2,7 @@
 
 Revision ID: 0001_initial
 Revises: None
-Create Date: 2026-03-31
+Create Date: 2026-04-14
 
 Tables (in dependency order):
   1.  users
@@ -13,7 +13,7 @@ Tables (in dependency order):
   6.  admin_logs
   7.  user_devices
   8.  notification_delivery_log
-  9.  entrance_exams
+  9.  admissions
   10. admit_cards
   11. answer_keys
   12. results
@@ -95,6 +95,7 @@ def upgrade() -> None:
         sa.Column("preferred_states", postgresql.JSONB(), nullable=False, server_default="[]"),
         sa.Column("preferred_categories", postgresql.JSONB(), nullable=False, server_default="[]"),
         sa.Column("fcm_tokens", postgresql.JSONB(), nullable=False, server_default="[]"),
+        sa.Column("followed_organizations", postgresql.JSONB(), nullable=False, server_default="[]"),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("NOW()")),
         sa.CheckConstraint("gender IN ('Male', 'Female', 'Other')", name="ck_profiles_gender"),
         sa.CheckConstraint("category IN ('General', 'OBC', 'SC', 'ST', 'EWS', 'EBC')", name="ck_profiles_category"),
@@ -138,9 +139,6 @@ def upgrade() -> None:
         sa.Column("fee_ews", sa.Integer(), nullable=True),
         sa.Column("fee_female", sa.Integer(), nullable=True),
         sa.Column("status", sa.String(20), nullable=False, server_default="draft"),
-        sa.Column("is_featured", sa.Boolean(), nullable=False, server_default=sa.false()),
-        sa.Column("is_urgent", sa.Boolean(), nullable=False, server_default=sa.false()),
-        sa.Column("views", sa.Integer(), nullable=False, server_default="0"),
         sa.Column("created_by", postgresql.UUID(as_uuid=True), sa.ForeignKey("admin_users.id"), nullable=True),
         sa.Column("source", sa.String(20), nullable=False, server_default="manual"),
         sa.Column("source_pdf_path", sa.Text(), nullable=True),
@@ -190,7 +188,7 @@ def upgrade() -> None:
     op.create_index("idx_notifications_user_created", "notifications", ["user_id", sa.text("created_at DESC")])
     op.create_index("idx_notifications_expires", "notifications", ["expires_at"])
 
-    # ── 7. admin_logs ─────────────────────────────────────────────────────────
+    # ── 6. admin_logs ─────────────────────────────────────────────────────────
     op.create_table(
         "admin_logs",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
@@ -208,7 +206,7 @@ def upgrade() -> None:
     op.create_index("idx_admin_logs_admin_ts", "admin_logs", ["admin_id", sa.text("timestamp DESC")])
     op.create_index("idx_admin_logs_expires", "admin_logs", ["expires_at"])
 
-    # ── 8. user_devices ───────────────────────────────────────────────────────
+    # ── 7. user_devices ───────────────────────────────────────────────────────
     op.create_table(
         "user_devices",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
@@ -226,7 +224,7 @@ def upgrade() -> None:
     op.execute("CREATE UNIQUE INDEX idx_devices_fcm_token ON user_devices(fcm_token) WHERE fcm_token IS NOT NULL")
     op.create_index("idx_devices_fingerprint", "user_devices", ["user_id", "device_fingerprint"])
 
-    # ── 9. notification_delivery_log ──────────────────────────────────────────
+    # ── 8. notification_delivery_log ──────────────────────────────────────────
     op.create_table(
         "notification_delivery_log",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
@@ -245,23 +243,23 @@ def upgrade() -> None:
     op.create_index("idx_delivery_log_notif", "notification_delivery_log", ["notification_id"])
     op.create_index("idx_delivery_log_user", "notification_delivery_log", ["user_id", sa.text("created_at DESC")])
 
-    # ── 10. entrance_exams ────────────────────────────────────────────────────
+    # ── 9. admissions ─────────────────────────────────────────────────────────
     op.create_table(
-        "entrance_exams",
+        "admissions",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
         sa.Column("slug", sa.String(500), unique=True, nullable=False),
-        sa.Column("exam_name", sa.String(500), nullable=False),
+        sa.Column("admission_name", sa.String(500), nullable=False),
         sa.Column("conducting_body", sa.String(255), nullable=False),
         sa.Column("counselling_body", sa.String(255), nullable=True),
-        sa.Column("exam_type", sa.String(20), nullable=False, server_default="pg"),
+        sa.Column("admission_type", sa.String(20), nullable=False, server_default="pg"),
         sa.Column("stream", sa.String(30), nullable=False, server_default="general"),
         sa.Column("eligibility", postgresql.JSONB(), nullable=False, server_default="{}"),
-        sa.Column("exam_details", postgresql.JSONB(), nullable=False, server_default="{}"),
+        sa.Column("admission_details", postgresql.JSONB(), nullable=False, server_default="{}"),
         sa.Column("selection_process", postgresql.JSONB(), nullable=False, server_default="[]"),
         sa.Column("seats_info", postgresql.JSONB(), nullable=True),
         sa.Column("application_start", sa.Date(), nullable=True),
         sa.Column("application_end", sa.Date(), nullable=True),
-        sa.Column("exam_date", sa.Date(), nullable=True),
+        sa.Column("admission_date", sa.Date(), nullable=True),
         sa.Column("result_date", sa.Date(), nullable=True),
         sa.Column("counselling_start", sa.Date(), nullable=True),
         sa.Column("fee_general", sa.Integer(), nullable=True),
@@ -273,33 +271,31 @@ def upgrade() -> None:
         sa.Column("short_description", sa.Text(), nullable=True),
         sa.Column("source_url", sa.Text(), nullable=True),
         sa.Column("status", sa.String(20), nullable=False, server_default="active"),
-        sa.Column("is_featured", sa.Boolean(), nullable=False, server_default=sa.false()),
-        sa.Column("views", sa.Integer(), nullable=False, server_default="0"),
         sa.Column("published_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("NOW()")),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("NOW()")),
-        sa.CheckConstraint("exam_type IN ('ug', 'pg', 'doctoral', 'lateral')", name="ck_entrance_exam_type"),
-        sa.CheckConstraint("stream IN ('medical', 'engineering', 'law', 'management', 'arts_science', 'general')", name="ck_entrance_exam_stream"),
-        sa.CheckConstraint("status IN ('upcoming', 'active', 'completed', 'cancelled')", name="ck_entrance_exam_status"),
+        sa.CheckConstraint("admission_type IN ('ug', 'pg', 'doctoral', 'lateral')", name="ck_admission_type"),
+        sa.CheckConstraint("stream IN ('medical', 'engineering', 'law', 'management', 'arts_science', 'general')", name="ck_admission_stream"),
+        sa.CheckConstraint("status IN ('upcoming', 'active', 'completed', 'cancelled')", name="ck_admission_status"),
     )
-    op.create_index("idx_entrance_exams_slug", "entrance_exams", ["slug"], unique=True)
-    op.create_index("idx_entrance_exams_stream_status", "entrance_exams", ["stream", "status", "created_at"])
+    op.create_index("idx_admissions_slug", "admissions", ["slug"], unique=True)
+    op.create_index("idx_admissions_stream_status", "admissions", ["stream", "status", "created_at"])
     op.execute("""
-        ALTER TABLE entrance_exams ADD COLUMN search_vector tsvector
+        ALTER TABLE admissions ADD COLUMN search_vector tsvector
             GENERATED ALWAYS AS (
-                setweight(to_tsvector('english', coalesce(exam_name, '')), 'A') ||
+                setweight(to_tsvector('english', coalesce(admission_name, '')), 'A') ||
                 setweight(to_tsvector('english', coalesce(conducting_body, '')), 'B') ||
                 setweight(to_tsvector('english', coalesce(description, '')), 'C')
             ) STORED
     """)
-    op.execute("CREATE INDEX idx_entrance_exams_search ON entrance_exams USING GIN(search_vector)")
+    op.execute("CREATE INDEX idx_admissions_search ON admissions USING GIN(search_vector)")
 
-    # ── 11. admit_cards ───────────────────────────────────────────────────────
+    # ── 10. admit_cards ───────────────────────────────────────────────────────
     op.create_table(
         "admit_cards",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
         sa.Column("job_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("jobs.id", ondelete="CASCADE"), nullable=True),
-        sa.Column("exam_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("entrance_exams.id", ondelete="CASCADE"), nullable=True),
+        sa.Column("admission_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("admissions.id", ondelete="CASCADE"), nullable=True),
         sa.Column("phase_number", sa.SmallInteger(), nullable=True),
         sa.Column("title", sa.String(255), nullable=False),
         sa.Column("download_url", sa.Text(), nullable=False),
@@ -310,20 +306,20 @@ def upgrade() -> None:
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("NOW()")),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("NOW()")),
         sa.CheckConstraint(
-            "(job_id IS NOT NULL AND exam_id IS NULL) OR (job_id IS NULL AND exam_id IS NOT NULL)",
+            "(job_id IS NOT NULL AND admission_id IS NULL) OR (job_id IS NULL AND admission_id IS NOT NULL)",
             name="ck_admit_cards_source",
         ),
     )
     op.create_index("idx_admit_cards_job", "admit_cards", ["job_id", "phase_number"])
-    op.create_index("idx_admit_cards_exam", "admit_cards", ["exam_id", "phase_number"])
+    op.create_index("idx_admit_cards_admission", "admit_cards", ["admission_id", "phase_number"])
     op.create_index("idx_admit_cards_pub", "admit_cards", ["published_at"])
 
-    # ── 12. answer_keys ───────────────────────────────────────────────────────
+    # ── 11. answer_keys ───────────────────────────────────────────────────────
     op.create_table(
         "answer_keys",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
         sa.Column("job_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("jobs.id", ondelete="CASCADE"), nullable=True),
-        sa.Column("exam_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("entrance_exams.id", ondelete="CASCADE"), nullable=True),
+        sa.Column("admission_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("admissions.id", ondelete="CASCADE"), nullable=True),
         sa.Column("phase_number", sa.SmallInteger(), nullable=True),
         sa.Column("title", sa.String(255), nullable=False),
         sa.Column("answer_key_type", sa.String(20), nullable=False, server_default="provisional"),
@@ -335,20 +331,20 @@ def upgrade() -> None:
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("NOW()")),
         sa.CheckConstraint("answer_key_type IN ('provisional', 'final')", name="ck_answer_key_type"),
         sa.CheckConstraint(
-            "(job_id IS NOT NULL AND exam_id IS NULL) OR (job_id IS NULL AND exam_id IS NOT NULL)",
+            "(job_id IS NOT NULL AND admission_id IS NULL) OR (job_id IS NULL AND admission_id IS NOT NULL)",
             name="ck_answer_keys_source",
         ),
     )
     op.create_index("idx_answer_keys_job", "answer_keys", ["job_id", "phase_number"])
-    op.create_index("idx_answer_keys_exam", "answer_keys", ["exam_id", "phase_number"])
+    op.create_index("idx_answer_keys_admission", "answer_keys", ["admission_id", "phase_number"])
     op.create_index("idx_answer_keys_type", "answer_keys", ["job_id", "answer_key_type"])
 
-    # ── 13. results ───────────────────────────────────────────────────────────
+    # ── 12. results ───────────────────────────────────────────────────────────
     op.create_table(
         "results",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
         sa.Column("job_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("jobs.id", ondelete="CASCADE"), nullable=True),
-        sa.Column("exam_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("entrance_exams.id", ondelete="CASCADE"), nullable=True),
+        sa.Column("admission_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("admissions.id", ondelete="CASCADE"), nullable=True),
         sa.Column("phase_number", sa.SmallInteger(), nullable=True),
         sa.Column("title", sa.String(255), nullable=False),
         sa.Column("result_type", sa.String(20), nullable=False),
@@ -361,15 +357,15 @@ def upgrade() -> None:
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("NOW()")),
         sa.CheckConstraint("result_type IN ('shortlist', 'cutoff', 'merit_list', 'final')", name="ck_result_type"),
         sa.CheckConstraint(
-            "(job_id IS NOT NULL AND exam_id IS NULL) OR (job_id IS NULL AND exam_id IS NOT NULL)",
+            "(job_id IS NOT NULL AND admission_id IS NULL) OR (job_id IS NULL AND admission_id IS NOT NULL)",
             name="ck_results_source",
         ),
     )
     op.create_index("idx_results_job", "results", ["job_id", "phase_number"])
-    op.create_index("idx_results_exam", "results", ["exam_id", "phase_number"])
+    op.create_index("idx_results_admission", "results", ["admission_id", "phase_number"])
     op.create_index("idx_results_pub", "results", ["published_at"])
 
-    # ── 14. user_watches ──────────────────────────────────────────────────────
+    # ── 13. user_watches ──────────────────────────────────────────────────────
     op.create_table(
         "user_watches",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
@@ -378,7 +374,7 @@ def upgrade() -> None:
         sa.Column("entity_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("NOW()")),
         sa.UniqueConstraint("user_id", "entity_type", "entity_id", name="uq_user_watch"),
-        sa.CheckConstraint("entity_type IN ('job', 'exam')", name="ck_user_watches_entity_type"),
+        sa.CheckConstraint("entity_type IN ('job', 'admission')", name="ck_user_watches_entity_type"),
     )
     op.create_index("ix_user_watches_user_id", "user_watches", ["user_id"])
     op.create_index("ix_user_watches_entity", "user_watches", ["entity_type", "entity_id"])
@@ -390,7 +386,7 @@ def downgrade() -> None:
     op.drop_table("results")
     op.drop_table("answer_keys")
     op.drop_table("admit_cards")
-    op.drop_table("entrance_exams")
+    op.drop_table("admissions")
     op.drop_table("notification_delivery_log")
     op.drop_table("user_devices")
     op.drop_table("admin_logs")
