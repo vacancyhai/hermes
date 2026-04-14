@@ -295,7 +295,7 @@ Admin/Operator → Admin Frontend (port 8081)
 │ ┌───────────────────────────────────┐  │       │
 │ │ Important Dates                   │  │       │
 │ │ - Application Start/End           │  │       │
-│ │ - Exam Date                       │  │       │
+│ │ - Admission Date                  │  │       │
 │ │ - Admit Card Date                 │  │       │
 │ │ - Result Date                     │  │       │
 │ └───────────────────────────────────┘  │       │
@@ -561,7 +561,7 @@ Admin/Operator → Admin Frontend (port 8081)
                       │ END            │
                       └────────────────┘
 
-## 5. Watch Job / Exam Flow
+## 5. Watch Job / Admission Flow
 
 ```
 ┌─────────┐
