@@ -1,13 +1,13 @@
 """Rename entity_type value 'exam' → 'admission' in user_watches; update CHECK constraint.
 
-Revision ID: 0008_rename_entity_type_exam_to_admission
+Revision ID: 0008_watch_exam_to_admission
 Revises: 0007_rename_admission_columns
 Create Date: 2026-04-11
 """
 
 from alembic import op
 
-revision = "0008_rename_entity_type_exam_to_admission"
+revision = "0008_watch_exam_to_admission"
 down_revision = "0007_rename_admission_columns"
 branch_labels = None
 depends_on = None
