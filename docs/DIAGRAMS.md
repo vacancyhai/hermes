@@ -391,7 +391,7 @@ Admin/Operator → Admin Frontend (port 8081)
 ┌─────────────────────┐
 │ Trigger: Daily Beat  │
 │ Task at 08:00 UTC    │
-│ OR: Job/Exam updated │
+│ OR: Job/Admission updated │
 └─────────┬───────────┘
           │
           ▼
@@ -950,7 +950,7 @@ Receive Notifications → Check Dashboard → Visit official site to apply
          ├─ Admit Card Releases (when admin publishes admit_cards)
          ├─ Answer Key Releases (when admin publishes answer_keys)
          ├─ Result Releases (when admin publishes results)
-         └─ Job/Exam Updates (when admin modifies watched item)
+         └─ Job/Admission Updates (when admin modifies watched item)
 
 EXAM PHASE
 ══════════
