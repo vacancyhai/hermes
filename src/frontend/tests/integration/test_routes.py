@@ -1080,7 +1080,7 @@ def test_results_list(client, mock_api):
 
 def test_result_detail_found(client, mock_api):
     mock_api.get.return_value = _ok({
-        "id": "res-1", "title": "SSC CGL Result",
+        "id": "res-1", "title": "SSC CGL Result", "total_qualified": None,
     })
     resp = client.get("/results/res-1")
     assert resp.status_code == 200
