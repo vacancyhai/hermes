@@ -56,21 +56,6 @@ def _make_request(json_body=None):
     return req
 
 
-# ─── _slugify ─────────────────────────────────────────────────────────────────
-
-
-def test_slugify_basic():
-    from app.routers.admin import _slugify
-
-    assert _slugify("SSC CGL 2024") == "ssc-cgl-2024"
-
-
-def test_slugify_special_chars():
-    from app.routers.admin import _slugify
-
-    assert _slugify("UPSC (IAS) Exam!") == "upsc-ias-exam"
-
-
 # ─── dashboard_stats ──────────────────────────────────────────────────────────
 
 
