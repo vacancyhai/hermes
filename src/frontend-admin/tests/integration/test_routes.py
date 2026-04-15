@@ -165,7 +165,7 @@ def test_dashboard_no_token_redirects(client, mock_api):
 def test_dashboard_with_token(auth_client):
     client, mock_api = auth_client
     mock_api.get.return_value = _ok({
-        "jobs": {"total": 10, "active": 7, "draft": 3},
+        "jobs": {"total": 10, "active": 7},
         "users": {"total": 100, "active": 90, "new_this_week": 5},
         "applications": {"total": 50},
     })
@@ -237,7 +237,7 @@ def test_jobs_with_status_filter(auth_client):
     """Status filter param is not forwarded by the /jobs route."""
     client, mock_api = auth_client
     mock_api.get.return_value = _ok({"data": [], "pagination": {}})
-    resp = client.get("/jobs?status=draft")
+    resp = client.get("/jobs?status=active")
     assert resp.status_code == 200
 
 
@@ -292,7 +292,8 @@ def test_new_job_post_success(auth_client):
     resp = client.post("/jobs/new", data={
         "job_title": "Test Job",
         "organization": "SSC",
-        "status": "draft",
+        "status": "active",
+        "csrf_token": "test-csrf",
     })
     assert resp.status_code == 302
     assert "new-job-123" in resp.headers["Location"]
@@ -308,7 +309,8 @@ def test_new_job_post_int_fields(auth_client):
         "total_vacancies": "100",
         "fee_general": "500",
         "salary_initial": "300000",
-        "status": "draft",
+        "status": "active",
+        "csrf_token": "test-csrf",
     })
     payload = mock_api.post.call_args[1]["json"]
     assert payload["total_vacancies"] == 100
@@ -323,7 +325,8 @@ def test_new_job_post_empty_int_becomes_none(auth_client):
         "job_title": "Job",
         "organization": "SSC",
         "total_vacancies": "",
-        "status": "draft",
+        "status": "active",
+        "csrf_token": "test-csrf",
     })
     payload = mock_api.post.call_args[1]["json"]
     assert payload["total_vacancies"] is None
@@ -335,7 +338,8 @@ def test_new_job_post_failure(auth_client):
     resp = client.post("/jobs/new", data={
         "job_title": "Job",
         "organization": "SSC",
-        "status": "draft",
+        "status": "active",
+        "csrf_token": "test-csrf",
     })
     assert resp.status_code == 200
     assert b"Validation error" in resp.data or b"error" in resp.data.lower()
@@ -344,7 +348,8 @@ def test_new_job_post_failure(auth_client):
 # ─── /jobs/<id>/delete ────────────────────────────────────────────────────────
 
 def test_delete_job_no_token(client, mock_api):
-    resp = client.post("/jobs/job-1/delete")
+    _set_csrf(client)
+    resp = client.post("/jobs/job-1/delete", data={"csrf_token": "test-csrf"})
     assert resp.status_code == 302
     assert "/login" in resp.headers["Location"]
     mock_api.delete.assert_not_called()
@@ -353,7 +358,7 @@ def test_delete_job_no_token(client, mock_api):
 def test_delete_job(auth_client):
     client, mock_api = auth_client
     mock_api.delete.return_value = _ok()
-    resp = client.post("/jobs/job-1/delete")
+    resp = client.post("/jobs/job-1/delete", data={"csrf_token": "test-csrf"})
     assert resp.status_code == 302
     assert "/jobs" in resp.headers["Location"]
     mock_api.delete.assert_called_once_with("/admin/jobs/job-1", token="admin-token")
@@ -470,7 +475,8 @@ def test_user_detail_no_profile(auth_client):
 # ─── /users/<id>/suspend ──────────────────────────────────────────────────────
 
 def test_toggle_user_status_no_token(client, mock_api):
-    resp = client.post("/users/user-1/suspend")
+    _set_csrf(client)
+    resp = client.post("/users/user-1/suspend", data={"csrf_token": "test-csrf"})
     assert resp.status_code == 302
     assert "/login" in resp.headers["Location"]
 
@@ -478,7 +484,7 @@ def test_toggle_user_status_no_token(client, mock_api):
 def test_suspend_user(auth_client):
     client, mock_api = auth_client
     mock_api.put.return_value = _ok()
-    resp = client.post("/users/user-1/suspend", data={"status": "suspended"})
+    resp = client.post("/users/user-1/suspend", data={"status": "suspended", "csrf_token": "test-csrf"})
     assert resp.status_code == 302
     mock_api.put.assert_called_once_with(
         "/admin/users/user-1/status",
@@ -490,7 +496,7 @@ def test_suspend_user(auth_client):
 def test_activate_user(auth_client):
     client, mock_api = auth_client
     mock_api.put.return_value = _ok()
-    resp = client.post("/users/user-1/suspend", data={"status": "active"})
+    resp = client.post("/users/user-1/suspend", data={"status": "active", "csrf_token": "test-csrf"})
     assert resp.status_code == 302
     assert mock_api.put.call_args[1]["json"] == {"status": "active"}
 
@@ -611,6 +617,7 @@ def test_new_admission_post_success(auth_client):
     mock_api.post.return_value = _ok({"id": "exam-1"})
     resp = client.post("/admissions/new", data={
         "admission_name": "JEE Main", "conducting_body": "NTA", "status": "active",
+        "csrf_token": "test-csrf",
     })
     assert resp.status_code == 302
     assert "exam-1" in resp.headers["Location"]
@@ -619,7 +626,7 @@ def test_new_admission_post_success(auth_client):
 def test_new_admission_post_failure(auth_client):
     client, mock_api = auth_client
     mock_api.post.return_value = _fail({"detail": "Error"})
-    resp = client.post("/admissions/new", data={"admission_name": "Test Admission"})
+    resp = client.post("/admissions/new", data={"admission_name": "Test Admission", "csrf_token": "test-csrf"})
     assert resp.status_code == 200
 
 
@@ -649,7 +656,7 @@ def test_edit_admission_post(auth_client):
     client, mock_api = auth_client
     mock_api.put.return_value = _ok({})
     mock_api.get.return_value = _ok({"id": "exam-1", "admission_name": "JEE Main Updated"})
-    resp = client.post("/admissions/exam-1/edit", data={"admission_name": "JEE Main Updated"})
+    resp = client.post("/admissions/exam-1/edit", data={"admission_name": "JEE Main Updated", "csrf_token": "test-csrf"})
     assert resp.status_code == 302
     mock_api.put.assert_called_once()
 
@@ -657,7 +664,8 @@ def test_edit_admission_post(auth_client):
 # ─── /users/<id>/delete ───────────────────────────────────────────────────────
 
 def test_delete_user_no_token(client, mock_api):
-    resp = client.post("/users/user-1/delete")
+    _set_csrf(client)
+    resp = client.post("/users/user-1/delete", data={"csrf_token": "test-csrf"})
     assert resp.status_code == 302
     assert "/login" in resp.headers["Location"]
 
@@ -665,7 +673,7 @@ def test_delete_user_no_token(client, mock_api):
 def test_delete_user_success(auth_client):
     client, mock_api = auth_client
     mock_api.delete.return_value = _ok()
-    resp = client.post("/users/user-1/delete")
+    resp = client.post("/users/user-1/delete", data={"csrf_token": "test-csrf"})
     assert resp.status_code == 302
     mock_api.delete.assert_called_once_with("/admin/users/user-1", token="admin-token")
 
@@ -673,7 +681,7 @@ def test_delete_user_success(auth_client):
 def test_delete_user_failure(auth_client):
     client, mock_api = auth_client
     mock_api.delete.return_value = _fail()
-    resp = client.post("/users/user-1/delete")
+    resp = client.post("/users/user-1/delete", data={"csrf_token": "test-csrf"})
     assert resp.status_code == 302
 
 
@@ -688,7 +696,7 @@ def test_edit_job_get(auth_client):
     client, mock_api = auth_client
     mock_api.get.side_effect = [
         _ok({"id": "job-1", "job_title": "SSC CGL", "slug": "ssc-cgl",
-             "organization": "SSC", "status": "draft", "admit_cards": [],
+             "organization": "SSC", "status": "active", "admit_cards": [],
              "answer_keys": [], "results": []}),
         _ok({"data": [], "pagination": {}}),
         _ok({"data": [], "pagination": {}}),
@@ -719,6 +727,7 @@ def test_edit_job_post(auth_client):
     ]
     resp = client.post("/jobs/job-1/edit", data={
         "job_title": "Updated Job", "organization": "SSC", "status": "active",
+        "csrf_token": "test-csrf",
     })
     assert resp.status_code == 302
     mock_api.put.assert_called()
@@ -745,7 +754,7 @@ def test_extract_pdf_success(auth_client):
         data={"file": (io.BytesIO(b"fake pdf content"), "test.pdf")},
         content_type="multipart/form-data",
     )
-    assert resp.status_code == 200
+    assert resp.status_code == 200  # CSRF exempt — JSON API endpoint
 
 
 def test_extract_pdf_failure(auth_client):
@@ -758,4 +767,4 @@ def test_extract_pdf_failure(auth_client):
         data={"file": (io.BytesIO(b"bad content"), "bad.pdf")},
         content_type="multipart/form-data",
     )
-    assert resp.status_code == 422
+    assert resp.status_code == 422  # CSRF exempt — JSON API endpoint

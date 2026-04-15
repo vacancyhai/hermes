@@ -216,7 +216,7 @@ Government job vacancies. Document releases (admit cards, answer keys, results) 
 | `fee_sc_st` | Integer | Yes | Application fee — SC/ST (INR) |
 | `fee_ews` | Integer | Yes | Application fee — EWS (INR) |
 | `fee_female` | Integer | Yes | Application fee — Female/PwBD (INR) |
-| `status` | String(20) | No | `ck_jobs_status`: `draft` \| `active` \| `expired` \| `cancelled` \| `upcoming`; default `draft` |
+| `status` | String(20) | No | `ck_jobs_status`: `upcoming` \| `active` \| `inactive` \| `closed`; default `active` |
 | `created_by` | UUID (FK → `admin_users.id`) | Yes | Admin who created the job |
 | `source` | String(20) | No | `ck_jobs_source`: `manual` \| `pdf_upload`; default `manual` |
 | `source_pdf_path` | Text | Yes | Path to uploaded PDF (if source = `pdf_upload`) |
@@ -416,7 +416,7 @@ These are educational admissioninations, not government job recruitments.
 | `description` | Text | Yes | Full HTML description |
 | `short_description` | Text | Yes | One-liner for listing cards |
 | `source_url` | Text | Yes | Official website URL |
-| `status` | String(20) | No | `ck_admission_status`: `upcoming` \| `active` \| `completed` \| `cancelled`; default `active` |
+| `status` | String(20) | No | `ck_admission_status`: `upcoming` \| `active` \| `inactive` \| `closed`; default `active` |
 | `published_at` | DateTime | Yes | When first published |
 | `created_at` | DateTime | No | Creation timestamp |
 | `updated_at` | DateTime | No | Last update timestamp |

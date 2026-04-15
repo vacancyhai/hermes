@@ -32,7 +32,6 @@ from app.schemas.admissions import (
 )
 from app.schemas.jobs import AdmitCardResponse, AnswerKeyResponse, ResultResponse
 from app.services.matching import get_recommended_admissions
-from app.utils import slugify as _slugify
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -63,9 +62,9 @@ async def list_admissions(
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
     offset: Annotated[int, Query(ge=0)] = 0,
 ):
-    """List admissions — all statuses."""
-    query = select(Admission)
-    count_query = select(func.count(Admission.id))
+    """List admissions — excludes inactive."""
+    query = select(Admission).where(Admission.status != "inactive")
+    count_query = select(func.count(Admission.id)).where(Admission.status != "inactive")
 
     if q:
         query = query.where(
@@ -126,17 +125,18 @@ async def recommended_admissions(
     }
 
 
-@public_router.get("/{admission_id}")
-async def get_admission(
-    admission_id: uuid.UUID, db: Annotated[AsyncSession, Depends(get_db)]
-):
-    """Get admission detail by ID. Includes all related documents."""
-    result = await db.execute(select(Admission).where(Admission.id == admission_id))
+@public_router.get("/{slug}")
+async def get_admission(slug: str, db: Annotated[AsyncSession, Depends(get_db)]):
+    """Get admission detail by slug. Includes all related documents."""
+    result = await db.execute(
+        select(Admission).where(Admission.slug == slug, Admission.status != "inactive")
+    )
     admission = result.scalar_one_or_none()
     if not admission:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Admission not found"
         )
+    admission_id = admission.id
     admit_cards_result = await db.execute(
         select(AdmitCard)
         .where(AdmitCard.admission_id == admission_id)
@@ -241,23 +241,39 @@ async def create_admission(
     admin: Annotated[Any, Depends(require_operator)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    base_slug = _slugify(body.admission_name)
-    existing = {
-        r[0]
-        for r in (
-            await db.execute(
-                select(Admission.slug).where(Admission.slug.like(f"{base_slug}%"))
-            )
-        ).all()
-    }
-    slug, counter = base_slug, 1
-    while slug in existing:
-        slug = f"{base_slug}-{counter}"
-        counter += 1
+    if (
+        await db.execute(select(Admission.id).where(Admission.slug == body.slug))
+    ).scalar():
+        raise HTTPException(
+            status_code=409, detail=f"Slug '{body.slug}' is already in use"
+        )
+    slug = body.slug
 
     admission = Admission(
-        **body.model_dump(exclude_none=True),
         slug=slug,
+        admission_name=body.admission_name,
+        conducting_body=body.conducting_body,
+        counselling_body=body.counselling_body,
+        admission_type=body.admission_type,
+        stream=body.stream,
+        eligibility=body.eligibility,
+        admission_details=body.admission_details,
+        selection_process=body.selection_process,
+        seats_info=body.seats_info,
+        application_start=body.application_start,
+        application_end=body.application_end,
+        admission_date=body.admission_date,
+        result_date=body.result_date,
+        counselling_start=body.counselling_start,
+        fee_general=body.fee_general,
+        fee_obc=body.fee_obc,
+        fee_sc_st=body.fee_sc_st,
+        fee_ews=body.fee_ews,
+        fee_female=body.fee_female,
+        description=body.description,
+        short_description=body.short_description,
+        source_url=body.source_url,
+        status=body.status,
         published_at=datetime.now(timezone.utc) if body.status == "active" else None,
     )
     db.add(admission)

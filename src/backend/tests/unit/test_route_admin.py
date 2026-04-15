@@ -33,7 +33,7 @@ def _make_job(**kwargs):
     j.job_title = kwargs.get("job_title", "Test Job")
     j.slug = kwargs.get("slug", "test-job")
     j.organization = kwargs.get("organization", "SSC")
-    j.status = kwargs.get("status", "draft")
+    j.status = kwargs.get("status", "active")
     j.qualification_level = None
     j.department = None
     j.created_at = datetime.now(timezone.utc)
@@ -85,11 +85,10 @@ async def test_dashboard_stats():
         r.scalar.return_value = val
         return r
 
-    # 11 queries via asyncio.gather in the order they appear in dashboard_stats
+    # 10 queries via asyncio.gather in the order they appear in dashboard_stats
     db.execute.side_effect = [
         _scalar_result(10),  # jobs_total
         _scalar_result(7),  # jobs_active
-        _scalar_result(3),  # jobs_draft
         _scalar_result(20),  # admit_cards_total
         _scalar_result(15),  # answer_keys_total
         _scalar_result(12),  # results_total
@@ -103,7 +102,6 @@ async def test_dashboard_stats():
     output = await dashboard_stats(admin=_make_admin(), db=db)
     assert output["jobs"]["total"] == 10
     assert output["jobs"]["active"] == 7
-    assert output["jobs"]["draft"] == 3
     assert output["admit_cards"]["total"] == 20
     assert output["answer_keys"]["total"] == 15
     assert output["results"]["total"] == 12
@@ -117,7 +115,7 @@ async def test_dashboard_stats():
 
 
 @pytest.mark.asyncio
-async def test_create_job_draft():
+async def test_create_job_active():
     from app.routers.admin import create_job
     from app.schemas.jobs import JobCreateRequest, JobResponse
 
@@ -125,15 +123,17 @@ async def test_create_job_draft():
 
     # slug check: no existing
     no_slug = MagicMock()
-    no_slug.scalar_one_or_none.return_value = None
+    no_slug.scalar.return_value = None
     db.execute.return_value = no_slug
     db.flush = AsyncMock()
     db.add = MagicMock()
 
     mock_resp = MagicMock()
-    mock_resp.model_dump.return_value = {"id": str(uuid.uuid4()), "status": "draft"}
+    mock_resp.model_dump.return_value = {"id": str(uuid.uuid4()), "status": "active"}
 
-    body = JobCreateRequest(job_title="Test Job", organization="Org", status="draft")
+    body = JobCreateRequest(
+        job_title="Test Job", organization="Org", status="active", slug="test-job"
+    )
     req = _make_request()
 
     with patch.object(JobResponse, "model_validate", return_value=mock_resp):
@@ -141,7 +141,7 @@ async def test_create_job_draft():
             body=body, request=req, current_admin=_make_admin(), db=db
         )
 
-    assert output["status"] == "draft"
+    assert output["status"] == "active"
     assert db.add.call_count >= 1  # job + log
 
 
@@ -153,7 +153,7 @@ async def test_create_job_active_triggers_notification():
     db = AsyncMock()
 
     no_slug = MagicMock()
-    no_slug.scalar_one_or_none.return_value = None
+    no_slug.scalar.return_value = None
     db.execute.return_value = no_slug
     db.flush = AsyncMock()
     db.add = MagicMock()
@@ -161,7 +161,9 @@ async def test_create_job_active_triggers_notification():
     mock_resp = MagicMock()
     mock_resp.model_dump.return_value = {"id": str(uuid.uuid4()), "status": "active"}
 
-    body = JobCreateRequest(job_title="Active Job", organization="Org", status="active")
+    body = JobCreateRequest(
+        job_title="Active Job", organization="Org", status="active", slug="active-job"
+    )
     req = _make_request()
 
     with patch.object(JobResponse, "model_validate", return_value=mock_resp), patch(
@@ -177,33 +179,27 @@ async def test_create_job_active_triggers_notification():
 
 @pytest.mark.asyncio
 async def test_create_job_slug_conflict():
-    """When slug already exists, increment counter until unique."""
+    """When slug already exists, raise HTTPException."""
     from app.routers.admin import create_job
-    from app.schemas.jobs import JobCreateRequest, JobResponse
+    from app.schemas.jobs import JobCreateRequest
+    from fastapi import HTTPException
 
     db = AsyncMock()
 
-    # first slug exists, second doesn't
+    # slug exists
     existing = MagicMock()
-    existing.scalar_one_or_none.return_value = MagicMock()
-    unique = MagicMock()
-    unique.scalar_one_or_none.return_value = None
-    db.execute.side_effect = [existing, unique]
-    db.flush = AsyncMock()
-    db.add = MagicMock()
+    existing.scalar.return_value = MagicMock()
+    db.execute.return_value = existing
 
-    mock_resp = MagicMock()
-    mock_resp.model_dump.return_value = {"id": str(uuid.uuid4()), "slug": "test-job-1"}
-
-    body = JobCreateRequest(job_title="Test Job", organization="Org", status="draft")
+    body = JobCreateRequest(
+        job_title="Test Job", organization="Org", status="active", slug="test-job"
+    )
     req = _make_request()
 
-    with patch.object(JobResponse, "model_validate", return_value=mock_resp):
-        output = await create_job(
-            body=body, request=req, current_admin=_make_admin(), db=db
-        )
-
-    assert output["slug"] == "test-job-1"
+    with pytest.raises(HTTPException) as exc:
+        await create_job(body=body, request=req, current_admin=_make_admin(), db=db)
+    assert exc.value.status_code == 409
+    assert "Slug 'test-job' is already in use" in exc.value.detail
 
 
 # ─── update_job ───────────────────────────────────────────────────────────────
@@ -292,7 +288,7 @@ async def test_update_job_with_changes():
     from app.routers.admin import update_job
     from app.schemas.jobs import JobResponse, JobUpdateRequest
 
-    job = _make_job(status="draft")
+    job = _make_job(status="active")
     job.description = "Old description"
     db = AsyncMock()
     result = MagicMock()
@@ -320,74 +316,6 @@ async def test_update_job_with_changes():
             db=db,
         )
 
-    assert output["status"] == "active"
-
-
-# ─── approve_job ──────────────────────────────────────────────────────────────
-
-
-@pytest.mark.asyncio
-async def test_approve_job_not_found():
-    from app.routers.admin import approve_job
-    from fastapi import HTTPException
-
-    db = AsyncMock()
-    result = MagicMock()
-    result.scalar_one_or_none.return_value = None
-    db.execute.return_value = result
-
-    with pytest.raises(HTTPException) as exc_info:
-        await approve_job(
-            job_id=uuid.uuid4(),
-            request=_make_request(),
-            current_admin=_make_admin(),
-            db=db,
-        )
-    assert exc_info.value.status_code == 404
-
-
-@pytest.mark.asyncio
-async def test_approve_job_not_draft():
-    from app.routers.admin import approve_job
-    from fastapi import HTTPException
-
-    job = _make_job(status="active")
-    db = AsyncMock()
-    result = MagicMock()
-    result.scalar_one_or_none.return_value = job
-    db.execute.return_value = result
-
-    with pytest.raises(HTTPException) as exc_info:
-        await approve_job(
-            job_id=job.id, request=_make_request(), current_admin=_make_admin(), db=db
-        )
-    assert exc_info.value.status_code == 400
-
-
-@pytest.mark.asyncio
-async def test_approve_job_success():
-    from app.routers.admin import approve_job
-    from app.schemas.jobs import JobResponse
-
-    job = _make_job(status="draft")
-    db = AsyncMock()
-    result = MagicMock()
-    result.scalar_one_or_none.return_value = job
-    db.execute.return_value = result
-    db.add = MagicMock()
-
-    mock_resp = MagicMock()
-    mock_resp.model_dump.return_value = {"id": str(job.id), "status": "active"}
-
-    with patch.object(JobResponse, "model_validate", return_value=mock_resp), patch(
-        "app.tasks.notifications.send_new_job_notifications"
-    ) as mock_notif:
-        mock_notif.delay = MagicMock()
-        output = await approve_job(
-            job_id=job.id, request=_make_request(), current_admin=_make_admin(), db=db
-        )
-
-    assert job.status == "active"
     assert output["status"] == "active"
 
 
@@ -423,7 +351,7 @@ async def test_delete_job_success():
     db.add = MagicMock()
 
     await delete_job(job_id=job.id, request=_make_request(), admin=_make_admin(), db=db)
-    assert job.status == "cancelled"
+    db.delete.assert_called_once_with(job)
 
 
 # ─── list_users ───────────────────────────────────────────────────────────────

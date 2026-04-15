@@ -148,7 +148,7 @@ async def test_user(db: AsyncSession):
     from app.models.user_profile import UserProfile
 
     email = f"testuser_{uuid.uuid4().hex[:8]}@test.com"
-    password = "TestPass123"
+    password = "TestPass123"  # pragma: allowlist secret
     user = User(
         email=email,
         password_hash=pwd_context.hash(
@@ -175,7 +175,7 @@ async def test_admin(db: AsyncSession):
     from app.models.admin_user import AdminUser
 
     email = f"testadmin_{uuid.uuid4().hex[:8]}@test.com"
-    password = "AdminPass123"
+    password = "AdminPass123"  # pragma: allowlist secret
     admin = AdminUser(
         email=email,
         password_hash=pwd_context.hash(password),
@@ -196,7 +196,7 @@ async def test_operator(db: AsyncSession):
     from app.models.admin_user import AdminUser
 
     email = f"testoperator_{uuid.uuid4().hex[:8]}@test.com"
-    password = "OperPass123"
+    password = "OperPass123"  # pragma: allowlist secret
     operator = AdminUser(
         email=email,
         password_hash=pwd_context.hash(password),
@@ -243,10 +243,12 @@ async def operator_token(client: AsyncClient, test_operator):
 @pytest_asyncio.fixture
 async def active_job(client: AsyncClient, admin_token: str):
     """Create an active job and return the full response dict."""
+    uid = uuid.uuid4().hex[:6]
     resp = await client.post(
         "/api/v1/admin/jobs",
         json={
-            "job_title": f"Test Job {uuid.uuid4().hex[:6]}",
+            "job_title": f"Test Job {uid}",
+            "slug": f"test-job-{uid}",
             "organization": "Test Organization",
             "qualification_level": "graduate",
             "total_vacancies": 100,
@@ -260,29 +262,14 @@ async def active_job(client: AsyncClient, admin_token: str):
 
 
 @pytest_asyncio.fixture
-async def draft_job(client: AsyncClient, admin_token: str):
-    """Create a draft job and return the full response dict."""
-    resp = await client.post(
-        "/api/v1/admin/jobs",
-        json={
-            "job_title": f"Draft Job {uuid.uuid4().hex[:6]}",
-            "organization": "Draft Organization",
-            "description": "A draft test job.",
-            "status": "draft",
-        },
-        headers={"Authorization": f"Bearer {admin_token}"},
-    )
-    assert resp.status_code == 201
-    return resp.json()
-
-
-@pytest_asyncio.fixture
 async def active_admission(client: AsyncClient, admin_token: str):
     """Create an active admission and return the full response dict."""
+    uid = uuid.uuid4().hex[:6]
     resp = await client.post(
         "/api/v1/admin/admissions",
         json={
-            "admission_name": f"Test Admission {uuid.uuid4().hex[:6]}",
+            "admission_name": f"Test Admission {uid}",
+            "slug": f"test-admission-{uid}",
             "conducting_body": "NTA",
             "stream": "engineering",
             "status": "active",

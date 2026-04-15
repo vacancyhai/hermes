@@ -34,9 +34,9 @@
     </a>
     {% endif %}
     {% if result.get('job') %}
-    <a href="/jobs/{{ result.job.id }}" class="share-btn">View Job Details →</a>
+    <a href="/jobs/{{ result.job.slug }}" class="share-btn">View Job Details →</a>
     {% elif result.get('admission') %}
-    <a href="/admissions/{{ result.admission.id }}" class="share-btn">View Admission Details →</a>
+    <a href="/admissions/{{ result.admission.slug }}" class="share-btn">View Admission Details →</a>
     {% endif %}
     <button type="button" class="share-btn" onclick="if(navigator.share){navigator.share({title:document.title,url:window.location.href})}else{navigator.clipboard.writeText(window.location.href);alert('Link copied!')}">⬆ Share</button>
 </div>

@@ -1,7 +1,7 @@
 """Cross-service E2E tests — Frontend → Backend → DB.
 
 Flows covered:
-  1. Admin job lifecycle: create draft → approve → visible on user frontend → delete
+  1. Admin job lifecycle: create active job → visible on user frontend → delete
   2. Admin frontend login: CSRF-aware login → protected pages → logout
 """
 
@@ -37,10 +37,10 @@ def admin_api_token(backend_url, admin_credentials):
 
 
 def test_job_lifecycle_visible_on_frontend(backend_url, frontend_url, admin_api_token):
-    """Admin creates draft → approves → job visible on user frontend → soft delete."""
+    """Admin creates active job → visible on user frontend → delete."""
     title = f"E2E Job {uuid.uuid4().hex[:8]}"
 
-    # Create draft job
+    # Create active job
     resp = requests.post(
         f"{backend_url}/api/v1/admin/jobs",
         json={
@@ -49,22 +49,13 @@ def test_job_lifecycle_visible_on_frontend(backend_url, frontend_url, admin_api_
             "qualification_level": "graduate",
             "total_vacancies": 10,
             "description": "E2E test job — auto-created.",
-            "status": "draft",
+            "status": "active",
         },
         headers=_auth(admin_api_token),
         timeout=10,
     )
     assert resp.status_code == 201, f"Job creation failed: {resp.text}"
     job_id = resp.json()["id"]
-
-    # Approve the job
-    resp = requests.put(
-        f"{backend_url}/api/v1/admin/jobs/{job_id}/approve",
-        headers=_auth(admin_api_token),
-        timeout=10,
-    )
-    assert resp.status_code == 200, f"Approve failed: {resp.text}"
-    assert resp.json()["status"] == "active"
 
     # Approved job must appear in public listing
     resp = requests.get(f"{backend_url}/api/v1/jobs", timeout=10)
@@ -74,7 +65,7 @@ def test_job_lifecycle_visible_on_frontend(backend_url, frontend_url, admin_api_
     resp = requests.get(f"{frontend_url}/jobs", timeout=10)
     assert resp.status_code == 200, "User frontend /jobs page returned error"
 
-    # Soft delete
+    # Delete
     resp = requests.delete(
         f"{backend_url}/api/v1/admin/jobs/{job_id}",
         headers=_auth(admin_api_token),
@@ -82,10 +73,9 @@ def test_job_lifecycle_visible_on_frontend(backend_url, frontend_url, admin_api_
     )
     assert resp.status_code == 204, f"Delete failed: {resp.text}"
 
-    # After deletion, status is cancelled
+    # After hard-deletion, job must return 404
     resp = requests.get(f"{backend_url}/api/v1/jobs/{job_id}", timeout=10)
-    assert resp.status_code == 200
-    assert resp.json()["status"] == "cancelled"
+    assert resp.status_code == 404
 
 
 # ── Flow 2: Admin frontend login → navigate → logout ──────────────────────────

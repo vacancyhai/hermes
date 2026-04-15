@@ -45,8 +45,10 @@ services:
     image: edoburu/pgbouncer:latest
     container_name: hermes_pgbouncer
     restart: unless-stopped
+    env_file:
+      - ./config/development/.env.backend
     environment:
-      DATABASE_URL: postgres://${POSTGRES_USER:-hermes_user}:${POSTGRES_PASSWORD}@postgresql:5432/${POSTGRES_DB:-hermes_db}
+      DATABASE_URL: postgres://${POSTGRES_USER:-hermes_user}:${POSTGRES_PASSWORD:-hermes_dev_pass}@postgresql:5432/${POSTGRES_DB:-hermes_db}
       POOL_MODE: transaction
       MAX_CLIENT_CONN: 100
       DEFAULT_POOL_SIZE: 20

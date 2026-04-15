@@ -16,10 +16,12 @@ def auth_header(token: str) -> dict:
 
 
 async def _create_admit_card(client, admin_token, active_job):
+    uid = uuid.uuid4().hex[:4]
     resp = await client.post(
         "/api/v1/admin/admit-cards",
         json={
-            "title": f"AC {uuid.uuid4().hex[:4]}",
+            "slug": f"admit-card-{uid}",
+            "title": f"AC {uid}",
             "job_id": active_job["id"],
             "download_url": "https://example.com/admit.pdf",
         },
@@ -30,9 +32,14 @@ async def _create_admit_card(client, admin_token, active_job):
 
 
 async def _create_answer_key(client, admin_token, active_job):
+    uid = uuid.uuid4().hex[:4]
     resp = await client.post(
         "/api/v1/admin/answer-keys",
-        json={"title": f"AK {uuid.uuid4().hex[:4]}", "job_id": active_job["id"]},
+        json={
+            "slug": f"answer-key-{uid}",
+            "title": f"AK {uid}",
+            "job_id": active_job["id"],
+        },
         headers=auth_header(admin_token),
     )
     assert resp.status_code == 201
@@ -40,10 +47,12 @@ async def _create_answer_key(client, admin_token, active_job):
 
 
 async def _create_result(client, admin_token, active_job):
+    uid = uuid.uuid4().hex[:4]
     resp = await client.post(
         "/api/v1/admin/results",
         json={
-            "title": f"Res {uuid.uuid4().hex[:4]}",
+            "slug": f"result-{uid}",
+            "title": f"Res {uid}",
             "job_id": active_job["id"],
             "result_type": "final",
         },
@@ -77,15 +86,17 @@ async def test_list_admit_cards_pagination(
     assert len(resp.json()["data"]) <= 1
 
 
-async def test_get_admit_card_by_id(client: AsyncClient, admin_token: str, active_job):
+async def test_get_admit_card_by_slug(
+    client: AsyncClient, admin_token: str, active_job
+):
     card = await _create_admit_card(client, admin_token, active_job)
-    resp = await client.get(f"/api/v1/admit-cards/{card['id']}")
+    resp = await client.get(f"/api/v1/admit-cards/{card['slug']}")
     assert resp.status_code == 200
-    assert resp.json()["id"] == card["id"]
+    assert resp.json()["slug"] == card["slug"]
 
 
 async def test_get_admit_card_not_found(client: AsyncClient):
-    resp = await client.get(f"/api/v1/admit-cards/{uuid.uuid4()}")
+    resp = await client.get("/api/v1/admit-cards/nonexistent-slug")
     assert resp.status_code == 404
 
 
@@ -95,6 +106,7 @@ async def test_admin_create_admit_card(
     resp = await client.post(
         "/api/v1/admin/admit-cards",
         json={
+            "slug": "ssc-cgl-admit-card",
             "title": "SSC CGL Admit Card",
             "job_id": active_job["id"],
             "download_url": "https://example.com/admit.pdf",
@@ -110,7 +122,11 @@ async def test_admin_create_admit_card_no_parent_fails(
 ):
     resp = await client.post(
         "/api/v1/admin/admit-cards",
-        json={"title": "No Parent", "download_url": "https://example.com/admit.pdf"},
+        json={
+            "title": "No Parent",
+            "slug": "no-parent",
+            "download_url": "https://example.com/admit.pdf",
+        },
         headers=auth_header(admin_token),
     )
     assert resp.status_code == 400
@@ -123,6 +139,7 @@ async def test_admin_create_admit_card_both_parents_fails(
         "/api/v1/admin/admit-cards",
         json={
             "title": "Both Parents",
+            "slug": "both-parents",
             "job_id": active_job["id"],
             "admission_id": active_admission["id"],
             "download_url": "https://example.com/admit.pdf",
@@ -203,15 +220,17 @@ async def test_list_answer_keys(client: AsyncClient, admin_token: str, active_jo
     assert resp.json()["pagination"]["total"] >= 1
 
 
-async def test_get_answer_key_by_id(client: AsyncClient, admin_token: str, active_job):
+async def test_get_answer_key_by_slug(
+    client: AsyncClient, admin_token: str, active_job
+):
     key = await _create_answer_key(client, admin_token, active_job)
-    resp = await client.get(f"/api/v1/answer-keys/{key['id']}")
+    resp = await client.get(f"/api/v1/answer-keys/{key['slug']}")
     assert resp.status_code == 200
-    assert resp.json()["id"] == key["id"]
+    assert resp.json()["slug"] == key["slug"]
 
 
 async def test_get_answer_key_not_found(client: AsyncClient):
-    resp = await client.get(f"/api/v1/answer-keys/{uuid.uuid4()}")
+    resp = await client.get("/api/v1/answer-keys/nonexistent-slug")
     assert resp.status_code == 404
 
 
@@ -220,7 +239,11 @@ async def test_admin_create_answer_key(
 ):
     resp = await client.post(
         "/api/v1/admin/answer-keys",
-        json={"title": "SSC CGL Answer Key", "job_id": active_job["id"]},
+        json={
+            "slug": "ssc-cgl-answer-key",
+            "title": "SSC CGL Answer Key",
+            "job_id": active_job["id"],
+        },
         headers=auth_header(admin_token),
     )
     assert resp.status_code == 201
@@ -280,15 +303,15 @@ async def test_list_results(client: AsyncClient, admin_token: str, active_job):
     assert resp.json()["pagination"]["total"] >= 1
 
 
-async def test_get_result_by_id(client: AsyncClient, admin_token: str, active_job):
+async def test_get_result_by_slug(client: AsyncClient, admin_token: str, active_job):
     result = await _create_result(client, admin_token, active_job)
-    resp = await client.get(f"/api/v1/results/{result['id']}")
+    resp = await client.get(f"/api/v1/results/{result['slug']}")
     assert resp.status_code == 200
-    assert resp.json()["id"] == result["id"]
+    assert resp.json()["slug"] == result["slug"]
 
 
 async def test_get_result_not_found(client: AsyncClient):
-    resp = await client.get(f"/api/v1/results/{uuid.uuid4()}")
+    resp = await client.get("/api/v1/results/nonexistent-slug")
     assert resp.status_code == 404
 
 
@@ -296,6 +319,7 @@ async def test_admin_create_result(client: AsyncClient, admin_token: str, active
     resp = await client.post(
         "/api/v1/admin/results",
         json={
+            "slug": "ssc-cgl-result",
             "title": "SSC CGL Result",
             "job_id": active_job["id"],
             "result_type": "final",

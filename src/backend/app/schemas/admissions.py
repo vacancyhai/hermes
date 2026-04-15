@@ -10,11 +10,14 @@ ADMISSION_TYPES = Literal["ug", "pg", "doctoral", "lateral"]
 ADMISSION_STREAMS = Literal[
     "medical", "engineering", "law", "management", "arts_science", "general"
 ]
-ADMISSION_STATUSES = Literal["upcoming", "active", "completed", "cancelled"]
+ADMISSION_STATUSES = Literal["upcoming", "active", "inactive", "closed"]
 
 
 class AdmissionCreateRequest(BaseModel):
     admission_name: str = Field(min_length=1, max_length=500)
+    slug: str = Field(
+        min_length=1, max_length=500, pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    )
     conducting_body: str = Field(min_length=1, max_length=255)
     counselling_body: str | None = None
     admission_type: ADMISSION_TYPES = "pg"
@@ -41,6 +44,9 @@ class AdmissionCreateRequest(BaseModel):
 
 class AdmissionUpdateRequest(BaseModel):
     admission_name: str | None = Field(None, min_length=1, max_length=500)
+    slug: str | None = Field(
+        None, min_length=1, max_length=500, pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    )
     conducting_body: str | None = None
     counselling_body: str | None = None
     admission_type: ADMISSION_TYPES | None = None

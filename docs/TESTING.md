@@ -257,7 +257,7 @@ All POST form tests include `csrf_token` in the form data. The `/auth/firebase-c
 | File | Covers |
 |------|--------|
 | `unit/test_api_client.py` | All methods including `post_file` (timeout, headers, files) |
-| `integration/test_routes.py` | All routes: dashboard (admin vs operator analytics), jobs, new job, job delete, PDF extraction, draft review, users, user detail, role management, logs |
+| `integration/test_routes.py` | All routes: dashboard (admin vs operator analytics), jobs, new job, job delete, PDF extraction, users, user detail, role management, logs |
 
 ### Why Some Admin Frontend Lines Are Uncovered
 
@@ -272,6 +272,6 @@ Cross-service HTTP tests using the `requests` library. All three services must b
 | File | Covers |
 |------|--------|
 | `test_health.py` | Smoke-tests all 3 service `/health` endpoints |
-| `test_full_flow.py` | Job lifecycle (draft → approve → visible on frontend → delete); admin frontend login/navigate/logout; watch job flow (watch → list → unwatch); admission lifecycle |
+| `test_full_flow.py` | Job lifecycle (create active → visible on frontend → delete); admin frontend login/navigate/logout; watch job flow (watch → list → unwatch); admission lifecycle |
 
 In CI (job 4), services are started via `docker-compose.test.yml`, an admin and regular user are seeded, the user JWT is captured as `E2E_USER_TOKEN`, then `pytest tests/e2e/` runs on the host runner.

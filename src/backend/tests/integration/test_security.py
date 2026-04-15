@@ -149,7 +149,8 @@ async def test_xss_in_job_title(client: AsyncClient, admin_token: str):
             "job_title": '<script>alert("xss")</script>',
             "organization": "XSS Test",
             "description": "test",
-            "status": "draft",
+            "status": "active",
+            "slug": "xss-test",
         },
         headers=auth_header(admin_token),
     )

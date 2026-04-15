@@ -882,15 +882,15 @@ SCHEDULED TASKS (beat_schedule in celery_app.py):
 
 4. app.tasks.cleanup.purge_soft_deleted_jobs
    Run: Daily 02:00 UTC
-   Purpose: Hard-delete cancelled jobs older than 90 days
+   Purpose: Hard-delete closed jobs older than 90 days
 
 5. app.tasks.jobs.close_expired_job_listings
    Run: Daily 02:30 UTC
-   Purpose: Set status='expired' on jobs past application_end
+   Purpose: Set status='closed' on jobs past application_end
 
 6. app.tasks.jobs.update_admission_statuses
    Run: Daily 02:35 UTC
-   Purpose: Set status='completed' on admissions past admission_date
+   Purpose: Set status='closed' on admissions past admission_date
 
 7. app.tasks.seo.generate_sitemap
    Run: Daily 04:00 UTC
@@ -1407,10 +1407,11 @@ document tables (`admit_cards`, `answer_keys`, `results`) are
   │    ews/female (integers) │         │  seats_info JSONB            │
   │  source (manual/         │         │  fee_* (5 columns)           │
   │    pdf_upload)           │         │  status (upcoming/active/    │
-  │  search_vector GENERATED │         │    completed/cancelled)      │
-  └──────────┬───────────────┘         │  search_vector GENERATED     │
-             │                         └─────────────┬────────────────┘
-             │                                       │
+  │  status (upcoming/active/│         │    inactive/closed)          │
+  │    inactive/closed)      │         │  search_vector GENERATED     │
+  │  search_vector GENERATED │         │                              │
+  └──────────┬───────────────┘         └─────────────┬────────────────┘
+             │                         │
              │          POLYMORPHIC DOCUMENT TABLES  │
              │          ────────────────────────────  │
              │                                       │

@@ -32,9 +32,13 @@
         </div>
         <div class="section-body">
             <div class="form-grid-3">
-                <div class="form-group col-span-3">
+                <div class="form-group col-span-2">
                     <label for="job_title">Job Title <span class="req">*</span></label>
                     <input id="job_title" type="text" name="job_title" required placeholder="e.g. SSC GD Constable Recruitment 2025">
+                </div>
+                <div class="form-group">
+                    <label for="slug">Slug <span class="req">*</span></label>
+                    <input id="slug" type="text" name="slug" required placeholder="e.g. ssc-gd-2025" pattern="[a-z0-9]+(?:-[a-z0-9]+)*" title="Lowercase letters, numbers and hyphens only">
                 </div>
                 <div class="form-group col-span-2">
                     <label for="organization">Organization <span class="req">*</span></label>
@@ -59,9 +63,10 @@
                 <div class="form-group">
                     <label for="status">Status</label>
                     <select id="status" name="status">
-                        <option value="draft" selected>&#9998; Draft</option>
-                        <option value="active">&#10003; Active</option>
-                        <option value="cancelled">&#10005; Cancelled</option>
+                        <option value="active" selected>&#10003; Active</option>
+                        <option value="upcoming">&#9201; Upcoming</option>
+                        <option value="inactive">&#9940; Inactive</option>
+                        <option value="closed">&#128274; Closed</option>
                     </select>
                 </div>
             </div>

@@ -61,8 +61,12 @@
         <div style="flex-shrink:0;text-align:right">
             {% if job.status == 'active' %}
             <span style="background:#22c55e;color:#fff;padding:.25rem .65rem;border-radius:9999px;font-size:.78rem;font-weight:600">Active</span>
-            {% elif job.status == 'expired' %}
-            <span style="background:#ef4444;color:#fff;padding:.25rem .65rem;border-radius:9999px;font-size:.78rem;font-weight:600">Expired</span>
+            {% elif job.status == 'upcoming' %}
+            <span style="background:#f59e0b;color:#fff;padding:.25rem .65rem;border-radius:9999px;font-size:.78rem;font-weight:600">Upcoming</span>
+            {% elif job.status == 'inactive' %}
+            <span style="background:#94a3b8;color:#fff;padding:.25rem .65rem;border-radius:9999px;font-size:.78rem;font-weight:600">Inactive</span>
+            {% elif job.status == 'closed' %}
+            <span style="background:#ef4444;color:#fff;padding:.25rem .65rem;border-radius:9999px;font-size:.78rem;font-weight:600">Closed</span>
             {% else %}
             <span style="background:rgba(255,255,255,.3);color:#fff;padding:.25rem .65rem;border-radius:9999px;font-size:.78rem;font-weight:600">{{ job.status|title }}</span>
             {% endif %}
@@ -74,14 +78,14 @@
 <div class="action-bar">
     {% if session.get('token') %}
         {% if watching %}
-        <form method="post" action="/jobs/{{ job.id }}/unwatch" style="display:inline">
+        <form method="post" action="/jobs/{{ job.slug }}/unwatch" style="display:inline">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <button type="submit" class="share-btn" style="background:#fef3c7;color:#92400e;border-color:#fde68a">
                 ★ Watching — Remove
             </button>
         </form>
         {% else %}
-        <form method="post" action="/jobs/{{ job.id }}/watch" style="display:inline">
+        <form method="post" action="/jobs/{{ job.slug }}/watch" style="display:inline">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <button type="submit" class="share-btn" style="background:#dbeafe;color:#1e40af;border-color:#bfdbfe">
                 ☆ Watch for Reminders
@@ -89,7 +93,7 @@
         </form>
         {% endif %}
     {% else %}
-    <a href="/login?next=/jobs/{{ job.id }}" class="share-btn" style="background:#dbeafe;color:#1e40af;border-color:#bfdbfe">☆ Watch for Reminders</a>
+    <a href="/login?next=/jobs/{{ job.slug }}" class="share-btn" style="background:#dbeafe;color:#1e40af;border-color:#bfdbfe">☆ Watch for Reminders</a>
     {% endif %}
     {% if job.source_url %}
     <a href="{{ job.source_url }}" target="_blank" rel="noopener" class="share-btn">🔗 Official Website</a>
@@ -193,13 +197,14 @@
 {% endif %}
 
 <!-- Zone-wise Vacancy -->
-{% if job.exam_details and job.exam_details.get('zonewise_vacancy') %}
+{% set zonewise = (job.vacancy_breakdown or {}).get('zonewise_vacancy') %}
+{% if zonewise %}
 <div class="detail-section">
     <h2>🗺️ Zone-wise Vacancy</h2>
     <table class="fee-table">
         <thead><tr><th>Zone</th><th>Total</th><th>UR</th><th>OBC</th><th>EWS</th><th>SC</th><th>ST</th><th>Male</th><th>Female</th></tr></thead>
         <tbody>
-        {% for z in job.exam_details.zonewise_vacancy %}
+        {% for z in zonewise %}
         <tr>
             <td><strong>{{ z.get('zone','—') }}</strong></td>
             <td>{{ z.get('total','—') }}</td>
@@ -218,24 +223,15 @@
 {% endif %}
 
 <!-- Posts & Vacancies + Selection Process -->
-{#
-  selection_process is a list of POST-DICTS:
-  [{post_name, postwise_vacancy:{UR,OBC,EWS,SC,ST,PWD,male,female,total},
-    salary:{min,max,pay_level}, fee:{general,obc,sc_st,ews,female},
-    eligibility:{qualification, qualification_level,
-      male:{age_limit:{min,max}, physical_standards:{general:{height_cm,chest_cm}}},
-      female:{age_limit:{min,max}, physical_standards:{all:{height_cm,weight_kg}}}},
-    selection_process:[{phase,type,name,qualifying,mode,total_marks,duration_minutes,negative_marking,subjects:[{name,questions,marks}],documents:[]}]
-  }]
-#}
-{% if job.selection_process %}
-{% set first = job.selection_process[0] %}
+{% set vb_posts = (job.vacancy_breakdown or {}).get('posts') %}
+{% if vb_posts %}
+{% set first = vb_posts[0] %}
 {% if first is mapping and first.get('post_name') %}
 
 <!-- Posts & Vacancies -->
 <div class="detail-section">
     <h2>👥 Posts &amp; Vacancies</h2>
-    {% for post in job.selection_process %}
+    {% for post in vb_posts %}
     <div class="post-card">
         <div class="post-card-header">
             <span class="post-name">{{ post.get('post_name','—') }}</span>
@@ -274,62 +270,105 @@
                 <div style="font-size:.8rem;color:#475569"><strong>Age (F):</strong> {{ fl.get('min','?') }}–{{ fl.get('max','?') }} yrs</div>
                 {% endif %}
             </div>
+            {% set sp = post.get('selection_process', []) %}
+            {% if sp %}
+            <div style="margin-top:.75rem;border-top:1px solid #e2e8f0;padding-top:.6rem">
+                <div style="font-size:.75rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.5rem">Selection Process</div>
+                {% for step in sp %}
+                {% if step is mapping %}
+                {% set stype = step.get('type','') %}
+                <div class="phase-card phase-card-{{ 'doc' if stype == 'document' else 'test' }}" style="margin-bottom:.5rem">
+                    <div class="phase-card-head">
+                        <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
+                            {% if step.get('phase') %}<span class="phase-num">Phase {{ step.phase }}</span>{% endif %}
+                            <span class="phase-title">{{ step.get('name','—') }}</span>
+                            {% if step.get('qualifying') %}<span class="meta-pill pill-green" style="font-size:.72rem">Qualifying Only</span>{% endif %}
+                        </div>
+                        <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.3rem">
+                            {% if step.get('mode') %}<span class="meta-pill pill-blue">{{ step.mode }}</span>{% endif %}
+                            {% if step.get('total_marks') %}<span class="meta-pill pill-purple">{{ step.total_marks }} marks</span>{% endif %}
+                            {% if step.get('duration_minutes') %}<span class="meta-pill pill-amber">{{ step.duration_minutes }} min</span>{% endif %}
+                            {% if step.get('negative_marking') %}<span class="meta-pill pill-red">–{{ step.negative_marking }} per wrong</span>{% endif %}
+                        </div>
+                    </div>
+                    {% if step.get('subjects') %}
+                    <table class="fee-table" style="margin-top:.6rem">
+                        <thead><tr><th>Subject</th><th style="text-align:right">Questions</th><th style="text-align:right">Marks</th></tr></thead>
+                        <tbody>
+                        {% for sub in step.subjects %}
+                        <tr><td>{{ sub.get('name','—') }}</td><td style="text-align:right">{{ sub.get('questions','—') }}</td><td style="text-align:right">{{ sub.get('marks','—') }}</td></tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                    {% endif %}
+                    {% if stype == 'physical_test' and (step.get('male') or step.get('female')) %}
+                    <table class="fee-table" style="margin-top:.6rem">
+                        <thead><tr><th>Event</th><th>Male</th><th>Female</th></tr></thead>
+                        <tbody>
+                        {% set male = step.get('male',{}) %}{% set female = step.get('female',{}) %}
+                        {% set events = (male.keys()|list + female.keys()|list)|unique %}
+                        {% for ev in events %}
+                        <tr>
+                            <td style="text-transform:capitalize">{{ ev|replace('_',' ') }}</td>
+                            <td style="font-size:.85rem">{{ male.get(ev,'—') }}</td>
+                            <td style="font-size:.85rem">{{ female.get(ev,'—') }}</td>
+                        </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                    {% endif %}
+                    {% if stype == 'physical_standard' %}
+                    {% for gender, cats in [('Male', step.get('male',{})), ('Female', step.get('female',{}))] %}
+                    {% if cats %}
+                    <div style="padding:.5rem .9rem .25rem;font-size:.8rem;font-weight:700;color:#475569">{{ gender }}</div>
+                    <table class="fee-table" style="margin-bottom:.5rem">
+                        <thead><tr><th>Category</th><th>Height (cm)</th><th>Chest (cm)</th><th>Weight (kg)</th></tr></thead>
+                        <tbody>
+                        {% for cat, vals in cats.items() %}
+                        <tr>
+                            <td style="text-transform:capitalize">{{ cat|replace('_',' ')|title }}</td>
+                            <td>{{ vals.get('height_cm','—') }}</td>
+                            <td>{{ vals.get('chest_cm','—') }}</td>
+                            <td>{{ vals.get('weight_kg','—') }}</td>
+                        </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                    {% endif %}
+                    {% endfor %}
+                    {% endif %}
+                    {% if stype == 'medical' %}
+                    <div style="padding:.5rem .9rem .75rem">
+                        {% if step.get('vision') %}<p style="font-size:.875rem;color:#334155;margin-bottom:.3rem"><strong>Vision:</strong> {{ step.vision }}</p>{% endif %}
+                        {% if step.get('color_blindness') %}<p style="font-size:.875rem;color:#334155;margin-bottom:.3rem"><strong>Colour Blindness:</strong> {{ step.color_blindness }}</p>{% endif %}
+                        {% if step.get('other') %}<p style="font-size:.875rem;color:#334155"><strong>Other:</strong> {{ step.other }}</p>{% endif %}
+                    </div>
+                    {% endif %}
+                    {% if step.get('documents') %}
+                    <ul style="margin-top:.5rem;padding-left:1.2rem">
+                        {% for d in step.documents %}<li style="font-size:.85rem;color:#475569">{{ d }}</li>{% endfor %}
+                    </ul>
+                    {% endif %}
+                </div>
+                {% else %}
+                <div class="phase-card phase-card-test" style="margin-bottom:.5rem"><div class="phase-card-head"><span class="phase-title">{{ step }}</span></div></div>
+                {% endif %}
+                {% endfor %}
+            </div>
+            {% endif %}
         </div>
     </div>
     {% endfor %}
 </div>
-
-<!-- Selection Process (phases from first post — common to all) -->
-{% set phases = first.get('selection_process', []) %}
-{% if phases %}
-<div class="detail-section">
-    <h2>🎯 Selection Process</h2>
-    {% for step in phases %}
-    {% if step is mapping %}
-    <div class="phase-card phase-card-{{ 'doc' if step.get('type') == 'document' else 'test' }}">
-        <div class="phase-card-head">
-            <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
-                {% if step.get('phase') %}<span class="phase-num">Phase {{ step.phase }}</span>{% endif %}
-                <span class="phase-title">{{ step.get('name','—') }}</span>
-                {% if step.get('qualifying') %}<span class="meta-pill pill-green" style="font-size:.72rem">Qualifying Only</span>{% endif %}
-            </div>
-            <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.3rem">
-                {% if step.get('mode') %}<span class="meta-pill pill-blue">{{ step.mode }}</span>{% endif %}
-                {% if step.get('total_marks') %}<span class="meta-pill pill-purple">{{ step.total_marks }} marks</span>{% endif %}
-                {% if step.get('duration_minutes') %}<span class="meta-pill pill-amber">{{ step.duration_minutes }} min</span>{% endif %}
-                {% if step.get('negative_marking') %}<span class="meta-pill pill-red">–{{ step.negative_marking }} per wrong</span>{% endif %}
-            </div>
-        </div>
-        {% if step.get('subjects') %}
-        <table class="fee-table" style="margin-top:.6rem">
-            <thead><tr><th>Subject</th><th style="text-align:right">Questions</th><th style="text-align:right">Marks</th></tr></thead>
-            <tbody>
-            {% for sub in step.subjects %}
-            <tr><td>{{ sub.get('name','—') }}</td><td style="text-align:right">{{ sub.get('questions','—') }}</td><td style="text-align:right">{{ sub.get('marks','—') }}</td></tr>
-            {% endfor %}
-            </tbody>
-        </table>
-        {% endif %}
-        {% if step.get('documents') %}
-        <ul style="margin-top:.5rem;padding-left:1.2rem">
-            {% for d in step.documents %}<li style="font-size:.85rem;color:#475569">{{ d }}</li>{% endfor %}
-        </ul>
-        {% endif %}
-    </div>
-    {% else %}
-    <div class="phase-card phase-card-test"><div class="phase-card-head"><span class="phase-title">{{ step }}</span></div></div>
-    {% endif %}
-    {% endfor %}
-</div>
-{% endif %}
 
 {% else %}
 {# Direct phase-step list (no post_name key) #}
 <div class="detail-section">
     <h2>🎯 Selection Process</h2>
-    {% for step in job.selection_process %}
+    {% for step in vb_posts %}
     {% if step is mapping %}
-    <div class="phase-card phase-card-{{ 'doc' if step.get('type') == 'document' else 'test' }}">
+    {% set stype = step.get('type','') %}
+    <div class="phase-card phase-card-{{ 'doc' if stype == 'document' else 'test' }}">
         <div class="phase-card-head">
             <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
                 {% if step.get('phase') %}<span class="phase-num">Phase {{ step.phase }}</span>{% endif %}
@@ -352,6 +391,49 @@
             {% endfor %}
             </tbody>
         </table>
+        {% endif %}
+        {% if stype == 'physical_test' and (step.get('male') or step.get('female')) %}
+        <table class="fee-table" style="margin-top:.6rem">
+            <thead><tr><th>Event</th><th>Male</th><th>Female</th></tr></thead>
+            <tbody>
+            {% set male = step.get('male',{}) %}{% set female = step.get('female',{}) %}
+            {% set events = (male.keys()|list + female.keys()|list)|unique %}
+            {% for ev in events %}
+            <tr>
+                <td style="text-transform:capitalize">{{ ev|replace('_',' ') }}</td>
+                <td style="font-size:.85rem">{{ male.get(ev,'—') }}</td>
+                <td style="font-size:.85rem">{{ female.get(ev,'—') }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+        {% if stype == 'physical_standard' %}
+        {% for gender, cats in [('Male', step.get('male',{})), ('Female', step.get('female',{}))] %}
+        {% if cats %}
+        <div style="padding:.5rem .9rem .25rem;font-size:.8rem;font-weight:700;color:#475569">{{ gender }}</div>
+        <table class="fee-table" style="margin-bottom:.5rem">
+            <thead><tr><th>Category</th><th>Height (cm)</th><th>Chest (cm)</th><th>Weight (kg)</th></tr></thead>
+            <tbody>
+            {% for cat, vals in cats.items() %}
+            <tr>
+                <td style="text-transform:capitalize">{{ cat|replace('_',' ')|title }}</td>
+                <td>{{ vals.get('height_cm','—') }}</td>
+                <td>{{ vals.get('chest_cm','—') }}</td>
+                <td>{{ vals.get('weight_kg','—') }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+        {% endfor %}
+        {% endif %}
+        {% if stype == 'medical' %}
+        <div style="padding:.5rem .9rem .75rem">
+            {% if step.get('vision') %}<p style="font-size:.875rem;color:#334155;margin-bottom:.3rem"><strong>Vision:</strong> {{ step.vision }}</p>{% endif %}
+            {% if step.get('color_blindness') %}<p style="font-size:.875rem;color:#334155;margin-bottom:.3rem"><strong>Colour Blindness:</strong> {{ step.color_blindness }}</p>{% endif %}
+            {% if step.get('other') %}<p style="font-size:.875rem;color:#334155"><strong>Other:</strong> {{ step.other }}</p>{% endif %}
+        </div>
         {% endif %}
         {% if step.get('documents') %}
         <ul style="margin-top:.5rem;padding-left:1.2rem">
@@ -414,12 +496,13 @@
 </div>
 {% endif %}
 
-<!-- Important Links (stored in job.documents as [{type,text,url}]) -->
-{% if job.documents %}
+<!-- Important Links (stored in job.application_details.important_links) -->
+{% set imp_links = (job.application_details or {}).get('important_links', []) %}
+{% if imp_links %}
 <div class="detail-section">
     <h2>🔗 Important Links</h2>
     <div style="display:flex;flex-wrap:wrap;gap:.5rem">
-        {% for link in job.documents %}
+        {% for link in imp_links %}
         {% if link is mapping and link.get('url') %}
         {% set ltype = link.get('type','') %}
         <a href="{{ link.url }}" target="_blank" rel="noopener"
@@ -457,6 +540,7 @@
                 </div>
                 <div class="doc-card-actions">
                     <a href="{{ card.download_url }}" target="_blank" rel="noopener" class="doc-btn doc-btn-blue">⬇ Download</a>
+                    <a href="/admit-cards/{{ card.slug }}" class="doc-btn" style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe">View →</a>
                 </div>
             </div>
             {% endfor %}
@@ -473,7 +557,9 @@
                     {% if key.notes %}<div class="doc-note">{{ key.notes }}</div>{% endif %}
                 </div>
                 <div class="doc-card-actions">
-                    <a href="{{ key.download_url }}" target="_blank" rel="noopener" class="doc-btn doc-btn-amber">⬇ Download</a>
+                    {% if key.files %}<a href="{{ key.files[0].get('url') or key.files[0].get('download_url','#') }}" target="_blank" rel="noopener" class="doc-btn doc-btn-amber">⬇ Download</a>{% endif %}
+                    {% if key.objection_url %}<a href="{{ key.objection_url }}" target="_blank" rel="noopener" class="doc-btn" style="background:#fffbeb;color:#92400e;border:1px solid #fde68a">✍️ Objection</a>{% endif %}
+                    <a href="/answer-keys/{{ key.slug }}" class="doc-btn" style="background:#f5f3ff;color:#6d28d9;border:1px solid #ddd6fe">View →</a>
                 </div>
             </div>
             {% endfor %}
@@ -489,7 +575,8 @@
                     {% if res.notes %}<div class="doc-note">{{ res.notes }}</div>{% endif %}
                 </div>
                 <div class="doc-card-actions">
-                    <a href="{{ res.download_url }}" target="_blank" rel="noopener" class="doc-btn doc-btn-green">⬇ Download</a>
+                    {% if res.download_url %}<a href="{{ res.download_url }}" target="_blank" rel="noopener" class="doc-btn doc-btn-green">⬇ Download</a>{% endif %}
+                    <a href="/results/{{ res.slug }}" class="doc-btn" style="background:#f0fdf4;color:#166534;border:1px solid #bbf7d0">View →</a>
                 </div>
             </div>
             {% endfor %}

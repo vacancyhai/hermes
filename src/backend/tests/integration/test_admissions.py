@@ -50,20 +50,19 @@ async def test_list_admissions_fts_search(client: AsyncClient, active_admission)
 # ── Public: detail ─────────────────────────────────────────────────────────────
 
 
-async def test_get_admission_by_id(client: AsyncClient, active_admission):
-    admission_id = active_admission["id"]
-    resp = await client.get(f"/api/v1/admissions/{admission_id}")
+async def test_get_admission_by_slug(client: AsyncClient, active_admission):
+    slug = active_admission["slug"]
+    resp = await client.get(f"/api/v1/admissions/{slug}")
     assert resp.status_code == 200
     data = resp.json()
-    assert data["id"] == admission_id
+    assert data["slug"] == slug
     assert "admit_cards" in data
     assert "answer_keys" in data
     assert "results" in data
 
 
 async def test_get_admission_not_found(client: AsyncClient):
-    fake_id = uuid.uuid4()
-    resp = await client.get(f"/api/v1/admissions/{fake_id}")
+    resp = await client.get("/api/v1/admissions/nonexistent-slug-that-does-not-exist")
     assert resp.status_code == 404
 
 
@@ -100,10 +99,12 @@ async def test_admin_list_admissions_unauthenticated(client: AsyncClient):
 
 
 async def test_admin_create_admission(client: AsyncClient, admin_token: str):
+    uid = uuid.uuid4().hex[:4]
     resp = await client.post(
         "/api/v1/admin/admissions",
         json={
-            "admission_name": f"JEE Main {uuid.uuid4().hex[:4]}",
+            "admission_name": f"JEE Main {uid}",
+            "slug": f"jee-main-{uid}",
             "conducting_body": "NTA",
             "stream": "engineering",
             "status": "upcoming",
@@ -113,34 +114,46 @@ async def test_admin_create_admission(client: AsyncClient, admin_token: str):
     assert resp.status_code == 201
     data = resp.json()
     assert "id" in data
-    assert "slug" in data
+    assert data["slug"] == f"jee-main-{uid}"
     assert data["stream"] == "engineering"
 
 
-async def test_admin_create_admission_slug_unique(
+async def test_admin_create_admission_slug_conflict(
     client: AsyncClient, admin_token: str
 ):
-    name = f"Slug Admission {uuid.uuid4().hex[:4]}"
+    uid = uuid.uuid4().hex[:4]
+    slug = f"slug-admission-{uid}"
     resp1 = await client.post(
         "/api/v1/admin/admissions",
-        json={"admission_name": name, "conducting_body": "NTA", "status": "upcoming"},
+        json={
+            "admission_name": f"Slug Admission {uid}",
+            "slug": slug,
+            "conducting_body": "NTA",
+            "status": "upcoming",
+        },
         headers=auth_header(admin_token),
     )
     resp2 = await client.post(
         "/api/v1/admin/admissions",
-        json={"admission_name": name, "conducting_body": "NTA", "status": "upcoming"},
+        json={
+            "admission_name": f"Slug Admission {uid} copy",
+            "slug": slug,
+            "conducting_body": "NTA",
+            "status": "upcoming",
+        },
         headers=auth_header(admin_token),
     )
     assert resp1.status_code == 201
-    assert resp2.status_code == 201
-    assert resp1.json()["slug"] != resp2.json()["slug"]
+    assert resp2.status_code == 409
 
 
 async def test_operator_can_create_admission(client: AsyncClient, operator_token: str):
+    uid = uuid.uuid4().hex[:4]
     resp = await client.post(
         "/api/v1/admin/admissions",
         json={
-            "admission_name": f"Operator Admission {uuid.uuid4().hex[:4]}",
+            "admission_name": f"Operator Admission {uid}",
+            "slug": f"operator-admission-{uid}",
             "conducting_body": "NTA",
             "status": "upcoming",
         },
@@ -158,18 +171,18 @@ async def test_admin_update_admission(
     admission_id = active_admission["id"]
     resp = await client.put(
         f"/api/v1/admin/admissions/{admission_id}",
-        json={"status": "completed"},
+        json={"status": "closed"},
         headers=auth_header(admin_token),
     )
     assert resp.status_code == 200
-    assert resp.json()["status"] == "completed"
+    assert resp.json()["status"] == "closed"
 
 
 async def test_admin_update_admission_not_found(client: AsyncClient, admin_token: str):
     fake_id = uuid.uuid4()
     resp = await client.put(
         f"/api/v1/admin/admissions/{fake_id}",
-        json={"status": "completed"},
+        json={"status": "closed"},
         headers=auth_header(admin_token),
     )
     assert resp.status_code == 404
@@ -179,10 +192,12 @@ async def test_admin_update_admission_not_found(client: AsyncClient, admin_token
 
 
 async def test_admin_delete_admission(client: AsyncClient, admin_token: str):
+    uid = uuid.uuid4().hex[:4]
     create_resp = await client.post(
         "/api/v1/admin/admissions",
         json={
-            "admission_name": f"Delete Me {uuid.uuid4().hex[:4]}",
+            "admission_name": f"Delete Me {uid}",
+            "slug": f"delete-me-{uid}",
             "conducting_body": "NTA",
             "status": "upcoming",
         },

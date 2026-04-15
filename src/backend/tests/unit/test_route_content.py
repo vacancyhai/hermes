@@ -216,7 +216,7 @@ async def test_get_admit_card_not_found():
     from fastapi import HTTPException
 
     with pytest.raises(HTTPException) as exc:
-        await get_admit_card(card_id=uuid.uuid4(), db=_db_single(None))
+        await get_admit_card(slug="nonexistent", db=_db_single(None))
     assert exc.value.status_code == 404
 
 
@@ -226,9 +226,10 @@ async def test_get_admit_card_found_no_parent():
     from app.schemas.jobs import AdmitCardResponse
 
     card = _make_card()
+    card.slug = "test-card"
     mock_r = _mock_resp(card.id)
     with patch.object(AdmitCardResponse, "model_validate", return_value=mock_r):
-        result = await get_admit_card(card_id=card.id, db=_db_single(card))
+        result = await get_admit_card(slug=card.slug, db=_db_single(card))
     assert result["id"] == str(card.id)
     assert "job" not in result
     assert "admission" not in result
@@ -241,6 +242,7 @@ async def test_get_admit_card_found_with_job():
 
     job_id = uuid.uuid4()
     card = _make_card(job_id=job_id)
+    card.slug = "test-card"
     card.job = MagicMock()
     card.job.id = job_id
     card.job.slug = "ssc-cgl"
@@ -248,7 +250,7 @@ async def test_get_admit_card_found_with_job():
     card.job.organization = "SSC"
     mock_r = _mock_resp(card.id)
     with patch.object(AdmitCardResponse, "model_validate", return_value=mock_r):
-        result = await get_admit_card(card_id=card.id, db=_db_single(card))
+        result = await get_admit_card(slug=card.slug, db=_db_single(card))
     assert result["job"]["slug"] == "ssc-cgl"
 
 
@@ -259,6 +261,7 @@ async def test_get_admit_card_found_with_admission():
 
     admission_id = uuid.uuid4()
     card = _make_card(admission_id=admission_id)
+    card.slug = "test-card"
     card.admission = MagicMock()
     card.admission.id = admission_id
     card.admission.slug = "neet-2025"
@@ -266,7 +269,7 @@ async def test_get_admit_card_found_with_admission():
     card.admission.conducting_body = "NTA"
     mock_r = _mock_resp(card.id)
     with patch.object(AdmitCardResponse, "model_validate", return_value=mock_r):
-        result = await get_admit_card(card_id=card.id, db=_db_single(card))
+        result = await get_admit_card(slug=card.slug, db=_db_single(card))
     assert result["admission"]["slug"] == "neet-2025"
 
 
@@ -300,6 +303,7 @@ async def test_admin_create_admit_card_both_parents_raises():
         job_id=uuid.uuid4(),
         admission_id=uuid.uuid4(),
         title="Card",
+        slug="test-card",
         download_url="https://x.com/c.pdf",
     )
     with pytest.raises(HTTPException) as exc:
@@ -313,7 +317,9 @@ async def test_admin_create_admit_card_no_parent_raises():
     from app.schemas.jobs import AdmitCardCreateRequest
     from fastapi import HTTPException
 
-    body = AdmitCardCreateRequest(title="Card", download_url="https://x.com/c.pdf")
+    body = AdmitCardCreateRequest(
+        title="Card", slug="test-card", download_url="https://x.com/c.pdf"
+    )
     with pytest.raises(HTTPException) as exc:
         await admin_create_admit_card(body=body, admin=MagicMock(), db=AsyncMock())
     assert exc.value.status_code == 400
@@ -326,12 +332,17 @@ async def test_admin_create_admit_card_success():
 
     job_id = uuid.uuid4()
     body = AdmitCardCreateRequest(
-        job_id=job_id, title="Card", download_url="https://x.com/c.pdf"
+        job_id=job_id,
+        title="Card",
+        slug="test-card",
+        download_url="https://x.com/c.pdf",
     )
     db = AsyncMock()
     parent_res = MagicMock()
     parent_res.scalar.return_value = job_id
-    db.execute = AsyncMock(return_value=parent_res)
+    slug_res = MagicMock()
+    slug_res.scalar.return_value = None
+    db.execute = AsyncMock(side_effect=[parent_res, slug_res])
     with patch.object(
         AdmitCardResponse, "model_validate", return_value=_mock_resp(uuid.uuid4())
     ):
@@ -429,7 +440,7 @@ async def test_get_answer_key_not_found():
     from fastapi import HTTPException
 
     with pytest.raises(HTTPException) as exc:
-        await get_answer_key(key_id=uuid.uuid4(), db=_db_single(None))
+        await get_answer_key(slug="nonexistent", db=_db_single(None))
     assert exc.value.status_code == 404
 
 
@@ -440,6 +451,7 @@ async def test_get_answer_key_found_with_job():
 
     job_id = uuid.uuid4()
     key = _make_key(job_id=job_id)
+    key.slug = "test-key"
     key.job = MagicMock()
     key.job.id = job_id
     key.job.slug = "upsc-2025"
@@ -447,7 +459,7 @@ async def test_get_answer_key_found_with_job():
     key.job.organization = "UPSC"
     mock_r = _mock_resp(key.id)
     with patch.object(AnswerKeyResponse, "model_validate", return_value=mock_r):
-        result = await get_answer_key(key_id=key.id, db=_db_single(key))
+        result = await get_answer_key(slug=key.slug, db=_db_single(key))
     assert result["job"]["slug"] == "upsc-2025"
 
 
@@ -458,6 +470,7 @@ async def test_get_answer_key_found_with_admission():
 
     admission_id = uuid.uuid4()
     key = _make_key(admission_id=admission_id)
+    key.slug = "test-key"
     key.admission = MagicMock()
     key.admission.id = admission_id
     key.admission.slug = "jee-2025"
@@ -465,7 +478,7 @@ async def test_get_answer_key_found_with_admission():
     key.admission.conducting_body = "NTA"
     mock_r = _mock_resp(key.id)
     with patch.object(AnswerKeyResponse, "model_validate", return_value=mock_r):
-        result = await get_answer_key(key_id=key.id, db=_db_single(key))
+        result = await get_answer_key(slug=key.slug, db=_db_single(key))
     assert result["admission"]["slug"] == "jee-2025"
 
 
@@ -496,12 +509,14 @@ async def test_admin_create_answer_key_success():
 
     job_id = uuid.uuid4()
     body = AnswerKeyCreateRequest(
-        job_id=job_id, title="Key", answer_key_type="provisional"
+        job_id=job_id, title="Key", slug="test-key", answer_key_type="provisional"
     )
     db = AsyncMock()
     parent_res = MagicMock()
     parent_res.scalar.return_value = job_id
-    db.execute = AsyncMock(return_value=parent_res)
+    slug_res = MagicMock()
+    slug_res.scalar.return_value = None
+    db.execute = AsyncMock(side_effect=[parent_res, slug_res])
     with patch.object(
         AnswerKeyResponse, "model_validate", return_value=_mock_resp(uuid.uuid4())
     ):
@@ -598,7 +613,7 @@ async def test_get_result_not_found():
     from fastapi import HTTPException
 
     with pytest.raises(HTTPException) as exc:
-        await get_result(result_id=uuid.uuid4(), db=_db_single(None))
+        await get_result(slug="nonexistent", db=_db_single(None))
     assert exc.value.status_code == 404
 
 
@@ -608,9 +623,10 @@ async def test_get_result_found_no_parent():
     from app.schemas.jobs import ResultResponse
 
     res_obj = _make_result()
+    res_obj.slug = "test-result"
     mock_r = _mock_resp(res_obj.id)
     with patch.object(ResultResponse, "model_validate", return_value=mock_r):
-        result = await get_result(result_id=res_obj.id, db=_db_single(res_obj))
+        result = await get_result(slug=res_obj.slug, db=_db_single(res_obj))
     assert result["id"] == str(res_obj.id)
 
 
@@ -621,6 +637,7 @@ async def test_get_result_found_with_job():
 
     job_id = uuid.uuid4()
     res_obj = _make_result(job_id=job_id)
+    res_obj.slug = "test-result"
     res_obj.job = MagicMock()
     res_obj.job.id = job_id
     res_obj.job.slug = "ibps-po"
@@ -628,7 +645,7 @@ async def test_get_result_found_with_job():
     res_obj.job.organization = "IBPS"
     mock_r = _mock_resp(res_obj.id)
     with patch.object(ResultResponse, "model_validate", return_value=mock_r):
-        result = await get_result(result_id=res_obj.id, db=_db_single(res_obj))
+        result = await get_result(slug=res_obj.slug, db=_db_single(res_obj))
     assert result["job"]["slug"] == "ibps-po"
 
 
@@ -639,6 +656,7 @@ async def test_get_result_found_with_admission():
 
     admission_id = uuid.uuid4()
     res_obj = _make_result(admission_id=admission_id)
+    res_obj.slug = "test-result"
     res_obj.admission = MagicMock()
     res_obj.admission.id = admission_id
     res_obj.admission.slug = "clat-2025"
@@ -646,7 +664,7 @@ async def test_get_result_found_with_admission():
     res_obj.admission.conducting_body = "NLU"
     mock_r = _mock_resp(res_obj.id)
     with patch.object(ResultResponse, "model_validate", return_value=mock_r):
-        result = await get_result(result_id=res_obj.id, db=_db_single(res_obj))
+        result = await get_result(slug=res_obj.slug, db=_db_single(res_obj))
     assert result["admission"]["slug"] == "clat-2025"
 
 
@@ -676,11 +694,15 @@ async def test_admin_create_result_success():
     from app.schemas.jobs import ResultCreateRequest, ResultResponse
 
     job_id = uuid.uuid4()
-    body = ResultCreateRequest(job_id=job_id, title="Final Result", result_type="final")
+    body = ResultCreateRequest(
+        job_id=job_id, title="Final Result", slug="test-result", result_type="final"
+    )
     db = AsyncMock()
     parent_res = MagicMock()
     parent_res.scalar.return_value = job_id
-    db.execute = AsyncMock(return_value=parent_res)
+    slug_res = MagicMock()
+    slug_res.scalar.return_value = None
+    db.execute = AsyncMock(side_effect=[parent_res, slug_res])
     with patch.object(
         ResultResponse, "model_validate", return_value=_mock_resp(uuid.uuid4())
     ):

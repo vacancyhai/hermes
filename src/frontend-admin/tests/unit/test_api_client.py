@@ -48,8 +48,8 @@ def test_get_url():
 
 def test_get_params():
     c = _client()
-    c.get("/admin/jobs", params={"status": "draft"})
-    assert c.session.get.call_args[1]["params"] == {"status": "draft"}
+    c.get("/admin/jobs", params={"status": "active"})
+    assert c.session.get.call_args[1]["params"] == {"status": "active"}
 
 
 def test_get_with_token():
@@ -77,8 +77,8 @@ def test_post_json():
 
 def test_put_url():
     c = _client()
-    c.put("/admin/jobs/123/approve")
-    assert c.session.put.call_args[0][0] == "http://backend:8000/api/v1/admin/jobs/123/approve"
+    c.put("/admin/jobs/123")
+    assert c.session.put.call_args[0][0] == "http://backend:8000/api/v1/admin/jobs/123"
 
 
 def test_put_with_json():

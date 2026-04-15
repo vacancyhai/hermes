@@ -190,14 +190,13 @@ Content is stored across four dedicated tables: `jobs`, `admit_cards`, `answer_k
 |--------|----------|------|-------------|
 | GET | `/admin/jobs/:id` | Operator+ | Get single content detail |
 | PUT | `/admin/jobs/:id` | Operator+ | Update content |
-| PUT | `/admin/jobs/:id/approve` | Operator+ | Approve draft → active |
-| DELETE | `/admin/jobs/:id` | Admin only | Soft-delete (→ cancelled) |
+| DELETE | `/admin/jobs/:id` | Admin only | Hard-delete (cascade) |
 
 **Query Parameters for List Endpoints:**
 
 | Param | Type | Description |
 |-------|------|-------------|
-| `status` | string | Filter by status (active/draft/cancelled) |
+| `status` | string | Filter by status (`upcoming` / `active` / `inactive` / `closed`) |
 | `limit` | int | 1-100, default: 20 |
 | `offset` | int | Default: 0 |
 
@@ -342,7 +341,7 @@ Authorization: Bearer <admin_token>
   "total_vacancies": 8000,
   "description": "Combined Graduate Level recruitment...",
   "application_end": "2026-07-15",
-  "status": "draft"
+  "status": "active"
 }
 → 201 { "id": "uuid", "slug": "ssc-cgl-2026", ... }
 ```
@@ -460,7 +459,7 @@ Authorization: Bearer <admin_token>
 GET /api/v1/admin/stats
 Authorization: Bearer <admin_token>
 → 200 {
-  "jobs": { "total": 7, "active": 6, "draft": 0 },
+  "jobs": { "total": 7, "active": 6 },
   "admit_cards": { "total": 15 },
   "answer_keys": { "total": 3 },
   "results": { "total": 2 },
@@ -691,10 +690,10 @@ They have admission-specific fields: `stream`, `admission_type`, `counselling_bo
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/admissions` | List active admissions (stream/admission_type/search filters) |
-| GET | `/admissions/{slug}` | Admission detail by slug |
-| GET | `/admissions/{admission_id}/admit-cards` | Per-phase admit cards (admission status must not be `cancelled`) |
-| GET | `/admissions/{admission_id}/answer-keys` | Per-phase answer keys (admission status must not be `cancelled`) |
-| GET | `/admissions/{admission_id}/results` | Per-phase results (admission status must not be `cancelled`) |
+| GET | `/admissions/{slug}` | Admission detail by slug (unique URL-friendly identifier) |
+| GET | `/admissions/{slug}/admit-cards` | Per-phase admit cards (admission status must not be `closed`) |
+| GET | `/admissions/{slug}/answer-keys` | Per-phase answer keys (admission status must not be `closed`) |
+| GET | `/admissions/{slug}/results` | Per-phase results (admission status must not be `closed`) |
 
 **Query Parameters for `GET /admissions`:**
 

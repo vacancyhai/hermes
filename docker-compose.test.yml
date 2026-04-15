@@ -5,8 +5,9 @@ services:
     env_file:
       - ./config/test/.env.backend
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-hermes_test_db}
-      POSTGRES_USER: ${POSTGRES_USER:-hermes_user}
+      POSTGRES_DB: hermes_test_db
+      POSTGRES_USER: hermes_user
+      POSTGRES_PASSWORD: hermes_ci_pass  # pragma: allowlist secret
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-hermes_user} -d ${POSTGRES_DB:-hermes_test_db}"]
       interval: 10s

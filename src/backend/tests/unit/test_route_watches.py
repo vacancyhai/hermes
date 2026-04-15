@@ -138,7 +138,7 @@ async def test_watch_job_success():
     assert result["watching"] is True
     assert "now watching" in result["message"].lower()
     db.add.assert_called_once()
-    db.commit.assert_called_once()
+    db.commit.assert_not_called()
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -172,7 +172,36 @@ async def test_unwatch_job_success():
     assert result["watching"] is False
     assert "unwatched" in result["message"].lower()
     db.delete.assert_called_once_with(watch)
-    db.commit.assert_called_once()
+    db.commit.assert_not_called()
+
+
+# ═══════════════════════════════════════════════════════════════
+# job_watch_status
+# ═══════════════════════════════════════════════════════════════
+
+
+@pytest.mark.asyncio
+async def test_job_watch_status_watching():
+    from app.routers.watches import job_watch_status
+
+    user = _make_user()
+    job = _make_job()
+    watch = _make_watch("job", job.id)
+    db = _db_single(watch)
+
+    result = await job_watch_status(job_id=job.id, current_user=(user, {}), db=db)
+    assert result["watching"] is True
+
+
+@pytest.mark.asyncio
+async def test_job_watch_status_not_watching():
+    from app.routers.watches import job_watch_status
+
+    user = _make_user()
+    db = _db_single(None)
+
+    result = await job_watch_status(job_id=uuid.uuid4(), current_user=(user, {}), db=db)
+    assert result["watching"] is False
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -261,7 +290,7 @@ async def test_watch_admission_success():
 
     assert result["watching"] is True
     db.add.assert_called_once()
-    db.commit.assert_called_once()
+    db.commit.assert_not_called()
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -298,7 +327,40 @@ async def test_unwatch_admission_success():
 
     assert result["watching"] is False
     db.delete.assert_called_once_with(watch)
-    db.commit.assert_called_once()
+    db.commit.assert_not_called()
+
+
+# ═══════════════════════════════════════════════════════════════
+# admission_watch_status
+# ═══════════════════════════════════════════════════════════════
+
+
+@pytest.mark.asyncio
+async def test_admission_watch_status_watching():
+    from app.routers.watches import admission_watch_status
+
+    user = _make_user()
+    admission = _make_admission()
+    watch = _make_watch("admission", admission.id)
+    db = _db_single(watch)
+
+    result = await admission_watch_status(
+        admission_id=admission.id, current_user=(user, {}), db=db
+    )
+    assert result["watching"] is True
+
+
+@pytest.mark.asyncio
+async def test_admission_watch_status_not_watching():
+    from app.routers.watches import admission_watch_status
+
+    user = _make_user()
+    db = _db_single(None)
+
+    result = await admission_watch_status(
+        admission_id=uuid.uuid4(), current_user=(user, {}), db=db
+    )
+    assert result["watching"] is False
 
 
 # ═══════════════════════════════════════════════════════════════

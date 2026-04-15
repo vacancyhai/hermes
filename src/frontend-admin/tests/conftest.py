@@ -10,7 +10,7 @@ from app import create_app
 def app():
     application = create_app()
     application.config["TESTING"] = True
-    application.config["SECRET_KEY"] = "test-secret"
+    application.config["SECRET_KEY"] = "test-secret"  # pragma: allowlist secret
     return application
 
 
@@ -35,4 +35,5 @@ def auth_client(app, mock_api):
             sess["token"] = "admin-token"
             sess["admin_name"] = "Admin User"
             sess["admin_role"] = "admin"
+            sess["csrf_token"] = "test-csrf"
         yield c, mock_api

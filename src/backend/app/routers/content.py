@@ -165,16 +165,16 @@ async def recommended_admit_cards(
     return _paginated_response(cards, AdmitCardResponse, limit, offset, total)
 
 
-@admit_cards_router.get("/{card_id}")
+@admit_cards_router.get("/{slug}")
 async def get_admit_card(
-    card_id: uuid.UUID,
+    slug: str,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    """Get single admit card by ID with related job/admission."""
+    """Get single admit card by slug with related job/admission."""
     query = (
         select(AdmitCard)
         .options(joinedload(AdmitCard.job), joinedload(AdmitCard.admission))
-        .where(AdmitCard.id == card_id)
+        .where(AdmitCard.slug == slug)
     )
 
     result = await db.execute(query)
@@ -223,16 +223,16 @@ async def recommended_answer_keys(
     return _paginated_response(keys, AnswerKeyResponse, limit, offset, total)
 
 
-@answer_keys_router.get("/{key_id}")
+@answer_keys_router.get("/{slug}")
 async def get_answer_key(
-    key_id: uuid.UUID,
+    slug: str,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    """Get single answer key by ID with related job/admission."""
+    """Get single answer key by slug with related job/admission."""
     query = (
         select(AnswerKey)
         .options(joinedload(AnswerKey.job), joinedload(AnswerKey.admission))
-        .where(AnswerKey.id == key_id)
+        .where(AnswerKey.slug == slug)
     )
 
     result = await db.execute(query)
@@ -279,16 +279,16 @@ async def recommended_results(
     return _paginated_response(results_list, ResultResponse, limit, offset, total)
 
 
-@results_router.get("/{result_id}")
+@results_router.get("/{slug}")
 async def get_result(
-    result_id: uuid.UUID,
+    slug: str,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    """Get single result by ID with related job/admission."""
+    """Get single result by slug with related job/admission."""
     query = (
         select(Result)
         .options(joinedload(Result.job), joinedload(Result.admission))
-        .where(Result.id == result_id)
+        .where(Result.slug == slug)
     )
 
     result = await db.execute(query)
@@ -336,7 +336,15 @@ async def admin_create_admit_card(
 ):
     """Create a new admit card. Must specify either job_id or admission_id."""
     await _validate_document_parent(body.job_id, body.admission_id, db)
+    # Validate slug uniqueness
+    if (
+        await db.execute(select(AdmitCard.id).where(AdmitCard.slug == body.slug))
+    ).scalar():
+        raise HTTPException(
+            status_code=409, detail=f"Slug '{body.slug}' is already in use"
+        )
     doc = AdmitCard(
+        slug=body.slug,
         job_id=body.job_id,
         admission_id=body.admission_id,
         phase_number=body.phase_number,
@@ -423,7 +431,15 @@ async def admin_create_answer_key(
 ):
     """Create a new answer key. Must specify either job_id or admission_id."""
     await _validate_document_parent(body.job_id, body.admission_id, db)
+    # Validate slug uniqueness
+    if (
+        await db.execute(select(AnswerKey.id).where(AnswerKey.slug == body.slug))
+    ).scalar():
+        raise HTTPException(
+            status_code=409, detail=f"Slug '{body.slug}' is already in use"
+        )
     doc = AnswerKey(
+        slug=body.slug,
         job_id=body.job_id,
         admission_id=body.admission_id,
         phase_number=body.phase_number,
@@ -510,7 +526,13 @@ async def admin_create_result(
 ):
     """Create a new result. Must specify either job_id or admission_id."""
     await _validate_document_parent(body.job_id, body.admission_id, db)
+    # Validate slug uniqueness
+    if (await db.execute(select(Result.id).where(Result.slug == body.slug))).scalar():
+        raise HTTPException(
+            status_code=409, detail=f"Slug '{body.slug}' is already in use"
+        )
     doc = Result(
+        slug=body.slug,
         job_id=body.job_id,
         admission_id=body.admission_id,
         phase_number=body.phase_number,

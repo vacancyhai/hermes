@@ -69,6 +69,32 @@ _API_ADMIN_ADMISSIONS = "/admin/admissions"
 
 bp = Blueprint("admin", __name__)
 
+_CSRF_EXEMPT = {"/health", "/logout", "/api/extract-pdf"}
+
+
+def _get_csrf_token():
+    """Return a persistent per-session CSRF token, creating one if absent."""
+    if "csrf_token" not in session:
+        session["csrf_token"] = secrets.token_hex(32)
+    return session["csrf_token"]
+
+
+@bp.app_context_processor
+def inject_csrf():
+    return {"csrf_token": _get_csrf_token()}
+
+
+@bp.before_app_request
+def validate_csrf():
+    if request.method not in ("POST", "PUT", "PATCH", "DELETE"):
+        return
+    if request.path in _CSRF_EXEMPT:
+        return
+    form_token = request.form.get("csrf_token") or request.headers.get("X-CSRF-Token", "")
+    if not form_token or form_token != session.get("csrf_token"):
+        flash("Invalid or expired form submission. Please try again.", "error")
+        return redirect(request.referrer or "/")
+
 
 def _try_refresh():
     """Refresh admin access token using stored refresh token. Updates session. Returns new token or None."""
@@ -100,15 +126,9 @@ def health():
 @bp.route(_URL_LOGIN, methods=["GET", "POST"])  # NOSONAR
 def login():
     if request.method == "GET":
-        csrf_token = secrets.token_hex(16)
-        session["csrf_token"] = csrf_token
-        return render_template("auth/login.html", csrf_token=csrf_token)
+        return render_template("auth/login.html", csrf_token=_get_csrf_token())
 
-    # Validate CSRF token
-    form_csrf = request.form.get("csrf_token", "")
-    if not form_csrf or form_csrf != session.pop("csrf_token", None):
-        flash("Invalid request. Please try again.", "error")
-        return redirect(_URL_LOGIN)
+    # CSRF validated by the global before_app_request guard.
 
     email = request.form.get("email", "")
     password = request.form.get("password", "")
@@ -231,14 +251,14 @@ def new_job():
         import json as _json
         form = request.form.to_dict()
         payload = {}
-        _pick_text_fields(form, ["job_title", "organization", "department",
+        _pick_text_fields(form, ["job_title", "slug", "organization", "department",
                                   "qualification_level", "employment_type",
                                   "description", "short_description", "source_url"], payload)
         _pick_int_fields(form, ["total_vacancies", "fee_general", "fee_obc", "fee_sc_st",
                                  "fee_ews", "fee_female", "salary_initial", "salary_max"], payload)
         _pick_date_fields(form, ["notification_date", "application_start", "application_end",
                                   "exam_start", "exam_end", "result_date"], payload)
-        payload["status"] = form.get("status", "draft")
+        payload["status"] = form.get("status", "active")
         posts_raw = form.get("posts_json", "").strip()
         zones_raw = form.get("zonewise_json", "").strip()
         links_raw = form.get("links_json", "").strip()
@@ -278,7 +298,7 @@ def new_job():
 
 @bp.route("/jobs/<job_id>/delete", methods=["POST"])
 def delete_job(job_id):
-    """Soft-delete a job (admin role only)."""
+    """Hard-delete a job (admin role only)."""
     token = session.get("token")
     if not token:
         return redirect(_URL_LOGIN)
@@ -300,7 +320,7 @@ def edit_job(job_id):
     if request.method == "POST":
         form = request.form.to_dict()
         update = {}
-        _pick_text_fields(form, ["job_title", "organization", "department",
+        _pick_text_fields(form, ["job_title", "slug", "organization", "department",
                                   "qualification_level", "description",
                                   "short_description", "source_url", "status"], update)
         _pick_int_fields(form, ["total_vacancies", "fee_general", "fee_obc", "fee_sc_st",
@@ -310,32 +330,30 @@ def edit_job(job_id):
                                   "exam_end", "result_date"], update)
         import json as _json
         posts_raw = form.get("posts_json", "").strip()
-        if posts_raw:
-            try:
-                update["selection_process"] = _json.loads(posts_raw)
-            except ValueError:
-                pass
-        links_raw = form.get("links_json", "").strip()
-        if links_raw:
-            try:
-                update["documents"] = _json.loads(links_raw)
-            except ValueError:
-                pass
-        tv_raw = form.get("total_vacancy_json", "").strip()
-        if tv_raw:
-            try:
-                update["vacancy_breakdown"] = _json.loads(tv_raw)
-            except ValueError:
-                pass
         zones_raw = form.get("zonewise_json", "").strip()
-        if zones_raw:
-            try:
+        tv_raw = form.get("total_vacancy_json", "").strip()
+        links_raw = form.get("links_json", "").strip()
+        try:
+            vacancy = {}
+            if posts_raw:
+                vacancy["posts"] = _json.loads(posts_raw)
+            if zones_raw:
                 parsed_zones = _json.loads(zones_raw)
-                existing_details = update.get("admission_details") or {}
-                existing_details["zonewise_vacancy"] = parsed_zones
-                update["admission_details"] = existing_details
-            except ValueError:
-                pass
+                if parsed_zones:
+                    vacancy["zonewise_vacancy"] = parsed_zones
+            if tv_raw:
+                parsed_tv = _json.loads(tv_raw)
+                if any(v is not None for v in parsed_tv.values()):
+                    vacancy["total_vacancy"] = parsed_tv
+            if vacancy:
+                update["vacancy_breakdown"] = vacancy
+            if links_raw:
+                parsed_links = _json.loads(links_raw)
+                if parsed_links:
+                    update["application_details"] = {"important_links": parsed_links}
+        except ValueError:
+            flash("Invalid form data. Please try again.", "error")
+            return redirect(f"/jobs/{job_id}/edit")
         if update:
             current_app.api_client.put(f"/admin/jobs/{job_id}", token=token, json=update)
         flash("Job saved.", "success")
@@ -554,7 +572,7 @@ def new_admission():
     if request.method == "POST":
         form = request.form.to_dict()
         payload = {}
-        _set_or_none(form, ["admission_name", "conducting_body", "counselling_body", "admission_type",
+        _set_or_none(form, ["admission_name", "slug", "conducting_body", "counselling_body", "admission_type",
                              "stream", "description", "short_description", "source_url", "status"], payload)
         _set_int_fields(form, ["fee_general", "fee_obc", "fee_sc_st", "fee_ews", "fee_female"], payload)
         _set_optional(form, ["application_start", "application_end", "admission_date",
@@ -590,7 +608,7 @@ def edit_admission(admission_id):
     if request.method == "POST":
         form = request.form.to_dict()
         update = {}
-        _pick_text_fields(form, ["admission_name", "conducting_body", "counselling_body", "admission_type",
+        _pick_text_fields(form, ["admission_name", "slug", "conducting_body", "counselling_body", "admission_type",
                                   "stream", "description", "short_description", "source_url", "status"], update)
         _set_int_fields(form, ["fee_general", "fee_obc", "fee_sc_st", "fee_ews", "fee_female"], update)
         _set_optional(form, ["application_start", "application_end", "admission_date",
@@ -764,9 +782,14 @@ def _handle_unexpected_error(exc):
     return render_template("shared/500.html"), 500
 
 
+_DEFAULT_SECRET_KEY = "admin-dev-secret-key"  # pragma: allowlist secret
+
+
 def create_app():
     app = Flask(__name__)  # NOSONAR
-    app.secret_key = os.environ.get("SECRET_KEY", "admin-dev-secret-key")
+    app.secret_key = os.environ.get("SECRET_KEY", _DEFAULT_SECRET_KEY)
+    if os.environ.get("FLASK_ENV") == "production" and app.secret_key == _DEFAULT_SECRET_KEY:
+        raise RuntimeError("SECRET_KEY must be set to a secure value in production.")
     app.api_client = ApiClient(
         base_url=os.environ.get("BACKEND_API_URL", "http://backend:8000/api/v1")  # NOSONAR
     )

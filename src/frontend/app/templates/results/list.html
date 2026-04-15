@@ -47,7 +47,7 @@
             {% if res.published_at %}<div class="doc-meta">Published: {{ res.published_at[:10] }}</div>{% endif %}
         </div>
         <div class="doc-card-actions">
-            <a href="/results/{{ res.id }}" class="doc-btn doc-btn-green">View Details →</a>
+            <a href="/results/{{ res.slug }}" class="doc-btn doc-btn-green">View Details →</a>
         </div>
     </div>
     {% endfor %}

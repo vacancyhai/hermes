@@ -74,7 +74,6 @@ async def watch_job(
         )
 
     db.add(UserWatch(user_id=user.id, entity_type="job", entity_id=job_id))
-    await db.commit()
     return {"message": "Now watching this job", "watching": True}
 
 
@@ -94,8 +93,19 @@ async def unwatch_job(
         )
 
     await db.delete(watch)
-    await db.commit()
     return {"message": "Unwatched job", "watching": False}
+
+
+@router.get("/api/v1/jobs/{job_id}/watch", status_code=status.HTTP_200_OK)
+async def job_watch_status(
+    job_id: uuid.UUID,
+    current_user: Annotated[Any, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Check whether the current user is watching a specific job."""
+    user, _ = current_user
+    watching = await _get_watch(user.id, "job", job_id, db) is not None
+    return {"watching": watching}
 
 
 # Admission Watch
@@ -126,7 +136,6 @@ async def watch_admission(
         )
 
     db.add(UserWatch(user_id=user.id, entity_type="admission", entity_id=admission_id))
-    await db.commit()
     return {"message": "Now watching this admission", "watching": True}
 
 
@@ -148,8 +157,19 @@ async def unwatch_admission(
         )
 
     await db.delete(watch)
-    await db.commit()
     return {"message": "Unwatched admission", "watching": False}
+
+
+@router.get("/api/v1/admissions/{admission_id}/watch", status_code=status.HTTP_200_OK)
+async def admission_watch_status(
+    admission_id: uuid.UUID,
+    current_user: Annotated[Any, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Check whether the current user is watching a specific admission."""
+    user, _ = current_user
+    watching = await _get_watch(user.id, "admission", admission_id, db) is not None
+    return {"watching": watching}
 
 
 # List Watched

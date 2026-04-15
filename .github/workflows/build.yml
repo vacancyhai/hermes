@@ -21,7 +21,7 @@ jobs:
       - name: Start backend services
         run: docker compose -f docker-compose.test.yml up -d --build --wait postgresql redis pgbouncer backend
         env:
-          POSTGRES_PASSWORD: hermes_ci_pass
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
 
       - name: Run database migrations
         run: docker exec test_backend alembic -c /app/alembic.ini upgrade head
@@ -146,7 +146,7 @@ jobs:
       - name: Start all services
         run: docker compose -f docker-compose.test.yml up -d --build --wait
         env:
-          POSTGRES_PASSWORD: hermes_ci_pass
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
 
       - name: Run database migrations
         run: docker exec test_backend alembic -c /app/alembic.ini upgrade head

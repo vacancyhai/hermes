@@ -39,10 +39,15 @@
         </div>
         <div class="section-body">
             <div class="form-grid-3">
-                <div class="form-group col-span-3">
+                <div class="form-group col-span-2">
                     <label for="ej_job_title">Job Title <span class="req">*</span></label>
                     <input id="ej_job_title" type="text" name="job_title" required
                            value="{{ job.job_title or '' }}" placeholder="e.g. SSC CGL 2026 Combined Graduate Level Examination">
+                </div>
+                <div class="form-group">
+                    <label for="ej_slug">Slug</label>
+                    <input id="ej_slug" type="text" name="slug"
+                           value="{{ job.slug or '' }}" placeholder="e.g. ssc-cgl-2026" pattern="[a-z0-9]+(?:-[a-z0-9]+)*" title="Lowercase letters, numbers and hyphens only">
                 </div>
                 <div class="form-group col-span-2">
                     <label for="ej_organization">Organization <span class="req">*</span></label>
@@ -70,7 +75,7 @@
                 <div class="form-group">
                     <label for="ej_status">Status</label>
                     <select id="ej_status" name="status">
-                        {% for val in ['draft','active','cancelled'] %}
+                        {% for val in ['upcoming','active','inactive','closed'] %}
                         <option value="{{ val }}" {{ 'selected' if job.status == val }}>{{ val | title }}</option>
                         {% endfor %}
                     </select>
@@ -343,14 +348,16 @@
             {% endif %}
             <details class="pd-add-panel">
                 <summary class="pd-add-toggle">&#43; Add Answer Key</summary>
-                <form method="POST" action="/jobs/{{ job.id }}/docs/answer-keys" class="pd-add-form">
+                <form method="POST" action="/jobs/{{ job.id }}/docs/answer-keys" class="pd-add-form" onsubmit="buildAKFilesJson(this)">
                     <div class="pd-form-grid">
                         <div class="pd-fg pd-full"><label>Title *</label><input type="text" name="title" required placeholder="SSC CGL Tier-I Answer Key"></div>
                         <div class="pd-fg"><label>Type</label><select name="answer_key_type"><option value="provisional">Provisional</option><option value="final">Final</option></select></div>
                         <div class="pd-fg"><label>Phase #</label><input type="number" name="phase_number" min="1" max="10" placeholder="1"></div>
                         <div class="pd-fg"><label>Objection Deadline</label><input type="date" name="objection_deadline"></div>
+                        <div class="pd-fg pd-full"><label>Download URL</label><input type="url" class="ak-file-url" placeholder="https://ssc.nic.in/answer-key.pdf"></div>
                         <div class="pd-fg pd-full"><label>Objection URL</label><input type="url" name="objection_url" placeholder="https://ssc.nic.in/raise-objection"></div>
                     </div>
+                    <input type="hidden" name="files_json" value="[]">
                     <button type="submit" class="btn btn-primary btn-sm" style="margin-top:.6rem">&#10003; Add Answer Key</button>
                 </form>
             </details>
@@ -737,6 +744,10 @@ function fillPost(card, p) {
     const phasesContainer = card.querySelector('.phases-container');
     const addBtn = card.querySelector('.btn-add-phase');
     sp.forEach(ph => fillPhase(phasesContainer, addBtn, ph));
+    if (sp.length > 0) {
+        const processTab = card.querySelector('.tab-btn[data-tab^="process"]');
+        if (processTab) switchTab(processTab);
+    }
 }
 
 function fillPhase(container, addBtn, ph) {
@@ -915,20 +926,30 @@ function serializeTotalVacancy() {
 // ── Pre-populate from existing job data ─────────────────────────────
 (function init() {
     // Total vacancy breakdown
-    const tv = JOB_DATA.vacancy_breakdown || {};
+    const vb = JOB_DATA.vacancy_breakdown || {};
+    const tv = vb.total_vacancy || {};
     const setId = (id, v) => { const el = document.getElementById(id); if (el && v !== null && v !== undefined) el.value = v; };
     setId('tv_total',tv.total);setId('tv_ur',tv.UR);setId('tv_obc',tv.OBC);setId('tv_ews',tv.EWS);
     setId('tv_sc',tv.SC);setId('tv_st',tv.ST);setId('tv_pwd',tv.PWD);
     setId('tv_male',tv.male);setId('tv_female',tv.female);
-    // Links — stored in job.documents list
-    (JOB_DATA.documents || []).forEach(d => addLink(d));
-    // Zones — stored in job.exam_details.zonewise_vacancy
-    const zones = (JOB_DATA.exam_details || {}).zonewise_vacancy || [];
+    // Links — stored in job.application_details.important_links
+    ((JOB_DATA.application_details || {}).important_links || []).forEach(d => addLink(d));
+    // Zones — stored in job.vacancy_breakdown.zonewise_vacancy
+    const zones = vb.zonewise_vacancy || [];
     zones.forEach(z => addZone(z));
-    // Posts
-    const posts = JOB_DATA.selection_process || [];
+    // Posts — stored in job.vacancy_breakdown.posts
+    const posts = vb.posts || [];
     posts.forEach(p => addPost(p));
 })();
+
+function buildAKFilesJson(form) {
+    const urlEl = form.querySelector('.ak-file-url');
+    const hiddenEl = form.querySelector('[name="files_json"]');
+    if (urlEl && hiddenEl) {
+        const url = urlEl.value.trim();
+        hiddenEl.value = url ? JSON.stringify([{url: url, name: 'Answer Key'}]) : '[]';
+    }
+}
 
 document.getElementById('job-edit-form').addEventListener('submit', function() {
     serializeTotalVacancy();

@@ -10,7 +10,7 @@ multi-channel notifications, and an admin panel.
 > job matching & recommendations, org follow, watch-based deadline reminders (user_watches),
 > user dashboard, smart multi-channel notifications (in-app + FCM push + email + WhatsApp placeholder + Telegram),
 > full admin frontend (dashboard, job/user management, audit logs), SEO (sitemap, meta, JSON-LD),
-> PDF upload with AI extraction (Anthropic Claude), draft review & approve workflow, CSRF protection,
+> PDF upload with AI extraction (Anthropic Claude), CSRF protection,
 > PWA (manifest, service worker, offline fallback), comprehensive test suite, security audit.
 >
 > **Latest additions:** Separate `admissions` table for admissions (NEET, JEE, CLAT, CAT, GATE, CUET etc.)
@@ -75,7 +75,7 @@ PostgreSQL and Redis are isolated inside Docker networks — never exposed to th
 - **SEO Optimized** — Dynamic sitemap, meta tags, and Google JobPosting JSON-LD structured data for organic traffic.
 - **PDF Job Ingestion** — Upload government notification PDFs; AI (Claude) extracts structured data; operator reviews, edits, and publishes.
 - **PWA Support** — Add-to-home-screen, offline fallback page, and web push notifications via service worker.
-- **Admin Panel** — Job CRUD, draft/approve workflow, admission management, user management, and audit log viewer on a separate frontend (port 8081).
+- **Admin Panel** — Job CRUD, admission management, user management, and audit log viewer on a separate frontend (port 8081).
 - **Firebase Auth** — Email/password (OTP-verified), Google OAuth (popup), and Phone OTP login via Firebase JS SDK; backend verifies Firebase ID tokens and issues internal JWTs; auto-links existing accounts by email; supports legacy user migration. On logout, both the access token and (if provided) the refresh token are revoked in Redis so neither can be reused.
 - **Admin Account Management** — New admin/operator accounts are created via `POST /api/v1/admin/admin-users` (admin role only). The first admin must be seeded directly in the DB (see Development Quick Start below).
 - **CSRF Protection** — All user frontend POST forms include a session-bound CSRF token validated on the server. The Firebase callback endpoint is exempt (authenticated by Firebase ID token).

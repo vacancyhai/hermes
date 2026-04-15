@@ -138,7 +138,7 @@ def upgrade() -> None:
         sa.Column("fee_sc_st", sa.Integer(), nullable=True),
         sa.Column("fee_ews", sa.Integer(), nullable=True),
         sa.Column("fee_female", sa.Integer(), nullable=True),
-        sa.Column("status", sa.String(20), nullable=False, server_default="draft"),
+        sa.Column("status", sa.String(20), nullable=False, server_default="active"),
         sa.Column("created_by", postgresql.UUID(as_uuid=True), sa.ForeignKey("admin_users.id"), nullable=True),
         sa.Column("source", sa.String(20), nullable=False, server_default="manual"),
         sa.Column("source_pdf_path", sa.Text(), nullable=True),
@@ -146,7 +146,7 @@ def upgrade() -> None:
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("NOW()")),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("NOW()")),
         sa.CheckConstraint("employment_type IN ('permanent', 'temporary', 'contract', 'apprentice')", name="ck_jobs_employment_type"),
-        sa.CheckConstraint("status IN ('draft', 'active', 'expired', 'cancelled', 'upcoming')", name="ck_jobs_status"),
+        sa.CheckConstraint("status IN ('upcoming', 'active', 'inactive', 'closed')", name="ck_jobs_status"),
         sa.CheckConstraint("source IN ('manual', 'pdf_upload')", name="ck_jobs_source"),
     )
     op.create_index("idx_jobs_organization", "jobs", ["organization"])
@@ -276,7 +276,7 @@ def upgrade() -> None:
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("NOW()")),
         sa.CheckConstraint("admission_type IN ('ug', 'pg', 'doctoral', 'lateral')", name="ck_admission_type"),
         sa.CheckConstraint("stream IN ('medical', 'engineering', 'law', 'management', 'arts_science', 'general')", name="ck_admission_stream"),
-        sa.CheckConstraint("status IN ('upcoming', 'active', 'completed', 'cancelled')", name="ck_admission_status"),
+        sa.CheckConstraint("status IN ('upcoming', 'active', 'inactive', 'closed')", name="ck_admission_status"),
     )
     op.create_index("idx_admissions_slug", "admissions", ["slug"], unique=True)
     op.create_index("idx_admissions_stream_status", "admissions", ["stream", "status", "created_at"])

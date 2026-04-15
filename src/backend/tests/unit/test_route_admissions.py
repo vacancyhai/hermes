@@ -185,7 +185,7 @@ async def test_get_admission_not_found():
     from fastapi import HTTPException
 
     with pytest.raises(HTTPException) as exc:
-        await get_admission(admission_id=uuid.uuid4(), db=_db_single(None))
+        await get_admission(slug="nonexistent", db=_db_single(None))
     assert exc.value.status_code == 404
     assert exc.value.detail == "Admission not found"
 
@@ -196,6 +196,7 @@ async def test_get_admission_found_increments_views_and_returns_docs():
     from app.schemas.admissions import AdmissionResponse
 
     admission = _make_admission()
+    admission.slug = "test-admission"
 
     select_res = MagicMock()
     select_res.scalar_one_or_none.return_value = admission
@@ -219,7 +220,7 @@ async def test_get_admission_found_increments_views_and_returns_docs():
     }
 
     with patch.object(AdmissionResponse, "model_validate", return_value=mock_resp):
-        result = await get_admission(admission_id=admission.id, db=db)
+        result = await get_admission(slug=admission.slug, db=db)
 
     assert result["admit_cards"] == []
     assert result["answer_keys"] == []
@@ -331,9 +332,10 @@ async def test_create_admission_success():
         conducting_body="NTA",
         admission_type="ug",
         stream="medical",
+        slug="neet-2025",
     )
     slug_res = MagicMock()
-    slug_res.all.return_value = []
+    slug_res.scalar.return_value = []
     db = AsyncMock()
     db.execute = AsyncMock(return_value=slug_res)
 
@@ -348,25 +350,25 @@ async def test_create_admission_success():
 @pytest.mark.asyncio
 async def test_create_admission_slug_collision_increments():
     from app.routers.admissions import create_admission
-    from app.schemas.admissions import AdmissionCreateRequest, AdmissionResponse
+    from app.schemas.admissions import AdmissionCreateRequest
+    from fastapi import HTTPException
 
     body = AdmissionCreateRequest(
         admission_name="NEET",
         conducting_body="NTA",
         admission_type="ug",
         stream="medical",
+        slug="neet",
     )
     slug_res = MagicMock()
-    slug_res.all.return_value = [("neet",)]
+    slug_res.scalar.return_value = "neet"
     db = AsyncMock()
     db.execute = AsyncMock(return_value=slug_res)
 
-    mock_resp = _mock_item(uuid.uuid4())
-    with patch.object(AdmissionResponse, "model_validate", return_value=mock_resp):
+    with pytest.raises(HTTPException) as exc:
         await create_admission(body=body, admin=MagicMock(), db=db)
-
-    added_admission = db.add.call_args[0][0]
-    assert added_admission.slug == "neet-1"
+    assert exc.value.status_code == 409
+    assert "Slug 'neet' is already in use" in exc.value.detail
 
 
 @pytest.mark.asyncio
@@ -380,9 +382,10 @@ async def test_create_admission_active_sets_published_at():
         admission_type="ug",
         stream="engineering",
         status="active",
+        slug="jee-main",
     )
     slug_res = MagicMock()
-    slug_res.all.return_value = []
+    slug_res.scalar.return_value = []
     db = AsyncMock()
     db.execute = AsyncMock(return_value=slug_res)
 
@@ -405,9 +408,10 @@ async def test_create_admission_non_active_no_published_at():
         admission_type="pg",
         stream="management",
         status="upcoming",
+        slug="cat-2025",
     )
     slug_res = MagicMock()
-    slug_res.all.return_value = []
+    slug_res.scalar.return_value = []
     db = AsyncMock()
     db.execute = AsyncMock(return_value=slug_res)
 

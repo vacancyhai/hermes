@@ -11,6 +11,9 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 class AnswerKey(PhaseDocMixin, Base):
     __tablename__ = "answer_keys"
 
+    slug: Mapped[str] = mapped_column(
+        String(500), nullable=False, unique=True, index=True
+    )
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     answer_key_type: Mapped[str] = mapped_column(
         String(20), nullable=False, default="provisional"

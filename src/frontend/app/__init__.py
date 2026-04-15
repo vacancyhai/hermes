@@ -180,27 +180,25 @@ def dashboard():
 @bp.route("/notifications", methods=["GET"])
 def notifications():
     """Notifications page — requires login."""
-    token = session.get("token")
-    if not token:
+    if not session.get("token"):
         return render_template(_TEMPLATE_LOGIN, next=_URL_NOTIFICATIONS,
             firebase_api_key=os.environ.get("FIREBASE_WEB_API_KEY", ""),
             firebase_auth_domain=os.environ.get("FIREBASE_AUTH_DOMAIN", ""),
             firebase_project_id=os.environ.get("FIREBASE_PROJECT_ID", ""),
         )
 
-    # Fetch unread count (refresh token on 401)
-    count_resp = current_app.api_client.get(_API_NOTIFICATIONS_COUNT, token=token)
-    if count_resp.status_code == 401:
-        token = _try_refresh()
-        if not token:
-            return redirect(_URL_LOGIN)
-        count_resp = current_app.api_client.get(_API_NOTIFICATIONS_COUNT, token=token)
-    unread_count = count_resp.json().get("count", 0) if count_resp.ok else 0
-
-    # Fetch notifications
     params = {"limit": 20, "offset": 0}
-    notif_resp = current_app.api_client.get(_URL_NOTIFICATIONS, token=token, params=params)
+    notif_resp, authed = _try_with_refresh(
+        lambda t: current_app.api_client.get(_URL_NOTIFICATIONS, token=t, params=params)
+    )
+    if not authed:
+        return redirect(_URL_LOGIN)
     notif_data = notif_resp.json() if notif_resp.ok else {"data": [], "pagination": {}}
+
+    count_resp, _ = _try_with_refresh(
+        lambda t: current_app.api_client.get(_API_NOTIFICATIONS_COUNT, token=t)
+    )
+    unread_count = count_resp.json().get("count", 0) if (count_resp and count_resp.ok) else 0
 
     return render_template(
         "notifications/notifications.html",
@@ -657,35 +655,35 @@ def jobs_partial():
     )
 
 
-@bp.route("/jobs/<job_id>", methods=["GET"])
-def job_detail(job_id):
-    resp = current_app.api_client.get(f"/jobs/{job_id}")
+@bp.route("/jobs/<slug>", methods=["GET"])
+def job_detail(slug):
+    resp = current_app.api_client.get(f"/jobs/{slug}")
     if not resp.ok:
         return render_template(_TEMPLATE_404), 404
     job = resp.json()
     watching = False
     token = session.get("token")
     if token:
-        w_resp = current_app.api_client.get(_API_WATCHED, token=token)
+        w_resp = current_app.api_client.get(f"/jobs/{slug}/watch", token=token)
         if w_resp.ok:
-            watching = any(str(j["id"]) == job_id for j in w_resp.json().get("jobs", []))
+            watching = w_resp.json().get("watching", False)
     return render_template("jobs/detail.html", job=job, watching=watching)
 
 
-@bp.route("/jobs/<job_id>/watch", methods=["POST"])
-def watch_job(job_id):
-    _, authed = _try_with_refresh(lambda t: current_app.api_client.post(f"/jobs/{job_id}/watch", token=t))
+@bp.route("/jobs/<slug>/watch", methods=["POST"])
+def watch_job(slug):
+    _, authed = _try_with_refresh(lambda t: current_app.api_client.post(f"/jobs/{slug}/watch", token=t))
     if not authed:
-        return redirect(f"/login?next=/jobs/{job_id}")
-    return redirect(request.form.get("next") or request.referrer or f"/jobs/{job_id}")
+        return redirect(f"/login?next=/jobs/{slug}")
+    return redirect(request.form.get("next") or request.referrer or f"/jobs/{slug}")
 
 
-@bp.route("/jobs/<job_id>/unwatch", methods=["POST"])
-def unwatch_job(job_id):
-    _, authed = _try_with_refresh(lambda t: current_app.api_client.delete(f"/jobs/{job_id}/watch", token=t))
+@bp.route("/jobs/<slug>/unwatch", methods=["POST"])
+def unwatch_job(slug):
+    _, authed = _try_with_refresh(lambda t: current_app.api_client.delete(f"/jobs/{slug}/watch", token=t))
     if not authed:
-        return redirect(f"/login?next=/jobs/{job_id}")
-    return redirect(request.form.get("next") or request.referrer or f"/jobs/{job_id}")
+        return redirect(f"/login?next=/jobs/{slug}")
+    return redirect(request.form.get("next") or request.referrer or f"/jobs/{slug}")
 
 
 # ─── Admit Cards Section ─────────────────────────────────────────────────
@@ -728,9 +726,9 @@ def admit_cards_partial():
     )
 
 
-@bp.route("/admit-cards/<card_id>", methods=["GET"])
-def admit_card_detail(card_id):
-    resp = current_app.api_client.get(f"/admit-cards/{card_id}")
+@bp.route("/admit-cards/<slug>", methods=["GET"])
+def admit_card_detail(slug):
+    resp = current_app.api_client.get(f"/admit-cards/{slug}")
     if not resp.ok:
         return render_template(_TEMPLATE_404), 404
     return render_template("admit_cards/detail.html", card=resp.json())
@@ -776,9 +774,9 @@ def answer_keys_partial():
     )
 
 
-@bp.route("/answer-keys/<key_id>", methods=["GET"])
-def answer_key_detail(key_id):
-    resp = current_app.api_client.get(f"/answer-keys/{key_id}")
+@bp.route("/answer-keys/<slug>", methods=["GET"])
+def answer_key_detail(slug):
+    resp = current_app.api_client.get(f"/answer-keys/{slug}")
     if not resp.ok:
         return render_template(_TEMPLATE_404), 404
     return render_template("answer_keys/detail.html", key=resp.json())
@@ -824,9 +822,9 @@ def results_partial():
     )
 
 
-@bp.route("/results/<result_id>", methods=["GET"])
-def result_detail(result_id):
-    resp = current_app.api_client.get(f"/results/{result_id}")
+@bp.route("/results/<slug>", methods=["GET"])
+def result_detail(slug):
+    resp = current_app.api_client.get(f"/results/{slug}")
     if not resp.ok:
         return render_template(_TEMPLATE_404), 404
     return render_template("results/detail.html", result=resp.json())
@@ -895,40 +893,45 @@ def admissions_partial():
     )
 
 
-@bp.route("/admissions/<admission_id>", methods=["GET"])
-def admission_detail(admission_id):
-    resp = current_app.api_client.get(f"/admissions/{admission_id}")
+@bp.route("/admissions/<slug>", methods=["GET"])
+def admission_detail(slug):
+    resp = current_app.api_client.get(f"/admissions/{slug}")
     if not resp.ok:
         return render_template(_TEMPLATE_404), 404
     admission = resp.json()
     watching = False
     token = session.get("token")
     if token:
-        w_resp = current_app.api_client.get(_API_WATCHED, token=token)
+        w_resp = current_app.api_client.get(f"/admissions/{slug}/watch", token=token)
         if w_resp.ok:
-            watching = any(str(e["id"]) == admission_id for e in w_resp.json().get("admissions", []))
+            watching = w_resp.json().get("watching", False)
     return render_template("admissions/detail.html", admission=admission, watching=watching)
 
 
-@bp.route("/admissions/<admission_id>/watch", methods=["POST"])
-def watch_admission(admission_id):
-    _, authed = _try_with_refresh(lambda t: current_app.api_client.post(f"/admissions/{admission_id}/watch", token=t))
+@bp.route("/admissions/<slug>/watch", methods=["POST"])
+def watch_admission(slug):
+    _, authed = _try_with_refresh(lambda t: current_app.api_client.post(f"/admissions/{slug}/watch", token=t))
     if not authed:
-        return redirect(f"/login?next=/admissions/{admission_id}")
-    return redirect(request.form.get("next") or request.referrer or f"/admissions/{admission_id}")
+        return redirect(f"/login?next=/admissions/{slug}")
+    return redirect(request.form.get("next") or request.referrer or f"/admissions/{slug}")
 
 
-@bp.route("/admissions/<admission_id>/unwatch", methods=["POST"])
-def unwatch_admission(admission_id):
-    _, authed = _try_with_refresh(lambda t: current_app.api_client.delete(f"/admissions/{admission_id}/watch", token=t))
+@bp.route("/admissions/<slug>/unwatch", methods=["POST"])
+def unwatch_admission(slug):
+    _, authed = _try_with_refresh(lambda t: current_app.api_client.delete(f"/admissions/{slug}/watch", token=t))
     if not authed:
-        return redirect(f"/login?next=/admissions/{admission_id}")
-    return redirect(request.form.get("next") or request.referrer or f"/admissions/{admission_id}")
+        return redirect(f"/login?next=/admissions/{slug}")
+    return redirect(request.form.get("next") or request.referrer or f"/admissions/{slug}")
+
+
+_DEFAULT_SECRET_KEY = "dev-secret-key"  # pragma: allowlist secret
 
 
 def create_app():
     app = Flask(__name__)  # NOSONAR
-    app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-key")
+    app.secret_key = os.environ.get("SECRET_KEY", _DEFAULT_SECRET_KEY)
+    if os.environ.get("FLASK_ENV") == "production" and app.secret_key == _DEFAULT_SECRET_KEY:
+        raise RuntimeError("SECRET_KEY must be set to a secure value in production.")
     app.api_client = ApiClient(
         base_url=os.environ.get("BACKEND_API_URL", "http://localhost:8000/api/v1")
     )

@@ -331,9 +331,9 @@ For email/password and Google login, create a test user via the Firebase Console
 | `send-deadline-reminders`       | Daily 08:00 UTC | T-7, T-3, T-1 reminders → delegates to `smart_notify` |
 | `purge-expired-notifications`   | Daily 01:00 UTC | Delete notifications past `expires_at` |
 | `purge-expired-admin-logs`      | Daily 01:30 UTC | Delete admin logs past `expires_at`    |
-| `purge-soft-deleted-jobs`       | Daily 02:00 UTC | Hard-delete `cancelled` (manually deleted) jobs > 90 days |
-| `close-expired-job-listings`    | Daily 02:30 UTC | Set `status='expired'` on jobs past `application_end` |
-| `update-admission-statuses`     | Daily 02:35 UTC | Set `status='completed'` on admissions whose `admission_date` has passed |
+| `purge-soft-deleted-jobs`       | Daily 02:00 UTC | Hard-delete inactive jobs older than 90 days |
+| `close-expired-job-listings`    | Daily 02:30 UTC | Set `status='closed'` on jobs past `application_end` |
+| `update-admission-statuses`     | Daily 02:35 UTC | Set `status='closed'` on admissions past `admission_date` |
 | `generate-sitemap`              | Daily 04:00 UTC | Regenerate `/sitemap.xml` — active jobs, active/upcoming admissions, all 5 section pages |
 
 ### hermes-worker (Event-Triggered Tasks)
@@ -427,8 +427,6 @@ immediate review and editing before submission.
 | Method | Endpoint                          | Description                    | Access   |
 | ------ | --------------------------------- | ------------------------------ | -------- |
 | POST   | `/api/v1/admin/jobs/extract-pdf`  | Extract PDF → return JSON      | Operator+ |
-| GET    | `/api/v1/admin/jobs?status=draft` | List draft jobs for review     | Operator |
-| PUT    | `/api/v1/admin/jobs/:id/approve`  | Approve draft → active         | Operator |
 
 ---
 
