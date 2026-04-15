@@ -58,8 +58,7 @@ All services run from a single root `docker-compose.yml`. They communicate via H
                          └─────────────────────┘  └──────────────────────┘
 
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│  All services defined in root docker-compose.yml (dev)                       │
-│  and docker-compose.test.yml (CI). Single hermes_network.                    │
+│  All services defined in root docker-compose.yml. Single hermes_network.     │
 └──────────────────────────────────────────────────────────────────────────────┘
 
 Architecture properties:
