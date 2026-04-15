@@ -35,7 +35,9 @@ from sqlalchemy.orm import Session
 
 _pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-_DB_URL = os.environ["DATABASE_URL"].replace("+asyncpg", "+psycopg2")
+_DB_URL = os.environ["DATABASE_URL"].replace("+asyncpg", "+psycopg2").replace(
+    "pgbouncer:5432", "postgresql:5432"
+)
 _CREDS_PATH = os.environ.get("FIREBASE_CREDENTIALS_PATH", "/app/secrets/firebase-credentials.json")
 _engine = create_engine(_DB_URL)
 

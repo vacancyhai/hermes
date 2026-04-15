@@ -179,10 +179,38 @@ def index():
 
 @bp.route("/dashboard", methods=["GET"])
 def dashboard():
-    """Watched items dashboard — shows jobs and admissions the user is watching."""
+    """Dashboard — latest 12 items per section + watched items for logged-in users."""
+    _latest_params = {"limit": 12, "offset": 0}
+
+    # Fetch latest 12 for each section (public, no auth needed)
+    jobs_resp = current_app.api_client.get("/jobs", params=_latest_params)
+    latest_jobs = jobs_resp.json().get("data", []) if jobs_resp.ok else []
+
+    admissions_resp = current_app.api_client.get("/admissions", params=_latest_params)
+    latest_admissions = admissions_resp.json().get("data", []) if admissions_resp.ok else []
+
+    admit_cards_resp = current_app.api_client.get("/admit-cards", params=_latest_params)
+    latest_admit_cards = admit_cards_resp.json().get("data", []) if admit_cards_resp.ok else []
+
+    answer_keys_resp = current_app.api_client.get("/answer-keys", params=_latest_params)
+    latest_answer_keys = answer_keys_resp.json().get("data", []) if answer_keys_resp.ok else []
+
+    results_resp = current_app.api_client.get("/results", params=_latest_params)
+    latest_results = results_resp.json().get("data", []) if results_resp.ok else []
+
     token = session.get("token")
     if not token:
-        return render_template(_TEMPLATE_LOGIN, next="/dashboard",
+        return render_template(
+            "dashboard/dashboard.html",
+            latest_jobs=latest_jobs,
+            latest_admissions=latest_admissions,
+            latest_admit_cards=latest_admit_cards,
+            latest_answer_keys=latest_answer_keys,
+            latest_results=latest_results,
+            watched_jobs=[],
+            watched_admissions=[],
+            total=0,
+            logged_in=False,
             firebase_api_key=os.environ.get("FIREBASE_WEB_API_KEY", ""),
             firebase_auth_domain=os.environ.get("FIREBASE_AUTH_DOMAIN", ""),
             firebase_project_id=os.environ.get("FIREBASE_PROJECT_ID", ""),
@@ -195,9 +223,15 @@ def dashboard():
 
     return render_template(
         "dashboard/dashboard.html",
+        latest_jobs=latest_jobs,
+        latest_admissions=latest_admissions,
+        latest_admit_cards=latest_admit_cards,
+        latest_answer_keys=latest_answer_keys,
+        latest_results=latest_results,
         watched_jobs=watched.get("jobs", []),
         watched_admissions=watched.get("admissions", []),
         total=watched.get("total", 0),
+        logged_in=True,
     )
 
 
