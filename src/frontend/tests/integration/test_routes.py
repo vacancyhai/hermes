@@ -322,8 +322,8 @@ def test_notifications_no_token_shows_login(client, mock_api):
 def test_notifications_with_token(auth_client):
     client, mock_api = auth_client
     mock_api.get.side_effect = [
-        _ok({"count": 3}),
         _ok({"data": [], "pagination": {}}),
+        _ok({"count": 3}),
     ]
     resp = client.get("/notifications")
     assert resp.status_code == 200

@@ -93,6 +93,9 @@ def validate_csrf():
     form_token = request.form.get("csrf_token") or request.headers.get("X-CSRF-Token", "")
     if not form_token or form_token != session.get("csrf_token"):
         flash("Invalid or expired form submission. Please try again.", "error")
+        # Redirect to /login for login route, otherwise to referrer or root
+        if request.path == _URL_LOGIN:
+            return redirect(_URL_LOGIN)
         return redirect(request.referrer or "/")
 
 
