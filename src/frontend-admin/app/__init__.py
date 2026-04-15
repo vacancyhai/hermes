@@ -29,6 +29,7 @@ import base64
 import json
 import os
 import secrets
+from urllib.parse import urlparse
 
 from datetime import timedelta
 
@@ -72,6 +73,32 @@ bp = Blueprint("admin", __name__)
 _CSRF_EXEMPT = {"/health", "/logout", "/api/extract-pdf"}
 
 
+def _is_safe_url(url):
+    """Check if a URL is safe to redirect to (same origin or relative path)."""
+    if not url:
+        return False
+    # Allow relative paths
+    if url.startswith("/"):
+        return True
+    # Parse URL and check if it's same origin
+    parsed = urlparse(url)
+    if not parsed.scheme or not parsed.netloc:
+        return True
+    # Check if scheme and netloc match the current host
+    host = request.host
+    if parsed.scheme in ("http", "https") and parsed.netloc == host:
+        return True
+    return False
+
+
+def _get_safe_redirect(default="/"):
+    """Get a safe redirect URL from request.form('next') or request.referrer."""
+    next_url = request.form.get("next") or request.referrer
+    if next_url and _is_safe_url(next_url):
+        return next_url
+    return default
+
+
 def _get_csrf_token():
     """Return a persistent per-session CSRF token, creating one if absent."""
     if "csrf_token" not in session:
@@ -93,10 +120,10 @@ def validate_csrf():
     form_token = request.form.get("csrf_token") or request.headers.get("X-CSRF-Token", "")
     if not form_token or form_token != session.get("csrf_token"):
         flash("Invalid or expired form submission. Please try again.", "error")
-        # Redirect to /login for login route, otherwise to referrer or root
+        # Redirect to /login for login route, otherwise to safe redirect
         if request.path == _URL_LOGIN:
             return redirect(_URL_LOGIN)
-        return redirect(request.referrer or "/")
+        return redirect(_get_safe_redirect("/"))
 
 
 def _try_refresh():
