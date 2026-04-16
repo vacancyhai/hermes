@@ -22,6 +22,7 @@ _API_ADMISSIONS = "/admissions"
 _API_ADMIT_CARDS = "/admit-cards"
 _API_ANSWER_KEYS = "/answer-keys"
 _API_RESULTS = "/results"
+_PATH_RECOMMENDED = "/recommended"
 
 
 _ERR_AUTH_REQUIRED = "Authentication required"
@@ -646,7 +647,7 @@ def jobs():
     watched_job_ids = set()
     if token:
         rec_resp, authed = _try_with_refresh(
-            lambda t: current_app.api_client.get(_API_JOBS + "/recommended", token=t, params={"limit": 20, "offset": 0})
+            lambda t: current_app.api_client.get(_API_JOBS + _PATH_RECOMMENDED, token=t, params={"limit": 20, "offset": 0})
         )
         if authed and rec_resp and rec_resp.ok:
             recommended_jobs = rec_resp.json().get("data", [])
@@ -734,7 +735,7 @@ def admit_cards():
     recommended_cards = []
     if token:
         rec_resp, authed = _try_with_refresh(
-            lambda t: current_app.api_client.get(_API_ADMIT_CARDS + "/recommended", token=t, params={"limit": 20, "offset": 0})
+            lambda t: current_app.api_client.get(_API_ADMIT_CARDS + _PATH_RECOMMENDED, token=t, params={"limit": 20, "offset": 0})
         )
         if authed and rec_resp and rec_resp.ok:
             recommended_cards = rec_resp.json().get("data", [])
@@ -782,7 +783,7 @@ def answer_keys():
     recommended_keys = []
     if token:
         rec_resp, authed = _try_with_refresh(
-            lambda t: current_app.api_client.get(_API_ANSWER_KEYS + "/recommended", token=t, params={"limit": 20, "offset": 0})
+            lambda t: current_app.api_client.get(_API_ANSWER_KEYS + _PATH_RECOMMENDED, token=t, params={"limit": 20, "offset": 0})
         )
         if authed and rec_resp and rec_resp.ok:
             recommended_keys = rec_resp.json().get("data", [])
@@ -830,7 +831,7 @@ def results():
     recommended_results = []
     if token:
         rec_resp, authed = _try_with_refresh(
-            lambda t: current_app.api_client.get(_API_RESULTS + "/recommended", token=t, params={"limit": 20, "offset": 0})
+            lambda t: current_app.api_client.get(_API_RESULTS + _PATH_RECOMMENDED, token=t, params={"limit": 20, "offset": 0})
         )
         if authed and rec_resp and rec_resp.ok:
             recommended_results = rec_resp.json().get("data", [])
@@ -885,7 +886,7 @@ def admissions():
     watched_admission_ids = set()
     if token:
         rec_resp, authed = _try_with_refresh(
-            lambda t: current_app.api_client.get(_API_ADMISSIONS + "/recommended", token=t, params={"limit": 20, "offset": 0})
+            lambda t: current_app.api_client.get(_API_ADMISSIONS + _PATH_RECOMMENDED, token=t, params={"limit": 20, "offset": 0})
         )
         if authed and rec_resp and rec_resp.ok:
             recommended_admissions = rec_resp.json().get("data", [])
