@@ -17,8 +17,9 @@ jobs:
         with:
           fetch-depth: 0  # Required for better analysis relevancy
 
-      - name: SonarQube Scan
-        uses: SonarSource/sonarqube-scan-action@master
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarqube-scan-action@v7.1.0
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+          SONAR_HOST_URL: https://sonarcloud.io
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
