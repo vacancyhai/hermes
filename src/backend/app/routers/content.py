@@ -685,18 +685,16 @@ async def list_exam_reminders(
         items = []
         for row in rows:
             days = (row.exam_start - today).days if row.exam_start else None
-            if row.job_id and row.job_slug:
-                parent_type, parent_slug = "job", row.job_slug
-            elif row.admission_id and row.admission_slug:
-                parent_type, parent_slug = "admission", row.admission_slug
-            else:
-                parent_type, parent_slug = "admit_card", row.slug
-            if row.job_id and row.job_slug:
+            if row.job_id:
+                parent_type = "job"
+                parent_slug = row.job_slug or row.slug
                 parent_id = str(row.job_id)
-            elif row.admission_id and row.admission_slug:
+            elif row.admission_id:
+                parent_type = "admission"
+                parent_slug = row.admission_slug or row.slug
                 parent_id = str(row.admission_id)
             else:
-                parent_id = None
+                parent_type, parent_slug, parent_id = "admit_card", row.slug, None
             items.append(
                 {
                     "type": "admit_card",
