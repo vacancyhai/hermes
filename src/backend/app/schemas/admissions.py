@@ -29,6 +29,8 @@ class AdmissionCreateRequest(BaseModel):
     application_start: date | None = None
     application_end: date | None = None
     admission_date: date | None = None
+    exam_start: date | None = None
+    exam_end: date | None = None
     result_date: date | None = None
     counselling_start: date | None = None
     fee_general: int | None = None
@@ -58,6 +60,8 @@ class AdmissionUpdateRequest(BaseModel):
     application_start: date | None = None
     application_end: date | None = None
     admission_date: date | None = None
+    exam_start: date | None = None
+    exam_end: date | None = None
     result_date: date | None = None
     counselling_start: date | None = None
     fee_general: int | None = None
@@ -86,6 +90,8 @@ class AdmissionResponse(BaseModel):
     application_start: date | None
     application_end: date | None
     admission_date: date | None
+    exam_start: date | None
+    exam_end: date | None
     result_date: date | None
     counselling_start: date | None
     fee_general: int | None
@@ -115,6 +121,8 @@ class AdmissionListItem(BaseModel):
     short_description: str | None
     application_end: date | None
     admission_date: date | None
+    exam_start: date | None
+    exam_end: date | None
     result_date: date | None
     fee_general: int | None
     status: str

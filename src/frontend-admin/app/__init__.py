@@ -396,8 +396,8 @@ def job_add_admit_card(job_id):
         "title": form.get("title", ""),
         "download_url": form.get("download_url", ""),
         "phase_number": int(form["phase_number"]) if form.get("phase_number") else None,
-        "valid_from": form.get("valid_from") or None,
-        "valid_until": form.get("valid_until") or None,
+        "exam_start": form.get("exam_start") or None,
+        "exam_end": form.get("exam_end") or None,
         "notes": form.get("notes") or None,
     }
     current_app.api_client.post(_API_ADMIN_ADMIT_CARDS, token=token, json=payload)
@@ -577,6 +577,7 @@ def new_admission():
                              "stream", "description", "short_description", "source_url", "status"], payload)
         _set_int_fields(form, ["fee_general", "fee_obc", "fee_sc_st", "fee_ews", "fee_female"], payload)
         _set_optional(form, ["application_start", "application_end", "admission_date",
+                              "exam_start", "exam_end",
                               "result_date", "counselling_start"], payload)
         import json as _json
         for json_field, key in [("admission_details_json", "admission_details"),
@@ -613,6 +614,7 @@ def edit_admission(admission_id):
                                   "stream", "description", "short_description", "source_url", "status"], update)
         _set_int_fields(form, ["fee_general", "fee_obc", "fee_sc_st", "fee_ews", "fee_female"], update)
         _set_optional(form, ["application_start", "application_end", "admission_date",
+                              "exam_start", "exam_end",
                               "result_date", "counselling_start"], update)
         import json as _json
         for json_field, key in [("admission_details_json", "admission_details"),
@@ -682,8 +684,8 @@ def admission_add_admit_card(admission_id):
         "title": form.get("title", ""),
         "download_url": form.get("download_url", ""),
         "phase_number": int(form["phase_number"]) if form.get("phase_number") else None,
-        "valid_from": form.get("valid_from") or None,
-        "valid_until": form.get("valid_until") or None,
+        "exam_start": form.get("exam_start") or None,
+        "exam_end": form.get("exam_end") or None,
         "notes": form.get("notes") or None,
     }
     current_app.api_client.post(_API_ADMIN_ADMIT_CARDS, token=token, json=payload)

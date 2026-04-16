@@ -78,15 +78,17 @@
 <div class="action-bar">
     {% if session.get('token') %}
         {% if watching %}
-        <form method="post" action="/jobs/{{ job.slug }}/unwatch" style="display:inline">
+        <form method="post" action="/jobs/{{ job.id }}/unwatch" style="display:inline">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="slug" value="{{ job.slug }}">
             <button type="submit" class="share-btn" style="background:#fef3c7;color:#92400e;border-color:#fde68a">
                 ★ Watching — Remove
             </button>
         </form>
         {% else %}
-        <form method="post" action="/jobs/{{ job.slug }}/watch" style="display:inline">
+        <form method="post" action="/jobs/{{ job.id }}/watch" style="display:inline">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="slug" value="{{ job.slug }}">
             <button type="submit" class="share-btn" style="background:#dbeafe;color:#1e40af;border-color:#bfdbfe">
                 ☆ Watch for Reminders
             </button>
@@ -126,8 +128,14 @@
     {% endif %}
     {% if job.exam_start %}
     <div class="detail-item">
-        <div class="label">Exam Date</div>
+        <div class="label">Exam Start</div>
         <div class="value">{{ job.exam_start }}</div>
+    </div>
+    {% endif %}
+    {% if job.exam_end %}
+    <div class="detail-item">
+        <div class="label">Exam End</div>
+        <div class="value">{{ job.exam_end }}</div>
     </div>
     {% endif %}
     {% if job.result_date %}
@@ -535,7 +543,7 @@
                 <div class="doc-card-body">
                     {% if card.phase_number %}<span class="doc-phase-pill phase-blue">Phase {{ card.phase_number }}</span>{% endif %}
                     <div class="doc-title">{{ card.title }}</div>
-                    {% if card.valid_from or card.valid_until %}<div class="doc-deadline">Valid: {{ card.valid_from or '?' }} – {{ card.valid_until or '?' }}</div>{% endif %}
+                    {% if card.exam_start or card.exam_end %}<div class="doc-deadline">Exam: {{ card.exam_start or '?' }} – {{ card.exam_end or '?' }}</div>{% endif %}
                     {% if card.notes %}<div class="doc-note">{{ card.notes }}</div>{% endif %}
                 </div>
                 <div class="doc-card-actions">

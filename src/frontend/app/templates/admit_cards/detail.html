@@ -30,24 +30,42 @@
     </a>
     {% if card.get('job') %}
     <a href="/jobs/{{ card.job.slug }}" class="share-btn">View Job Details →</a>
+    {% if session.get('token') %}
+    <form method="post" action="/jobs/{{ card.job.id }}/{{ 'unwatch' if watching else 'watch' }}" style="display:inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="slug" value="{{ card.job.slug }}">
+        <button type="submit" class="{{ 'btn-watching btn btn-sm' if watching else 'btn btn-outline btn-sm' }}">{{ '★ Watching Job' if watching else '☆ Watch Job' }}</button>
+    </form>
+    {% else %}
+    <a href="/login?next=/admit-cards/{{ card.slug }}" class="btn btn-outline btn-sm">☆ Watch Job</a>
+    {% endif %}
     {% elif card.get('admission') %}
     <a href="/admissions/{{ card.admission.slug }}" class="share-btn">View Admission Details →</a>
+    {% if session.get('token') %}
+    <form method="post" action="/admissions/{{ card.admission.id }}/{{ 'unwatch' if watching else 'watch' }}" style="display:inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="slug" value="{{ card.admission.slug }}">
+        <button type="submit" class="{{ 'btn-watching btn btn-sm' if watching else 'btn btn-outline btn-sm' }}">{{ '★ Watching Admission' if watching else '☆ Watch Admission' }}</button>
+    </form>
+    {% else %}
+    <a href="/login?next=/admit-cards/{{ card.slug }}" class="btn btn-outline btn-sm">☆ Watch Admission</a>
+    {% endif %}
     {% endif %}
     <button type="button" class="share-btn" onclick="if(navigator.share){navigator.share({title:document.title,url:window.location.href})}else{navigator.clipboard.writeText(window.location.href);alert('Link copied!')}">⬆ Share</button>
 </div>
 
 <!-- Details grid -->
 <div class="detail-grid">
-    {% if card.valid_from %}
+    {% if card.exam_start %}
     <div class="detail-item">
-        <div class="label">Valid From</div>
-        <div class="value">{{ card.valid_from }}</div>
+        <div class="label">Exam Start</div>
+        <div class="value">{{ card.exam_start }}</div>
     </div>
     {% endif %}
-    {% if card.valid_until %}
+    {% if card.exam_end %}
     <div class="detail-item">
-        <div class="label">Valid Until</div>
-        <div class="value urgent">{{ card.valid_until }}</div>
+        <div class="label">Exam End</div>
+        <div class="value urgent">{{ card.exam_end }}</div>
     </div>
     {% endif %}
     {% if card.phase_number %}
@@ -87,8 +105,8 @@
     <a href="{{ card.download_url }}" target="_blank" rel="noopener" class="btn btn-primary" style="font-size:.95rem;padding:.6rem 1.5rem">
         ⬇ Download Admit Card
     </a>
-    {% if card.valid_until %}
-    <p style="font-size:.8rem;color:#1e40af;margin-top:.5rem">Valid until: <strong>{{ card.valid_until }}</strong></p>
+    {% if card.exam_end %}
+    <p style="font-size:.8rem;color:#1e40af;margin-top:.5rem">Exam ends: <strong>{{ card.exam_end }}</strong></p>
     {% endif %}
     <p style="font-size:.78rem;color:#64748b;margin-top:.25rem">Opens official source in a new tab</p>
 </div>

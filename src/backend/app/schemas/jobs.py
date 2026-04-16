@@ -179,8 +179,8 @@ class AdmitCardCreateRequest(BaseModel):
     slug: str = Field(min_length=1, max_length=500, pattern=SLUG_PATTERN)
     title: str = Field(min_length=1, max_length=255)
     download_url: str = Field(min_length=1)
-    valid_from: date | None = None
-    valid_until: date | None = None
+    exam_start: date | None = None
+    exam_end: date | None = None
     notes: str | None = None
     published_at: datetime | None = None
 
@@ -190,8 +190,8 @@ class AdmitCardUpdateRequest(BaseModel):
     slug: str | None = Field(None, min_length=1, max_length=500, pattern=SLUG_PATTERN)
     title: str | None = Field(None, min_length=1, max_length=255)
     download_url: str | None = None
-    valid_from: date | None = None
-    valid_until: date | None = None
+    exam_start: date | None = None
+    exam_end: date | None = None
     notes: str | None = None
     published_at: datetime | None = None
 
@@ -204,8 +204,8 @@ class AdmitCardResponse(BaseModel):
     phase_number: int | None
     title: str
     download_url: str
-    valid_from: date | None
-    valid_until: date | None
+    exam_start: date | None
+    exam_end: date | None
     notes: str | None
     published_at: datetime | None
     created_at: datetime

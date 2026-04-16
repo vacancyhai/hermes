@@ -287,7 +287,7 @@
                 <tr>
                     <td>{% if ac.phase_number %}<span class="pd-phase-badge">Phase {{ ac.phase_number }}</span>{% else %}—{% endif %}</td>
                     <td><strong>{{ ac.title }}</strong></td>
-                    <td class="pd-meta">{{ ac.valid_from or '' }}{% if ac.valid_from and ac.valid_until %} → {% endif %}{{ ac.valid_until or '' }}</td>
+                    <td class="pd-meta">{{ ac.exam_start or '' }}{% if ac.exam_start and ac.exam_end %} → {% endif %}{{ ac.exam_end or '' }}</td>
                     <td>
                         <form method="POST" action="/jobs/{{ job.id }}/docs/admit-cards/{{ ac.id }}/delete" onsubmit="return confirm('Delete this admit card?')">
                             <button type="submit" class="btn btn-sm pd-del-btn">&#10005; Delete</button>
@@ -307,8 +307,8 @@
                         <div class="pd-fg pd-full"><label>Title *</label><input type="text" name="title" required placeholder="SSC CGL Tier-I Admit Card"></div>
                         <div class="pd-fg pd-full"><label>Download URL *</label><input type="url" name="download_url" required placeholder="https://ssc.nic.in/admit-card"></div>
                         <div class="pd-fg"><label>Phase #</label><input type="number" name="phase_number" min="1" max="10" placeholder="1"></div>
-                        <div class="pd-fg"><label>Valid From</label><input type="date" name="valid_from"></div>
-                        <div class="pd-fg"><label>Valid Until</label><input type="date" name="valid_until"></div>
+                        <div class="pd-fg"><label>Exam Start</label><input type="date" name="exam_start"></div>
+                        <div class="pd-fg"><label>Exam End</label><input type="date" name="exam_end"></div>
                         <div class="pd-fg pd-full"><label>Notes</label><input type="text" name="notes" placeholder="Carry printout + Govt photo ID"></div>
                     </div>
                     <button type="submit" class="btn btn-primary btn-sm" style="margin-top:.6rem">&#10003; Add Admit Card</button>

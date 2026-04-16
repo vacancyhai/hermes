@@ -76,7 +76,7 @@
                 <span class="card-type-tag" style="background:#dbeafe;color:#1e40af">Admit Card</span>
             </div>
             <div class="doc-title">{{ card.title }}</div>
-            {% if card.valid_from or card.valid_until %}<div class="doc-deadline">Valid: {{ card.valid_from or '?' }} – {{ card.valid_until or 'ongoing' }}</div>{% endif %}
+            {% if card.exam_start or card.exam_end %}<div class="doc-deadline">Exam: {{ card.exam_start or '?' }} – {{ card.exam_end or 'ongoing' }}</div>{% endif %}
             {% if card.notes %}<div class="doc-note">{{ card.notes }}</div>{% endif %}
             {% if card.published_at %}<div class="doc-meta">Published: {{ card.published_at[:10] }}</div>{% endif %}
         </div>

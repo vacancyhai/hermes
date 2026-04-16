@@ -15,7 +15,9 @@
             {% if admission.application_end %}
             <span class="deadline">Apply by: {{ admission.application_end }}</span>
             {% endif %}
-            {% if admission.admission_date %}
+            {% if admission.exam_start %}
+            <span class="meta-pill pill-purple">Exam: {{ admission.exam_start }}</span>
+            {% elif admission.admission_date %}
             <span class="meta-pill pill-purple">Exam: {{ admission.admission_date }}</span>
             {% endif %}
         </div>

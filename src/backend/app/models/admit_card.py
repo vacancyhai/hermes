@@ -15,8 +15,8 @@ class AdmitCard(PhaseDocMixin, Base):
     )
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     download_url: Mapped[str] = mapped_column(Text, nullable=False)
-    valid_from: Mapped[date | None] = mapped_column(Date, nullable=True)
-    valid_until: Mapped[date | None] = mapped_column(Date, nullable=True)
+    exam_start: Mapped[date | None] = mapped_column(Date, nullable=True)
+    exam_end: Mapped[date | None] = mapped_column(Date, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     job = relationship("Job", back_populates="admit_cards")
