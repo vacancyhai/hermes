@@ -87,7 +87,6 @@ PostgreSQL and Redis are isolated inside Docker networks — never exposed to th
 - **Unified Detail Pages** — Type-aware gradient heroes (navy/blue/amber/green/purple per section); structured sections for eligibility, selection process, admission pattern, vacancy breakdown, fee table; Web Share API button (with clipboard fallback).
 - **HTMX Doc Tabs** — Per-phase admit cards, answer keys, and results loaded on-demand in tabbed panels on both job detail and admission detail pages.
 - **Social Share** — Single Share button (Web Share API + clipboard fallback) on every card and detail page.
-- **Fee by Category** — Shows personalised application fee (₹0 for SC/ST/EWS, reduced for OBC) based on the logged-in user's category.
 
 ## Documentation
 

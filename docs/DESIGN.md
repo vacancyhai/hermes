@@ -581,26 +581,6 @@ more universal — it lets users choose their preferred app (WhatsApp, Telegram,
 Copy, SMS, Email, etc.) from the OS-level dialog without the frontend
 hard-coding specific platforms.
 
-### Application Fee by Category
-
-Government jobs charge different application fees by category. When a logged-in user views a job,
-the frontend reads the fee columns from the job and the user's `category` from their profile,
-then displays: **"Your application fee: ₹0"**.
-
-Fees are stored as **top-level integer columns** on the `jobs` table (not inside JSONB):
-
-| Column | Description |
-|--------|-------------|
-| `fee_general` | Fee for General/UR category (INR) |
-| `fee_obc` | Fee for OBC-NCL category (INR) |
-| `fee_sc_st` | Fee for SC/ST category (INR) |
-| `fee_ews` | Fee for EWS category (INR) |
-| `fee_female` | Fee for Female/PwBD candidates (INR) |
-
-`0` = free. `null` = fee not specified (hidden in UI). This is pure Jinja2 template logic — no API changes needed.
-
----
-
 ## 5-Section Frontend Architecture
 
 The user frontend is organized into 5 main sections, each with its own page, search, and visual identity:
