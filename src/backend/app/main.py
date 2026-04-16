@@ -16,6 +16,7 @@ from app.routers.content import (
     admit_cards_router,
     answer_keys_admin_router,
     answer_keys_router,
+    exam_reminders_router,
     results_admin_router,
     results_router,
 )
@@ -170,3 +171,4 @@ app.include_router(results_admin_router)
 app.include_router(admissions_public_router)
 app.include_router(admissions_admin_router)
 app.include_router(watches_router)
+app.include_router(exam_reminders_router)

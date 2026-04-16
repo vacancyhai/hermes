@@ -7,37 +7,37 @@
 {% block head %}
 <style>
 /* ── Post cards ──────────────────────────────────────── */
-.post-card{border:1px solid #e2e8f0;border-radius:.6rem;margin-bottom:.75rem;overflow:hidden}
-.post-card-header{display:flex;justify-content:space-between;align-items:center;padding:.55rem .85rem;background:#f8fafc;border-bottom:1px solid #e2e8f0;flex-wrap:wrap;gap:.35rem}
-.post-name{font-weight:700;font-size:.875rem;color:#1e293b}
-.post-total{font-size:.8rem;font-weight:600;color:#2563eb;background:#dbeafe;padding:.15rem .55rem;border-radius:9999px}
-.post-card-body{padding:.65rem .85rem}
+.post-card{border:1px solid var(--slate-200);border-radius:var(--radius);margin-bottom:.85rem;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.post-card-header{display:flex;justify-content:space-between;align-items:center;padding:.6rem .95rem;background:var(--slate-50);border-bottom:1px solid var(--slate-200);flex-wrap:wrap;gap:.35rem}
+.post-name{font-weight:700;font-size:.9rem;color:var(--text);letter-spacing:-.01em}
+.post-total{font-size:.78rem;font-weight:700;color:var(--blue);background:#dbeafe;padding:.15rem .55rem;border-radius:9999px}
+.post-card-body{padding:.75rem .95rem}
 .post-vacancy-grid{display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:.35rem}
-.pv-cell{background:#f1f5f9;border-radius:.35rem;padding:.3rem .6rem;text-align:center;min-width:52px}
-.pv-val{font-size:.875rem;font-weight:700;color:#1e293b}
-.pv-cat{font-size:.68rem;color:#64748b;text-transform:uppercase;letter-spacing:.04em;margin-top:.05rem}
+.pv-cell{background:var(--slate-100);border-radius:.35rem;padding:.35rem .65rem;text-align:center;min-width:54px}
+.pv-val{font-size:.9rem;font-weight:700;color:var(--text)}
+.pv-cat{font-size:.66rem;color:var(--slate-500);text-transform:uppercase;letter-spacing:.04em;margin-top:.05rem}
 
 /* ── Phase / selection-process cards ────────────────── */
-.phase-card{border-radius:.6rem;margin-bottom:.75rem;overflow:hidden;border:1px solid}
+.phase-card{border-radius:var(--radius);margin-bottom:.85rem;overflow:hidden;border:1px solid;box-shadow:0 1px 3px rgba(0,0,0,.04)}
 .phase-card-test{border-color:#bfdbfe;background:#eff6ff}
 .phase-card-doc{border-color:#bbf7d0;background:#f0fdf4}
-.phase-card-head{padding:.65rem .9rem}
-.phase-num{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;background:#2563eb;color:#fff;padding:.15rem .55rem;border-radius:9999px}
-.phase-title{font-weight:700;font-size:.9rem;color:#1e293b}
+.phase-card-head{padding:.7rem 1rem}
+.phase-num{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;background:var(--blue);color:#fff;padding:.15rem .55rem;border-radius:9999px}
+.phase-title{font-weight:700;font-size:.9rem;color:var(--text)}
 .phase-card-test .fee-table{background:#fff}
 .phase-card-doc .phase-num{background:#16a34a}
 
 /* ── Important link buttons ──────────────────────────── */
-.link-btn{display:inline-flex;align-items:center;gap:.35rem;padding:.45rem .85rem;border-radius:.4rem;font-size:.82rem;font-weight:600;text-decoration:none;border:1px solid;transition:opacity .15s}
+.link-btn{display:inline-flex;align-items:center;gap:.35rem;padding:.45rem .9rem;border-radius:var(--radius);font-size:.82rem;font-weight:600;text-decoration:none;border:1px solid;transition:opacity .15s}
 .link-btn:hover{opacity:.85;text-decoration:none}
-.link-btn-apply{background:#2563eb;color:#fff;border-color:#2563eb}
+.link-btn-apply{background:var(--blue);color:#fff;border-color:var(--blue)}
 .link-btn-notif{background:#7c3aed;color:#fff;border-color:#7c3aed}
 .link-btn-syllabus{background:#0891b2;color:#fff;border-color:#0891b2}
-.link-btn-default{background:#fff;color:#334155;border-color:#cbd5e1}
+.link-btn-default{background:#fff;color:var(--slate-700);border-color:var(--slate-200)}
 
 /* ── Doc checklist ───────────────────────────────────── */
 .doc-list{list-style:none;padding:0;display:flex;flex-direction:column;gap:.4rem}
-.doc-list li{display:flex;align-items:center;gap:.5rem;padding:.45rem .75rem;background:#f8fafc;border:1px solid #e2e8f0;border-radius:.4rem;font-size:.875rem;color:#334155}
+.doc-list li{display:flex;align-items:center;gap:.5rem;padding:.45rem .75rem;background:var(--slate-50);border:1px solid var(--slate-200);border-radius:var(--radius);font-size:.875rem;color:var(--slate-700)}
 .doc-list li::before{content:"📎";font-size:.85rem;flex-shrink:0}
 </style>
 {% endblock %}
@@ -60,15 +60,15 @@
         </div>
         <div style="flex-shrink:0;text-align:right">
             {% if job.status == 'active' %}
-            <span style="background:#22c55e;color:#fff;padding:.25rem .65rem;border-radius:9999px;font-size:.78rem;font-weight:600">Active</span>
+            <span class="status-pill status-active">Active</span>
             {% elif job.status == 'upcoming' %}
-            <span style="background:#f59e0b;color:#fff;padding:.25rem .65rem;border-radius:9999px;font-size:.78rem;font-weight:600">Upcoming</span>
+            <span class="status-pill status-upcoming">Upcoming</span>
             {% elif job.status == 'inactive' %}
-            <span style="background:#94a3b8;color:#fff;padding:.25rem .65rem;border-radius:9999px;font-size:.78rem;font-weight:600">Inactive</span>
+            <span class="status-pill status-inactive">Inactive</span>
             {% elif job.status == 'closed' %}
-            <span style="background:#ef4444;color:#fff;padding:.25rem .65rem;border-radius:9999px;font-size:.78rem;font-weight:600">Closed</span>
+            <span class="status-pill status-closed">Closed</span>
             {% else %}
-            <span style="background:rgba(255,255,255,.3);color:#fff;padding:.25rem .65rem;border-radius:9999px;font-size:.78rem;font-weight:600">{{ job.status|title }}</span>
+            <span class="status-pill" style="background:rgba(255,255,255,.3);color:#fff">{{ job.status|title }}</span>
             {% endif %}
         </div>
     </div>
@@ -78,15 +78,17 @@
 <div class="action-bar">
     {% if session.get('token') %}
         {% if watching %}
-        <form method="post" action="/jobs/{{ job.slug }}/unwatch" style="display:inline">
+        <form method="post" action="/jobs/{{ job.id }}/unwatch" style="display:inline">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="slug" value="{{ job.slug }}">
             <button type="submit" class="share-btn" style="background:#fef3c7;color:#92400e;border-color:#fde68a">
                 ★ Watching — Remove
             </button>
         </form>
         {% else %}
-        <form method="post" action="/jobs/{{ job.slug }}/watch" style="display:inline">
+        <form method="post" action="/jobs/{{ job.id }}/watch" style="display:inline">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="slug" value="{{ job.slug }}">
             <button type="submit" class="share-btn" style="background:#dbeafe;color:#1e40af;border-color:#bfdbfe">
                 ☆ Watch for Reminders
             </button>
@@ -126,8 +128,14 @@
     {% endif %}
     {% if job.exam_start %}
     <div class="detail-item">
-        <div class="label">Exam Date</div>
+        <div class="label">Exam Start</div>
         <div class="value">{{ job.exam_start }}</div>
+    </div>
+    {% endif %}
+    {% if job.exam_end %}
+    <div class="detail-item">
+        <div class="label">Exam End</div>
+        <div class="value">{{ job.exam_end }}</div>
     </div>
     {% endif %}
     {% if job.result_date %}
@@ -201,7 +209,7 @@
 {% if zonewise %}
 <div class="detail-section">
     <h2>🗺️ Zone-wise Vacancy</h2>
-    <table class="fee-table">
+    <div class="table-wrap"><table class="fee-table" style="border:none">
         <thead><tr><th>Zone</th><th>Total</th><th>UR</th><th>OBC</th><th>EWS</th><th>SC</th><th>ST</th><th>Male</th><th>Female</th></tr></thead>
         <tbody>
         {% for z in zonewise %}
@@ -218,7 +226,7 @@
         </tr>
         {% endfor %}
         </tbody>
-    </table>
+    </table></div>
 </div>
 {% endif %}
 
@@ -535,7 +543,7 @@
                 <div class="doc-card-body">
                     {% if card.phase_number %}<span class="doc-phase-pill phase-blue">Phase {{ card.phase_number }}</span>{% endif %}
                     <div class="doc-title">{{ card.title }}</div>
-                    {% if card.valid_from or card.valid_until %}<div class="doc-deadline">Valid: {{ card.valid_from or '?' }} – {{ card.valid_until or '?' }}</div>{% endif %}
+                    {% if card.exam_start or card.exam_end %}<div class="doc-deadline">Exam: {{ card.exam_start or '?' }} – {{ card.exam_end or '?' }}</div>{% endif %}
                     {% if card.notes %}<div class="doc-note">{{ card.notes }}</div>{% endif %}
                 </div>
                 <div class="doc-card-actions">

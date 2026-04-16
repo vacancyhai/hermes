@@ -38,6 +38,8 @@ class Admission(Base):
     application_start: Mapped[date | None] = mapped_column(Date, nullable=True)
     application_end: Mapped[date | None] = mapped_column(Date, nullable=True)
     admission_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    exam_start: Mapped[date | None] = mapped_column(Date, nullable=True)
+    exam_end: Mapped[date | None] = mapped_column(Date, nullable=True)
     result_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     counselling_start: Mapped[date | None] = mapped_column(Date, nullable=True)
     fee_general: Mapped[int | None] = mapped_column(Integer, nullable=True)

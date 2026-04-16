@@ -35,8 +35,26 @@
     {% endif %}
     {% if result.get('job') %}
     <a href="/jobs/{{ result.job.slug }}" class="share-btn">View Job Details →</a>
+    {% if session.get('token') %}
+    <form method="post" action="/jobs/{{ result.job.id }}/{{ 'unwatch' if watching else 'watch' }}" style="display:inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="slug" value="{{ result.job.slug }}">
+        <button type="submit" class="{{ 'btn-watching btn btn-sm' if watching else 'btn btn-outline btn-sm' }}">{{ '★ Watching Job' if watching else '☆ Watch Job' }}</button>
+    </form>
+    {% else %}
+    <a href="/login?next=/results/{{ result.slug }}" class="btn btn-outline btn-sm">☆ Watch Job</a>
+    {% endif %}
     {% elif result.get('admission') %}
     <a href="/admissions/{{ result.admission.slug }}" class="share-btn">View Admission Details →</a>
+    {% if session.get('token') %}
+    <form method="post" action="/admissions/{{ result.admission.id }}/{{ 'unwatch' if watching else 'watch' }}" style="display:inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="slug" value="{{ result.admission.slug }}">
+        <button type="submit" class="{{ 'btn-watching btn btn-sm' if watching else 'btn btn-outline btn-sm' }}">{{ '★ Watching Admission' if watching else '☆ Watch Admission' }}</button>
+    </form>
+    {% else %}
+    <a href="/login?next=/results/{{ result.slug }}" class="btn btn-outline btn-sm">☆ Watch Admission</a>
+    {% endif %}
     {% endif %}
     <button type="button" class="share-btn" onclick="if(navigator.share){navigator.share({title:document.title,url:window.location.href})}else{navigator.clipboard.writeText(window.location.href);alert('Link copied!')}">⬆ Share</button>
 </div>

@@ -267,6 +267,8 @@ async def create_admission(
         application_start=body.application_start,
         application_end=body.application_end,
         admission_date=body.admission_date,
+        exam_start=body.exam_start,
+        exam_end=body.exam_end,
         result_date=body.result_date,
         counselling_start=body.counselling_start,
         fee_general=body.fee_general,

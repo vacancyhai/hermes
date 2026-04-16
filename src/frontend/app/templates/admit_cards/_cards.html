@@ -1,21 +1,38 @@
 {% for card in cards %}
-<div class="doc-card doc-card-admit" style="border-radius:.5rem;margin-bottom:.75rem">
+<div class="doc-card doc-card-admit" style="border-radius:.5rem;margin-bottom:.75rem;cursor:pointer" onclick="window.location='/admit-cards/{{ card.slug }}'">
     <div class="doc-card-body">
-        <div style="display:flex;gap:.35rem;flex-wrap:wrap;margin-bottom:.3rem">
-            {% if card.phase_number %}<span class="doc-phase-pill phase-blue">Phase {{ card.phase_number }}</span>{% endif %}
-            <span class="card-type-tag" style="background:#dbeafe;color:#1e40af">Admit Card</span>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem">
+            <div style="flex:1;min-width:0">
+                <div style="display:flex;gap:.35rem;flex-wrap:wrap;margin-bottom:.3rem">
+                    {% if card.phase_number %}<span class="doc-phase-pill phase-blue">Phase {{ card.phase_number }}</span>{% endif %}
+                    <span class="card-type-tag" style="background:#dbeafe;color:#1e40af">Admit Card</span>
+                </div>
+                <div class="doc-title">{{ card.title }}</div>
+                {% if card.exam_start or card.exam_end %}
+                <div class="doc-deadline">Exam: {{ card.exam_start or '?' }} – {{ card.exam_end or 'ongoing' }}</div>
+                {% endif %}
+                {% if card.notes %}<div class="doc-note">{{ card.notes }}</div>{% endif %}
+                {% if card.published_at %}
+                <div class="doc-meta">Published: {{ card.published_at[:10] }}</div>
+                {% endif %}
+            </div>
+            {% set _wid = card.job_id if card.job_id else card.admission_id %}
+            {% set _wtype = 'job' if card.job_id else 'admission' %}
+            {% set _watching = card.job_id|string in watched_job_ids if card.job_id else (card.admission_id|string in watched_admission_ids if card.admission_id else False) %}
+            {% if _wid %}
+            <div style="flex-shrink:0" onclick="event.stopPropagation()">
+                {% if session.get('token') %}
+                <form method="post" action="/{{ _wtype }}s/{{ _wid }}/{{ 'unwatch' if _watching else 'watch' }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <input type="hidden" name="slug" value="{{ _wid }}">
+                    <button type="submit" class="{{ 'btn-watching btn btn-sm' if _watching else 'btn btn-outline btn-sm' }}">{{ '★' if _watching else '☆' }}</button>
+                </form>
+                {% else %}
+                <a href="/login?next=/admit-cards/{{ card.slug }}" class="btn btn-outline btn-sm">☆</a>
+                {% endif %}
+            </div>
+            {% endif %}
         </div>
-        <div class="doc-title">{{ card.title }}</div>
-        {% if card.valid_from or card.valid_until %}
-        <div class="doc-deadline">Valid: {{ card.valid_from or '?' }} – {{ card.valid_until or 'ongoing' }}</div>
-        {% endif %}
-        {% if card.notes %}<div class="doc-note">{{ card.notes }}</div>{% endif %}
-        {% if card.published_at %}
-        <div class="doc-meta">Published: {{ card.published_at[:10] }}</div>
-        {% endif %}
-    </div>
-    <div class="doc-card-actions">
-        <a href="/admit-cards/{{ card.slug }}" class="doc-btn doc-btn-blue">View Details →</a>
     </div>
 </div>
 {% else %}

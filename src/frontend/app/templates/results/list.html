@@ -13,10 +13,43 @@
 
 {% block content %}
 <div class="page-hero">
-    <h1>Results</h1>
+    <h1>🏆 Results</h1>
     <p>Official results for government job recruitments and admissions</p>
 </div>
 
+<div class="list-page-grid">
+
+<!-- ── Filter Sidebar ── -->
+<aside class="filter-sidebar">
+    <div class="filter-widget">
+        <div class="filter-widget-header">🔽 Filters</div>
+        <div class="filter-widget-body">
+            <div class="filter-group">
+                <div class="filter-group-label">Result Type</div>
+                <label class="filter-option"><input type="checkbox" checked> Written Exam <span class="filter-count">22</span></label>
+                <label class="filter-option"><input type="checkbox"> Interview <span class="filter-count">8</span></label>
+                <label class="filter-option"><input type="checkbox"> Final Merit List <span class="filter-count">12</span></label>
+            </div>
+            <div class="filter-group">
+                <div class="filter-group-label">Category</div>
+                <label class="filter-option"><input type="checkbox" checked> Central Govt <span class="filter-count">20</span></label>
+                <label class="filter-option"><input type="checkbox"> State Govt <span class="filter-count">14</span></label>
+                <label class="filter-option"><input type="checkbox"> Engineering <span class="filter-count">6</span></label>
+                <label class="filter-option"><input type="checkbox"> Medical <span class="filter-count">4</span></label>
+            </div>
+            <div class="filter-group">
+                <div class="filter-group-label">Published</div>
+                <label class="filter-option"><input type="checkbox" checked> This Month <span class="filter-count">11</span></label>
+                <label class="filter-option"><input type="checkbox"> Last 3 Months <span class="filter-count">18</span></label>
+                <label class="filter-option"><input type="checkbox"> Older <span class="filter-count">15</span></label>
+            </div>
+            <button class="filter-reset">✕ Reset Filters</button>
+        </div>
+    </div>
+</aside>
+
+<!-- ── Main content ── -->
+<div>
 <div x-data="{tab: 'all'}">
 
 {% if recommended_results %}
@@ -63,5 +96,7 @@
 </div>
 </div>
 
-</div>
+</div><!-- end alpine x-data -->
+</div><!-- end main content -->
+</div><!-- end list-page-grid -->
 {% endblock %}

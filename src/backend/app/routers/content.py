@@ -26,6 +26,7 @@ Admin endpoints:
 """
 
 import uuid
+from datetime import date
 from typing import Annotated, Any
 
 from app.dependencies import get_current_user, get_db, require_operator
@@ -125,6 +126,9 @@ async def _validate_document_parent(
 admit_cards_router = APIRouter(prefix="/api/v1/admit-cards", tags=["admit-cards"])
 answer_keys_router = APIRouter(prefix="/api/v1/answer-keys", tags=["answer-keys"])
 results_router = APIRouter(prefix="/api/v1/results", tags=["results"])
+exam_reminders_router = APIRouter(
+    prefix="/api/v1/exam-reminders", tags=["exam-reminders"]
+)
 
 # Admin routers
 admit_cards_admin_router = APIRouter(prefix="/api/v1/admin/admit-cards", tags=["admin"])
@@ -353,8 +357,8 @@ async def admin_create_admit_card(
         phase_number=body.phase_number,
         title=body.title,
         download_url=body.download_url,
-        valid_from=body.valid_from,
-        valid_until=body.valid_until,
+        exam_start=body.exam_start,
+        exam_end=body.exam_end,
         notes=body.notes,
         published_at=body.published_at,
     )
@@ -595,3 +599,130 @@ async def admin_delete_result(
             status_code=status.HTTP_404_NOT_FOUND, detail=_ERR_RESULT_NOT_FOUND
         )
     await db.delete(doc)
+
+
+# ── Exam Reminders ─────────────────────────────────────────────────────────────────────────────
+
+
+async def _query_job_exam_rows(db: AsyncSession, today: date):
+    result = await db.execute(
+        select(
+            Job.id, Job.job_title.label("title"), Job.exam_start, Job.exam_end, Job.slug
+        )
+        .where(Job.exam_start >= today)
+        .where(~select(AdmitCard.id).where(AdmitCard.job_id == Job.id).exists())
+        .order_by(Job.exam_start)
+    )
+    return result.all()
+
+
+async def _query_admission_exam_rows(db: AsyncSession, today: date):
+    result = await db.execute(
+        select(
+            Admission.id,
+            Admission.admission_name.label("title"),
+            Admission.exam_start,
+            Admission.exam_end,
+            Admission.slug,
+        )
+        .where(Admission.exam_start >= today)
+        .where(
+            ~select(AdmitCard.id).where(AdmitCard.admission_id == Admission.id).exists()
+        )
+        .order_by(Admission.exam_start)
+    )
+    return result.all()
+
+
+async def _query_admit_card_exam_rows(db: AsyncSession, today: date):
+    result = await db.execute(
+        select(
+            AdmitCard.id,
+            AdmitCard.title,
+            AdmitCard.exam_start,
+            AdmitCard.exam_end,
+            AdmitCard.slug,
+            AdmitCard.job_id,
+            AdmitCard.admission_id,
+            Job.slug.label("job_slug"),
+            Admission.slug.label("admission_slug"),
+        )
+        .outerjoin(Job, Job.id == AdmitCard.job_id)
+        .outerjoin(Admission, Admission.id == AdmitCard.admission_id)
+        .where(AdmitCard.exam_start >= today)
+        .order_by(AdmitCard.exam_start)
+    )
+    return result.all()
+
+
+def _build_exam_items(type_: str, rows, today: date):
+    items = []
+    for row in rows:
+        days = (row.exam_start - today).days if row.exam_start else None
+        items.append(
+            {
+                "type": type_,
+                "id": str(row.id),
+                "title": row.title,
+                "exam_start": str(row.exam_start) if row.exam_start else None,
+                "exam_end": str(row.exam_end) if row.exam_end else None,
+                "slug": row.slug,
+                "days_remaining": days,
+            }
+        )
+    return items
+
+
+def _build_admit_card_exam_items(rows, today: date):
+    items = []
+    for row in rows:
+        days = (row.exam_start - today).days if row.exam_start else None
+        if row.job_id:
+            parent_type = "job"
+            parent_slug = row.job_slug or row.slug
+            parent_id = str(row.job_id)
+        elif row.admission_id:
+            parent_type = "admission"
+            parent_slug = row.admission_slug or row.slug
+            parent_id = str(row.admission_id)
+        else:
+            parent_type, parent_slug, parent_id = "admit_card", row.slug, None
+        items.append(
+            {
+                "type": "admit_card",
+                "title": row.title,
+                "exam_start": str(row.exam_start) if row.exam_start else None,
+                "exam_end": str(row.exam_end) if row.exam_end else None,
+                "slug": row.slug,
+                "parent_type": parent_type,
+                "parent_slug": parent_slug,
+                "parent_id": parent_id,
+                "days_remaining": days,
+            }
+        )
+    return items
+
+
+@exam_reminders_router.get("")
+async def list_exam_reminders(
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Return upcoming exams sorted by exam_start.
+
+    Logic:
+    - Jobs/Admissions with no linked admit cards → use their own exam dates.
+    - Admit cards → always shown individually (covers parent exam dates).
+    """
+    today = date.today()
+    job_rows = await _query_job_exam_rows(db, today)
+    admission_rows = await _query_admission_exam_rows(db, today)
+    admit_card_rows = await _query_admit_card_exam_rows(db, today)
+
+    all_items = (
+        _build_exam_items("job", job_rows, today)
+        + _build_exam_items("admission", admission_rows, today)
+        + _build_admit_card_exam_items(admit_card_rows, today)
+    )
+    all_items.sort(key=lambda x: x["exam_start"] or "9999-99-99")
+
+    return {"data": all_items, "total": len(all_items)}

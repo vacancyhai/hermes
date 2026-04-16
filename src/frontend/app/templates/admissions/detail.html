@@ -20,15 +20,15 @@
         </div>
         <div style="flex-shrink:0">
             {% if admission.status == 'active' %}
-            <span style="background:#22c55e;color:#fff;padding:.25rem .65rem;border-radius:9999px;font-size:.78rem;font-weight:600">Active</span>
+            <span class="status-pill status-active">Active</span>
             {% elif admission.status == 'upcoming' %}
-            <span style="background:#f59e0b;color:#fff;padding:.25rem .65rem;border-radius:9999px;font-size:.78rem;font-weight:600">Upcoming</span>
+            <span class="status-pill status-upcoming">Upcoming</span>
             {% elif admission.status == 'inactive' %}
-            <span style="background:#94a3b8;color:#fff;padding:.25rem .65rem;border-radius:9999px;font-size:.78rem;font-weight:600">Inactive</span>
+            <span class="status-pill status-inactive">Inactive</span>
             {% elif admission.status == 'closed' %}
-            <span style="background:#64748b;color:#fff;padding:.25rem .65rem;border-radius:9999px;font-size:.78rem;font-weight:600">Closed</span>
+            <span class="status-pill status-closed">Closed</span>
             {% else %}
-            <span style="background:rgba(255,255,255,.3);color:#fff;padding:.25rem .65rem;border-radius:9999px;font-size:.78rem;font-weight:600">{{ admission.status|title }}</span>
+            <span class="status-pill" style="background:rgba(255,255,255,.3);color:#fff">{{ admission.status|title }}</span>
             {% endif %}
         </div>
     </div>
@@ -38,15 +38,17 @@
 <div class="action-bar">
     {% if session.get('token') %}
         {% if watching %}
-        <form method="post" action="/admissions/{{ admission.slug }}/unwatch" style="display:inline">
+        <form method="post" action="/admissions/{{ admission.id }}/unwatch" style="display:inline">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="slug" value="{{ admission.slug }}">
             <button type="submit" class="share-btn" style="background:#ede9fe;color:#5b21b6;border-color:#c4b5fd">
                 ★ Watching — Remove
             </button>
         </form>
         {% else %}
-        <form method="post" action="/admissions/{{ admission.slug }}/watch" style="display:inline">
+        <form method="post" action="/admissions/{{ admission.id }}/watch" style="display:inline">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="slug" value="{{ admission.slug }}">
             <button type="submit" class="share-btn" style="background:#ede9fe;color:#5b21b6;border-color:#c4b5fd">
                 ☆ Watch for Reminders
             </button>
@@ -73,6 +75,18 @@
     <div class="detail-item">
         <div class="label">Last Date to Apply</div>
         <div class="value {{ 'urgent' if admission.status == 'active' else '' }}">{{ admission.application_end }}</div>
+    </div>
+    {% endif %}
+    {% if admission.exam_start %}
+    <div class="detail-item">
+        <div class="label">Exam Starts</div>
+        <div class="value">{{ admission.exam_start }}</div>
+    </div>
+    {% endif %}
+    {% if admission.exam_end %}
+    <div class="detail-item">
+        <div class="label">Exam Ends</div>
+        <div class="value">{{ admission.exam_end }}</div>
     </div>
     {% endif %}
     {% if admission.admission_date %}
@@ -313,7 +327,7 @@
                 <div class="doc-card-body">
                     {% if card.phase_number %}<span class="doc-phase-pill phase-blue">Phase {{ card.phase_number }}</span>{% endif %}
                     <div class="doc-title">{{ card.title }}</div>
-                    {% if card.valid_from or card.valid_until %}<div class="doc-deadline">Valid: {{ card.valid_from or '?' }} – {{ card.valid_until or '?' }}</div>{% endif %}
+                    {% if card.exam_start or card.exam_end %}<div class="doc-deadline">Exam: {{ card.exam_start or '?' }} – {{ card.exam_end or '?' }}</div>{% endif %}
                     {% if card.notes %}<div class="doc-note">{{ card.notes }}</div>{% endif %}
                 </div>
                 <div class="doc-card-actions">
