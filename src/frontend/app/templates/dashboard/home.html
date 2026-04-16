@@ -1,0 +1,294 @@
+{% extends "shared/base.html" %}
+{% block title %}Dashboard — Hermes{% endblock %}
+
+{% block head %}
+<style>
+    /* ── Page header ── */
+    .dash-hero{background:linear-gradient(135deg,#1e3a5f 0%,#2563eb 100%);color:#fff;padding:1.25rem 1.25rem 1rem;border-radius:.75rem;margin-bottom:1.5rem}
+    .dash-hero h1{font-size:1.3rem;font-weight:700;margin-bottom:.2rem}
+    .dash-hero p{font-size:.85rem;opacity:.85}
+
+    /* ── Guest login prompt ── */
+    .guest-banner{background:#eff6ff;border:1px solid #bfdbfe;border-radius:.5rem;padding:1rem 1.25rem;margin-bottom:1.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.75rem}
+    .guest-banner p{font-size:.9rem;color:#1e40af;margin:0}
+    .guest-banner a{white-space:nowrap}
+
+    /* ── Section row ── */
+    .section-row{margin-bottom:2rem}
+    .section-row-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.65rem}
+    .section-row-title{font-size:1rem;font-weight:700;color:#1e293b;display:flex;align-items:center;gap:.4rem}
+    .view-all-link{font-size:.82rem;font-weight:600;color:#2563eb;white-space:nowrap;text-decoration:none}
+    .view-all-link:hover{text-decoration:underline}
+
+    /* ── Horizontal scroll track ── */
+    .h-scroll{display:flex;gap:.75rem;overflow-x:auto;padding-bottom:.5rem;scrollbar-width:thin;scrollbar-color:#cbd5e1 transparent}
+    .h-scroll::-webkit-scrollbar{height:4px}
+    .h-scroll::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:9999px}
+
+    /* ── Mini cards in scroll row ── */
+    .mini-card{background:#fff;border:1px solid #e2e8f0;border-radius:.5rem;padding:.85rem 1rem;min-width:220px;max-width:220px;flex-shrink:0;display:flex;flex-direction:column;justify-content:space-between;gap:.5rem;transition:box-shadow .15s}
+    .mini-card:hover{box-shadow:0 2px 8px rgba(0,0,0,.08)}
+    .mini-card-title{font-size:.875rem;font-weight:600;color:#1e293b;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+    .mini-card-org{font-size:.78rem;color:#64748b;margin-top:.15rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .mini-card-meta{font-size:.75rem;color:#94a3b8;margin-top:.1rem}
+    .mini-card-footer{display:flex;justify-content:flex-end;margin-top:.25rem}
+
+    /* left-border colour per section */
+    .mc-job{border-left:3px solid #1e3a5f}
+    .mc-admission{border-left:3px solid #7c3aed}
+    .mc-admit{border-left:3px solid #2563eb}
+    .mc-answer{border-left:3px solid #d97706}
+    .mc-result{border-left:3px solid #16a34a}
+
+    /* ── Watchlist section ── */
+    .watch-section{margin-top:2rem;padding-top:1.5rem;border-top:2px solid #e2e8f0}
+    .watch-section-title{font-size:1rem;font-weight:700;color:#1e293b;margin-bottom:.75rem;display:flex;align-items:center;gap:.4rem}
+    .watch-card{background:#fff;border:1px solid #e2e8f0;border-radius:.5rem;padding:.85rem 1rem;margin-bottom:.65rem;display:flex;justify-content:space-between;align-items:flex-start;gap:1rem}
+    .watch-card h3{font-size:.925rem;font-weight:600;margin-bottom:.2rem}
+    .watch-card .org{color:#64748b;font-size:.82rem}
+    .watch-card .deadline{font-size:.78rem;color:#b45309;margin-top:.2rem;font-weight:500}
+    .type-pill{display:inline-block;padding:.15rem .5rem;border-radius:9999px;font-size:.72rem;font-weight:600;background:#dbeafe;color:#1e40af}
+    .stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;margin-bottom:1.25rem}
+    .stat-card{background:#fff;border:1px solid #e2e8f0;border-radius:.5rem;padding:.85rem;text-align:center}
+    .stat-card .count{font-size:1.75rem;font-weight:700;color:#1e3a5f}
+    .stat-card .label{font-size:.8rem;color:#64748b;margin-top:.15rem}
+    .empty-state{text-align:center;padding:2rem 1rem;color:#64748b;background:#f8fafc;border-radius:.5rem;border:1px dashed #e2e8f0}
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Hero -->
+<div class="dash-hero">
+    <h1>Dashboard</h1>
+    <p>Latest government jobs, admissions, admit cards, answer keys and results</p>
+</div>
+
+<!-- Guest banner (show login button, not a forced redirect) -->
+{% if not logged_in %}
+<div class="guest-banner">
+    <p>🔒 Sign in to watch items and get personalised deadline reminders.</p>
+    <a href="/login?next=/" class="btn btn-primary" style="font-size:.85rem;padding:.4rem .9rem">Login / Sign Up</a>
+</div>
+{% endif %}
+
+<!-- ── 1. Latest Jobs ──────────────────────────────────────────────── -->
+<div class="section-row">
+    <div class="section-row-header">
+        <div class="section-row-title">📋 Latest Jobs</div>
+        <a href="/jobs" class="view-all-link">View All →</a>
+    </div>
+    <div class="h-scroll">
+        {% for job in latest_jobs %}
+        <div class="mini-card mc-job">
+            <div>
+                <div class="mini-card-title">{{ job.job_title }}</div>
+                <div class="mini-card-org">🏛 {{ job.organization }}</div>
+                {% if job.application_end %}
+                <div class="mini-card-meta">Deadline: {{ job.application_end }}</div>
+                {% endif %}
+                {% if job.total_vacancies %}
+                <div class="mini-card-meta">{{ "{:,}".format(job.total_vacancies) }} vacancies</div>
+                {% endif %}
+            </div>
+            <div class="mini-card-footer">
+                <a href="/jobs/{{ job.slug }}" class="btn btn-outline" style="font-size:.75rem;padding:.25rem .6rem">View →</a>
+            </div>
+        </div>
+        {% else %}
+        <p style="color:#94a3b8;font-size:.875rem;padding:.5rem 0">No jobs available.</p>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- ── 2. Latest Admissions ───────────────────────────────────────── -->
+<div class="section-row">
+    <div class="section-row-header">
+        <div class="section-row-title">🎓 Latest Admissions</div>
+        <a href="/admissions" class="view-all-link">View All →</a>
+    </div>
+    <div class="h-scroll">
+        {% for admission in latest_admissions %}
+        <div class="mini-card mc-admission">
+            <div>
+                <div class="mini-card-title">{{ admission.admission_name }}</div>
+                <div class="mini-card-org">🏛 {{ admission.conducting_body }}</div>
+                {% if admission.application_end %}
+                <div class="mini-card-meta">Apply by: {{ admission.application_end }}</div>
+                {% endif %}
+                <div class="mini-card-meta" style="margin-top:.15rem">
+                    <span style="background:#ede9fe;color:#5b21b6;padding:.1rem .4rem;border-radius:9999px;font-size:.7rem;font-weight:600">{{ admission.admission_type|upper }}</span>
+                </div>
+            </div>
+            <div class="mini-card-footer">
+                <a href="/admissions/{{ admission.slug }}" class="btn btn-outline" style="font-size:.75rem;padding:.25rem .6rem">View →</a>
+            </div>
+        </div>
+        {% else %}
+        <p style="color:#94a3b8;font-size:.875rem;padding:.5rem 0">No admissions available.</p>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- ── 3. Latest Admit Cards ─────────────────────────────────────── -->
+<div class="section-row">
+    <div class="section-row-header">
+        <div class="section-row-title">🪪 Latest Admit Cards</div>
+        <a href="/admit-cards" class="view-all-link">View All →</a>
+    </div>
+    <div class="h-scroll">
+        {% for card in latest_admit_cards %}
+        <div class="mini-card mc-admit">
+            <div>
+                <div class="mini-card-title">{{ card.title }}</div>
+                {% if card.valid_from or card.valid_until %}
+                <div class="mini-card-meta">Valid: {{ card.valid_from or '?' }} – {{ card.valid_until or 'ongoing' }}</div>
+                {% endif %}
+                {% if card.published_at %}
+                <div class="mini-card-meta">Published: {{ card.published_at[:10] }}</div>
+                {% endif %}
+            </div>
+            <div class="mini-card-footer">
+                <a href="/admit-cards/{{ card.slug }}" class="btn btn-outline" style="font-size:.75rem;padding:.25rem .6rem">View →</a>
+            </div>
+        </div>
+        {% else %}
+        <p style="color:#94a3b8;font-size:.875rem;padding:.5rem 0">No admit cards available.</p>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- ── 4. Latest Answer Keys ─────────────────────────────────────── -->
+<div class="section-row">
+    <div class="section-row-header">
+        <div class="section-row-title">📝 Latest Answer Keys</div>
+        <a href="/answer-keys" class="view-all-link">View All →</a>
+    </div>
+    <div class="h-scroll">
+        {% for key in latest_answer_keys %}
+        <div class="mini-card mc-answer">
+            <div>
+                <div class="mini-card-title">{{ key.title }}</div>
+                {% if key.answer_key_type %}
+                <div class="mini-card-meta">
+                    <span style="background:#fef3c7;color:#92400e;padding:.1rem .4rem;border-radius:9999px;font-size:.7rem;font-weight:600">{{ key.answer_key_type|title }}</span>
+                </div>
+                {% endif %}
+                {% if key.published_at %}
+                <div class="mini-card-meta">Published: {{ key.published_at[:10] }}</div>
+                {% endif %}
+            </div>
+            <div class="mini-card-footer">
+                <a href="/answer-keys/{{ key.slug }}" class="btn btn-outline" style="font-size:.75rem;padding:.25rem .6rem">View →</a>
+            </div>
+        </div>
+        {% else %}
+        <p style="color:#94a3b8;font-size:.875rem;padding:.5rem 0">No answer keys available.</p>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- ── 5. Latest Results ──────────────────────────────────────────── -->
+<div class="section-row">
+    <div class="section-row-header">
+        <div class="section-row-title">🏆 Latest Results</div>
+        <a href="/results" class="view-all-link">View All →</a>
+    </div>
+    <div class="h-scroll">
+        {% for res in latest_results %}
+        <div class="mini-card mc-result">
+            <div>
+                <div class="mini-card-title">{{ res.title }}</div>
+                {% if res.published_at %}
+                <div class="mini-card-meta">Published: {{ res.published_at[:10] }}</div>
+                {% endif %}
+                {% if res.notes %}
+                <div class="mini-card-meta" style="display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">{{ res.notes }}</div>
+                {% endif %}
+            </div>
+            <div class="mini-card-footer">
+                <a href="/results/{{ res.slug }}" class="btn btn-outline" style="font-size:.75rem;padding:.25rem .6rem">View →</a>
+            </div>
+        </div>
+        {% else %}
+        <p style="color:#94a3b8;font-size:.875rem;padding:.5rem 0">No results available.</p>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- ── Watchlist (logged-in only) ────────────────────────────────── -->
+{% if logged_in %}
+<div class="watch-section">
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="count">{{ total }}</div>
+            <div class="label">Watching</div>
+        </div>
+        <div class="stat-card">
+            <div class="count">{{ watched_jobs | length }}</div>
+            <div class="label">Jobs</div>
+        </div>
+        <div class="stat-card">
+            <div class="count">{{ watched_admissions | length }}</div>
+            <div class="label">Admissions</div>
+        </div>
+    </div>
+
+    {% if watched_jobs %}
+    <div class="watch-section-title">📋 Watched Jobs</div>
+    {% for item in watched_jobs %}
+    <div class="watch-card">
+        <div style="flex:1;min-width:0">
+            <h3><a href="/jobs/{{ item.id }}" style="color:#1e293b">{{ item.job_title }}</a></h3>
+            <div class="org">{{ item.organization }}</div>
+            {% if item.application_end %}<div class="deadline">Deadline: {{ item.application_end }}</div>{% endif %}
+        </div>
+        <div style="display:flex;gap:.5rem;align-items:center;flex-shrink:0">
+            <span class="type-pill">Job</span>
+            <a href="/jobs/{{ item.id }}" class="btn btn-outline" style="font-size:.78rem;padding:.25rem .6rem">View →</a>
+            <form method="post" action="/jobs/{{ item.id }}/unwatch" style="display:inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <input type="hidden" name="next" value="/">
+                <button type="submit" class="btn-watching" style="font-size:.78rem;padding:.25rem .6rem">★ Unwatch</button>
+            </form>
+        </div>
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    {% if watched_admissions %}
+    <div class="watch-section-title">🎓 Watched Admissions</div>
+    {% for item in watched_admissions %}
+    <div class="watch-card">
+        <div style="flex:1;min-width:0">
+            <h3><a href="/admissions/{{ item.id }}" style="color:#1e293b">{{ item.admission_name }}</a></h3>
+            <div class="org">{{ item.conducting_body }}</div>
+            {% if item.application_end %}<div class="deadline">Apply by: {{ item.application_end }}</div>{% endif %}
+        </div>
+        <div style="display:flex;gap:.5rem;align-items:center;flex-shrink:0">
+            <span class="type-pill" style="background:#d1fae5;color:#065f46">Admission</span>
+            <a href="/admissions/{{ item.id }}" class="btn btn-outline" style="font-size:.78rem;padding:.25rem .6rem">View →</a>
+            <form method="post" action="/admissions/{{ item.id }}/unwatch" style="display:inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <input type="hidden" name="next" value="/">
+                <button type="submit" class="btn-watching" style="font-size:.78rem;padding:.25rem .6rem">★ Unwatch</button>
+            </form>
+        </div>
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    {% if not watched_jobs and not watched_admissions %}
+    <div class="empty-state">
+        <p style="font-size:1rem;margin-bottom:.4rem">No items watched yet.</p>
+        <p style="font-size:.875rem;margin-bottom:1rem">Watch jobs and admissions to get deadline reminders.</p>
+        <div style="display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap">
+            <a href="/jobs" class="btn btn-primary">Browse Jobs</a>
+            <a href="/admissions" class="btn btn-outline">Browse Admissions</a>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+{% endblock %}

@@ -32,10 +32,15 @@
         </div>
         <div class="section-body">
             <div class="form-grid-3">
-                <div class="form-group col-span-3">
+                <div class="form-group col-span-2">
                     <label for="ec_admission_name">Admission Name <span class="req">*</span></label>
                     <input id="ec_admission_name" type="text" name="admission_name" required
                            placeholder="e.g. NTA NEET PG 2026 — Medical PG Admission Examination">
+                </div>
+                <div class="form-group">
+                    <label for="ec_slug">Slug <span class="req">*</span></label>
+                    <input id="ec_slug" type="text" name="slug" required
+                           placeholder="e.g. neet-pg-2026" pattern="[a-z0-9]+(?:-[a-z0-9]+)*" title="Lowercase letters, numbers and hyphens only">
                 </div>
                 <div class="form-group col-span-2">
                     <label for="ec_conducting_body">Conducting Body <span class="req">*</span></label>
@@ -72,8 +77,8 @@
                     <select id="ec_status" name="status">
                         <option value="upcoming" selected>Upcoming</option>
                         <option value="active">Active</option>
-                        <option value="completed">Completed</option>
-                        <option value="cancelled">Cancelled</option>
+                        <option value="inactive">Inactive</option>
+                        <option value="closed">Closed</option>
                     </select>
                 </div>
             </div>

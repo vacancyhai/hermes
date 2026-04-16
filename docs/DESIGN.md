@@ -2,8 +2,8 @@
 
 > **Status:** Phases 1–7.5 + 10 + 11 + 12 complete. Auth (Firebase — Email/Password with OTP verification, Google OAuth, Phone OTP), job CRUD, full-text search,
 > user profiles, job matching, org follow, application tracking, notifications
-> (email, push, in-app), admin panel, SEO, PDF AI extraction, PWA, test suite
-> (~500 tests — ~93/91/97% coverage), security audit + 24 bug fixes, 5-section navigation,
+> (email, push, in-app), admin panel, SEO, PDF AI extraction, PWA,
+> security audit + 24 bug fixes, 5-section navigation,
 > admissions, polymorphic document tables, email notifications for account actions — all implemented. Phase 8 (OCI deployment) next.
 
 ---
@@ -20,10 +20,9 @@
 8. [SEO Strategy](#seo-strategy)
 9. [5-Section Frontend Architecture](#5-section-frontend-architecture)
 10. [Docker Environments](#docker-environments)
-11. [CI/CD Pipeline](#cicd-pipeline)
-12. [Security Design](#security-design)
-13. [Environment Variables](#environment-variables)
-14. [Deployment](#deployment)
+11. [Security Design](#security-design)
+12. [Environment Variables](#environment-variables)
+13. [Deployment](#deployment)
 
 ---
 
@@ -81,7 +80,7 @@ through the backend REST API via `BACKEND_API_URL`.
 
 ### Services
 
-All services are defined in the single root **`docker-compose.yml`** (development) or **`docker-compose.test.yml`** (CI).
+All services are defined in the single root **`docker-compose.yml`**.
 
 | Service          | Image / Build      | Port     | Env file                            |
 | ---------------- | ------------------ | -------- | ----------------------------------- |
@@ -95,7 +94,6 @@ All services are defined in the single root **`docker-compose.yml`** (developmen
 | `frontend-admin` | local build        | `8081`   | `config/development/.env.frontend-admin` |
 | `mailpit`        | axllent/mailpit    | `1025/8025` | — (dev only)                     |
 
-> **CI (`docker-compose.test.yml`)** omits `hermes-worker`, `hermes-scheduler`, and `mailpit`. Services use `config/test/.env.*`.
 
 ### Health Checks
 
@@ -331,9 +329,9 @@ For email/password and Google login, create a test user via the Firebase Console
 | `send-deadline-reminders`       | Daily 08:00 UTC | T-7, T-3, T-1 reminders → delegates to `smart_notify` |
 | `purge-expired-notifications`   | Daily 01:00 UTC | Delete notifications past `expires_at` |
 | `purge-expired-admin-logs`      | Daily 01:30 UTC | Delete admin logs past `expires_at`    |
-| `purge-soft-deleted-jobs`       | Daily 02:00 UTC | Hard-delete `cancelled` (manually deleted) jobs > 90 days |
-| `close-expired-job-listings`    | Daily 02:30 UTC | Set `status='expired'` on jobs past `application_end` |
-| `update-admission-statuses`     | Daily 02:35 UTC | Set `status='completed'` on admissions whose `admission_date` has passed |
+| `purge-soft-deleted-jobs`       | Daily 02:00 UTC | Hard-delete inactive jobs older than 90 days |
+| `close-expired-job-listings`    | Daily 02:30 UTC | Set `status='closed'` on jobs past `application_end` |
+| `update-admission-statuses`     | Daily 02:35 UTC | Set `status='closed'` on admissions past `admission_date` |
 | `generate-sitemap`              | Daily 04:00 UTC | Regenerate `/sitemap.xml` — active jobs, active/upcoming admissions, all 5 section pages |
 
 ### hermes-worker (Event-Triggered Tasks)
@@ -427,8 +425,6 @@ immediate review and editing before submission.
 | Method | Endpoint                          | Description                    | Access   |
 | ------ | --------------------------------- | ------------------------------ | -------- |
 | POST   | `/api/v1/admin/jobs/extract-pdf`  | Extract PDF → return JSON      | Operator+ |
-| GET    | `/api/v1/admin/jobs?status=draft` | List draft jobs for review     | Operator |
-| PUT    | `/api/v1/admin/jobs/:id/approve`  | Approve draft → active         | Operator |
 
 ---
 
@@ -584,26 +580,6 @@ page includes a single **Share** button using the Web Share API.
 more universal — it lets users choose their preferred app (WhatsApp, Telegram,
 Copy, SMS, Email, etc.) from the OS-level dialog without the frontend
 hard-coding specific platforms.
-
-### Application Fee by Category
-
-Government jobs charge different application fees by category. When a logged-in user views a job,
-the frontend reads the fee columns from the job and the user's `category` from their profile,
-then displays: **"Your application fee: ₹0"**.
-
-Fees are stored as **top-level integer columns** on the `jobs` table (not inside JSONB):
-
-| Column | Description |
-|--------|-------------|
-| `fee_general` | Fee for General/UR category (INR) |
-| `fee_obc` | Fee for OBC-NCL category (INR) |
-| `fee_sc_st` | Fee for SC/ST category (INR) |
-| `fee_ews` | Fee for EWS category (INR) |
-| `fee_female` | Fee for Female/PwBD candidates (INR) |
-
-`0` = free. `null` = fee not specified (hidden in UI). This is pure Jinja2 template logic — no API changes needed.
-
----
 
 ## 5-Section Frontend Architecture
 
@@ -823,153 +799,6 @@ All containers run via Docker Compose on this single VM.
 
 ---
 
-## CI/CD Pipeline
-
-### GitHub Actions Workflow (`.github/workflows/build.yml`)
-
-Jobs 1–3 run **in parallel**; job 4 (E2E) waits for all three; job 5 (SonarCloud) waits for all four:
-
-```
-push to main / any PR
-  ├─► job 1: test  (ubuntu-latest)
-  │     1. docker-compose.test.yml up --build --wait (PG + Redis + PgBouncer + backend)
-  │     2. docker exec test_backend alembic upgrade head
-  │     3. docker exec test_backend pytest tests/unit/ tests/integration/ --cov=app
-  │     4. docker cp test_backend:/app/coverage.xml → fix paths → upload artifact
-  │     5. docker compose down -v  (always)
-  │
-  ├─► job 2: test-frontend  (ubuntu-latest)
-  │     1. docker build -t hermes_frontend_ci  (src/frontend/)
-  │     2. docker run --env-file .env.test -v coverage:/app/coverage pytest tests/ --cov=app
-  │     3. fix coverage paths → upload artifact: coverage/frontend/coverage.xml
-  │     (no live services — Flask test client + MagicMock)
-  │
-  ├─► job 3: test-frontend-admin  (ubuntu-latest)
-  │     1. docker build -t hermes_frontend_admin_ci  (src/frontend-admin/)
-  │     2. docker run --env-file .env.test -v coverage:/app/coverage pytest tests/ --cov=app
-  │     3. fix coverage paths → upload artifact: coverage/frontend-admin/coverage.xml
-  │     (no live services — Flask test client + MagicMock)
-  │
-  ├─► job 4: test-e2e  (ubuntu-latest, needs: [1, 2, 3])
-  │     1. docker-compose.test.yml up --build --wait (all services)
-  │     2. docker exec test_backend alembic upgrade head
-  │     3. seed CI admin + regular user; capture user JWT → E2E_USER_TOKEN
-  │     4. pip install tests/e2e/requirements.txt
-  │     5. pytest tests/e2e/
-  │     6. docker compose down -v  (always)
-  │
-  └─► job 5: sonarcloud  (needs: [1, 2, 3, 4])
-        1. Download all 3 coverage artifacts
-        2. SonarCloud scan with all 3 XMLs in sonar.python.coverage.reportPaths
-```
-
-| Job | Service | Infra | Artifact |
-|-----|---------|-------|----------|
-| `test` | Backend (FastAPI) | PostgreSQL + Redis + PgBouncer | `coverage/backend/coverage.xml` |
-| `test-frontend` | User frontend (Flask) | None | `coverage/frontend/coverage.xml` |
-| `test-frontend-admin` | Admin frontend (Flask) | None | `coverage/frontend-admin/coverage.xml` |
-| `test-e2e` | Cross-service | All 3 services | None |
-| `sonarcloud` | — | Needs all 4 | Merges all 3 reports |
-
-### Branch Strategy
-
-| Branch | Purpose | CI trigger |
-|--------|---------|------------|
-| `main` | Production-ready code — protected | Push: full pipeline |
-| `feature/*` | New features | PR to main: full pipeline |
-| `fix/*` | Bug fixes | PR to main: full pipeline |
-| `chore/*` | Dependency bumps, config | PR to main: full pipeline |
-
-**Branch protection rules (set in GitHub repo Settings → Branches):**
-- Require pull request before merging
-- Require status checks: **Unit Tests (pytest + coverage)**, **User Frontend Tests**, **Admin Frontend Tests**, **SonarCloud Scan**
-- Require branches to be up to date before merging
-- No bypassing rules (including admins)
-
-### Feature Development Workflow
-
-Follow these steps every time you implement a new feature, fix, or chore:
-
-**Step 1 — Create a branch**
-```bash
-git checkout -b feature/your-feature-name   # new feature
-git checkout -b fix/bug-description         # bug fix
-git checkout -b chore/update-deps           # maintenance
-```
-
-**Step 2 — Install pre-commit (first time only, per machine)**
-```bash
-pre-commit install   # registers .git/hooks/pre-commit
-```
-
-**Step 3 — Write code + tests**
-- Backend tests → `src/backend/tests/unit/`
-- Frontend tests → `src/frontend/tests/`
-- Admin tests → `src/frontend-admin/tests/`
-- Run tests locally before committing:
-```bash
-docker exec hermes_backend python -m pytest tests/unit/ -q
-```
-
-**Step 4 — Commit (hooks run automatically)**
-```bash
-git add .
-git commit -m "feat: describe what you did"
-# pre-commit runs: black, isort, flake8, detect-secrets
-# Fix anything flagged, then commit again
-```
-
-**Step 5 — Push and open a PR**
-```bash
-git push origin feature/your-feature-name
-# Open PR on GitHub targeting main
-```
-
-**Step 6 — CI runs automatically on the PR**
-
-All 3 test jobs + SonarCloud must go green before merge. If anything fails, fix it on the branch and push again.
-
-**Step 7 — Merge and delete branch**
-
-Squash merge into `main` via GitHub. Delete the feature branch after merge.
-
----
-
-**Commit message convention:**
-
-| Prefix | When to use |
-|--------|-------------|
-| `feat:` | New feature |
-| `fix:` | Bug fix |
-| `chore:` | Config, deps, tooling |
-| `docs:` | Documentation only |
-| `style:` | Formatting, no logic change |
-| `refactor:` | Code restructure, no new feature |
-| `test:` | Adding or fixing tests |
-
----
-
-### Pre-commit Hooks (`.pre-commit-config.yaml`)
-
-Run locally before every `git commit`. Installed once per developer clone:
-
-```bash
-pre-commit install   # registers .git/hooks/pre-commit
-```
-
-| Hook | Enforces |
-|------|----------|
-| `trailing-whitespace`, `end-of-file-fixer`, `mixed-line-ending` | File hygiene |
-| `check-yaml`, `check-json`, `check-toml` | Config syntax |
-| `check-merge-conflict`, `debug-statements` | Common accidents |
-| `check-added-large-files` (500 KB) | No accidental binary commits |
-| **black** | Auto-format Python (`src/backend/`) |
-| **isort** `--profile=black` | Import sort order |
-| **flake8** + bugbear, comprehensions, simplify | Lint `src/backend/app/` only (120-char limit) |
-| **detect-secrets** | Block credential leaks (baseline: `.secrets.baseline`) |
-
----
-
 ## Security Design
 
 All items below are implemented.
@@ -1029,13 +858,12 @@ All items below are implemented.
 Each service has its own `.env` file stored in `config/<environment>/`.
 
 - **Templates (committed):** `config/staging/` and `config/production/` — placeholder values, safe to commit.
-- **Dev/test secrets (gitignored):** `config/development/` and `config/test/` — never committed.
+- **Dev secrets (gitignored):** `config/development/` — never committed.
 - **Reference examples:** `src/backend/.env.example`, `src/frontend/.env.example`, `src/frontend-admin/.env.example` — annotated, safe to commit.
 
 ```
 config/
 ├── development/   .env.backend  .env.frontend  .env.frontend-admin  ← gitignored
-├── test/          .env.backend  .env.frontend  .env.frontend-admin  ← gitignored (CI)
 ├── staging/       .env.backend  .env.frontend  .env.frontend-admin  ← committed (placeholders)
 └── production/    .env.backend  .env.frontend  .env.frontend-admin  ← committed (placeholders)
 ```

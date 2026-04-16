@@ -29,9 +29,9 @@
         ⬇ Download Admit Card
     </a>
     {% if card.get('job') %}
-    <a href="/jobs/{{ card.job.id }}" class="share-btn">View Job Details →</a>
+    <a href="/jobs/{{ card.job.slug }}" class="share-btn">View Job Details →</a>
     {% elif card.get('admission') %}
-    <a href="/admissions/{{ card.admission.id }}" class="share-btn">View Admission Details →</a>
+    <a href="/admissions/{{ card.admission.slug }}" class="share-btn">View Admission Details →</a>
     {% endif %}
     <button type="button" class="share-btn" onclick="if(navigator.share){navigator.share({title:document.title,url:window.location.href})}else{navigator.clipboard.writeText(window.location.href);alert('Link copied!')}">⬆ Share</button>
 </div>

@@ -5,7 +5,6 @@ GET    /api/v1/jobs/recommended  — Personalized recommendations based on profi
 GET    /api/v1/jobs/:id          — Detail by ID
 """
 
-import uuid
 from typing import Annotated, Any
 
 from app.dependencies import get_current_user, get_db
@@ -38,9 +37,9 @@ async def list_jobs(
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
     offset: Annotated[int, Query(ge=0)] = 0,
 ):
-    """List job vacancies (latest_job type only) with filters and full-text search. Returns all jobs."""
-    query = select(Job)
-    count_query = select(func.count(Job.id))
+    """List job vacancies with filters and full-text search. Excludes inactive jobs."""
+    query = select(Job).where(Job.status != "inactive")
+    count_query = select(func.count(Job.id)).where(Job.status != "inactive")
 
     # Full-text search
     if q:
@@ -113,15 +112,18 @@ async def recommended_jobs(
     }
 
 
-@router.get("/{job_id}")
-async def get_job(job_id: uuid.UUID, db: Annotated[AsyncSession, Depends(get_db)]):
-    """Get job detail by ID. Includes all related documents."""
-    result = await db.execute(select(Job).where(Job.id == job_id))
+@router.get("/{slug}")
+async def get_job(slug: str, db: Annotated[AsyncSession, Depends(get_db)]):
+    """Get job detail by slug. Includes all related documents."""
+    result = await db.execute(
+        select(Job).where(Job.slug == slug, Job.status != "inactive")
+    )
     job = result.scalar_one_or_none()
     if not job:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Job not found"
         )
+    job_id = job.id
 
     # Fetch related documents
     admit_cards_result = await db.execute(

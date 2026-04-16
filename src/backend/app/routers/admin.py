@@ -5,8 +5,7 @@ Job Management:
   POST   /api/v1/admin/jobs              — Create job
   POST   /api/v1/admin/jobs/extract-pdf  — Extract PDF data → return JSON (for form auto-fill)
   PUT    /api/v1/admin/jobs/:id          — Update job
-  PUT    /api/v1/admin/jobs/:id/approve  — Approve draft → active
-  DELETE /api/v1/admin/jobs/:id          — Soft delete
+  DELETE /api/v1/admin/jobs/:id          — Hard delete
 
 User Management:
   GET    /api/v1/admin/users             — List users
@@ -50,7 +49,6 @@ from app.schemas.jobs import (
     JobUpdateRequest,
     ResultResponse,
 )
-from app.utils import slugify as _slugify
 from fastapi import (
     APIRouter,
     Depends,
@@ -142,7 +140,6 @@ async def dashboard_stats(
     _r = await asyncio.gather(
         db.execute(select(func.count(Job.id))),
         db.execute(select(func.count(Job.id)).where(Job.status == "active")),
-        db.execute(select(func.count(Job.id)).where(Job.status == "draft")),
         db.execute(select(func.count(AdmitCard.id))),
         db.execute(select(func.count(AnswerKey.id))),
         db.execute(select(func.count(Result.id))),
@@ -157,7 +154,6 @@ async def dashboard_stats(
     (
         jobs_count,
         jobs_active,
-        jobs_draft,
         admit_cards_count,
         answer_keys_count,
         results_count,
@@ -169,7 +165,7 @@ async def dashboard_stats(
     ) = [r.scalar() for r in _r]
 
     return {
-        "jobs": {"total": jobs_count, "active": jobs_active, "draft": jobs_draft},
+        "jobs": {"total": jobs_count, "active": jobs_active},
         "admit_cards": {"total": admit_cards_count},
         "answer_keys": {"total": answer_keys_count},
         "results": {"total": results_count},
@@ -345,7 +341,11 @@ async def get_job(
     return JobResponse.model_validate(job).model_dump()
 
 
-@router.post("/jobs", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/jobs",
+    status_code=status.HTTP_201_CREATED,
+    responses={409: {"description": "Slug already in use"}},
+)
 async def create_job(
     body: JobCreateRequest,
     request: Request,
@@ -355,17 +355,12 @@ async def create_job(
     """Create a job vacancy."""
     admin = current_admin
 
-    # Generate unique slug: fetch all collisions in one query, pick next free suffix
-    base_slug = _slugify(body.job_title)
-    existing_slugs_result = await db.execute(
-        select(Job.slug).where(Job.slug.like(f"{base_slug}%"))
-    )
-    existing_slugs = {row[0] for row in existing_slugs_result.all()}
-    slug = base_slug
-    counter = 1
-    while slug in existing_slugs:
-        slug = f"{base_slug}-{counter}"
-        counter += 1
+    # Validate slug uniqueness
+    if (await db.execute(select(Job.id).where(Job.slug == body.slug))).scalar():
+        raise HTTPException(
+            status_code=409, detail=f"Slug '{body.slug}' is already in use"
+        )
+    slug = body.slug
 
     job = Job(
         job_title=body.job_title,
@@ -559,50 +554,6 @@ async def update_job(
     return JobResponse.model_validate(job).model_dump()
 
 
-@router.put("/jobs/{job_id}/approve")
-async def approve_job(
-    job_id: uuid.UUID,
-    request: Request,
-    current_admin: Annotated[Any, Depends(require_operator)],
-    db: Annotated[AsyncSession, Depends(get_db)],
-):
-    """Approve a draft job → set status to active."""
-    admin = current_admin
-    result = await db.execute(select(Job).where(Job.id == job_id))
-    job = result.scalar_one_or_none()
-    if not job:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=_ERR_JOB_NOT_FOUND
-        )
-
-    if job.status != "draft":
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Only draft jobs can be approved",
-        )
-
-    job.status = "active"
-    job.published_at = datetime.now(timezone.utc)
-
-    await _log_action(
-        db,
-        admin,
-        "approve_job",
-        "job",
-        job.id,
-        details=f"Approved: {job.job_title}",
-        request=request,
-    )
-
-    # Trigger notification to watchers (async Celery task)
-    from app.tasks.notifications import notify_watchers_on_update
-
-    notify_watchers_on_update.delay("job", str(job.id))
-
-    await db.refresh(job)
-    return JobResponse.model_validate(job).model_dump()
-
-
 @router.delete("/jobs/{job_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_job(
     job_id: uuid.UUID,
@@ -610,7 +561,7 @@ async def delete_job(
     admin: Annotated[Any, Depends(require_admin)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    """Soft-delete a job vacancy (admin only, not operators)."""
+    """Hard-delete a job vacancy (admin only, not operators)."""
     result = await db.execute(select(Job).where(Job.id == job_id))
     job = result.scalar_one_or_none()
     if not job:
@@ -618,17 +569,17 @@ async def delete_job(
             status_code=status.HTTP_404_NOT_FOUND, detail=_ERR_JOB_NOT_FOUND
         )
 
-    job.status = "cancelled"
-
     await _log_action(
         db,
         admin,
         "delete_job",
         "job",
         job.id,
-        details=f"Soft-deleted: {job.job_title}",
+        details=f"Deleted: {job.job_title}",
         request=request,
     )
+
+    await db.delete(job)
 
 
 # ─── User Management ────────────────────────────────────────────────────────

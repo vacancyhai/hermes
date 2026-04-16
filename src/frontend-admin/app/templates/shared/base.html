@@ -40,8 +40,9 @@
         .badge{display:inline-block;padding:.15rem .5rem;border-radius:9999px;font-size:.7rem;font-weight:600}
         .badge-active{background:#dcfce7;color:#166534}
         .badge-suspended{background:#fee2e2;color:#991b1b}
-        .badge-draft{background:#fef3c7;color:#92400e}
-        .badge-cancelled{background:#f1f5f9;color:#475569}
+
+        .badge-inactive{background:#f1f5f9;color:#475569}
+        .badge-closed{background:#e2e8f0;color:#475569}
         .badge-featured{background:#fef9c3;color:#713f12}
         .badge-success{background:#dcfce7;color:#166534}
         .badge-warning{background:#fef3c7;color:#92400e}
@@ -49,8 +50,8 @@
         .status-badge{display:inline-block;padding:.15rem .5rem;border-radius:9999px;font-size:.7rem;font-weight:600}
         .status-upcoming{background:#e0e7ff;color:#3730a3}
         .status-active{background:#dcfce7;color:#166534}
-        .status-completed{background:#f1f5f9;color:#475569}
-        .status-cancelled{background:#fee2e2;color:#991b1b}
+        .status-inactive{background:#f1f5f9;color:#475569}
+        .status-closed{background:#e2e8f0;color:#374151}
         .filters{display:flex;gap:.75rem;align-items:center;margin-bottom:1rem;flex-wrap:wrap}
         .filters input[type="text"]{padding:.4rem .75rem;border:1px solid #cbd5e1;border-radius:.375rem;font-size:.85rem;width:220px}
         .filters select{padding:.4rem .75rem;border:1px solid #cbd5e1;border-radius:.375rem;font-size:.85rem}
@@ -112,5 +113,25 @@
     <footer>
         <p>Hermes Admin Panel &copy; 2025</p>
     </footer>
+
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <script>
+    (function () {
+        var token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        function injectCsrf(root) {
+            (root || document).querySelectorAll('form[method="POST"], form[method="post"]').forEach(function (form) {
+                if (!form.querySelector('input[name="csrf_token"]')) {
+                    var inp = document.createElement('input');
+                    inp.type = 'hidden';
+                    inp.name = 'csrf_token';
+                    inp.value = token;
+                    form.prepend(inp);
+                }
+            });
+        }
+        document.addEventListener('DOMContentLoaded', function () { injectCsrf(document); });
+        document.addEventListener('htmx:afterSettle', function (e) { injectCsrf(e.target); });
+    })();
+    </script>
 </body>
 </html>

@@ -85,5 +85,3 @@ Admin panel actions do not trigger email notifications to affected users (to pre
 ---
 
 > **Rate limiting** on auth endpoints (`/auth/send-email-otp`, `/auth/verify-email-otp`) is documented in [DESIGN.md → Security Design](DESIGN.md#security-design).
-
-> **Testing notifications** (Mailpit, mocking, CI setup) is documented in [TESTING.md](TESTING.md).

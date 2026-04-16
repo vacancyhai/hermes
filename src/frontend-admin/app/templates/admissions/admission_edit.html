@@ -41,14 +41,20 @@
         </div>
         <div class="section-body">
             <div class="form-grid-3">
-                <div class="form-group col-span-3">
-                    <label>Admission Name <span class="req">*</span></label>
-                    <input type="text" name="admission_name" required
+                <div class="form-group col-span-2">
+                    <label for="ea_admission_name">Admission Name <span class="req">*</span></label>
+                    <input id="ea_admission_name" type="text" name="admission_name" required
                            value="{{ admission.admission_name }}"
                            placeholder="e.g. NTA NEET PG 2026 — Medical PG Admission Examination">
                 </div>
+                <div class="form-group">
+                    <label for="ea_slug">Slug</label>
+                    <input id="ea_slug" type="text" name="slug"
+                           value="{{ admission.slug or '' }}"
+                           placeholder="e.g. neet-pg-2026" pattern="[a-z0-9]+(?:-[a-z0-9]+)*" title="Lowercase letters, numbers and hyphens only">
+                </div>
                 <div class="form-group col-span-2">
-                    <label>Conducting Body <span class="req">*</span></label>
+                    <label for="ea_conducting_body">Conducting Body <span class="req">*</span></label>
                     <input type="text" name="conducting_body" required
                            value="{{ admission.conducting_body }}"
                            placeholder="e.g. National Testing Agency">
@@ -78,7 +84,7 @@
                 <div class="form-group">
                     <label>Status</label>
                     <select name="status">
-                        {% for val in ['upcoming','active','completed','cancelled'] %}
+                        {% for val in ['upcoming','active','inactive','closed'] %}
                         <option value="{{ val }}" {{ 'selected' if admission.status == val }}>{{ val | title }}</option>
                         {% endfor %}
                     </select>
@@ -489,14 +495,16 @@ Biology, 100, 360"></textarea>
             {% endif %}
             <details class="pd-add-panel">
                 <summary class="pd-add-toggle">&#43; Add Answer Key</summary>
-                <form method="POST" action="/admissions/{{ admission.id }}/docs/answer-keys" class="pd-add-form">
+                <form method="POST" action="/admissions/{{ admission.id }}/docs/answer-keys" class="pd-add-form" onsubmit="buildAKFilesJson(this)">
                     <div class="pd-form-grid">
                         <div class="pd-fg pd-full"><label>Title *</label><input type="text" name="title" required placeholder="NEET PG 2026 Provisional Answer Key"></div>
                         <div class="pd-fg"><label>Type</label><select name="answer_key_type"><option value="provisional">Provisional</option><option value="final">Final</option></select></div>
                         <div class="pd-fg"><label>Phase #</label><input type="number" name="phase_number" min="1" max="10" placeholder="1"></div>
                         <div class="pd-fg"><label>Objection Deadline</label><input type="date" name="objection_deadline"></div>
+                        <div class="pd-fg pd-full"><label>Download URL</label><input type="url" class="ak-file-url" placeholder="https://nta.ac.in/answer-key.pdf"></div>
                         <div class="pd-fg pd-full"><label>Objection URL</label><input type="url" name="objection_url" placeholder="https://nta.ac.in/raise-objection"></div>
                     </div>
+                    <input type="hidden" name="files_json" value="[]">
                     <button type="submit" class="btn btn-primary btn-sm" style="margin-top:.6rem">&#10003; Add Answer Key</button>
                 </form>
             </details>
@@ -555,15 +563,16 @@ const ADMISSION_DATA = {{ admission | tojson }};
 
 (function init() {
     const ed = ADMISSION_DATA.admission_details || {};
+    const ep = ed.exam_pattern || ed;  // exam_pattern nested or flat fallback
     const setV = (id, v) => { const el = document.getElementById(id); if (el && v !== null && v !== undefined) el.value = v; };
     const selV = (id, v) => { const el = document.getElementById(id); if (el && v) el.value = v; };
-    selV('ed_mode', ed.mode);
-    setV('ed_duration', ed.duration_minutes);
-    setV('ed_total_marks', ed.total_marks);
-    setV('ed_total_questions', ed.total_questions);
-    setV('ed_negative', ed.negative_marking);
-    setV('ed_language', (ed.language || []).join(', '));
-    setV('ed_subjects', (ed.subjects || []).map(s => (s.name||'') + ', ' + (s.questions||'') + ', ' + (s.marks||'')).join('\n'));
+    selV('ed_mode', ep.mode);
+    setV('ed_duration', ep.duration_minutes);
+    setV('ed_total_marks', ep.total_marks);
+    setV('ed_total_questions', ep.total_questions);
+    setV('ed_negative', ep.negative_marking);
+    setV('ed_language', (ep.language || []).join(', '));
+    setV('ed_subjects', (ep.subjects || []).map(s => (s.name||'') + ', ' + (s.questions||'') + ', ' + (s.marks||'')).join('\n'));
 
     // Prefill important links
     const existingLinks = ed.important_links || [];
@@ -617,16 +626,28 @@ const ADMISSION_DATA = {{ admission | tojson }};
 
     const el = ADMISSION_DATA.eligibility || {};
     setV('el_qualification', el.qualification);
-    setV('el_min_percent', el.min_percentage);
-    setV('el_age_min', (el.age_limit || {}).min);
-    setV('el_age_max', (el.age_limit || {}).max);
-    setV('el_attempts', el.attempts_allowed);
-    setV('el_notes', el.notes);
+    setV('el_min_percent', el.min_percentage || el.min_percent);
+    const ageLim = typeof el.age_limit === 'object' ? el.age_limit : {};
+    setV('el_age_min', ageLim.min);
+    setV('el_age_max', ageLim.max);
+    setV('el_attempts', el.attempts_allowed || el.attempts);
+    setV('el_notes', el.notes || el.registration || el.internship);
 
     const si = ADMISSION_DATA.seats_info || {};
-    setV('si_total', si.total); setV('si_ur', si.UR); setV('si_obc', si.OBC);
-    setV('si_ews', si.EWS); setV('si_sc', si.SC); setV('si_st', si.ST);
+    const siCat = si.category_breakdown || si;
+    setV('si_total', si.total_seats != null ? si.total_seats : si.total);
+    setV('si_ur', siCat.UR); setV('si_obc', siCat.OBC);
+    setV('si_ews', siCat.EWS); setV('si_sc', siCat.SC); setV('si_st', siCat.ST);
 })();
+
+function buildAKFilesJson(form) {
+    const urlEl = form.querySelector('.ak-file-url');
+    const hiddenEl = form.querySelector('[name="files_json"]');
+    if (urlEl && hiddenEl) {
+        const url = urlEl.value.trim();
+        hiddenEl.value = url ? JSON.stringify([{url: url, name: 'Answer Key'}]) : '[]';
+    }
+}
 
 document.getElementById('admission-edit-form').addEventListener('submit', function() {
     const g = id => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };
@@ -761,8 +782,8 @@ function toggleExPhaseFields(sel) {
 .status-badge{display:inline-block;padding:.15rem .55rem;border-radius:9999px;font-size:.72rem;font-weight:700;letter-spacing:.04em}
 .status-active{background:#dcfce7;color:#15803d}
 .status-upcoming{background:#dbeafe;color:#1d4ed8}
-.status-completed{background:#f3f4f6;color:#374151}
-.status-cancelled{background:#fee2e2;color:#dc2626}
+.status-inactive{background:#f1f5f9;color:#64748b}
+.status-closed{background:#f3f4f6;color:#374151}
 /* ── Section cards ───────────────────────────────── */
 .section-card{border:1px solid #e5e7eb;border-radius:.75rem;margin-bottom:1.25rem;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.06)}
 .section-header{display:flex;align-items:center;gap:.5rem;padding:.65rem 1rem;font-size:.85rem;font-weight:700;color:#fff;letter-spacing:.03em}

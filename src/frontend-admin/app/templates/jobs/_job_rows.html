@@ -6,8 +6,9 @@
     </td>
     <td>
         {% if job.status == 'active' %}<span class="badge badge-active">Active</span>
-        {% elif job.status == 'draft' %}<span class="badge badge-draft">Draft</span>
-        {% elif job.status == 'cancelled' %}<span class="badge badge-cancelled">Cancelled</span>
+        {% elif job.status == 'upcoming' %}<span class="badge badge-featured">Upcoming</span>
+        {% elif job.status == 'inactive' %}<span class="badge badge-inactive">Inactive</span>
+        {% elif job.status == 'closed' %}<span class="badge badge-suspended">Closed</span>
         {% else %}<span class="badge">{{ job.status }}</span>{% endif %}
     </td>
     <td>{{ job.total_vacancies or '—' }}</td>
@@ -15,7 +16,7 @@
     <td>
         <div style="display:flex;gap:.3rem">
             <a href="/jobs/{{ job.id }}/edit" class="btn btn-outline btn-sm">Edit</a>
-            {% if session.get('admin_role') == 'admin' and job.status != 'cancelled' %}
+            {% if session.get('admin_role') == 'admin' %}
             <form method="POST" action="/jobs/{{ job.id }}/delete" style="display:inline;" onsubmit="return confirm('Delete this job?')">
                 <button type="submit" class="btn btn-sm" style="color:#dc2626;border-color:#fca5a5;background:#fff;">Delete</button>
             </form>

@@ -317,7 +317,7 @@ def send_deadline_reminders():
                     JOIN admissions ee ON ee.id = uw.entity_id
                     WHERE uw.entity_type = 'admission'
                       AND ee.application_end = :target_date
-                      AND ee.status != 'cancelled'
+                      AND ee.status != 'closed'
                 """
                 ),
                 {"target_date": target_date},

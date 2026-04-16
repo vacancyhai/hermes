@@ -6,7 +6,7 @@
             {%- if 'create' in log.action %} badge-active
             {%- elif 'delete' in log.action %} badge-suspended
             {%- elif 'update' in log.action or 'approve' in log.action %} badge-info
-            {%- else %} badge-draft{%- endif %}">
+            {%- else %} badge-warning{%- endif %}">
             {{ log.action | replace('_',' ') | title }}
         </span>
     </td>

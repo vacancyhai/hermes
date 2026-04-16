@@ -5,13 +5,13 @@ matched to their education, age, category, and preferences. Includes user
 authentication, profile-based job matching, watch-based deadline reminders,
 multi-channel notifications, and an admin panel.
 
-> **Status:** Phases 1–7 + Testing + 10 + 11 + UI/Content phase complete.
+> **Status:** Phases 1–7 + 10 + 11 + UI/Content phase complete.
 > Auth (Firebase — Email/Password, Google OAuth, Phone OTP), job CRUD, full-text search, user profiles,
 > job matching & recommendations, org follow, watch-based deadline reminders (user_watches),
 > user dashboard, smart multi-channel notifications (in-app + FCM push + email + WhatsApp placeholder + Telegram),
 > full admin frontend (dashboard, job/user management, audit logs), SEO (sitemap, meta, JSON-LD),
-> PDF upload with AI extraction (Anthropic Claude), draft review & approve workflow, CSRF protection,
-> PWA (manifest, service worker, offline fallback), comprehensive test suite, security audit.
+> PDF upload with AI extraction (Anthropic Claude), CSRF protection,
+> PWA (manifest, service worker, offline fallback), security audit.
 >
 > **Latest additions:** Separate `admissions` table for admissions (NEET, JEE, CLAT, CAT, GATE, CUET etc.)
 > decoupled from `jobs`; polymorphic document tables (`admit_cards`, `answer_keys`, `results`) now
@@ -75,7 +75,7 @@ PostgreSQL and Redis are isolated inside Docker networks — never exposed to th
 - **SEO Optimized** — Dynamic sitemap, meta tags, and Google JobPosting JSON-LD structured data for organic traffic.
 - **PDF Job Ingestion** — Upload government notification PDFs; AI (Claude) extracts structured data; operator reviews, edits, and publishes.
 - **PWA Support** — Add-to-home-screen, offline fallback page, and web push notifications via service worker.
-- **Admin Panel** — Job CRUD, draft/approve workflow, admission management, user management, and audit log viewer on a separate frontend (port 8081).
+- **Admin Panel** — Job CRUD, admission management, user management, and audit log viewer on a separate frontend (port 8081).
 - **Firebase Auth** — Email/password (OTP-verified), Google OAuth (popup), and Phone OTP login via Firebase JS SDK; backend verifies Firebase ID tokens and issues internal JWTs; auto-links existing accounts by email; supports legacy user migration. On logout, both the access token and (if provided) the refresh token are revoked in Redis so neither can be reused.
 - **Admin Account Management** — New admin/operator accounts are created via `POST /api/v1/admin/admin-users` (admin role only). The first admin must be seeded directly in the DB (see Development Quick Start below).
 - **CSRF Protection** — All user frontend POST forms include a session-bound CSRF token validated on the server. The Firebase callback endpoint is exempt (authenticated by Firebase ID token).
@@ -87,7 +87,6 @@ PostgreSQL and Redis are isolated inside Docker networks — never exposed to th
 - **Unified Detail Pages** — Type-aware gradient heroes (navy/blue/amber/green/purple per section); structured sections for eligibility, selection process, admission pattern, vacancy breakdown, fee table; Web Share API button (with clipboard fallback).
 - **HTMX Doc Tabs** — Per-phase admit cards, answer keys, and results loaded on-demand in tabbed panels on both job detail and admission detail pages.
 - **Social Share** — Single Share button (Web Share API + clipboard fallback) on every card and detail page.
-- **Fee by Category** — Shows personalised application fee (₹0 for SC/ST/EWS, reduced for OBC) based on the logged-in user's category.
 
 ## Documentation
 
@@ -98,7 +97,6 @@ PostgreSQL and Redis are isolated inside Docker networks — never exposed to th
 | [docs/NOTIFICATIONS.md](docs/NOTIFICATIONS.md) | Email templates, notification channels, OTP flow, delivery modes |
 | [docs/API.md](docs/API.md) | Complete API endpoint reference with request/response examples |
 | [docs/DIAGRAMS.md](docs/DIAGRAMS.md) | ASCII workflow diagrams for all major user and system flows |
-| [docs/TESTING.md](docs/TESTING.md) | Test commands, CI pipeline, pre-commit hooks, coverage report for all three services |
 | [docs/hermes.postman_collection.json](docs/hermes.postman_collection.json) | Postman collection for all API endpoints |
 
 ## Development Quick Start
@@ -136,9 +134,6 @@ with engine.connect() as conn:
 # After the first admin is created, additional accounts can be created via:
 # POST /api/v1/admin/admin-users  (admin role only)
 
-# 5. Run tests (backend — coverage XML written to /app/coverage.xml automatically)
-docker exec hermes_backend python -m pytest tests/unit/ -q
-
 # Access:
 #   Backend API:    http://localhost:8000/api/v1/health
 #   API Docs:       http://localhost:8000/api/v1/docs
@@ -160,7 +155,7 @@ chore/xxx     ← dependency bumps, config changes
 
 **Required GitHub branch protection rules (Settings → Branches → Add rule for `main`):**
 - Require pull request before merging
-- Require status checks: **Backend Tests**, **User Frontend Tests**, **Admin Frontend Tests**, **E2E Tests**, **SonarCloud Scan**
+- Require status checks: **SonarCloud Scan**
 - Require branches to be up to date before merging
 
 ## Pre-commit Hooks
@@ -184,14 +179,12 @@ See `.pre-commit-config.yaml` for full configuration.
 hermes/
 ├── docker-compose.yml            # Dev: all services (PostgreSQL, Redis, PgBouncer, Backend,
 │                                 #   hermes-worker, hermes-scheduler, Frontend, Admin Frontend, Mailpit)
-├── docker-compose.test.yml       # CI: same minus hermes-worker, hermes-scheduler and mailpit; uses config/test/.env.*
 ├── alembic.ini                   # Alembic config (URL overridden by env.py at runtime)
 ├── migrations/                   # Alembic migrations (0001–0004)
 ├── src/
 │   ├── backend/                  # FastAPI REST API (port 8000)
 │   │   ├── Dockerfile
 │   │   ├── requirements.txt
-│   │   ├── pytest.ini            # asyncio_mode=auto; addopts --cov=app
 │   │   ├── app/
 │   │   │   ├── main.py           # FastAPI app factory, lifespan, router registration
 │   │   │   ├── config.py         # pydantic-settings (extra="ignore"), singleton
@@ -221,7 +214,6 @@ hermes/
 │   │   │       ├── cleanup.py        # Purge expired notifications + logs
 │   │   │       ├── jobs.py           # Close expired listings, PDF extraction, admission status update
 │   │   │       └── seo.py            # Generate sitemap.xml
-│   │   └── tests/                # unit/ (16 files) + integration/ (10 files)
 │   ├── frontend/                 # User Frontend (Flask + HTMX + Alpine.js, port 8080)
 │   │   ├── Dockerfile
 │   │   ├── requirements.txt
@@ -232,7 +224,6 @@ hermes/
 │   │   │   ├── api_client.py     # Extends BaseApiClient (10s timeout, X-Request-ID)
 │   │   │   ├── static/           # PWA: manifest.json, sw.js, icons
 │   │   │   └── templates/        # 20+ Jinja2 templates + HTMX partials
-│   │   └── tests/                # unit/test_api_client.py + integration/test_routes.py
 │   ├── frontend-admin/           # Admin Frontend (Flask + HTMX, port 8081)
 │   │   ├── Dockerfile
 │   │   ├── requirements.txt
@@ -243,25 +234,17 @@ hermes/
 │   │   │   ├── _base_api_client.py  # Shared HTTP client base class
 │   │   │   ├── api_client.py     # Extends BaseApiClient + inherits post_file() for PDF uploads
 │   │   │   └── templates/        # Job/admission CRUD, user management, audit logs (no standalone doc pages)
-│   │   └── tests/                # unit/test_api_client.py + integration/test_routes.py
 │   └── nginx/                    # Reverse Proxy (port 80/443)
 │       ├── nginx.conf            # Rate limiting, routing, security headers
 │       └── static/               # Serves sitemap.xml
-├── tests/
-│   └── e2e/                      # Cross-service E2E tests (requests library, no browser)
-│       ├── conftest.py           # URL + credential fixtures (reads from env vars)
-│       ├── requirements.txt      # pytest, pytest-cov, requests
-│       ├── test_health.py        # Smoke: all 3 /health endpoints
-│       └── test_full_flow.py     # Job lifecycle, admin login flow, watch flow, admission lifecycle
 ├── config/
 │   ├── development/              # .env.backend, .env.frontend, .env.frontend-admin (gitignored)
-│   ├── test/                     # .env.backend, .env.frontend, .env.frontend-admin (CI, gitignored)
 │   ├── staging/                  # .env.backend, .env.frontend, .env.frontend-admin (committed placeholders)
 │   └── production/               # .env.backend, .env.frontend, .env.frontend-admin (committed placeholders)
 ├── scripts/
 │   ├── seed_jobs.py              # Seed: 10 jobs + 9 admissions + 32 phase docs (run manually)
 │   └── seed_creds.py             # Seed: admin + test user accounts
-├── sonar-project.properties      # SonarCloud config (3 source roots, 4 test roots, 3 coverage XMLs)
+├── sonar-project.properties      # SonarCloud config (3 source roots)
 ├── .pre-commit-config.yaml       # Pre-commit hooks (black, isort, flake8, mypy, detect-secrets)
 ├── .secrets.baseline             # detect-secrets baseline (empty — no secrets in repo)
 ├── docs/                         # See Documentation table above

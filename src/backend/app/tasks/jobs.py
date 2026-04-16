@@ -22,18 +22,14 @@ logger = logging.getLogger(__name__)
     default_retry_delay=60,
 )
 def close_expired_job_listings(self):
-    """Mark jobs past application_end as 'expired'. Daily 02:30 UTC.
-
-    Uses 'expired' (not 'cancelled') so deadline-lapsed jobs are distinct
-    from manually soft-deleted jobs and are not purged by purge_soft_deleted_jobs.
-    """
+    """Mark jobs past application_end as 'closed'. Daily 02:30 UTC."""
     try:
         with Session(sync_engine) as session:
             result = session.execute(
                 text(
                     """
                     UPDATE jobs
-                    SET status = 'expired', updated_at = NOW()
+                    SET status = 'closed', updated_at = NOW()
                     WHERE status = 'active'
                       AND application_end IS NOT NULL
                       AND application_end < CURRENT_DATE
@@ -41,14 +37,14 @@ def close_expired_job_listings(self):
                 """
                 )
             )
-            expired_ids = [str(row[0]) for row in result.fetchall()]
+            closed_ids = [str(row[0]) for row in result.fetchall()]
             session.commit()
     except Exception as exc:
         logger.error(f"close_expired_job_listings failed: {exc}")
         raise self.retry(exc=exc)
 
-    logger.info(f"Marked {len(expired_ids)} job listings as expired")
-    return {"closed_count": len(expired_ids)}
+    logger.info(f"Marked {len(closed_ids)} job listings as closed")
+    return {"closed_count": len(closed_ids)}
 
 
 @celery.task(
@@ -58,14 +54,14 @@ def close_expired_job_listings(self):
     default_retry_delay=60,
 )
 def update_admission_statuses(self):
-    """Mark admissions as 'completed' after admission_date passes. Daily 02:35 UTC."""
+    """Mark admissions as 'closed' after admission_date passes. Daily 02:35 UTC."""
     try:
         with Session(sync_engine) as session:
             result = session.execute(
                 text(
                     """
                     UPDATE admissions
-                    SET status = 'completed', updated_at = NOW()
+                    SET status = 'closed', updated_at = NOW()
                     WHERE status = 'active'
                       AND admission_date IS NOT NULL
                       AND admission_date < CURRENT_DATE
@@ -73,11 +69,11 @@ def update_admission_statuses(self):
                 """
                 )
             )
-            completed_ids = [str(row[0]) for row in result.fetchall()]
+            closed_ids = [str(row[0]) for row in result.fetchall()]
             session.commit()
     except Exception as exc:
         logger.error(f"update_admission_statuses failed: {exc}")
         raise self.retry(exc=exc)
 
-    logger.info(f"Marked {len(completed_ids)} admissions as completed")
-    return {"completed_count": len(completed_ids)}
+    logger.info(f"Marked {len(closed_ids)} admissions as closed")
+    return {"closed_count": len(closed_ids)}

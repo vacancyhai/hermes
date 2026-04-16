@@ -38,9 +38,9 @@
     <a href="{{ key.objection_url }}" target="_blank" rel="noopener" class="share-btn" style="border-color:#d97706;color:#92400e">✍️ Raise Objection</a>
     {% endif %}
     {% if key.get('job') %}
-    <a href="/jobs/{{ key.job.id }}" class="share-btn">View Job Details →</a>
+    <a href="/jobs/{{ key.job.slug }}" class="share-btn">View Job Details →</a>
     {% elif key.get('admission') %}
-    <a href="/admissions/{{ key.admission.id }}" class="share-btn">View Admission Details →</a>
+    <a href="/admissions/{{ key.admission.slug }}" class="share-btn">View Admission Details →</a>
     {% endif %}
     <button type="button" class="share-btn" onclick="if(navigator.share){navigator.share({title:document.title,url:window.location.href})}else{navigator.clipboard.writeText(window.location.href);alert('Link copied!')}">⬆ Share</button>
 </div>
