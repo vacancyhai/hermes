@@ -17,17 +17,8 @@ jobs:
         with:
           fetch-depth: 0  # Required for better analysis relevancy
 
-      - name: Generate stub coverage report
-        run: |
-          python - <<'EOF'
-          content = '<?xml version="1.0" ?>\n<coverage version="7.4.4" timestamp="0" lines-valid="1" lines-covered="1" line-rate="1.0" branches-covered="0" branches-valid="0" branch-rate="0" complexity="0"><packages/></coverage>\n'
-          open("coverage.xml", "w").write(content)
-          EOF
-
       - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@v7.1.0
-        with:
-          args: -Dsonar.python.coverage.reportPaths=coverage.xml
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: https://sonarcloud.io
