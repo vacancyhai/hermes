@@ -2,7 +2,6 @@
 
 import os
 import secrets
-from urllib.parse import urlparse, urljoin
 
 from flask import Blueprint, Flask, current_app, flash, redirect, render_template, request, send_from_directory, session
 
@@ -20,30 +19,6 @@ _CONTENT_TYPE_JSON = "application/json"
 _ERR_MISSING_FIELDS = "Missing fields"
 
 
-def _is_safe_url(url):
-    """Check if a URL is safe to redirect to (same origin or relative path)."""
-    if not url:
-        return False
-    # Allow relative paths
-    if url.startswith("/"):
-        return True
-    # Parse URL and check if it's same origin
-    parsed = urlparse(url)
-    if not parsed.scheme or not parsed.netloc:
-        return True
-    # Check if scheme and netloc match the current host
-    host = request.host
-    if parsed.scheme in ("http", "https") and parsed.netloc == host:
-        return True
-    return False
-
-
-def _get_safe_redirect(default="/"):
-    """Get a safe redirect URL from request.form('next') or request.referrer."""
-    next_url = request.form.get("next") or request.referrer
-    if next_url and _is_safe_url(next_url):
-        return next_url
-    return default
 _ERR_AUTH_REQUIRED = "Authentication required"
 
 
@@ -152,7 +127,7 @@ def validate_csrf():
     form_token = request.form.get("csrf_token") or request.headers.get("X-CSRF-Token", "")
     if not form_token or form_token != session.get("csrf_token"):
         flash("Invalid or expired form submission. Please try again.", "error")
-        return redirect(request.referrer or "/")
+        return redirect("/")
 
 
 def _not_found(e):
@@ -731,7 +706,7 @@ def watch_job(slug):
     _, authed = _try_with_refresh(lambda t: current_app.api_client.post(f"/jobs/{slug}/watch", token=t))
     if not authed:
         return redirect(f"/login?next=/jobs/{slug}")
-    return redirect(_get_safe_redirect(f"/jobs/{slug}"))
+    return redirect(f"/jobs/{slug}")
 
 
 @bp.route("/jobs/<slug>/unwatch", methods=["POST"])
@@ -739,7 +714,7 @@ def unwatch_job(slug):
     _, authed = _try_with_refresh(lambda t: current_app.api_client.delete(f"/jobs/{slug}/watch", token=t))
     if not authed:
         return redirect(f"/login?next=/jobs/{slug}")
-    return redirect(_get_safe_redirect(f"/jobs/{slug}"))
+    return redirect(f"/jobs/{slug}")
 
 
 # ─── Admit Cards Section ─────────────────────────────────────────────────
@@ -969,7 +944,7 @@ def watch_admission(slug):
     _, authed = _try_with_refresh(lambda t: current_app.api_client.post(f"/admissions/{slug}/watch", token=t))
     if not authed:
         return redirect(f"/login?next=/admissions/{slug}")
-    return redirect(_get_safe_redirect(f"/admissions/{slug}"))
+    return redirect(f"/admissions/{slug}")
 
 
 @bp.route("/admissions/<slug>/unwatch", methods=["POST"])
@@ -977,7 +952,7 @@ def unwatch_admission(slug):
     _, authed = _try_with_refresh(lambda t: current_app.api_client.delete(f"/admissions/{slug}/watch", token=t))
     if not authed:
         return redirect(f"/login?next=/admissions/{slug}")
-    return redirect(_get_safe_redirect(f"/admissions/{slug}"))
+    return redirect(f"/admissions/{slug}")
 
 
 _DEFAULT_SECRET_KEY = "dev-secret-key"  # pragma: allowlist secret
