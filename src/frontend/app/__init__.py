@@ -3,6 +3,7 @@
 import os
 import secrets
 import uuid as _uuid
+from urllib.parse import urlparse
 
 from flask import Blueprint, Flask, current_app, flash, redirect, render_template, request, send_from_directory, session
 
@@ -87,6 +88,21 @@ def _try_with_refresh(api_fn):
             return None, False
         resp = api_fn(token)
     return resp, True
+
+
+def _safe_back(fallback: str = "/") -> str:
+    """Return the referrer URL only if it is same-origin, else return fallback.
+
+    Prevents open-redirect attacks where an attacker sets Referer to an
+    external URL.
+    """
+    referrer = request.referrer
+    if referrer:
+        ref = urlparse(referrer)
+        own = urlparse(request.host_url)
+        if ref.scheme == own.scheme and ref.netloc == own.netloc:
+            return referrer
+    return fallback
 
 
 def _fetch_watched_ids():
@@ -745,7 +761,7 @@ def watch_job(job_id):
     except ValueError:
         return render_template(_TEMPLATE_404), 404
     slug = request.form.get("slug")
-    back = request.referrer or (f"/jobs/{slug}" if slug else "/")
+    back = _safe_back(f"/jobs/{slug}" if slug else "/")
     resp, authed = _try_with_refresh(lambda t: current_app.api_client.post(f"/jobs/{job_id}/watch", token=t))
     if not authed:
         return redirect(f"/login?next={back}")
@@ -761,7 +777,7 @@ def unwatch_job(job_id):
     except ValueError:
         return render_template(_TEMPLATE_404), 404
     slug = request.form.get("slug")
-    back = request.referrer or (f"/jobs/{slug}" if slug else "/")
+    back = _safe_back(f"/jobs/{slug}" if slug else "/")
     resp, authed = _try_with_refresh(lambda t: current_app.api_client.delete(f"/jobs/{job_id}/watch", token=t))
     if not authed:
         return redirect(f"/login?next={back}")
@@ -1046,7 +1062,7 @@ def watch_admission(admission_id):
     except ValueError:
         return render_template(_TEMPLATE_404), 404
     slug = request.form.get("slug")
-    back = request.referrer or (f"/admissions/{slug}" if slug else "/")
+    back = _safe_back(f"/admissions/{slug}" if slug else "/")
     resp, authed = _try_with_refresh(lambda t: current_app.api_client.post(f"/admissions/{admission_id}/watch", token=t))
     if not authed:
         return redirect(f"/login?next={back}")
@@ -1062,7 +1078,7 @@ def unwatch_admission(admission_id):
     except ValueError:
         return render_template(_TEMPLATE_404), 404
     slug = request.form.get("slug")
-    back = request.referrer or (f"/admissions/{slug}" if slug else "/")
+    back = _safe_back(f"/admissions/{slug}" if slug else "/")
     resp, authed = _try_with_refresh(lambda t: current_app.api_client.delete(f"/admissions/{admission_id}/watch", token=t))
     if not authed:
         return redirect(f"/login?next={back}")
