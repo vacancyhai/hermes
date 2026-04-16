@@ -169,15 +169,10 @@ def health():
     return {"status": "ok", "service": "hermes-frontend"}
 
 
-@bp.route("/", methods=["GET"])
-def index():
-    return redirect("/dashboard")
-
-
 # --- Watched Items Dashboard ---
 
 
-@bp.route("/dashboard", methods=["GET"])
+@bp.route("/", methods=["GET"])
 def dashboard():
     """Dashboard — latest 12 items per section + watched items for logged-in users."""
     _latest_params = {"limit": 12, "offset": 0}
@@ -201,7 +196,7 @@ def dashboard():
     token = session.get("token")
     if not token:
         return render_template(
-            "dashboard/dashboard.html",
+            "dashboard/home.html",
             latest_jobs=latest_jobs,
             latest_admissions=latest_admissions,
             latest_admit_cards=latest_admit_cards,
@@ -222,7 +217,7 @@ def dashboard():
     watched = resp.json() if resp.ok else {"jobs": [], "admissions": [], "total": 0}
 
     return render_template(
-        "dashboard/dashboard.html",
+        "dashboard/home.html",
         latest_jobs=latest_jobs,
         latest_admissions=latest_admissions,
         latest_admit_cards=latest_admit_cards,

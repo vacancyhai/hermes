@@ -68,7 +68,7 @@
 {% if not logged_in %}
 <div class="guest-banner">
     <p>🔒 Sign in to watch items and get personalised deadline reminders.</p>
-    <a href="/login?next=/dashboard" class="btn btn-primary" style="font-size:.85rem;padding:.4rem .9rem">Login / Sign Up</a>
+    <a href="/login?next=/" class="btn btn-primary" style="font-size:.85rem;padding:.4rem .9rem">Login / Sign Up</a>
 </div>
 {% endif %}
 
@@ -248,7 +248,7 @@
             <a href="/jobs/{{ item.id }}" class="btn btn-outline" style="font-size:.78rem;padding:.25rem .6rem">View →</a>
             <form method="post" action="/jobs/{{ item.id }}/unwatch" style="display:inline">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                <input type="hidden" name="next" value="/dashboard">
+                <input type="hidden" name="next" value="/">
                 <button type="submit" class="btn-watching" style="font-size:.78rem;padding:.25rem .6rem">★ Unwatch</button>
             </form>
         </div>
@@ -270,7 +270,7 @@
             <a href="/admissions/{{ item.id }}" class="btn btn-outline" style="font-size:.78rem;padding:.25rem .6rem">View →</a>
             <form method="post" action="/admissions/{{ item.id }}/unwatch" style="display:inline">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                <input type="hidden" name="next" value="/dashboard">
+                <input type="hidden" name="next" value="/">
                 <button type="submit" class="btn-watching" style="font-size:.78rem;padding:.25rem .6rem">★ Unwatch</button>
             </form>
         </div>
