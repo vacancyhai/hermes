@@ -17,6 +17,11 @@ _URL_NOTIFICATIONS = "/notifications"
 _API_NOTIFICATIONS_COUNT = "/notifications/count"
 _CONTENT_TYPE_JSON = "application/json"
 _ERR_MISSING_FIELDS = "Missing fields"
+_API_JOBS = "/jobs"
+_API_ADMISSIONS = "/admissions"
+_API_ADMIT_CARDS = "/admit-cards"
+_API_ANSWER_KEYS = "/answer-keys"
+_API_RESULTS = "/results"
 
 
 _ERR_AUTH_REQUIRED = "Authentication required"
@@ -153,19 +158,19 @@ def dashboard():
     _latest_params = {"limit": 12, "offset": 0}
 
     # Fetch latest 12 for each section (public, no auth needed)
-    jobs_resp = current_app.api_client.get("/jobs", params=_latest_params)
+    jobs_resp = current_app.api_client.get(_API_JOBS, params=_latest_params)
     latest_jobs = jobs_resp.json().get("data", []) if jobs_resp.ok else []
 
-    admissions_resp = current_app.api_client.get("/admissions", params=_latest_params)
+    admissions_resp = current_app.api_client.get(_API_ADMISSIONS, params=_latest_params)
     latest_admissions = admissions_resp.json().get("data", []) if admissions_resp.ok else []
 
-    admit_cards_resp = current_app.api_client.get("/admit-cards", params=_latest_params)
+    admit_cards_resp = current_app.api_client.get(_API_ADMIT_CARDS, params=_latest_params)
     latest_admit_cards = admit_cards_resp.json().get("data", []) if admit_cards_resp.ok else []
 
-    answer_keys_resp = current_app.api_client.get("/answer-keys", params=_latest_params)
+    answer_keys_resp = current_app.api_client.get(_API_ANSWER_KEYS, params=_latest_params)
     latest_answer_keys = answer_keys_resp.json().get("data", []) if answer_keys_resp.ok else []
 
-    results_resp = current_app.api_client.get("/results", params=_latest_params)
+    results_resp = current_app.api_client.get(_API_RESULTS, params=_latest_params)
     latest_results = results_resp.json().get("data", []) if results_resp.ok else []
 
     token = session.get("token")
@@ -635,13 +640,13 @@ def jobs():
     params["limit"] = min(_int_arg("limit", 20), 100)
     params["offset"] = _int_arg("offset", 0)
     token = session.get("token")
-    resp = current_app.api_client.get("/jobs", token=token, params=params)
+    resp = current_app.api_client.get(_API_JOBS, token=token, params=params)
     data = resp.json() if resp.ok else {"data": [], "pagination": {}}
     recommended_jobs = []
     watched_job_ids = set()
     if token:
         rec_resp, authed = _try_with_refresh(
-            lambda t: current_app.api_client.get("/jobs/recommended", token=t, params={"limit": 20, "offset": 0})
+            lambda t: current_app.api_client.get(_API_JOBS + "/recommended", token=t, params={"limit": 20, "offset": 0})
         )
         if authed and rec_resp and rec_resp.ok:
             recommended_jobs = rec_resp.json().get("data", [])
@@ -670,7 +675,7 @@ def jobs_partial():
     params["limit"] = min(_int_arg("limit", 20), 100)
     params["offset"] = _int_arg("offset", 0)
     token = session.get("token")
-    resp = current_app.api_client.get("/jobs", token=token, params=params)
+    resp = current_app.api_client.get(_API_JOBS, token=token, params=params)
     data = resp.json() if resp.ok else {"data": [], "pagination": {}}
     pagination = data.get("pagination", {})
     has_more = pagination.get("has_more", False)
@@ -724,12 +729,12 @@ def unwatch_job(slug):
 def admit_cards():
     params = {"limit": min(_int_arg("limit", 20), 100), "offset": _int_arg("offset", 0)}
     token = session.get("token")
-    resp = current_app.api_client.get("/admit-cards", params=params)
+    resp = current_app.api_client.get(_API_ADMIT_CARDS, params=params)
     data = resp.json() if resp.ok else {"data": [], "pagination": {}}
     recommended_cards = []
     if token:
         rec_resp, authed = _try_with_refresh(
-            lambda t: current_app.api_client.get("/admit-cards/recommended", token=t, params={"limit": 20, "offset": 0})
+            lambda t: current_app.api_client.get(_API_ADMIT_CARDS + "/recommended", token=t, params={"limit": 20, "offset": 0})
         )
         if authed and rec_resp and rec_resp.ok:
             recommended_cards = rec_resp.json().get("data", [])
@@ -744,7 +749,7 @@ def admit_cards():
 @bp.route("/partials/admit-cards", methods=["GET"])
 def admit_cards_partial():
     params = {"limit": min(_int_arg("limit", 20), 100), "offset": _int_arg("offset", 0)}
-    resp = current_app.api_client.get("/admit-cards", params=params)
+    resp = current_app.api_client.get(_API_ADMIT_CARDS, params=params)
     data = resp.json() if resp.ok else {"data": [], "pagination": {}}
     pagination = data.get("pagination", {})
     has_more = pagination.get("has_more", False)
@@ -772,12 +777,12 @@ def admit_card_detail(slug):
 def answer_keys():
     params = {"limit": min(_int_arg("limit", 20), 100), "offset": _int_arg("offset", 0)}
     token = session.get("token")
-    resp = current_app.api_client.get("/answer-keys", params=params)
+    resp = current_app.api_client.get(_API_ANSWER_KEYS, params=params)
     data = resp.json() if resp.ok else {"data": [], "pagination": {}}
     recommended_keys = []
     if token:
         rec_resp, authed = _try_with_refresh(
-            lambda t: current_app.api_client.get("/answer-keys/recommended", token=t, params={"limit": 20, "offset": 0})
+            lambda t: current_app.api_client.get(_API_ANSWER_KEYS + "/recommended", token=t, params={"limit": 20, "offset": 0})
         )
         if authed and rec_resp and rec_resp.ok:
             recommended_keys = rec_resp.json().get("data", [])
@@ -792,7 +797,7 @@ def answer_keys():
 @bp.route("/partials/answer-keys", methods=["GET"])
 def answer_keys_partial():
     params = {"limit": min(_int_arg("limit", 20), 100), "offset": _int_arg("offset", 0)}
-    resp = current_app.api_client.get("/answer-keys", params=params)
+    resp = current_app.api_client.get(_API_ANSWER_KEYS, params=params)
     data = resp.json() if resp.ok else {"data": [], "pagination": {}}
     pagination = data.get("pagination", {})
     has_more = pagination.get("has_more", False)
@@ -820,12 +825,12 @@ def answer_key_detail(slug):
 def results():
     params = {"limit": min(_int_arg("limit", 20), 100), "offset": _int_arg("offset", 0)}
     token = session.get("token")
-    resp = current_app.api_client.get("/results", params=params)
+    resp = current_app.api_client.get(_API_RESULTS, params=params)
     data = resp.json() if resp.ok else {"data": [], "pagination": {}}
     recommended_results = []
     if token:
         rec_resp, authed = _try_with_refresh(
-            lambda t: current_app.api_client.get("/results/recommended", token=t, params={"limit": 20, "offset": 0})
+            lambda t: current_app.api_client.get(_API_RESULTS + "/recommended", token=t, params={"limit": 20, "offset": 0})
         )
         if authed and rec_resp and rec_resp.ok:
             recommended_results = rec_resp.json().get("data", [])
@@ -840,7 +845,7 @@ def results():
 @bp.route("/partials/results", methods=["GET"])
 def results_partial():
     params = {"limit": min(_int_arg("limit", 20), 100), "offset": _int_arg("offset", 0)}
-    resp = current_app.api_client.get("/results", params=params)
+    resp = current_app.api_client.get(_API_RESULTS, params=params)
     data = resp.json() if resp.ok else {"data": [], "pagination": {}}
     pagination = data.get("pagination", {})
     has_more = pagination.get("has_more", False)
@@ -874,13 +879,13 @@ def admissions():
     params["limit"] = min(_int_arg("limit", 20), 100)
     params["offset"] = _int_arg("offset", 0)
     token = session.get("token")
-    resp = current_app.api_client.get("/admissions", token=token, params=params)
+    resp = current_app.api_client.get(_API_ADMISSIONS, token=token, params=params)
     data = resp.json() if resp.ok else {"data": [], "pagination": {}}
     recommended_admissions = []
     watched_admission_ids = set()
     if token:
         rec_resp, authed = _try_with_refresh(
-            lambda t: current_app.api_client.get("/admissions/recommended", token=t, params={"limit": 20, "offset": 0})
+            lambda t: current_app.api_client.get(_API_ADMISSIONS + "/recommended", token=t, params={"limit": 20, "offset": 0})
         )
         if authed and rec_resp and rec_resp.ok:
             recommended_admissions = rec_resp.json().get("data", [])
@@ -908,7 +913,7 @@ def admissions_partial():
             params[key] = val
     params["limit"] = min(_int_arg("limit", 20), 100)
     params["offset"] = _int_arg("offset", 0)
-    resp = current_app.api_client.get("/admissions", params=params)
+    resp = current_app.api_client.get(_API_ADMISSIONS, params=params)
     data = resp.json() if resp.ok else {"data": [], "pagination": {}}
     pagination = data.get("pagination", {})
     has_more = pagination.get("has_more", False)

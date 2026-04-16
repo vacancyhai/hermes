@@ -327,7 +327,10 @@ async def admin_list_admit_cards(
 
 
 @admit_cards_admin_router.post(
-    "", status_code=status.HTTP_201_CREATED, response_model=AdmitCardResponse
+    "",
+    status_code=status.HTTP_201_CREATED,
+    response_model=AdmitCardResponse,
+    responses={409: {"description": "Slug already in use"}},
 )
 async def admin_create_admit_card(
     body: AdmitCardCreateRequest,
@@ -422,7 +425,10 @@ async def admin_list_answer_keys(
 
 
 @answer_keys_admin_router.post(
-    "", status_code=status.HTTP_201_CREATED, response_model=AnswerKeyResponse
+    "",
+    status_code=status.HTTP_201_CREATED,
+    response_model=AnswerKeyResponse,
+    responses={409: {"description": "Slug already in use"}},
 )
 async def admin_create_answer_key(
     body: AnswerKeyCreateRequest,
@@ -517,7 +523,10 @@ async def admin_list_results(
 
 
 @results_admin_router.post(
-    "", status_code=status.HTTP_201_CREATED, response_model=ResultResponse
+    "",
+    status_code=status.HTTP_201_CREATED,
+    response_model=ResultResponse,
+    responses={409: {"description": "Slug already in use"}},
 )
 async def admin_create_result(
     body: ResultCreateRequest,

@@ -235,7 +235,11 @@ async def admin_get_admission(
     return AdmissionResponse.model_validate(admission).model_dump()
 
 
-@admin_router.post("", status_code=status.HTTP_201_CREATED)
+@admin_router.post(
+    "",
+    status_code=status.HTTP_201_CREATED,
+    responses={409: {"description": "Slug already in use"}},
+)
 async def create_admission(
     body: AdmissionCreateRequest,
     admin: Annotated[Any, Depends(require_operator)],

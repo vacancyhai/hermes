@@ -11,6 +11,7 @@ QUALIFICATION_LEVELS = Literal[
     "10th", "12th", "diploma", "graduate", "postgraduate", "phd"
 ]
 JOB_STATUSES = Literal["upcoming", "active", "inactive", "closed"]
+SLUG_PATTERN = r"^[a-z0-9]+(?:-[a-z0-9]+)*$"
 
 
 # --- Request schemas ---
@@ -18,9 +19,7 @@ JOB_STATUSES = Literal["upcoming", "active", "inactive", "closed"]
 
 class JobCreateRequest(BaseModel):
     job_title: str = Field(min_length=1, max_length=500)
-    slug: str = Field(
-        min_length=1, max_length=500, pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$"
-    )
+    slug: str = Field(min_length=1, max_length=500, pattern=SLUG_PATTERN)
     organization: str = Field(min_length=1, max_length=255)
     department: str | None = None
     employment_type: EMPLOYMENT_TYPES | None = "permanent"
@@ -61,9 +60,7 @@ class JobCreateRequest(BaseModel):
 
 class JobUpdateRequest(BaseModel):
     job_title: str | None = None
-    slug: str | None = Field(
-        None, min_length=1, max_length=500, pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$"
-    )
+    slug: str | None = Field(None, min_length=1, max_length=500, pattern=SLUG_PATTERN)
     organization: str | None = None
     department: str | None = None
     employment_type: EMPLOYMENT_TYPES | None = None
@@ -179,9 +176,7 @@ class AdmitCardCreateRequest(BaseModel):
     job_id: uuid.UUID | None = None
     admission_id: uuid.UUID | None = None
     phase_number: int | None = Field(None, ge=1, le=10)
-    slug: str = Field(
-        min_length=1, max_length=500, pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$"
-    )
+    slug: str = Field(min_length=1, max_length=500, pattern=SLUG_PATTERN)
     title: str = Field(min_length=1, max_length=255)
     download_url: str = Field(min_length=1)
     valid_from: date | None = None
@@ -192,9 +187,7 @@ class AdmitCardCreateRequest(BaseModel):
 
 class AdmitCardUpdateRequest(BaseModel):
     phase_number: int | None = None
-    slug: str | None = Field(
-        None, min_length=1, max_length=500, pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$"
-    )
+    slug: str | None = Field(None, min_length=1, max_length=500, pattern=SLUG_PATTERN)
     title: str | None = Field(None, min_length=1, max_length=255)
     download_url: str | None = None
     valid_from: date | None = None
@@ -230,9 +223,7 @@ class AnswerKeyCreateRequest(BaseModel):
     job_id: uuid.UUID | None = None
     admission_id: uuid.UUID | None = None
     phase_number: int | None = Field(None, ge=1, le=10)
-    slug: str = Field(
-        min_length=1, max_length=500, pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$"
-    )
+    slug: str = Field(min_length=1, max_length=500, pattern=SLUG_PATTERN)
     title: str = Field(min_length=1, max_length=255)
     answer_key_type: ANSWER_KEY_TYPES = "provisional"
     files: list[dict] = Field(default_factory=list)
@@ -243,9 +234,7 @@ class AnswerKeyCreateRequest(BaseModel):
 
 class AnswerKeyUpdateRequest(BaseModel):
     phase_number: int | None = None
-    slug: str | None = Field(
-        None, min_length=1, max_length=500, pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$"
-    )
+    slug: str | None = Field(None, min_length=1, max_length=500, pattern=SLUG_PATTERN)
     title: str | None = Field(None, min_length=1, max_length=255)
     answer_key_type: ANSWER_KEY_TYPES | None = None
     files: list[dict] | None = None
@@ -281,9 +270,7 @@ class ResultCreateRequest(BaseModel):
     job_id: uuid.UUID | None = None
     admission_id: uuid.UUID | None = None
     phase_number: int | None = Field(None, ge=1, le=10)
-    slug: str = Field(
-        min_length=1, max_length=500, pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$"
-    )
+    slug: str = Field(min_length=1, max_length=500, pattern=SLUG_PATTERN)
     title: str = Field(min_length=1, max_length=255)
     result_type: RESULT_TYPES
     download_url: str | None = None
@@ -295,9 +282,7 @@ class ResultCreateRequest(BaseModel):
 
 class ResultUpdateRequest(BaseModel):
     phase_number: int | None = None
-    slug: str | None = Field(
-        None, min_length=1, max_length=500, pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$"
-    )
+    slug: str | None = Field(None, min_length=1, max_length=500, pattern=SLUG_PATTERN)
     title: str | None = Field(None, min_length=1, max_length=255)
     result_type: RESULT_TYPES | None = None
     download_url: str | None = None

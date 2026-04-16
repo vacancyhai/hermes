@@ -341,7 +341,11 @@ async def get_job(
     return JobResponse.model_validate(job).model_dump()
 
 
-@router.post("/jobs", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/jobs",
+    status_code=status.HTTP_201_CREATED,
+    responses={409: {"description": "Slug already in use"}},
+)
 async def create_job(
     body: JobCreateRequest,
     request: Request,
