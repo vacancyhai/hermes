@@ -4,23 +4,21 @@
         <h3><a href="/jobs/{{ job.slug }}">{{ job.job_title }}</a></h3>
     </div>
     <div class="job-card-meta">
-        <span>🏛 {{ job.organization }}</span>
-        {% if job.department and job.department != job.organization %}<span>· {{ job.department }}</span>{% endif %}
+        <span class="job-card-org">🏛 {{ job.organization }}{% if job.department and job.department != job.organization %} &middot; {{ job.department }}{% endif %}</span>
         {% if job.qualification_level %}<span class="meta-pill pill-blue">{{ job.qualification_level|title }}</span>{% endif %}
-        {% if job.total_vacancies %}<span class="meta-pill pill-purple">{{ "{:,}".format(job.total_vacancies) }} vacancies</span>{% endif %}
+        {% if job.total_vacancies %}<span class="meta-pill pill-purple">{{ "{:,}".format(job.total_vacancies) }} posts</span>{% endif %}
+        {% if job.status == 'active' %}<span class="meta-pill pill-green">Active</span>{% elif job.status == 'upcoming' %}<span class="meta-pill pill-amber">Upcoming</span>{% elif job.status == 'closed' %}<span class="meta-pill" style="background:#fee2e2;color:#991b1b">Closed</span>{% endif %}
     </div>
     {% if job.short_description %}
     <div class="job-card-desc">{{ job.short_description }}</div>
     {% endif %}
     <div class="job-card-footer">
-        <div>
+        <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
             {% if job.application_end %}
             <span class="deadline">Deadline: {{ job.application_end }}</span>
             {% endif %}
             {% if job.fee_general is not none %}
-            <span class="meta-pill pill-amber" style="margin-left:.4rem">
-                Fee: {% if job.fee_general == 0 %}Free{% else %}₹{{ job.fee_general }}{% endif %}
-            </span>
+            <span class="meta-pill pill-amber">Fee: {% if job.fee_general == 0 %}Free{% else %}₹{{ job.fee_general }}{% endif %}</span>
             {% endif %}
         </div>
         <div style="display:flex;gap:.4rem;align-items:center">
@@ -28,19 +26,20 @@
             {% set is_watching = job.id|string in watched_job_ids %}
             <form method="post" action="/jobs/{{ job.slug }}/{{ 'unwatch' if is_watching else 'watch' }}" style="display:inline">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                <button type="submit" class="{{ 'btn-watching' if is_watching else 'btn btn-outline' }}" style="font-size:.8rem;padding:.3rem .7rem">
+                <button type="submit" class="{{ 'btn-watching btn btn-sm' if is_watching else 'btn btn-outline btn-sm' }}">
                     {{ '★ Watching' if is_watching else '☆ Watch' }}
                 </button>
             </form>
             {% endif %}
-            <a href="/jobs/{{ job.slug }}" class="btn btn-outline" style="font-size:.8rem;padding:.3rem .7rem">View Details →</a>
+            <a href="/jobs/{{ job.slug }}" class="btn btn-primary btn-sm">View →</a>
         </div>
     </div>
 </div>
 {% else %}
-<div style="text-align:center;padding:3rem 1rem;color:#64748b">
-    <p style="font-size:1.1rem;margin-bottom:.5rem">No jobs found.</p>
-    <p>Try a different search term or remove filters.</p>
+<div style="text-align:center;padding:3.5rem 1rem;color:var(--slate-500);background:#fff;border:1px solid var(--slate-200);border-radius:var(--radius-lg)">
+    <p style="font-size:2rem;margin-bottom:.5rem">🔍</p>
+    <p style="font-size:1rem;font-weight:600;color:var(--text);margin-bottom:.35rem">No jobs found</p>
+    <p style="font-size:.875rem">Try a different search term or remove filters.</p>
 </div>
 {% endfor %}
 
@@ -50,7 +49,8 @@
             hx-get="/partials/jobs?offset={{ next_offset }}{% if q %}&q={{ q }}{% endif %}{% if qualification_level %}&qualification_level={{ qualification_level }}{% endif %}{% if organization %}&organization={{ organization }}{% endif %}"
             hx-target="#job-list"
             hx-swap="beforeend"
-            hx-on::after-request="document.getElementById('load-more-wrap')?.remove()">
+            hx-on::after-request="document.getElementById('load-more-wrap')?.remove()"
+            style="min-width:160px">
         Load More Jobs
     </button>
 </div>

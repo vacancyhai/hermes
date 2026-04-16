@@ -20,15 +20,15 @@
         </div>
         <div style="flex-shrink:0">
             {% if admission.status == 'active' %}
-            <span style="background:#22c55e;color:#fff;padding:.25rem .65rem;border-radius:9999px;font-size:.78rem;font-weight:600">Active</span>
+            <span class="status-pill status-active">Active</span>
             {% elif admission.status == 'upcoming' %}
-            <span style="background:#f59e0b;color:#fff;padding:.25rem .65rem;border-radius:9999px;font-size:.78rem;font-weight:600">Upcoming</span>
+            <span class="status-pill status-upcoming">Upcoming</span>
             {% elif admission.status == 'inactive' %}
-            <span style="background:#94a3b8;color:#fff;padding:.25rem .65rem;border-radius:9999px;font-size:.78rem;font-weight:600">Inactive</span>
+            <span class="status-pill status-inactive">Inactive</span>
             {% elif admission.status == 'closed' %}
-            <span style="background:#64748b;color:#fff;padding:.25rem .65rem;border-radius:9999px;font-size:.78rem;font-weight:600">Closed</span>
+            <span class="status-pill status-closed">Closed</span>
             {% else %}
-            <span style="background:rgba(255,255,255,.3);color:#fff;padding:.25rem .65rem;border-radius:9999px;font-size:.78rem;font-weight:600">{{ admission.status|title }}</span>
+            <span class="status-pill" style="background:rgba(255,255,255,.3);color:#fff">{{ admission.status|title }}</span>
             {% endif %}
         </div>
     </div>

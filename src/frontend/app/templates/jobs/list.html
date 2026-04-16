@@ -2,37 +2,85 @@
 {% block title %}Government Jobs 2025 — Hermes{% endblock %}
 {% block head %}
 <style>
-    .page-hero{background:linear-gradient(135deg,#1e3a5f 0%,#2563eb 100%);color:#fff;padding:1.5rem 1.25rem 1.25rem;border-radius:.75rem;margin-bottom:1.25rem}
-    .page-hero h1{font-size:1.35rem;font-weight:700;margin-bottom:.25rem}
-    .page-hero p{font-size:.875rem;opacity:.85}
-    .results-meta{font-size:.85rem;color:#64748b;margin-bottom:.75rem}
-    .job-card{background:#fff;border:1px solid #e2e8f0;border-left:3px solid #1e3a5f;border-radius:.5rem;padding:1rem;margin-bottom:.75rem;transition:box-shadow .15s}
-    .job-card:hover{box-shadow:0 2px 8px rgba(0,0,0,.08)}
-    .job-card-header{display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem;margin-bottom:.35rem}
-    .job-card-header h3{font-size:.975rem;font-weight:600;margin:0;line-height:1.4}
-    .job-card-header h3 a{color:#1e293b}
-    .job-card-header h3 a:hover{color:#2563eb;text-decoration:none}
-    .job-card-meta{display:flex;flex-wrap:wrap;gap:.4rem;margin:.4rem 0;font-size:.8rem;color:#64748b}
-    .job-card-desc{font-size:.85rem;color:#475569;margin:.35rem 0;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-    .job-card-footer{display:flex;justify-content:space-between;align-items:center;margin-top:.6rem;flex-wrap:wrap;gap:.4rem}
-    .deadline{font-size:.8rem;color:#b45309;font-weight:500}
+    .page-hero{background:linear-gradient(135deg,#1e3a5f 0%,#2563eb 100%);color:#fff;padding:1.75rem 1.5rem 1.5rem;border-radius:var(--radius-lg);margin-bottom:1.25rem;position:relative;overflow:hidden}
+    .page-hero::before{content:'';position:absolute;top:-40px;right:-40px;width:200px;height:200px;background:rgba(255,255,255,.05);border-radius:50%;pointer-events:none}
+    .page-hero h1{font-size:1.5rem;font-weight:800;margin-bottom:.3rem;letter-spacing:-.02em}
+    .page-hero p{font-size:.875rem;opacity:.85;line-height:1.5}
+    .page-hero-count{display:inline-block;background:rgba(255,255,255,.18);border-radius:9999px;padding:.15rem .65rem;font-size:.78rem;font-weight:700;margin-top:.5rem}
+    .results-meta{font-size:.82rem;color:var(--slate-500);margin-bottom:.85rem;display:flex;align-items:center;gap:.5rem}
+    .job-card{background:#fff;border:1px solid var(--slate-200);border-left:4px solid #1e3a5f;border-radius:var(--radius);padding:1rem 1.1rem;margin-bottom:.75rem;transition:box-shadow .15s,border-color .15s}
+    .job-card:hover{box-shadow:0 4px 16px rgba(0,0,0,.07);border-left-color:var(--blue)}
+    .job-card-header{margin-bottom:.3rem}
+    .job-card-header h3{font-size:1rem;font-weight:700;margin:0;line-height:1.4;letter-spacing:-.01em}
+    .job-card-header h3 a{color:var(--text)}
+    .job-card-header h3 a:hover{color:var(--blue);text-decoration:none}
+    .job-card-meta{display:flex;flex-wrap:wrap;gap:.35rem;margin:.4rem 0;font-size:.8rem;color:var(--slate-500);align-items:center}
+    .job-card-org{font-size:.83rem;color:var(--slate-500);font-weight:500}
+    .job-card-desc{font-size:.855rem;color:#475569;margin:.35rem 0;line-height:1.55;display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+    .job-card-footer{display:flex;justify-content:space-between;align-items:center;margin-top:.7rem;padding-top:.6rem;border-top:1px solid var(--slate-100);flex-wrap:wrap;gap:.4rem}
+    .deadline{font-size:.78rem;color:#b45309;font-weight:600;display:inline-flex;align-items:center;gap:.2rem}
+    .deadline::before{content:'⏰';font-size:.75rem}
     .deadline.safe{color:#15803d}
-    .vacancies{font-size:.8rem;color:#64748b}
-    .load-more-wrap{text-align:center;padding:1.25rem 0}
+    .load-more-wrap{text-align:center;padding:1.5rem 0}
+    .tab-bar{display:flex;gap:0;border-bottom:2px solid var(--slate-200);margin-bottom:1.1rem;overflow-x:auto;scrollbar-width:none}
+    .tab-bar::-webkit-scrollbar{display:none}
+    .foryou-intro{background:#eff6ff;border:1px solid #bfdbfe;border-radius:var(--radius);padding:.75rem 1rem;margin-bottom:1rem;font-size:.85rem;color:#1e40af;display:flex;align-items:center;gap:.5rem;flex-wrap:wrap}
+    .empty-jobs{text-align:center;padding:3.5rem 1rem;color:var(--slate-500);background:#fff;border:1px solid var(--slate-200);border-radius:var(--radius-lg)}
+    .empty-jobs p:first-child{font-size:1.05rem;font-weight:600;margin-bottom:.4rem;color:var(--text)}
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="page-hero">
-    <h1>Government Job Vacancies</h1>
+    <h1>💼 Government Job Vacancies</h1>
     <p>Latest central &amp; state government jobs — search, filter and track deadlines</p>
 </div>
 
+<div class="list-page-grid">
+
+<!-- ── Filter Sidebar ── -->
+<aside class="filter-sidebar">
+    <div class="filter-widget">
+        <div class="filter-widget-header">🔽 Filters</div>
+        <div class="filter-widget-body">
+            <div class="filter-group">
+                <div class="filter-group-label">Status</div>
+                <label class="filter-option"><input type="checkbox" checked> Active <span class="filter-count">48</span></label>
+                <label class="filter-option"><input type="checkbox"> Upcoming <span class="filter-count">12</span></label>
+                <label class="filter-option"><input type="checkbox"> Closed <span class="filter-count">30</span></label>
+            </div>
+            <div class="filter-group">
+                <div class="filter-group-label">Qualification</div>
+                <label class="filter-option"><input type="checkbox"> 10th Pass <span class="filter-count">8</span></label>
+                <label class="filter-option"><input type="checkbox"> 12th Pass <span class="filter-count">14</span></label>
+                <label class="filter-option"><input type="checkbox" checked> Graduate <span class="filter-count">35</span></label>
+                <label class="filter-option"><input type="checkbox"> Post Graduate <span class="filter-count">11</span></label>
+                <label class="filter-option"><input type="checkbox"> Engineering <span class="filter-count">9</span></label>
+            </div>
+            <div class="filter-group">
+                <div class="filter-group-label">Organization Type</div>
+                <label class="filter-option"><input type="checkbox" checked> Central Govt <span class="filter-count">22</span></label>
+                <label class="filter-option"><input type="checkbox" checked> State Govt <span class="filter-count">19</span></label>
+                <label class="filter-option"><input type="checkbox"> PSU <span class="filter-count">7</span></label>
+                <label class="filter-option"><input type="checkbox"> Defence <span class="filter-count">5</span></label>
+            </div>
+            <div class="filter-group">
+                <div class="filter-group-label">Application Fee</div>
+                <label class="filter-option"><input type="checkbox"> Free <span class="filter-count">6</span></label>
+                <label class="filter-option"><input type="checkbox"> Under ₹500 <span class="filter-count">20</span></label>
+                <label class="filter-option"><input type="checkbox"> ₹500–₹1000 <span class="filter-count">15</span></label>
+            </div>
+            <button class="filter-reset">✕ Reset Filters</button>
+        </div>
+    </div>
+</aside>
+
+<!-- ── Main content ── -->
+<div>
 <div x-data="{tab: 'all'}">
 
 {% if recommended_jobs %}
-<!-- Tab bar -->
-<div style="display:flex;gap:0;border-bottom:2px solid #e2e8f0;margin-bottom:1.1rem">
+<div class="tab-bar">
     <button @click="tab='all'"
             :class="tab==='all' ? 'list-tab list-tab-active' : 'list-tab'"
             style="border-bottom-width:2px;margin-bottom:-2px">
@@ -42,7 +90,7 @@
             :class="tab==='foryou' ? 'list-tab list-tab-active' : 'list-tab'"
             style="border-bottom-width:2px;margin-bottom:-2px">
         ✨ For You
-        <span style="background:#2563eb;color:#fff;border-radius:9999px;font-size:.7rem;font-weight:700;padding:.1rem .45rem;margin-left:.3rem">{{ recommended_jobs|length }}</span>
+        <span style="background:var(--blue);color:#fff;border-radius:9999px;font-size:.7rem;font-weight:700;padding:.1rem .45rem;margin-left:.3rem">{{ recommended_jobs|length }}</span>
     </button>
 </div>
 {% endif %}
@@ -50,17 +98,17 @@
 <!-- ── FOR YOU tab ─────────────────────────────────────────────────── -->
 {% if recommended_jobs %}
 <div x-show="tab==='foryou'" x-cloak>
-    <p style="font-size:.85rem;color:#64748b;margin-bottom:.9rem">
-        Personalised picks based on your qualification, category and location preferences.
-        <a href="/profile" style="color:#2563eb">Update profile →</a>
-    </p>
+    <div class="foryou-intro">
+        ✨ Personalised picks based on your qualification, category and location preferences.
+        <a href="/profile" style="color:var(--blue);font-weight:600;white-space:nowrap">Update profile →</a>
+    </div>
     {% for job in recommended_jobs %}
     <div class="job-card">
         <div class="job-card-header">
             <h3><a href="/jobs/{{ job.slug }}">{{ job.job_title }}</a></h3>
         </div>
         <div class="job-card-meta">
-            <span>🏛 {{ job.organization }}</span>
+            <span class="job-card-org">🏛 {{ job.organization }}</span>
             {% if job.qualification_level %}<span class="meta-pill pill-blue">{{ job.qualification_level|title }}</span>{% endif %}
             {% if job.total_vacancies %}<span class="meta-pill pill-purple">{{ "{:,}".format(job.total_vacancies) }} vacancies</span>{% endif %}
         </div>
@@ -68,19 +116,19 @@
         <div class="job-card-desc">{{ job.short_description }}</div>
         {% endif %}
         <div class="job-card-footer">
-            <div>
+            <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
                 {% if job.application_end %}<span class="deadline">Deadline: {{ job.application_end }}</span>{% endif %}
-                {% if job.fee_general is not none %}<span class="meta-pill pill-amber" style="margin-left:.4rem">Fee: {% if job.fee_general == 0 %}Free{% else %}₹{{ job.fee_general }}{% endif %}</span>{% endif %}
+                {% if job.fee_general is not none %}<span class="meta-pill pill-amber">Fee: {% if job.fee_general == 0 %}Free{% else %}₹{{ job.fee_general }}{% endif %}</span>{% endif %}
             </div>
             <div style="display:flex;gap:.4rem;align-items:center">
                 {% set is_watching = job.id|string in watched_job_ids %}
                 <form method="post" action="/jobs/{{ job.slug }}/{{ 'unwatch' if is_watching else 'watch' }}" style="display:inline">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                    <button type="submit" class="{{ 'btn-watching' if is_watching else 'btn btn-outline' }}" style="font-size:.8rem;padding:.3rem .7rem">
+                    <button type="submit" class="{{ 'btn-watching btn btn-sm' if is_watching else 'btn btn-outline btn-sm' }}">
                         {{ '★ Watching' if is_watching else '☆ Watch' }}
                     </button>
                 </form>
-                <a href="/jobs/{{ job.slug }}" class="btn btn-outline" style="font-size:.8rem;padding:.3rem .7rem">View Details →</a>
+                <a href="/jobs/{{ job.slug }}" class="btn btn-primary btn-sm">View →</a>
             </div>
         </div>
     </div>
@@ -91,11 +139,13 @@
 <!-- ── ALL JOBS tab ────────────────────────────────────────────────── -->
 <div x-show="tab==='all'">
 
+{% if not recommended_jobs %}
 <div class="results-meta">
     {% if pagination.total is defined %}
-        {{ pagination.total }} job{{ 's' if pagination.total != 1 else '' }} found
+        <span>{{ pagination.total }} job{{ 's' if pagination.total != 1 else '' }} found</span>
     {% endif %}
 </div>
+{% endif %}
 
 <div id="job-list">
     {% include "jobs/_cards.html" %}
@@ -104,4 +154,6 @@
 </div><!-- end all-jobs tab -->
 
 </div><!-- end alpine x-data -->
+</div><!-- end main content -->
+</div><!-- end list-page-grid -->
 {% endblock %}

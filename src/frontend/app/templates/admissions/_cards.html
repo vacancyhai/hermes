@@ -1,23 +1,22 @@
 {% for admission in admissions %}
 <div class="admission-card">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem;margin-bottom:.35rem">
-        <h3><a href="/admissions/{{ admission.slug }}">{{ admission.admission_name }}</a></h3>
-    </div>
+    <h3><a href="/admissions/{{ admission.slug }}">{{ admission.admission_name }}</a></h3>
     <div class="admission-card-meta">
         <span>🏛 {{ admission.conducting_body }}</span>
         <span class="meta-pill pill-purple">{{ admission.admission_type|upper }}</span>
         <span class="meta-pill pill-blue">{{ admission.stream|replace('_',' ')|title }}</span>
+        {% if admission.status == 'active' %}<span class="meta-pill pill-green">Active</span>{% elif admission.status == 'upcoming' %}<span class="meta-pill pill-amber">Upcoming</span>{% elif admission.status == 'closed' %}<span class="meta-pill" style="background:#fee2e2;color:#991b1b">Closed</span>{% endif %}
     </div>
     {% if admission.short_description %}
     <div class="admission-card-desc">{{ admission.short_description }}</div>
     {% endif %}
     <div class="admission-card-footer">
-        <div>
+        <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
             {% if admission.application_end %}
             <span class="deadline">Apply by: {{ admission.application_end }}</span>
             {% endif %}
             {% if admission.admission_date %}
-            <span class="meta-pill pill-purple" style="margin-left:.4rem">Admission: {{ admission.admission_date }}</span>
+            <span class="meta-pill pill-purple">Exam: {{ admission.admission_date }}</span>
             {% endif %}
         </div>
         <div style="display:flex;gap:.4rem;align-items:center">
@@ -25,19 +24,20 @@
             {% set is_watching = admission.id|string in watched_admission_ids %}
             <form method="post" action="/admissions/{{ admission.slug }}/{{ 'unwatch' if is_watching else 'watch' }}" style="display:inline">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                <button type="submit" class="{{ 'btn-watching' if is_watching else 'btn btn-outline' }}" style="font-size:.8rem;padding:.3rem .7rem">
+                <button type="submit" class="{{ 'btn-watching btn btn-sm' if is_watching else 'btn btn-outline btn-sm' }}">
                     {{ '★ Watching' if is_watching else '☆ Watch' }}
                 </button>
             </form>
             {% endif %}
-            <a href="/admissions/{{ admission.slug }}" class="btn btn-outline" style="font-size:.8rem;padding:.3rem .7rem">View Details →</a>
+            <a href="/admissions/{{ admission.slug }}" class="btn btn-sm" style="background:#7c3aed;color:#fff">View →</a>
         </div>
     </div>
 </div>
 {% else %}
-<div style="text-align:center;padding:3rem 1rem;color:#64748b">
-    <p style="font-size:1.1rem;margin-bottom:.5rem">No admissions found.</p>
-    <p>Try a different search term or remove filters.</p>
+<div style="text-align:center;padding:3.5rem 1rem;color:var(--slate-500);background:#fff;border:1px solid var(--slate-200);border-radius:var(--radius-lg)">
+    <p style="font-size:2rem;margin-bottom:.5rem">🔍</p>
+    <p style="font-size:1rem;font-weight:600;color:var(--text);margin-bottom:.35rem">No admissions found</p>
+    <p style="font-size:.875rem">Try a different search term or remove filters.</p>
 </div>
 {% endfor %}
 
@@ -47,7 +47,8 @@
             hx-get="/partials/admissions?offset={{ next_offset }}{% if q %}&q={{ q }}{% endif %}{% if stream %}&stream={{ stream }}{% endif %}{% if admission_type %}&admission_type={{ admission_type }}{% endif %}"
             hx-target="#admission-list"
             hx-swap="beforeend"
-            hx-on::after-request="document.getElementById('load-more-admissions')?.remove()">
+            hx-on::after-request="document.getElementById('load-more-admissions')?.remove()"
+            style="min-width:180px">
         Load More Admissions
     </button>
 </div>
