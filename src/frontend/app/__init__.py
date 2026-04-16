@@ -778,7 +778,7 @@ def unwatch_job(job_id):
         return render_template(_TEMPLATE_404), 404
     slug = request.form.get("slug")
     back = _safe_back(f"/jobs/{slug}" if slug else "/")
-    resp, authed = _try_with_refresh(lambda t: current_app.api_client.delete(f"/jobs/{job_id}/watch", token=t))
+    _, authed = _try_with_refresh(lambda t: current_app.api_client.delete(f"/jobs/{job_id}/watch", token=t))
     if not authed:
         return redirect(f"/login?next={back}")
     return redirect(back)
@@ -814,7 +814,6 @@ def admit_cards():
 @bp.route("/partials/admit-cards", methods=["GET"])
 def admit_cards_partial():
     params = {"limit": min(_int_arg("limit", 20), 100), "offset": _int_arg("offset", 0)}
-    token = session.get("token")
     resp = current_app.api_client.get(_API_ADMIT_CARDS, params=params)
     data = resp.json() if resp.ok else {"data": [], "pagination": {}}
     pagination = data.get("pagination", {})
@@ -879,7 +878,6 @@ def answer_keys():
 @bp.route("/partials/answer-keys", methods=["GET"])
 def answer_keys_partial():
     params = {"limit": min(_int_arg("limit", 20), 100), "offset": _int_arg("offset", 0)}
-    token = session.get("token")
     resp = current_app.api_client.get(_API_ANSWER_KEYS, params=params)
     data = resp.json() if resp.ok else {"data": [], "pagination": {}}
     pagination = data.get("pagination", {})
@@ -944,7 +942,6 @@ def results():
 @bp.route("/partials/results", methods=["GET"])
 def results_partial():
     params = {"limit": min(_int_arg("limit", 20), 100), "offset": _int_arg("offset", 0)}
-    token = session.get("token")
     resp = current_app.api_client.get(_API_RESULTS, params=params)
     data = resp.json() if resp.ok else {"data": [], "pagination": {}}
     pagination = data.get("pagination", {})
@@ -1079,7 +1076,7 @@ def unwatch_admission(admission_id):
         return render_template(_TEMPLATE_404), 404
     slug = request.form.get("slug")
     back = _safe_back(f"/admissions/{slug}" if slug else "/")
-    resp, authed = _try_with_refresh(lambda t: current_app.api_client.delete(f"/admissions/{admission_id}/watch", token=t))
+    _resp, authed = _try_with_refresh(lambda t: current_app.api_client.delete(f"/admissions/{admission_id}/watch", token=t))
     if not authed:
         return redirect(f"/login?next={back}")
     return redirect(back)
