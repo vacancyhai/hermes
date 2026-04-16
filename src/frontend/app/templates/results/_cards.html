@@ -1,5 +1,5 @@
 {% for res in results %}
-<div class="doc-card doc-card-result" style="border-radius:.5rem;margin-bottom:.75rem">
+<div class="doc-card doc-card-result" style="border-radius:.5rem;margin-bottom:.75rem;cursor:pointer" onclick="window.location='/results/{{ res.slug }}'">
     <div class="doc-card-body">
         <div style="display:flex;gap:.35rem;flex-wrap:wrap;margin-bottom:.3rem">
             {% if res.phase_number %}<span class="doc-phase-pill phase-green">Phase {{ res.phase_number }}</span>{% endif %}
@@ -11,9 +11,6 @@
         {% if res.published_at %}
         <div class="doc-meta">Published: {{ res.published_at[:10] }}</div>
         {% endif %}
-    </div>
-    <div class="doc-card-actions">
-        <a href="/results/{{ res.slug }}" class="doc-btn doc-btn-green">View Details →</a>
     </div>
 </div>
 {% else %}

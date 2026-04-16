@@ -1,5 +1,5 @@
 {% for admission in admissions %}
-<div class="admission-card">
+<div class="admission-card" onclick="window.location='/admissions/{{ admission.slug }}'" style="cursor:pointer">
     <h3><a href="/admissions/{{ admission.slug }}">{{ admission.admission_name }}</a></h3>
     <div class="admission-card-meta">
         <span>🏛 {{ admission.conducting_body }}</span>
@@ -22,14 +22,13 @@
         <div style="display:flex;gap:.4rem;align-items:center">
             {% if watched_admission_ids is defined %}
             {% set is_watching = admission.id|string in watched_admission_ids %}
-            <form method="post" action="/admissions/{{ admission.slug }}/{{ 'unwatch' if is_watching else 'watch' }}" style="display:inline">
+            <form method="post" action="/admissions/{{ admission.slug }}/{{ 'unwatch' if is_watching else 'watch' }}" style="display:inline" onclick="event.stopPropagation()">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                 <button type="submit" class="{{ 'btn-watching btn btn-sm' if is_watching else 'btn btn-outline btn-sm' }}">
                     {{ '★ Watching' if is_watching else '☆ Watch' }}
                 </button>
             </form>
             {% endif %}
-            <a href="/admissions/{{ admission.slug }}" class="btn btn-sm" style="background:#7c3aed;color:#fff">View →</a>
         </div>
     </div>
 </div>

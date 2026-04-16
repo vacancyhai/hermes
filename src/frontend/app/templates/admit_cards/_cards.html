@@ -1,5 +1,5 @@
 {% for card in cards %}
-<div class="doc-card doc-card-admit" style="border-radius:.5rem;margin-bottom:.75rem">
+<div class="doc-card doc-card-admit" style="border-radius:.5rem;margin-bottom:.75rem;cursor:pointer" onclick="window.location='/admit-cards/{{ card.slug }}'">
     <div class="doc-card-body">
         <div style="display:flex;gap:.35rem;flex-wrap:wrap;margin-bottom:.3rem">
             {% if card.phase_number %}<span class="doc-phase-pill phase-blue">Phase {{ card.phase_number }}</span>{% endif %}
@@ -13,9 +13,6 @@
         {% if card.published_at %}
         <div class="doc-meta">Published: {{ card.published_at[:10] }}</div>
         {% endif %}
-    </div>
-    <div class="doc-card-actions">
-        <a href="/admit-cards/{{ card.slug }}" class="doc-btn doc-btn-blue">View Details →</a>
     </div>
 </div>
 {% else %}

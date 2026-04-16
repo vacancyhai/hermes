@@ -1,5 +1,5 @@
 {% for key in keys %}
-<div class="doc-card doc-card-answer" style="border-radius:.5rem;margin-bottom:.75rem">
+<div class="doc-card doc-card-answer" style="border-radius:.5rem;margin-bottom:.75rem;cursor:pointer" onclick="window.location='/answer-keys/{{ key.slug }}'">
     <div class="doc-card-body">
         <div style="display:flex;gap:.35rem;flex-wrap:wrap;margin-bottom:.3rem">
             {% if key.phase_number %}<span class="doc-phase-pill phase-amber">Phase {{ key.phase_number }}</span>{% endif %}
@@ -13,9 +13,6 @@
         {% if key.published_at %}
         <div class="doc-meta">Published: {{ key.published_at[:10] }}</div>
         {% endif %}
-    </div>
-    <div class="doc-card-actions">
-        <a href="/answer-keys/{{ key.slug }}" class="doc-btn doc-btn-amber">View Details →</a>
     </div>
 </div>
 {% else %}

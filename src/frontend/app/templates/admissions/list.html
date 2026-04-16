@@ -126,13 +126,6 @@
 <!-- ── ALL ADMISSIONS tab ─────────────────────────────────────────── -->
 <div x-show="tab==='all'">
 
-{% if not recommended_admissions %}
-<div class="results-meta">
-    {% if pagination.total is defined %}
-        {{ pagination.total }} admission{{ 's' if pagination.total != 1 else '' }} found
-    {% endif %}
-</div>
-{% endif %}
 
 <div id="admission-list">
     {% include "admissions/_cards.html" %}

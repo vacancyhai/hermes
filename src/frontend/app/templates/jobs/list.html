@@ -139,13 +139,6 @@
 <!-- ── ALL JOBS tab ────────────────────────────────────────────────── -->
 <div x-show="tab==='all'">
 
-{% if not recommended_jobs %}
-<div class="results-meta">
-    {% if pagination.total is defined %}
-        <span>{{ pagination.total }} job{{ 's' if pagination.total != 1 else '' }} found</span>
-    {% endif %}
-</div>
-{% endif %}
 
 <div id="job-list">
     {% include "jobs/_cards.html" %}

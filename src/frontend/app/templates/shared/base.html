@@ -27,7 +27,13 @@
 
         /* ── Header ─────────────────────────────────────────────── */
         .site-header{background:var(--navy);color:#fff;position:sticky;top:0;z-index:100;box-shadow:0 1px 4px rgba(0,0,0,.25)}
-        .header-inner{width:100%;padding:.6rem 1.5rem;display:flex;align-items:center;justify-content:space-between;gap:1rem}
+        .header-inner{width:100%;padding:1rem 1.5rem;display:flex;align-items:center;justify-content:space-between;gap:1rem}
+        .header-center-nav{display:flex;align-items:center;gap:.1rem;flex:1;justify-content:center;overflow-x:auto;scrollbar-width:none}
+        .header-center-nav::-webkit-scrollbar{display:none}
+        .header-center-nav a{color:rgba(255,255,255,.75);font-size:.85rem;font-weight:500;padding:.65rem .85rem;border-radius:.35rem;text-decoration:none;white-space:nowrap;border-bottom:2px solid transparent;transition:color .15s,border-color .15s}
+        .header-center-nav a:hover{color:#fff;text-decoration:none}
+        .header-center-nav a.active{color:#fff;border-bottom-color:#60a5fa;font-weight:700}
+        @media(max-width:768px){.header-center-nav{display:none}}
         .header-brand{display:flex;align-items:center;gap:.5rem;font-weight:800;font-size:1.15rem;color:#fff;letter-spacing:-.01em;flex-shrink:0}
         .header-brand:hover{text-decoration:none;color:#93c5fd}
         .header-brand-icon{width:30px;height:30px;background:rgba(255,255,255,.15);border-radius:.4rem;display:flex;align-items:center;justify-content:center;font-size:.95rem;backdrop-filter:blur(4px)}
@@ -53,10 +59,11 @@
             .header-nav{display:none}
         }
 
-        /* ── Secondary Nav ──────────────────────────────────────── */
-        .sec-nav{background:var(--navy-dark);border-bottom:1px solid rgba(255,255,255,.08);overflow-x:auto;white-space:nowrap;display:flex;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+        /* ── Secondary Nav (mobile only fallback) ─────────────── */
+        .sec-nav{display:none}
+        @media(max-width:768px){.sec-nav{background:var(--navy-dark);border-bottom:1px solid rgba(255,255,255,.08);overflow-x:auto;white-space:nowrap;display:flex;scrollbar-width:none;-webkit-overflow-scrolling:touch}}
         .sec-nav::-webkit-scrollbar{display:none}
-        .sec-nav a{padding:.55rem 1rem;font-size:.82rem;white-space:nowrap;color:rgba(147,175,197,.85);border-bottom:2px solid transparent;font-weight:500;text-decoration:none;display:inline-block;transition:color .15s,border-color .15s;flex-shrink:0}
+        .sec-nav a{padding:.5rem .85rem;font-size:.8rem;white-space:nowrap;color:rgba(147,175,197,.85);border-bottom:2px solid transparent;font-weight:500;text-decoration:none;display:inline-block;transition:color .15s,border-color .15s;flex-shrink:0}
         .sec-nav a:hover{color:#cbd5e1;text-decoration:none}
         .sec-nav a.active{color:#fff;border-bottom-color:#60a5fa;font-weight:700}
 
@@ -233,6 +240,14 @@
                 <div class="header-brand-icon">🏛</div>
                 Hermes
             </a>
+            <nav class="header-center-nav">
+                <a href="/" class="{{ 'active' if request.path == '/' else '' }}">🏠 Home</a>
+                <a href="/jobs" class="{{ 'active' if request.path.startswith('/jobs') else '' }}">💼 Jobs</a>
+                <a href="/admit-cards" class="{{ 'active' if request.path.startswith('/admit-cards') else '' }}">🪪 Admit Cards</a>
+                <a href="/answer-keys" class="{{ 'active' if request.path.startswith('/answer-keys') else '' }}">📝 Answer Keys</a>
+                <a href="/results" class="{{ 'active' if request.path.startswith('/results') else '' }}">🏆 Results</a>
+                <a href="/admissions" class="{{ 'active' if request.path.startswith('/admissions') else '' }}">🎓 Admissions</a>
+            </nav>
             <nav class="header-nav">
                 {% if session.get('token') %}
                     <a href="/profile">Profile</a>
