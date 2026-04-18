@@ -68,17 +68,17 @@ class Admission(Base):
         "AdmitCard",
         back_populates="admission",
         cascade=_CASCADE_ALL_DELETE,
-        order_by="AdmitCard.phase_number",
+        order_by="AdmitCard.created_at",
     )
     answer_keys = relationship(
         "AnswerKey",
         back_populates="admission",
         cascade=_CASCADE_ALL_DELETE,
-        order_by="AnswerKey.phase_number",
+        order_by="AnswerKey.created_at",
     )
     results = relationship(
         "Result",
         back_populates="admission",
         cascade=_CASCADE_ALL_DELETE,
-        order_by="Result.phase_number",
+        order_by="Result.created_at",
     )

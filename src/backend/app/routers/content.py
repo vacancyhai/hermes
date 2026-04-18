@@ -354,12 +354,9 @@ async def admin_create_admit_card(
         slug=body.slug,
         job_id=body.job_id,
         admission_id=body.admission_id,
-        phase_number=body.phase_number,
         title=body.title,
-        download_url=body.download_url,
         exam_start=body.exam_start,
         exam_end=body.exam_end,
-        notes=body.notes,
         published_at=body.published_at,
     )
     db.add(doc)
@@ -452,11 +449,8 @@ async def admin_create_answer_key(
         slug=body.slug,
         job_id=body.job_id,
         admission_id=body.admission_id,
-        phase_number=body.phase_number,
         title=body.title,
-        answer_key_type=body.answer_key_type,
         files=body.files,
-        objection_url=body.objection_url,
         objection_deadline=body.objection_deadline,
         published_at=body.published_at,
     )
@@ -548,13 +542,10 @@ async def admin_create_result(
         slug=body.slug,
         job_id=body.job_id,
         admission_id=body.admission_id,
-        phase_number=body.phase_number,
         title=body.title,
         result_type=body.result_type,
-        download_url=body.download_url,
         cutoff_marks=body.cutoff_marks,
         total_qualified=body.total_qualified,
-        notes=body.notes,
         published_at=body.published_at,
     )
     db.add(doc)
