@@ -78,16 +78,23 @@ _DOC_FLASH = {
     "results": "Result added.",
 }
 
+_PARENT_BASE_URL = {
+    "job_id": "/jobs",
+    "admission_id": "/admissions",
+}
 
-def _add_doc(parent_key: str, parent_id: str, doc_type: str, redirect_url: str):
+
+def _add_doc(parent_key: str, parent_id: str, doc_type: str):
     """Shared handler for adding a phase document (admit card / answer key / result)."""
     token = session.get("token")
+    base = _PARENT_BASE_URL.get(parent_key, "/")
+    back_url = f"{base}/{parent_id}/edit#docs"
     if not token:
         return redirect(_URL_LOGIN)
     api_url = _DOC_TYPE_API.get(doc_type)
     if not api_url:
         flash("Unknown document type.", "error")
-        return redirect(redirect_url)
+        return redirect(back_url)
     form = request.form.to_dict()
     try:
         links = json.loads(form.get("links_json", "[]"))
@@ -107,7 +114,7 @@ def _add_doc(parent_key: str, parent_id: str, doc_type: str, redirect_url: str):
         payload["end_date"] = form.get("end_date") or None
     current_app.api_client.post(api_url, token=token, json=payload)
     flash(_DOC_FLASH.get(doc_type, "Document added."), "success")
-    return redirect(redirect_url)
+    return redirect(back_url)
 
 
 bp = Blueprint("admin", __name__)
@@ -430,7 +437,7 @@ def edit_job(job_id):
 
 @bp.route("/jobs/<job_id>/docs/<doc_type>", methods=["POST"])
 def job_add_doc(job_id, doc_type):
-    return _add_doc("job_id", job_id, doc_type, f"/jobs/{job_id}/edit#docs")
+    return _add_doc("job_id", job_id, doc_type)
 
 
 @bp.route("/jobs/<job_id>/docs/<doc_type>/<doc_id>/delete", methods=["POST"])
@@ -659,7 +666,7 @@ def delete_admission(admission_id):
 
 @bp.route("/admissions/<admission_id>/docs/<doc_type>", methods=["POST"])
 def admission_add_doc(admission_id, doc_type):
-    return _add_doc("admission_id", admission_id, doc_type, f"/admissions/{admission_id}/edit#docs")
+    return _add_doc("admission_id", admission_id, doc_type)
 
 
 @bp.route("/admissions/<admission_id>/docs/<doc_type>/<doc_id>/delete", methods=["POST"])
