@@ -456,13 +456,18 @@ Biology, 100, 360"></textarea>
             {% endif %}
             <details class="pd-add-panel">
                 <summary class="pd-add-toggle">&#43; Add Admit Card</summary>
-                <form method="POST" action="/admissions/{{ admission.id }}/docs/admit-cards" class="pd-add-form">
+                <form method="POST" action="/admissions/{{ admission.id }}/docs/admit-cards" class="pd-add-form" onsubmit="buildDocLinksJson(this)">
                     <div class="pd-form-grid">
                         <div class="pd-fg pd-full"><label>Title *</label><input type="text" name="title" required placeholder="NEET PG 2026 Admit Card"></div>
                         <div class="pd-fg pd-full"><label>Slug *</label><input type="text" name="slug" required placeholder="neet-pg-2026-admit-card" pattern="[a-z0-9]+(?:-[a-z0-9]+)*"></div>
                         <div class="pd-fg"><label>Exam Start</label><input type="date" name="exam_start"></div>
                         <div class="pd-fg"><label>Exam End</label><input type="date" name="exam_end"></div>
                     </div>
+                    <div class="doc-links-section">
+                        <div class="doc-links-header">&#128279; Important Links <button type="button" class="btn-doc-add-link" onclick="addDocLink(this)">&#43; Add Link</button></div>
+                        <div class="doc-links-container"></div>
+                    </div>
+                    <input type="hidden" name="links_json" value="[]">
                     <button type="submit" class="btn btn-primary btn-sm" style="margin-top:.6rem">&#10003; Add Admit Card</button>
                 </form>
             </details>
@@ -498,14 +503,19 @@ Biology, 100, 360"></textarea>
             {% endif %}
             <details class="pd-add-panel">
                 <summary class="pd-add-toggle">&#43; Add Answer Key</summary>
-                <form method="POST" action="/admissions/{{ admission.id }}/docs/answer-keys" class="pd-add-form" onsubmit="buildAKFilesJson(this)">
+                <form method="POST" action="/admissions/{{ admission.id }}/docs/answer-keys" class="pd-add-form" onsubmit="buildAKFilesJson(this);buildDocLinksJson(this)">
                     <div class="pd-form-grid">
                         <div class="pd-fg pd-full"><label>Title *</label><input type="text" name="title" required placeholder="NEET PG 2026 Provisional Answer Key"></div>
                         <div class="pd-fg pd-full"><label>Slug *</label><input type="text" name="slug" required placeholder="neet-pg-2026-answer-key" pattern="[a-z0-9]+(?:-[a-z0-9]+)*"></div>
                         <div class="pd-fg"><label>Objection Deadline</label><input type="date" name="objection_deadline"></div>
                         <div class="pd-fg pd-full"><label>Download URL</label><input type="url" class="ak-file-url" placeholder="https://nta.ac.in/answer-key.pdf"></div>
                     </div>
+                    <div class="doc-links-section">
+                        <div class="doc-links-header">&#128279; Important Links <button type="button" class="btn-doc-add-link" onclick="addDocLink(this)">&#43; Add Link</button></div>
+                        <div class="doc-links-container"></div>
+                    </div>
                     <input type="hidden" name="files_json" value="[]">
+                    <input type="hidden" name="links_json" value="[]">
                     <button type="submit" class="btn btn-primary btn-sm" style="margin-top:.6rem">&#10003; Add Answer Key</button>
                 </form>
             </details>
@@ -542,13 +552,18 @@ Biology, 100, 360"></textarea>
             {% endif %}
             <details class="pd-add-panel">
                 <summary class="pd-add-toggle">&#43; Add Result</summary>
-                <form method="POST" action="/admissions/{{ admission.id }}/docs/results" class="pd-add-form">
+                <form method="POST" action="/admissions/{{ admission.id }}/docs/results" class="pd-add-form" onsubmit="buildDocLinksJson(this)">
                     <div class="pd-form-grid">
                         <div class="pd-fg pd-full"><label>Title *</label><input type="text" name="title" required placeholder="NEET PG 2026 Result & Score Card"></div>
                         <div class="pd-fg pd-full"><label>Slug *</label><input type="text" name="slug" required placeholder="neet-pg-2026-result" pattern="[a-z0-9]+(?:-[a-z0-9]+)*"></div>
                         <div class="pd-fg"><label>Result Type</label><select name="result_type"><option value="shortlist">Shortlist</option><option value="cutoff">Cut-off</option><option value="merit_list" selected>Merit List</option><option value="final">Final</option></select></div>
                         <div class="pd-fg"><label>Total Qualified</label><input type="number" name="total_qualified" min="0" placeholder="52000"></div>
                     </div>
+                    <div class="doc-links-section">
+                        <div class="doc-links-header">&#128279; Important Links <button type="button" class="btn-doc-add-link" onclick="addDocLink(this)">&#43; Add Link</button></div>
+                        <div class="doc-links-container"></div>
+                    </div>
+                    <input type="hidden" name="links_json" value="[]">
                     <button type="submit" class="btn btn-primary btn-sm" style="margin-top:.6rem">&#10003; Add Result</button>
                 </form>
             </details>
@@ -638,6 +653,25 @@ const ADMISSION_DATA = {{ admission | tojson }};
     setV('si_ews', siCat.EWS); setV('si_sc', siCat.SC); setV('si_st', siCat.ST);
 })();
 
+function addDocLink(btn) {
+    const container = btn.closest('.doc-links-section').querySelector('.doc-links-container');
+    const row = document.createElement('div');
+    row.className = 'doc-link-row';
+    row.innerHTML = '<select class="dl-type"><option value="official_website">Official Website</option><option value="download_notification">Notification PDF</option><option value="admit_card">Admit Card</option><option value="answer_key">Answer Key</option><option value="result">Result</option><option value="other">Other</option></select>' +
+        '<input type="text" class="dl-text" placeholder="Display text">' +
+        '<input type="url" class="dl-url" placeholder="https://">' +
+        '<button type="button" class="btn-doc-rm-link" onclick="this.closest(\'.doc-link-row\').remove()">&#10005;</button>';
+    container.appendChild(row);
+}
+function buildDocLinksJson(form) {
+    const links = [];
+    form.querySelectorAll('.doc-link-row').forEach(row => {
+        const url = row.querySelector('.dl-url').value.trim();
+        if (!url) return;
+        links.push({type: row.querySelector('.dl-type').value, text: row.querySelector('.dl-text').value.trim(), url});
+    });
+    form.querySelector('[name="links_json"]').value = JSON.stringify(links);
+}
 function buildAKFilesJson(form) {
     const urlEl = form.querySelector('.ak-file-url');
     const hiddenEl = form.querySelector('[name="files_json"]');
@@ -832,6 +866,13 @@ function toggleExPhaseFields(sel) {
 .pd-add-panel[open] .pd-add-toggle{background:#e0e7ff;color:#3730a3;border-color:#a5b4fc}
 .pd-add-form{background:#f9fafb;border:1px solid #e5e7eb;border-radius:.5rem;padding:.85rem;margin-top:.5rem}
 .pd-form-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.6rem}
+.doc-links-section{margin-top:.6rem;border-top:1px solid #e5e7eb;padding-top:.5rem}
+.doc-links-header{font-size:.75rem;font-weight:600;color:#374151;display:flex;align-items:center;gap:.5rem;margin-bottom:.3rem}
+.btn-doc-add-link{font-size:.72rem;padding:.15rem .45rem;border:1px solid #6366f1;color:#6366f1;background:#fff;border-radius:.3rem;cursor:pointer}
+.btn-doc-add-link:hover{background:#eef2ff}
+.doc-link-row{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:.4rem;margin-bottom:.3rem;align-items:center}
+.doc-link-row input,.doc-link-row select{padding:.28rem .45rem;border:1px solid #d1d5db;border-radius:.3rem;font-size:.78rem}
+.btn-doc-rm-link{background:none;border:none;color:#ef4444;cursor:pointer;font-size:.85rem;padding:.1rem .3rem}
 .pd-full{grid-column:1/-1}
 .pd-fg{display:flex;flex-direction:column;gap:.2rem}
 .pd-fg label{font-size:.75rem;font-weight:600;color:#374151}

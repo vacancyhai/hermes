@@ -391,10 +391,15 @@ def job_add_admit_card(job_id):
     if not token:
         return redirect(_URL_LOGIN)
     form = request.form.to_dict()
+    try:
+        links = json.loads(form.get("links_json", "[]"))
+    except Exception:
+        links = []
     payload = {
         "job_id": job_id,
         "slug": form.get("slug", ""),
         "title": form.get("title", ""),
+        "links": links,
         "exam_start": form.get("exam_start") or None,
         "exam_end": form.get("exam_end") or None,
     }
@@ -413,10 +418,15 @@ def job_add_answer_key(job_id):
         files = json.loads(form.get("files_json", "[]"))
     except Exception:
         files = []
+    try:
+        links = json.loads(form.get("links_json", "[]"))
+    except Exception:
+        links = []
     payload = {
         "job_id": job_id,
         "slug": form.get("slug", ""),
         "title": form.get("title", ""),
+        "links": links,
         "files": files,
         "objection_deadline": form.get("objection_deadline") or None,
     }
@@ -431,10 +441,15 @@ def job_add_result(job_id):
     if not token:
         return redirect(_URL_LOGIN)
     form = request.form.to_dict()
+    try:
+        links = json.loads(form.get("links_json", "[]"))
+    except Exception:
+        links = []
     payload = {
         "job_id": job_id,
         "slug": form.get("slug", ""),
         "title": form.get("title", ""),
+        "links": links,
         "result_type": form.get("result_type", "merit_list"),
         "total_qualified": int(form["total_qualified"]) if form.get("total_qualified") else None,
     }
@@ -673,10 +688,15 @@ def admission_add_admit_card(admission_id):
     if not token:
         return redirect(_URL_LOGIN)
     form = request.form.to_dict()
+    try:
+        links = json.loads(form.get("links_json", "[]"))
+    except Exception:
+        links = []
     payload = {
         "admission_id": admission_id,
         "slug": form.get("slug", ""),
         "title": form.get("title", ""),
+        "links": links,
         "exam_start": form.get("exam_start") or None,
         "exam_end": form.get("exam_end") or None,
     }
@@ -695,10 +715,15 @@ def admission_add_answer_key(admission_id):
         files = json.loads(form.get("files_json", "[]"))
     except Exception:
         files = []
+    try:
+        links = json.loads(form.get("links_json", "[]"))
+    except Exception:
+        links = []
     payload = {
         "admission_id": admission_id,
         "slug": form.get("slug", ""),
         "title": form.get("title", ""),
+        "links": links,
         "files": files,
         "objection_deadline": form.get("objection_deadline") or None,
     }
@@ -713,10 +738,15 @@ def admission_add_result(admission_id):
     if not token:
         return redirect(_URL_LOGIN)
     form = request.form.to_dict()
+    try:
+        links = json.loads(form.get("links_json", "[]"))
+    except Exception:
+        links = []
     payload = {
         "admission_id": admission_id,
         "slug": form.get("slug", ""),
         "title": form.get("title", ""),
+        "links": links,
         "result_type": form.get("result_type", "merit_list"),
         "total_qualified": int(form["total_qualified"]) if form.get("total_qualified") else None,
     }

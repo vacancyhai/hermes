@@ -13,6 +13,7 @@ class Result(PhaseDocMixin, Base):
         String(500), nullable=False, unique=True, index=True
     )
     title: Mapped[str] = mapped_column(String(255), nullable=False)
+    links: Mapped[list] = mapped_column(JSONB, nullable=False, server_default="[]")
     result_type: Mapped[str] = mapped_column(String(20), nullable=False)
     cutoff_marks: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     total_qualified: Mapped[int | None] = mapped_column(Integer, nullable=True)

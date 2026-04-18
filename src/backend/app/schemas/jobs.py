@@ -177,6 +177,7 @@ class AdmitCardCreateRequest(BaseModel):
     admission_id: uuid.UUID | None = None
     slug: str = Field(min_length=1, max_length=500, pattern=SLUG_PATTERN)
     title: str = Field(min_length=1, max_length=255)
+    links: list[dict] = Field(default_factory=list)
     exam_start: date | None = None
     exam_end: date | None = None
     published_at: datetime | None = None
@@ -185,6 +186,7 @@ class AdmitCardCreateRequest(BaseModel):
 class AdmitCardUpdateRequest(BaseModel):
     slug: str | None = Field(None, min_length=1, max_length=500, pattern=SLUG_PATTERN)
     title: str | None = Field(None, min_length=1, max_length=255)
+    links: list[dict] | None = None
     exam_start: date | None = None
     exam_end: date | None = None
     published_at: datetime | None = None
@@ -196,6 +198,7 @@ class AdmitCardResponse(BaseModel):
     job_id: uuid.UUID | None
     admission_id: uuid.UUID | None
     title: str
+    links: list
     exam_start: date | None
     exam_end: date | None
     published_at: datetime | None
@@ -213,6 +216,7 @@ class AnswerKeyCreateRequest(BaseModel):
     admission_id: uuid.UUID | None = None
     slug: str = Field(min_length=1, max_length=500, pattern=SLUG_PATTERN)
     title: str = Field(min_length=1, max_length=255)
+    links: list[dict] = Field(default_factory=list)
     files: list[dict] = Field(default_factory=list)
     objection_deadline: date | None = None
     published_at: datetime | None = None
@@ -221,6 +225,7 @@ class AnswerKeyCreateRequest(BaseModel):
 class AnswerKeyUpdateRequest(BaseModel):
     slug: str | None = Field(None, min_length=1, max_length=500, pattern=SLUG_PATTERN)
     title: str | None = Field(None, min_length=1, max_length=255)
+    links: list[dict] | None = None
     files: list[dict] | None = None
     objection_deadline: date | None = None
     published_at: datetime | None = None
@@ -232,6 +237,7 @@ class AnswerKeyResponse(BaseModel):
     job_id: uuid.UUID | None
     admission_id: uuid.UUID | None
     title: str
+    links: list
     files: list
     objection_deadline: date | None
     published_at: datetime | None
@@ -251,6 +257,7 @@ class ResultCreateRequest(BaseModel):
     admission_id: uuid.UUID | None = None
     slug: str = Field(min_length=1, max_length=500, pattern=SLUG_PATTERN)
     title: str = Field(min_length=1, max_length=255)
+    links: list[dict] = Field(default_factory=list)
     result_type: RESULT_TYPES
     cutoff_marks: dict | None = None
     total_qualified: int | None = Field(None, ge=0)
@@ -260,6 +267,7 @@ class ResultCreateRequest(BaseModel):
 class ResultUpdateRequest(BaseModel):
     slug: str | None = Field(None, min_length=1, max_length=500, pattern=SLUG_PATTERN)
     title: str | None = Field(None, min_length=1, max_length=255)
+    links: list[dict] | None = None
     result_type: RESULT_TYPES | None = None
     cutoff_marks: dict | None = None
     total_qualified: int | None = Field(None, ge=0)
@@ -272,6 +280,7 @@ class ResultResponse(BaseModel):
     job_id: uuid.UUID | None
     admission_id: uuid.UUID | None
     title: str
+    links: list
     result_type: str
     cutoff_marks: dict | None
     total_qualified: int | None
