@@ -51,16 +51,16 @@
     .stat-card .label{font-size:.78rem;color:var(--slate-500);margin-top:.15rem;font-weight:500}
     @media(max-width:400px){.stats-grid{grid-template-columns:repeat(3,1fr)}}
 
-    /* ── Watchlist section ── */
-    .watch-section{margin-top:2rem;padding-top:1.5rem;border-top:2px solid var(--slate-200)}
-    .watch-section-title{font-size:.95rem;font-weight:700;color:var(--text);margin-bottom:.85rem;display:flex;align-items:center;gap:.4rem}
-    .watch-card{background:#fff;border:1px solid var(--slate-200);border-radius:var(--radius);padding:.85rem 1rem;margin-bottom:.6rem;display:flex;justify-content:space-between;align-items:flex-start;gap:.75rem;transition:box-shadow .15s}
-    .watch-card:hover{box-shadow:0 2px 8px rgba(0,0,0,.06)}
-    .watch-card h3{font-size:.9rem;font-weight:700;margin-bottom:.15rem;letter-spacing:-.01em;line-height:1.35}
-    .watch-card .org{color:var(--slate-500);font-size:.8rem}
-    .watch-card .deadline{font-size:.77rem;color:#b45309;margin-top:.2rem;font-weight:600;display:inline-flex;align-items:center;gap:.2rem}
-    .watch-card .deadline::before{content:'⏰';font-size:.75rem}
-    .watch-card-actions{display:flex;gap:.4rem;align-items:center;flex-shrink:0;flex-wrap:wrap}
+    /* ── Tracker section ── */
+    .track-section{margin-top:2rem;padding-top:1.5rem;border-top:2px solid var(--slate-200)}
+    .track-section-title{font-size:.95rem;font-weight:700;color:var(--text);margin-bottom:.85rem;display:flex;align-items:center;gap:.4rem}
+    .track-card{background:#fff;border:1px solid var(--slate-200);border-radius:var(--radius);padding:.85rem 1rem;margin-bottom:.6rem;display:flex;justify-content:space-between;align-items:flex-start;gap:.75rem;transition:box-shadow .15s}
+    .track-card:hover{box-shadow:0 2px 8px rgba(0,0,0,.06)}
+    .track-card h3{font-size:.9rem;font-weight:700;margin-bottom:.15rem;letter-spacing:-.01em;line-height:1.35}
+    .track-card .org{color:var(--slate-500);font-size:.8rem}
+    .track-card .deadline{font-size:.77rem;color:#b45309;margin-top:.2rem;font-weight:600;display:inline-flex;align-items:center;gap:.2rem}
+    .track-card .deadline::before{content:'⏰';font-size:.75rem}
+    .track-card-actions{display:flex;gap:.4rem;align-items:center;flex-shrink:0;flex-wrap:wrap}
     .type-pill{display:inline-block;padding:.15rem .5rem;border-radius:9999px;font-size:.7rem;font-weight:700;background:#dbeafe;color:#1e40af;letter-spacing:.02em}
 
     /* ── Empty state ── */
@@ -110,34 +110,34 @@
             {% for exam in upcoming_exams %}
             {% if exam.type == 'job' %}
                 {% set url = '/jobs/' + exam.slug %}
-                {% set watch_type = 'job' %}
-                {% set watch_id = exam.id %}
-                {% set watch_slug = exam.slug %}
-                {% set is_watching = exam.id in watched_job_ids %}
+                {% set track_type = 'job' %}
+                {% set track_id = exam.id %}
+                {% set track_slug = exam.slug %}
+                {% set is_tracking = exam.id in tracked_job_ids %}
             {% elif exam.type == 'admission' %}
                 {% set url = '/admissions/' + exam.slug %}
-                {% set watch_type = 'admission' %}
-                {% set watch_id = exam.id %}
-                {% set watch_slug = exam.slug %}
-                {% set is_watching = exam.id in watched_admission_ids %}
+                {% set track_type = 'admission' %}
+                {% set track_id = exam.id %}
+                {% set track_slug = exam.slug %}
+                {% set is_tracking = exam.id in tracked_admission_ids %}
             {% elif exam.parent_type == 'job' %}
                 {% set url = '/jobs/' + exam.parent_slug %}
-                {% set watch_type = 'job' %}
-                {% set watch_id = exam.parent_id %}
-                {% set watch_slug = exam.parent_slug %}
-                {% set is_watching = exam.parent_id in watched_job_ids %}
+                {% set track_type = 'job' %}
+                {% set track_id = exam.parent_id %}
+                {% set track_slug = exam.parent_slug %}
+                {% set is_tracking = exam.parent_id in tracked_job_ids %}
             {% elif exam.parent_type == 'admission' %}
                 {% set url = '/admissions/' + exam.parent_slug %}
-                {% set watch_type = 'admission' %}
-                {% set watch_id = exam.parent_id %}
-                {% set watch_slug = exam.parent_slug %}
-                {% set is_watching = exam.parent_id in watched_admission_ids %}
+                {% set track_type = 'admission' %}
+                {% set track_id = exam.parent_id %}
+                {% set track_slug = exam.parent_slug %}
+                {% set is_tracking = exam.parent_id in tracked_admission_ids %}
             {% else %}
                 {% set url = '/admit-cards/' + exam.slug %}
-                {% set watch_type = None %}
-                {% set watch_id = None %}
-                {% set watch_slug = None %}
-                {% set is_watching = False %}
+                {% set track_type = None %}
+                {% set track_id = None %}
+                {% set track_slug = None %}
+                {% set is_tracking = False %}
             {% endif %}
             <div class="cal-event-item" style="cursor:pointer" onclick="window.location='{{ url }}'">
                 <div class="cal-event-name">{{ exam.title }}</div>
@@ -152,11 +152,11 @@
                     {% endif %}
                 </div>
                 {% if session.get('token') %}
-                {% if watch_type %}
-                <form method="post" action="/{{ watch_type }}s/{{ watch_id }}/{{ 'unwatch' if is_watching else 'watch' }}" style="display:inline" onclick="event.stopPropagation()">
+                {% if track_type %}
+                <form method="post" action="/{{ track_type }}s/{{ track_id }}/{{ 'untrack' if is_tracking else 'track' }}" style="display:inline" onclick="event.stopPropagation()">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                    <input type="hidden" name="slug" value="{{ watch_slug }}">
-                    <button type="submit" style="font-size:.65rem;padding:.15rem .45rem;border-radius:9999px;border:1px solid;cursor:pointer;background:{{ '#fef3c7' if is_watching else '#eff6ff' }};color:{{ '#92400e' if is_watching else '#1d4ed8' }};border-color:{{ '#fde68a' if is_watching else '#bfdbfe' }}">{{ '★' if is_watching else '☆' }}</button>
+                    <input type="hidden" name="slug" value="{{ track_slug }}">
+                    <button type="submit" style="font-size:.65rem;padding:.15rem .45rem;border-radius:9999px;border:1px solid;cursor:pointer;background:{{ '#fef3c7' if is_tracking else '#eff6ff' }};color:{{ '#92400e' if is_tracking else '#1d4ed8' }};border-color:{{ '#fde68a' if is_tracking else '#bfdbfe' }}">{{ '★' if is_tracking else '☆' }}</button>
                 </form>
                 {% endif %}
                 {% else %}
@@ -200,14 +200,14 @@
             </div>
             <div class="mini-card-footer">
                 {% if session.get('token') %}
-                {% set is_watching = job.id|string in watched_job_ids %}
-                <form method="post" action="/jobs/{{ job.id }}/{{ 'unwatch' if is_watching else 'watch' }}" onclick="event.stopPropagation()">
+                {% set is_tracking = job.id|string in tracked_job_ids %}
+                <form method="post" action="/jobs/{{ job.id }}/{{ 'untrack' if is_tracking else 'track' }}" onclick="event.stopPropagation()">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <input type="hidden" name="slug" value="{{ job.slug }}">
-                    <button type="submit" class="{{ 'btn-watching btn btn-sm' if is_watching else 'btn btn-outline btn-sm' }}" style="font-size:.7rem;padding:.2rem .5rem">{{ '★' if is_watching else '☆' }}</button>
+                    <button type="submit" class="{{ 'btn-tracking btn btn-sm' if is_tracking else 'btn btn-outline btn-sm' }}" style="font-size:.7rem;padding:.2rem .5rem">{{ '★' if is_tracking else '☆' }}</button>
                 </form>
                 {% else %}
-                <a href="/login?next=/jobs/{{ job.slug }}" class="btn btn-outline btn-sm" style="font-size:.7rem;padding:.2rem .5rem" title="Login to watch" onclick="event.stopPropagation()">☆</a>
+                <a href="/login?next=/jobs/{{ job.slug }}" class="btn btn-outline btn-sm" style="font-size:.7rem;padding:.2rem .5rem" title="Login to track" onclick="event.stopPropagation()">☆</a>
                 {% endif %}
             </div>
         </div>
@@ -237,14 +237,14 @@
             </div>
             {% set _wid = card.job_id if card.job_id else card.admission_id %}
             {% set _wtype = 'job' if card.job_id else 'admission' %}
-            {% set _watching = card.job_id|string in watched_job_ids if card.job_id else (card.admission_id|string in watched_admission_ids if card.admission_id else False) %}
+            {% set _tracking = card.job_id|string in tracked_job_ids if card.job_id else (card.admission_id|string in tracked_admission_ids if card.admission_id else False) %}
             <div class="mini-card-footer">
                 {% if _wid %}
                 {% if session.get('token') %}
-                <form method="post" action="/{{ _wtype }}s/{{ _wid }}/{{ 'unwatch' if _watching else 'watch' }}" onclick="event.stopPropagation()">
+                <form method="post" action="/{{ _wtype }}s/{{ _wid }}/{{ 'untrack' if _tracking else 'track' }}" onclick="event.stopPropagation()">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <input type="hidden" name="slug" value="{{ _wid }}">
-                    <button type="submit" class="{{ 'btn-watching btn btn-sm' if _watching else 'btn btn-outline btn-sm' }}" style="font-size:.7rem;padding:.2rem .5rem">{{ '★' if _watching else '☆' }}</button>
+                    <button type="submit" class="{{ 'btn-tracking btn btn-sm' if _tracking else 'btn btn-outline btn-sm' }}" style="font-size:.7rem;padding:.2rem .5rem">{{ '★' if _tracking else '☆' }}</button>
                 </form>
                 {% else %}
                 <a href="/login?next=/admit-cards/{{ card.slug }}" class="btn btn-outline btn-sm" style="font-size:.7rem;padding:.2rem .5rem" onclick="event.stopPropagation()">☆</a>
@@ -280,14 +280,14 @@
             </div>
             {% set _wid = key.job_id if key.job_id else key.admission_id %}
             {% set _wtype = 'job' if key.job_id else 'admission' %}
-            {% set _watching = key.job_id|string in watched_job_ids if key.job_id else (key.admission_id|string in watched_admission_ids if key.admission_id else False) %}
+            {% set _tracking = key.job_id|string in tracked_job_ids if key.job_id else (key.admission_id|string in tracked_admission_ids if key.admission_id else False) %}
             <div class="mini-card-footer">
                 {% if _wid %}
                 {% if session.get('token') %}
-                <form method="post" action="/{{ _wtype }}s/{{ _wid }}/{{ 'unwatch' if _watching else 'watch' }}" onclick="event.stopPropagation()">
+                <form method="post" action="/{{ _wtype }}s/{{ _wid }}/{{ 'untrack' if _tracking else 'track' }}" onclick="event.stopPropagation()">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <input type="hidden" name="slug" value="{{ _wid }}">
-                    <button type="submit" class="{{ 'btn-watching btn btn-sm' if _watching else 'btn btn-outline btn-sm' }}" style="font-size:.7rem;padding:.2rem .5rem">{{ '★' if _watching else '☆' }}</button>
+                    <button type="submit" class="{{ 'btn-tracking btn btn-sm' if _tracking else 'btn btn-outline btn-sm' }}" style="font-size:.7rem;padding:.2rem .5rem">{{ '★' if _tracking else '☆' }}</button>
                 </form>
                 {% else %}
                 <a href="/login?next=/answer-keys/{{ key.slug }}" class="btn btn-outline btn-sm" style="font-size:.7rem;padding:.2rem .5rem" onclick="event.stopPropagation()">☆</a>
@@ -321,14 +321,14 @@
             </div>
             {% set _wid = res.job_id if res.job_id else res.admission_id %}
             {% set _wtype = 'job' if res.job_id else 'admission' %}
-            {% set _watching = res.job_id|string in watched_job_ids if res.job_id else (res.admission_id|string in watched_admission_ids if res.admission_id else False) %}
+            {% set _tracking = res.job_id|string in tracked_job_ids if res.job_id else (res.admission_id|string in tracked_admission_ids if res.admission_id else False) %}
             <div class="mini-card-footer">
                 {% if _wid %}
                 {% if session.get('token') %}
-                <form method="post" action="/{{ _wtype }}s/{{ _wid }}/{{ 'unwatch' if _watching else 'watch' }}" onclick="event.stopPropagation()">
+                <form method="post" action="/{{ _wtype }}s/{{ _wid }}/{{ 'untrack' if _tracking else 'track' }}" onclick="event.stopPropagation()">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <input type="hidden" name="slug" value="{{ _wid }}">
-                    <button type="submit" class="{{ 'btn-watching btn btn-sm' if _watching else 'btn btn-outline btn-sm' }}" style="font-size:.7rem;padding:.2rem .5rem">{{ '★' if _watching else '☆' }}</button>
+                    <button type="submit" class="{{ 'btn-tracking btn btn-sm' if _tracking else 'btn btn-outline btn-sm' }}" style="font-size:.7rem;padding:.2rem .5rem">{{ '★' if _tracking else '☆' }}</button>
                 </form>
                 {% else %}
                 <a href="/login?next=/results/{{ res.slug }}" class="btn btn-outline btn-sm" style="font-size:.7rem;padding:.2rem .5rem" onclick="event.stopPropagation()">☆</a>
@@ -369,14 +369,14 @@
             </div>
             <div class="mini-card-footer">
                 {% if session.get('token') %}
-                {% set is_watching = admission.id|string in watched_admission_ids %}
-                <form method="post" action="/admissions/{{ admission.id }}/{{ 'unwatch' if is_watching else 'watch' }}" onclick="event.stopPropagation()">
+                {% set is_tracking = admission.id|string in tracked_admission_ids %}
+                <form method="post" action="/admissions/{{ admission.id }}/{{ 'untrack' if is_tracking else 'track' }}" onclick="event.stopPropagation()">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <input type="hidden" name="slug" value="{{ admission.slug }}">
-                    <button type="submit" class="{{ 'btn-watching btn btn-sm' if is_watching else 'btn btn-outline btn-sm' }}" style="font-size:.7rem;padding:.2rem .5rem">{{ '★' if is_watching else '☆' }}</button>
+                    <button type="submit" class="{{ 'btn-tracking btn btn-sm' if is_tracking else 'btn btn-outline btn-sm' }}" style="font-size:.7rem;padding:.2rem .5rem">{{ '★' if is_tracking else '☆' }}</button>
                 </form>
                 {% else %}
-                <a href="/login?next=/admissions/{{ admission.slug }}" class="btn btn-outline btn-sm" style="font-size:.7rem;padding:.2rem .5rem" title="Login to watch" onclick="event.stopPropagation()">☆</a>
+                <a href="/login?next=/admissions/{{ admission.slug }}" class="btn btn-outline btn-sm" style="font-size:.7rem;padding:.2rem .5rem" title="Login to track" onclick="event.stopPropagation()">☆</a>
                 {% endif %}
             </div>
         </div>
@@ -386,73 +386,73 @@
     </div>
 </div>
 
-<!-- ── Watchlist (logged-in only) ────────────────────────────────── -->
+<!-- ── Tracker (logged-in only) ────────────────────────────────── -->
 {% if logged_in %}
-<div class="watch-section">
+<div class="track-section">
     <div class="stats-grid">
         <div class="stat-card">
             <div class="count">{{ total }}</div>
-            <div class="label">Watching</div>
+            <div class="label">Tracking</div>
         </div>
         <div class="stat-card">
-            <div class="count">{{ watched_jobs | length }}</div>
+            <div class="count">{{ tracked_jobs | length }}</div>
             <div class="label">Jobs</div>
         </div>
         <div class="stat-card">
-            <div class="count">{{ watched_admissions | length }}</div>
+            <div class="count">{{ tracked_admissions | length }}</div>
             <div class="label">Admissions</div>
         </div>
     </div>
 
-    {% if watched_jobs %}
-    <div class="watch-section-title">� Watched Jobs</div>
-    {% for item in watched_jobs %}
-    <div class="watch-card">
+    {% if tracked_jobs %}
+    <div class="track-section-title">� Tracked Jobs</div>
+    {% for item in tracked_jobs %}
+    <div class="track-card">
         <div style="flex:1;min-width:0">
             <h3><a href="/jobs/{{ item.id }}" style="color:var(--text)">{{ item.job_title }}</a></h3>
             <div class="org">{{ item.organization }}</div>
             {% if item.application_end %}<div class="deadline">{{ item.application_end }}</div>{% endif %}
         </div>
-        <div class="watch-card-actions">
+        <div class="track-card-actions">
             <span class="type-pill">Job</span>
             <a href="/jobs/{{ item.id }}" class="btn btn-outline btn-sm">View →</a>
-            <form method="post" action="/jobs/{{ item.id }}/unwatch" style="display:inline">
+            <form method="post" action="/jobs/{{ item.id }}/untrack" style="display:inline">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                 <input type="hidden" name="slug" value="{{ item.slug }}">
-                <button type="submit" class="btn-watching btn btn-sm">★ Unwatch</button>
+                <button type="submit" class="btn-tracking btn btn-sm">★ Untrack</button>
             </form>
         </div>
     </div>
     {% endfor %}
     {% endif %}
 
-    {% if watched_admissions %}
-    <div class="watch-section-title">🎓 Watched Admissions</div>
-    {% for item in watched_admissions %}
-    <div class="watch-card">
+    {% if tracked_admissions %}
+    <div class="track-section-title">🎓 Tracked Admissions</div>
+    {% for item in tracked_admissions %}
+    <div class="track-card">
         <div style="flex:1;min-width:0">
             <h3><a href="/admissions/{{ item.id }}" style="color:var(--text)">{{ item.admission_name }}</a></h3>
             <div class="org">{{ item.conducting_body }}</div>
             {% if item.application_end %}<div class="deadline">{{ item.application_end }}</div>{% endif %}
         </div>
-        <div class="watch-card-actions">
+        <div class="track-card-actions">
             <span class="type-pill" style="background:#d1fae5;color:#065f46">Admission</span>
             <a href="/admissions/{{ item.id }}" class="btn btn-outline btn-sm">View →</a>
-            <form method="post" action="/admissions/{{ item.id }}/unwatch" style="display:inline">
+            <form method="post" action="/admissions/{{ item.id }}/untrack" style="display:inline">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                 <input type="hidden" name="slug" value="{{ item.slug }}">
-                <button type="submit" class="btn-watching btn btn-sm">★ Unwatch</button>
+                <button type="submit" class="btn-tracking btn btn-sm">★ Untrack</button>
             </form>
         </div>
     </div>
     {% endfor %}
     {% endif %}
 
-    {% if not watched_jobs and not watched_admissions %}
+    {% if not tracked_jobs and not tracked_admissions %}
     <div class="empty-state">
         <div class="empty-state-icon">👀</div>
-        <p>No items watched yet.</p>
-        <p>Watch jobs and admissions to get deadline reminders.</p>
+        <p>No items tracked yet.</p>
+        <p>Track jobs and admissions to get deadline reminders.</p>
         <div style="display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap">
             <a href="/jobs" class="btn btn-primary">Browse Jobs</a>
             <a href="/admissions" class="btn btn-outline">Browse Admissions</a>

@@ -189,13 +189,13 @@ async def get_recommended_jobs(
     return [t[2] for t in page], total
 
 
-async def _get_watched_ids(user_id, db: AsyncSession) -> tuple[list, list]:
-    """Return (watched_job_ids, watched_admission_ids) for a user."""
-    from app.models.user_watch import UserWatch
+async def _get_tracked_ids(user_id, db: AsyncSession) -> tuple[list, list]:
+    """Return (tracked_job_ids, tracked_admission_ids) for a user."""
+    from app.models.user_track import UserTrack
 
     result = await db.execute(
-        select(UserWatch.entity_type, UserWatch.entity_id).where(
-            UserWatch.user_id == user_id
+        select(UserTrack.entity_type, UserTrack.entity_id).where(
+            UserTrack.user_id == user_id
         )
     )
     rows = result.all()
@@ -210,8 +210,8 @@ async def get_recommended_admit_cards(
     limit: int = 20,
     offset: int = 0,
 ) -> tuple[list, int]:
-    """Return admit cards for jobs/admissions the user is watching."""
-    job_ids, admission_ids = await _get_watched_ids(user_id, db)
+    """Return admit cards for jobs/admissions the user is tracking."""
+    job_ids, admission_ids = await _get_tracked_ids(user_id, db)
     if not job_ids and not admission_ids:
         return [], 0
     predicate = or_(
@@ -237,8 +237,8 @@ async def get_recommended_answer_keys(
     limit: int = 20,
     offset: int = 0,
 ) -> tuple[list, int]:
-    """Return answer keys for jobs/admissions the user is watching."""
-    job_ids, admission_ids = await _get_watched_ids(user_id, db)
+    """Return answer keys for jobs/admissions the user is tracking."""
+    job_ids, admission_ids = await _get_tracked_ids(user_id, db)
     if not job_ids and not admission_ids:
         return [], 0
     predicate = or_(
@@ -264,8 +264,8 @@ async def get_recommended_results(
     limit: int = 20,
     offset: int = 0,
 ) -> tuple[list, int]:
-    """Return results for jobs/admissions the user is watching."""
-    job_ids, admission_ids = await _get_watched_ids(user_id, db)
+    """Return results for jobs/admissions the user is tracking."""
+    job_ids, admission_ids = await _get_tracked_ids(user_id, db)
     if not job_ids and not admission_ids:
         return [], 0
     predicate = or_(

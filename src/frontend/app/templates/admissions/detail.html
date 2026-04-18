@@ -37,25 +37,25 @@
 <!-- Action bar -->
 <div class="action-bar">
     {% if session.get('token') %}
-        {% if watching %}
-        <form method="post" action="/admissions/{{ admission.id }}/unwatch" style="display:inline">
+        {% if tracking %}
+        <form method="post" action="/admissions/{{ admission.id }}/untrack" style="display:inline">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <input type="hidden" name="slug" value="{{ admission.slug }}">
             <button type="submit" class="share-btn" style="background:#ede9fe;color:#5b21b6;border-color:#c4b5fd">
-                ★ Watching — Remove
+                ★ Tracking — Remove
             </button>
         </form>
         {% else %}
-        <form method="post" action="/admissions/{{ admission.id }}/watch" style="display:inline">
+        <form method="post" action="/admissions/{{ admission.id }}/track" style="display:inline">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <input type="hidden" name="slug" value="{{ admission.slug }}">
             <button type="submit" class="share-btn" style="background:#ede9fe;color:#5b21b6;border-color:#c4b5fd">
-                ☆ Watch for Reminders
+                ☆ Track for Reminders
             </button>
         </form>
         {% endif %}
     {% else %}
-    <a href="/login?next=/admissions/{{ admission.slug }}" class="share-btn" style="background:#ede9fe;color:#5b21b6;border-color:#c4b5fd">☆ Watch for Reminders</a>
+    <a href="/login?next=/admissions/{{ admission.slug }}" class="share-btn" style="background:#ede9fe;color:#5b21b6;border-color:#c4b5fd">☆ Track for Reminders</a>
     {% endif %}
     {% if admission.source_url %}
     <a href="{{ admission.source_url }}" target="_blank" rel="noopener" class="share-btn">🔗 Official Website</a>

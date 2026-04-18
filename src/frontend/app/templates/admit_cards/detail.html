@@ -31,24 +31,24 @@
     {% if card.get('job') %}
     <a href="/jobs/{{ card.job.slug }}" class="share-btn">View Job Details →</a>
     {% if session.get('token') %}
-    <form method="post" action="/jobs/{{ card.job.id }}/{{ 'unwatch' if watching else 'watch' }}" style="display:inline">
+    <form method="post" action="/jobs/{{ card.job.id }}/{{ 'untrack' if tracking else 'track' }}" style="display:inline">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <input type="hidden" name="slug" value="{{ card.job.slug }}">
-        <button type="submit" class="{{ 'btn-watching btn btn-sm' if watching else 'btn btn-outline btn-sm' }}">{{ '★ Watching Job' if watching else '☆ Watch Job' }}</button>
+        <button type="submit" class="{{ 'btn-tracking btn btn-sm' if tracking else 'btn btn-outline btn-sm' }}">{{ '★ Tracking Job' if tracking else '☆ Track Job' }}</button>
     </form>
     {% else %}
-    <a href="/login?next=/admit-cards/{{ card.slug }}" class="btn btn-outline btn-sm">☆ Watch Job</a>
+    <a href="/login?next=/admit-cards/{{ card.slug }}" class="btn btn-outline btn-sm">☆ Track Job</a>
     {% endif %}
     {% elif card.get('admission') %}
     <a href="/admissions/{{ card.admission.slug }}" class="share-btn">View Admission Details →</a>
     {% if session.get('token') %}
-    <form method="post" action="/admissions/{{ card.admission.id }}/{{ 'unwatch' if watching else 'watch' }}" style="display:inline">
+    <form method="post" action="/admissions/{{ card.admission.id }}/{{ 'untrack' if tracking else 'track' }}" style="display:inline">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <input type="hidden" name="slug" value="{{ card.admission.slug }}">
-        <button type="submit" class="{{ 'btn-watching btn btn-sm' if watching else 'btn btn-outline btn-sm' }}">{{ '★ Watching Admission' if watching else '☆ Watch Admission' }}</button>
+        <button type="submit" class="{{ 'btn-tracking btn btn-sm' if tracking else 'btn btn-outline btn-sm' }}">{{ '★ Tracking Admission' if tracking else '☆ Track Admission' }}</button>
     </form>
     {% else %}
-    <a href="/login?next=/admit-cards/{{ card.slug }}" class="btn btn-outline btn-sm">☆ Watch Admission</a>
+    <a href="/login?next=/admit-cards/{{ card.slug }}" class="btn btn-outline btn-sm">☆ Track Admission</a>
     {% endif %}
     {% endif %}
     <button type="button" class="share-btn" onclick="if(navigator.share){navigator.share({title:document.title,url:window.location.href})}else{navigator.clipboard.writeText(window.location.href);alert('Link copied!')}">⬆ Share</button>

@@ -1,8 +1,8 @@
 """Notification-related Celery tasks.
 
 smart_notify                — Unified entry: routes to in-app + FCM + email + WhatsApp + Telegram
-send_deadline_reminders     — Daily Beat task: T-7, T-3, T-1 deadline reminders for watched jobs + admissions
-notify_watchers_on_update   — Event: notify watchers when a job/admission is approved or updated
+send_deadline_reminders     — Daily Beat task: T-7, T-3, T-1 deadline reminders for tracked jobs + admissions
+notify_trackers_on_update   — Event: notify trackers when a job/admission is approved or updated
 send_email_notification     — Sync email via SMTP (retries 3x)
 deliver_delayed_telegram    — Delayed Telegram delivery for staggered mode (T+15min)
 """
@@ -241,8 +241,8 @@ def send_deadline_reminders():
     """Create notifications at T-7, T-3, T-1 days before application_end.
 
     Covers two groups:
-      1. Users watching a job via user_watches
-      2. Users watching an admission via user_watches
+      1. Users tracking a job via user_tracks
+      2. Users tracking an admission via user_tracks
 
     Runs daily at 08:00 UTC via Beat schedule.
     Delegates to smart_notify for multi-channel delivery.
@@ -253,14 +253,14 @@ def send_deadline_reminders():
         for days_before in REMINDER_DAYS:
             target_date = today + timedelta(days=days_before)
 
-            # ── 1. Watch-based job reminders ──────────────────────────────────
-            watch_job_rows = session.execute(
+            # ── 1. Track-based job reminders ──────────────────────────────────
+            track_job_rows = session.execute(
                 text(
                     """
-                    SELECT uw.id, uw.user_id, jv.id, jv.job_title, jv.slug, jv.organization, jv.application_end
-                    FROM user_watches uw
-                    JOIN jobs jv ON jv.id = uw.entity_id
-                    WHERE uw.entity_type = 'job'
+                    SELECT ut.id, ut.user_id, jv.id, jv.job_title, jv.slug, jv.organization, jv.application_end
+                    FROM user_tracks ut
+                    JOIN jobs jv ON jv.id = ut.entity_id
+                    WHERE ut.entity_type = 'job'
                       AND jv.application_end = :target_date
                       AND jv.status = 'active'
                 """
@@ -269,14 +269,14 @@ def send_deadline_reminders():
             ).fetchall()
 
             for (
-                _watch_id,
+                _track_id,
                 user_id,
                 job_id,
                 job_title,
                 slug,
                 org,
                 app_end,
-            ) in watch_job_rows:
+            ) in track_job_rows:
                 ntype = f"deadline_reminder_{days_before}d"
                 existing = session.execute(
                     text(
@@ -308,14 +308,14 @@ def send_deadline_reminders():
                     },
                 )
 
-            # ── 2. Watch-based admission reminders ─────────────────────────────────
-            watch_admission_rows = session.execute(
+            # ── 2. Track-based admission reminders ─────────────────────────────────
+            track_admission_rows = session.execute(
                 text(
                     """
-                    SELECT uw.user_id, ee.id, ee.admission_name, ee.slug, ee.conducting_body, ee.application_end
-                    FROM user_watches uw
-                    JOIN admissions ee ON ee.id = uw.entity_id
-                    WHERE uw.entity_type = 'admission'
+                    SELECT ut.user_id, ee.id, ee.admission_name, ee.slug, ee.conducting_body, ee.application_end
+                    FROM user_tracks ut
+                    JOIN admissions ee ON ee.id = ut.entity_id
+                    WHERE ut.entity_type = 'admission'
                       AND ee.application_end = :target_date
                       AND ee.status != 'closed'
                 """
@@ -330,7 +330,7 @@ def send_deadline_reminders():
                 slug,
                 conducting_body,
                 app_end,
-            ) in watch_admission_rows:
+            ) in track_admission_rows:
                 ntype = f"deadline_reminder_{days_before}d"
                 existing = session.execute(
                     text(
@@ -365,12 +365,12 @@ def send_deadline_reminders():
                 )
 
 
-# ─── Watcher Notifications (event-triggered) ─────────────────────────────────
+# ─── Tracker Notifications (event-triggered) ─────────────────────────────────
 
 
-@celery.task(name="app.tasks.notifications.notify_watchers_on_update")
-def notify_watchers_on_update(entity_type: str, entity_id: str):
-    """Notify all users watching a job or admission when it is approved or updated.
+@celery.task(name="app.tasks.notifications.notify_trackers_on_update")
+def notify_trackers_on_update(entity_type: str, entity_id: str):
+    """Notify all users tracking a job or admission when it is approved or updated.
 
     entity_type: 'job' | 'admission'
     Delegates to smart_notify for multi-channel delivery.
@@ -403,21 +403,21 @@ def notify_watchers_on_update(entity_type: str, entity_id: str):
             title = f"Update: {name}"
             msg = f"{name} by {org} has been updated."
 
-        watchers = session.execute(
+        trackers = session.execute(
             text(
-                "SELECT user_id FROM user_watches WHERE entity_type = :et AND entity_id = :eid"
+                "SELECT user_id FROM user_tracks WHERE entity_type = :et AND entity_id = :eid"
             ),
             {"et": entity_type, "eid": entity_id},
         ).fetchall()
 
-        if not watchers:
+        if not trackers:
             return
 
         BATCH_SIZE = 100
-        user_ids = [str(row[0]) for row in watchers]
+        user_ids = [str(row[0]) for row in trackers]
         for i in range(0, len(user_ids), BATCH_SIZE):
             batch = user_ids[i : i + BATCH_SIZE]
-            notify_watcher_batch.delay(
+            notify_tracker_batch.delay(
                 user_ids=batch,
                 title=title,
                 message=msg,
@@ -427,15 +427,15 @@ def notify_watchers_on_update(entity_type: str, entity_id: str):
             )
 
         logger.info(
-            "watchers_notified",
+            "trackers_notified",
             entity_type=entity_type,
             entity_id=entity_id,
-            count=len(watchers),
+            count=len(trackers),
         )
 
 
-@celery.task(name="app.tasks.notifications.notify_watcher_batch")
-def notify_watcher_batch(
+@celery.task(name="app.tasks.notifications.notify_tracker_batch")
+def notify_tracker_batch(
     user_ids: list[str],
     title: str,
     message: str,
@@ -443,13 +443,13 @@ def notify_watcher_batch(
     entity_id: str,
     action_url: str,
 ):
-    """Process a batch of watcher notifications dispatched by notify_watchers_on_update."""
+    """Process a batch of tracker notifications dispatched by notify_trackers_on_update."""
     for user_id in user_ids:
         smart_notify.delay(
             user_id=user_id,
             title=title,
             message=message,
-            notification_type="watched_item_updated",
+            notification_type="tracked_item_updated",
             priority="medium",
             entity_type=entity_type,
             entity_id=entity_id,

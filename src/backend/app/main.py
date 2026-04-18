@@ -20,7 +20,7 @@ from app.routers.content import (
     results_admin_router,
     results_router,
 )
-from app.routers.watches import router as watches_router
+from app.routers.tracks import router as tracks_router
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
@@ -170,5 +170,5 @@ app.include_router(answer_keys_admin_router)
 app.include_router(results_admin_router)
 app.include_router(admissions_public_router)
 app.include_router(admissions_admin_router)
-app.include_router(watches_router)
+app.include_router(tracks_router)
 app.include_router(exam_reminders_router)

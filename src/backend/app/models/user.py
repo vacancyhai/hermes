@@ -52,6 +52,6 @@ class User(Base):
     profile = relationship("UserProfile", back_populates="user", uselist=False)
     notifications = relationship("Notification", back_populates="user")
     devices = relationship("UserDevice", back_populates="user")
-    watches = relationship(
-        "UserWatch", back_populates="user", cascade="all, delete-orphan"
+    tracks = relationship(
+        "UserTrack", back_populates="user", cascade="all, delete-orphan"
     )

@@ -344,7 +344,7 @@ Admin/Operator → Admin Frontend (port 8081)
 ┌──────────────────────────────────┐
 │ If status == 'active':           │
 │ Trigger Celery Task:             │
-│ notify_watchers_on_update        │
+│ notify_trackers_on_update        │
 │ (entity_type='job', entity_id)   │
 └────┬─────────────────────────────┘
      │
@@ -352,17 +352,17 @@ Admin/Operator → Admin Frontend (port 8081)
 ┌──────────────────────────────────┐
 │ Celery Task Execution:           │
 │                                  │
-│ 1. Find all user_watches rows    │
+│ 1. Find all user_tracks rows    │
 │    WHERE entity_type='job'       │
 │    AND entity_id=job.id          │
-│ 2. For each watcher:             │
+│ 2. For each tracker:             │
 │    └─► smart_notify(staggered)   │
 └────┬─────────────────────────────┘
      │
      ▼
 ┌──────────────────────┐
 │ Send notifications   │
-│ to watchers via      │
+│ to trackers via      │
 │ smart_notify (5ch):  │
 │ - In-app (T+0)       │
 │ - Push (T+0)         │
@@ -384,7 +384,7 @@ Admin/Operator → Admin Frontend (port 8081)
 └─────────┘
 ```
 
-## 4. Deadline Reminder & Watcher Notification Flow
+## 4. Deadline Reminder & Tracker Notification Flow
 
 ```
 ┌─────────────────────┐
@@ -400,14 +400,14 @@ Admin/Operator → Admin Frontend (port 8081)
           │
           ▼
 ┌─────────────────────┐
-│ Fetch user_watches  │
+│ Fetch user_tracks  │
 │ WHERE entity_type=  │
 │ 'job' or 'admission'│
 └─────────┬───────────┘
           │
           ▼
      ┌────────────────────────────────┐
-     │  FOR EACH WATCHER:             │
+     │  FOR EACH TRACKER:             │
      │  ┌──────────────────────────┐  │
      │  │ Fetch User Profile       │  │
      │  └────────────┬─────────────┘  │
@@ -560,7 +560,7 @@ Admin/Operator → Admin Frontend (port 8081)
                       │ END            │
                       └────────────────┘
 
-## 5. Watch Job / Admission Flow
+## 5. Track Job / Admission Flow
 
 ```
 ┌─────────┐
@@ -574,28 +574,28 @@ Admin/Operator → Admin Frontend (port 8081)
      │
      ▼
 ┌────────────────────────────────────┐
-│ Click [Watch] button               │
-│ POST /api/v1/jobs/{id}/watch       │
+│ Click [Track] button               │
+│ POST /api/v1/jobs/{id}/track       │
 │   OR                               │
 │ POST /api/v1/admissions/       │
-│      {id}/watch                    │
+│      {id}/track                    │
 └────┬───────────────────────────────┘
      │
      ▼
 ┌──────────────────────┐      ┌─────────────────┐
-│ Already watching?    │─────►│ 200: "Already   │
-└────┬─────────────────┘ YES  │  watching"      │
+│ Already tracking?    │─────►│ 200: "Already   │
+└────┬─────────────────┘ YES  │  tracking"      │
      │                        └─────────────────┘
      │ NO
      ▼
 ┌──────────────────────┐      ┌─────────────────┐
-│ Watch count ≥ 100?   │─────►│ 400: max 100    │
-└────┬─────────────────┘ YES  │  watches allowed│
+│ Track count ≥ 100?   │─────►│ 400: max 100    │
+└────┬─────────────────┘ YES  │  tracks allowed│
      │                        └─────────────────┘
      │ NO
      ▼
 ┌────────────────────────────────────┐
-│ Insert user_watches row:           │
+│ Insert user_tracks row:           │
 │ { user_id, entity_type, entity_id} │
 │ UNIQUE(user_id, entity_type,       │
 │        entity_id) enforced in DB   │
@@ -603,15 +603,15 @@ Admin/Operator → Admin Frontend (port 8081)
      │
      ▼
 ┌────────────────────────────────────┐
-│ 200: { watching: true,             │
-│       message: "Now watching" }    │
+│ 200: { tracking: true,             │
+│       message: "Now tracking" }    │
 └────┬───────────────────────────────┘
      │
      ▼
 ┌────────────────────────────────────┐
 │ Daily Beat Task (08:00 UTC):       │
 │ send_deadline_reminders finds      │
-│ all watches where entity's         │
+│ all tracks where entity's         │
 │ application_end is in T-7/T-3/T-1 │
 │ → smart_notify(staggered) per user │
 └────┬───────────────────────────────┘
@@ -631,7 +631,7 @@ Admin/Operator → Admin Frontend (port 8081)
 └─────────┘
 ```
 
-## 6. Watcher Update Notification Flow
+## 6. Tracker Update Notification Flow
 
 ┌─────────────────────────────────┐
 │ Trigger: Admin approves or     │
@@ -646,15 +646,15 @@ Admin/Operator → Admin Frontend (port 8081)
                 ▼
 ┌─────────────────────────────────┐
 │ Trigger Celery Task:            │
-│ notify_watchers_on_update       │
+│ notify_trackers_on_update       │
 │ (entity_type, entity_id)        │
 │ → smart_notify(staggered) per   │
-│   user who watches this entity  │
+│   user who tracks this entity  │
 └───────────────┬─────────────────┘
                 │
                 ▼
 ┌─────────────────────────────────┐
-│ Find all user_watches rows      │
+│ Find all user_tracks rows      │
 │ WHERE entity_type AND entity_id │
 │ match the updated job/admission      │
 └───────────────┬─────────────────┘
@@ -671,7 +671,7 @@ Admin/Operator → Admin Frontend (port 8081)
      │               ▼                │
      │  ┌──────────────────────────┐  │
      │  │ Build notification:       │  │
-     │  │ type='watched_item_       │  │
+     │  │ type='tracked_item_       │  │
      │  │       updated'            │  │
      │  │ title = job/admission title    │  │
      │  │ action_url = detail page │  │
@@ -753,7 +753,7 @@ Admin/Operator → Admin Frontend (port 8081)
                                          ┌───────────────┼─────────────────┐
                                          │               │                 │
                          ┌───────────────▼───────┐ ┌─────▼─────────┐ ┌─────▼──────────┐
-                         │      user_devices     │ │ notifications │ │  user_watches  │
+                         │      user_devices     │ │ notifications │ │  user_tracks  │
                          │  - id UUID PK         │ │  - id UUID PK │ │  - id UUID PK  │
                          │  - user_id FK         │ │  - user_id FK │ │  - user_id FK  │
                          │  - fcm_token          │ │  - title, body│ │  - entity_type │
@@ -799,7 +799,7 @@ admissions:
   - search_vector GIN (full-text)
   - slug (unique)
 
-user_watches:
+user_tracks:
   - UNIQUE(user_id, entity_type, entity_id)
 
 Notifications & Devices:
@@ -869,7 +869,7 @@ SCHEDULED TASKS (beat_schedule in celery_app.py):
 
 1. app.tasks.notifications.send_deadline_reminders
    Run: Daily 08:00 UTC
-   Purpose: T-7, T-3, T-1 reminders for all user_watches watchers
+   Purpose: T-7, T-3, T-1 reminders for all user_tracks trackers
 
 2. app.tasks.cleanup.purge_expired_notifications
    Run: Daily 01:00 UTC
@@ -898,8 +898,8 @@ SCHEDULED TASKS (beat_schedule in celery_app.py):
 EVENT-TRIGGERED TASKS:
 ═══════════════════════
 
-• notify_watchers_on_update(entity_type, entity_id)
-  Triggered when job/admission is approved or updated → notifies all watchers
+• notify_trackers_on_update(entity_type, entity_id)
+  Triggered when job/admission is approved or updated → notifies all trackers
 
 • smart_notify(user_id, ...)
   Unified delivery entry — instant or staggered, 5 channels
@@ -938,18 +938,18 @@ User Dashboard → Browse Jobs → Filter by Eligibility → View Details
                     └───────────────────────────────────────┘
                                     │
                                     ▼
-                          Watch Jobs & Admissions (user_watches table)
-                          max 100 watches per user
+                          Track Jobs & Admissions (user_tracks table)
+                          max 100 tracks per user
 
 ONGOING: NOTIFICATION & TRACKING
 ═════════════════════════════════
 Receive Notifications → Check Dashboard → Visit official site to apply
          │
-         ├─ Deadline Reminders (T-7, T-3, T-1 for watched items)
+         ├─ Deadline Reminders (T-7, T-3, T-1 for tracked items)
          ├─ Admit Card Releases (when admin publishes admit_cards)
          ├─ Answer Key Releases (when admin publishes answer_keys)
          ├─ Result Releases (when admin publishes results)
-         └─ Job/Admission Updates (when admin modifies watched item)
+         └─ Job/Admission Updates (when admin modifies tracked item)
 
 ADMISSION PHASE
 ═══════════════
@@ -1047,9 +1047,9 @@ USER ROLE (👤) - Regular Job Seeker
 ────────────────────────────────────
 ✅ GET    /api/v1/jobs                    View jobs (public)
 ✅ GET    /api/v1/jobs/<slug>             View job details (public)
-✅ POST   /api/v1/jobs/<id>/watch        Watch job
-✅ DELETE /api/v1/jobs/<id>/watch        Unwatch job
-✅ GET    /api/v1/users/me/watched       List watched items
+✅ POST   /api/v1/jobs/<id>/track        Track job
+✅ DELETE /api/v1/jobs/<id>/track        Untrack job
+✅ GET    /api/v1/users/me/tracked       List tracked items
 ✅ GET    /api/v1/users/profile          View own profile
 ✅ PUT    /api/v1/users/profile          Update own profile
 ✅ GET    /api/v1/notifications          View own notifications

@@ -17,7 +17,7 @@ Tables (in dependency order):
   10. admit_cards
   11. answer_keys
   12. results
-  13. user_watches
+  13. user_tracks
 """
 
 import sqlalchemy as sa
@@ -259,6 +259,8 @@ def upgrade() -> None:
         sa.Column("seats_info", postgresql.JSONB(), nullable=True),
         sa.Column("application_start", sa.Date(), nullable=True),
         sa.Column("application_end", sa.Date(), nullable=True),
+        sa.Column("exam_start", sa.Date(), nullable=True),
+        sa.Column("exam_end", sa.Date(), nullable=True),
         sa.Column("admission_date", sa.Date(), nullable=True),
         sa.Column("result_date", sa.Date(), nullable=True),
         sa.Column("counselling_start", sa.Date(), nullable=True),
@@ -299,8 +301,9 @@ def upgrade() -> None:
         sa.Column("phase_number", sa.SmallInteger(), nullable=True),
         sa.Column("title", sa.String(255), nullable=False),
         sa.Column("download_url", sa.Text(), nullable=False),
-        sa.Column("valid_from", sa.Date(), nullable=True),
-        sa.Column("valid_until", sa.Date(), nullable=True),
+        sa.Column("slug", sa.String(500), nullable=True),
+        sa.Column("exam_start", sa.Date(), nullable=True),
+        sa.Column("exam_end", sa.Date(), nullable=True),
         sa.Column("notes", sa.Text(), nullable=True),
         sa.Column("published_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("NOW()")),
@@ -313,6 +316,7 @@ def upgrade() -> None:
     op.create_index("idx_admit_cards_job", "admit_cards", ["job_id", "phase_number"])
     op.create_index("idx_admit_cards_admission", "admit_cards", ["admission_id", "phase_number"])
     op.create_index("idx_admit_cards_pub", "admit_cards", ["published_at"])
+    op.create_index("ix_admit_cards_slug", "admit_cards", ["slug"], unique=True)
 
     # ── 11. answer_keys ───────────────────────────────────────────────────────
     op.create_table(
@@ -323,6 +327,7 @@ def upgrade() -> None:
         sa.Column("phase_number", sa.SmallInteger(), nullable=True),
         sa.Column("title", sa.String(255), nullable=False),
         sa.Column("answer_key_type", sa.String(20), nullable=False, server_default="provisional"),
+        sa.Column("slug", sa.String(500), nullable=True),
         sa.Column("files", postgresql.JSONB(), nullable=False, server_default="[]"),
         sa.Column("objection_url", sa.Text(), nullable=True),
         sa.Column("objection_deadline", sa.Date(), nullable=True),
@@ -338,6 +343,7 @@ def upgrade() -> None:
     op.create_index("idx_answer_keys_job", "answer_keys", ["job_id", "phase_number"])
     op.create_index("idx_answer_keys_admission", "answer_keys", ["admission_id", "phase_number"])
     op.create_index("idx_answer_keys_type", "answer_keys", ["job_id", "answer_key_type"])
+    op.create_index("ix_answer_keys_slug", "answer_keys", ["slug"], unique=True)
 
     # ── 12. results ───────────────────────────────────────────────────────────
     op.create_table(
@@ -348,6 +354,7 @@ def upgrade() -> None:
         sa.Column("phase_number", sa.SmallInteger(), nullable=True),
         sa.Column("title", sa.String(255), nullable=False),
         sa.Column("result_type", sa.String(20), nullable=False),
+        sa.Column("slug", sa.String(500), nullable=True),
         sa.Column("download_url", sa.Text(), nullable=True),
         sa.Column("cutoff_marks", postgresql.JSONB(), nullable=True),
         sa.Column("total_qualified", sa.Integer(), nullable=True),
@@ -364,25 +371,25 @@ def upgrade() -> None:
     op.create_index("idx_results_job", "results", ["job_id", "phase_number"])
     op.create_index("idx_results_admission", "results", ["admission_id", "phase_number"])
     op.create_index("idx_results_pub", "results", ["published_at"])
+    op.create_index("ix_results_slug", "results", ["slug"], unique=True)
 
-    # ── 13. user_watches ──────────────────────────────────────────────────────
+    # ── 13. user_tracks ───────────────────────────────────────────────────────
     op.create_table(
-        "user_watches",
+        "user_tracks",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
         sa.Column("user_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
         sa.Column("entity_type", sa.String(10), nullable=False),
         sa.Column("entity_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("NOW()")),
-        sa.UniqueConstraint("user_id", "entity_type", "entity_id", name="uq_user_watch"),
-        sa.CheckConstraint("entity_type IN ('job', 'admission')", name="ck_user_watches_entity_type"),
+        sa.UniqueConstraint("user_id", "entity_type", "entity_id", name="uq_user_track"),
+        sa.CheckConstraint("entity_type IN ('job', 'admission')", name="ck_user_tracks_entity_type"),
     )
-    op.create_index("ix_user_watches_user_id", "user_watches", ["user_id"])
-    op.create_index("ix_user_watches_entity", "user_watches", ["entity_type", "entity_id"])
+    op.create_index("ix_user_tracks_user_id", "user_tracks", ["user_id"])
+    op.create_index("ix_user_tracks_entity", "user_tracks", ["entity_type", "entity_id"])
 
 
 def downgrade() -> None:
-    # Drop in reverse dependency order
-    op.drop_table("user_watches")
+    op.drop_table("user_tracks")
     op.drop_table("results")
     op.drop_table("answer_keys")
     op.drop_table("admit_cards")

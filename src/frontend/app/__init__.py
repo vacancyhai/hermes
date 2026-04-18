@@ -12,7 +12,7 @@ from app.api_client import ApiClient
 
 _TEMPLATE_404 = "shared/404.html"
 _API_USERS_PROFILE = "/users/profile"
-_API_WATCHED = "/users/me/watched"
+_API_TRACKED = "/users/me/tracked"
 _TEMPLATE_LOGIN = "auth/login.html"
 _URL_LOGIN = "/login"
 _URL_NOTIFICATIONS = "/notifications"
@@ -105,14 +105,14 @@ def _safe_back(fallback: str = "/") -> str:
     return fallback
 
 
-def _fetch_watched_ids():
-    """Return (watched_job_ids, watched_admission_ids) sets for the current user.
+def _fetch_tracked_ids():
+    """Return (tracked_job_ids, tracked_admission_ids) sets for the current user.
 
     Uses _try_with_refresh so expired tokens are handled. Returns empty sets
     when the user is not logged in or the request fails.
     """
     w_resp, authed = _try_with_refresh(
-        lambda t: current_app.api_client.get(_API_WATCHED, token=t)
+        lambda t: current_app.api_client.get(_API_TRACKED, token=t)
     )
     if not authed or not w_resp or not w_resp.ok:
         return set(), set()
@@ -185,12 +185,12 @@ def health():
     return {"status": "ok", "service": "hermes-frontend"}
 
 
-# --- Watched Items Dashboard ---
+# --- Tracked Items Dashboard ---
 
 
 @bp.route("/", methods=["GET"])
 def dashboard():
-    """Dashboard — latest 12 items per section + watched items for logged-in users."""
+    """Dashboard — latest 12 items per section + tracked items for logged-in users."""
     _latest_params = {"limit": 12, "offset": 0}
 
     # Fetch latest 12 for each section (public, no auth needed)
@@ -222,10 +222,10 @@ def dashboard():
             latest_answer_keys=latest_answer_keys,
             latest_results=latest_results,
             upcoming_exams=upcoming_exams,
-            watched_jobs=[],
-            watched_admissions=[],
-            watched_job_ids=set(),
-            watched_admission_ids=set(),
+            tracked_jobs=[],
+            tracked_admissions=[],
+            tracked_job_ids=set(),
+            tracked_admission_ids=set(),
             total=0,
             logged_in=False,
             firebase_api_key=os.environ.get("FIREBASE_WEB_API_KEY", ""),
@@ -233,12 +233,12 @@ def dashboard():
             firebase_project_id=os.environ.get("FIREBASE_PROJECT_ID", ""),
         )
 
-    resp, authed = _try_with_refresh(lambda t: current_app.api_client.get(_API_WATCHED, token=t))
+    resp, authed = _try_with_refresh(lambda t: current_app.api_client.get(_API_TRACKED, token=t))
     if not authed:
         return redirect(_URL_LOGIN)
-    watched = resp.json() if resp.ok else {"jobs": [], "admissions": [], "total": 0}
-    watched_job_ids = {str(j["id"]) for j in watched.get("jobs", [])}
-    watched_admission_ids = {str(e["id"]) for e in watched.get("admissions", [])}
+    tracked = resp.json() if resp.ok else {"jobs": [], "admissions": [], "total": 0}
+    tracked_job_ids = {str(j["id"]) for j in tracked.get("jobs", [])}
+    tracked_admission_ids = {str(e["id"]) for e in tracked.get("admissions", [])}
 
 
     return render_template(
@@ -249,11 +249,11 @@ def dashboard():
         latest_answer_keys=latest_answer_keys,
         latest_results=latest_results,
         upcoming_exams=upcoming_exams,
-        watched_jobs=watched.get("jobs", []),
-        watched_admissions=watched.get("admissions", []),
-        watched_job_ids=watched_job_ids,
-        watched_admission_ids=watched_admission_ids,
-        total=watched.get("total", 0),
+        tracked_jobs=tracked.get("jobs", []),
+        tracked_admissions=tracked.get("admissions", []),
+        tracked_job_ids=tracked_job_ids,
+        tracked_admission_ids=tracked_admission_ids,
+        total=tracked.get("total", 0),
         logged_in=True,
     )
 
@@ -691,22 +691,22 @@ def jobs():
     resp = current_app.api_client.get(_API_JOBS, token=token, params=params)
     data = resp.json() if resp.ok else {"data": [], "pagination": {}}
     recommended_jobs = []
-    watched_job_ids = set()
+    tracked_job_ids = set()
     if token:
         rec_resp, authed = _try_with_refresh(
             lambda t: current_app.api_client.get(_API_JOBS + _PATH_RECOMMENDED, token=t, params={"limit": 20, "offset": 0})
         )
         if authed and rec_resp and rec_resp.ok:
             recommended_jobs = rec_resp.json().get("data", [])
-        w_resp = current_app.api_client.get(_API_WATCHED, token=session.get("token"))
+        w_resp = current_app.api_client.get(_API_TRACKED, token=session.get("token"))
         if w_resp.ok:
-            watched_job_ids = {str(j["id"]) for j in w_resp.json().get("jobs", [])}
+            tracked_job_ids = {str(j["id"]) for j in w_resp.json().get("jobs", [])}
     return render_template(
         "jobs/list.html",
         jobs=data.get("data", []),
         pagination=data.get("pagination", {}),
         recommended_jobs=recommended_jobs,
-        watched_job_ids=watched_job_ids,
+        tracked_job_ids=tracked_job_ids,
         q=request.args.get("q", ""),
         qualification_level=request.args.get("qualification_level", ""),
         organization=request.args.get("organization", ""),
@@ -745,40 +745,40 @@ def job_detail(slug):
     if not resp.ok:
         return render_template(_TEMPLATE_404), 404
     job = resp.json()
-    watching = False
+    tracking = False
     token = session.get("token")
     if token:
-        w_resp = current_app.api_client.get(f"/jobs/{job['id']}/watch", token=token)
+        w_resp = current_app.api_client.get(f"/jobs/{job['id']}/track", token=token)
         if w_resp.ok:
-            watching = w_resp.json().get("watching", False)
-    return render_template("jobs/detail.html", job=job, watching=watching)
+            tracking = w_resp.json().get("tracking", False)
+    return render_template("jobs/detail.html", job=job, tracking=tracking)
 
 
-@bp.route("/jobs/<job_id>/watch", methods=["POST"])
-def watch_job(job_id):
+@bp.route("/jobs/<job_id>/track", methods=["POST"])
+def track_job(job_id):
     try:
         _uuid.UUID(job_id)
     except ValueError:
         return render_template(_TEMPLATE_404), 404
     slug = request.form.get("slug")
     back = _safe_back(f"/jobs/{slug}" if slug else "/")
-    resp, authed = _try_with_refresh(lambda t: current_app.api_client.post(f"/jobs/{job_id}/watch", token=t))
+    resp, authed = _try_with_refresh(lambda t: current_app.api_client.post(f"/jobs/{job_id}/track", token=t))
     if not authed:
         return redirect(f"/login?next={back}")
-    if resp and not resp.ok and resp.status_code != 400:  # 400 = already watching, that's fine
+    if resp and not resp.ok and resp.status_code != 400:  # 400 = already tracking, that's fine
         return render_template(_TEMPLATE_404), resp.status_code
     return redirect(back)
 
 
-@bp.route("/jobs/<job_id>/unwatch", methods=["POST"])
-def unwatch_job(job_id):
+@bp.route("/jobs/<job_id>/untrack", methods=["POST"])
+def untrack_job(job_id):
     try:
         _uuid.UUID(job_id)
     except ValueError:
         return render_template(_TEMPLATE_404), 404
     slug = request.form.get("slug")
     back = _safe_back(f"/jobs/{slug}" if slug else "/")
-    _, authed = _try_with_refresh(lambda t: current_app.api_client.delete(f"/jobs/{job_id}/watch", token=t))
+    _, authed = _try_with_refresh(lambda t: current_app.api_client.delete(f"/jobs/{job_id}/track", token=t))
     if not authed:
         return redirect(f"/login?next={back}")
     return redirect(back)
@@ -794,7 +794,7 @@ def admit_cards():
     resp = current_app.api_client.get(_API_ADMIT_CARDS, params=params)
     data = resp.json() if resp.ok else {"data": [], "pagination": {}}
     recommended_cards = []
-    watched_job_ids, watched_admission_ids = _fetch_watched_ids()
+    tracked_job_ids, tracked_admission_ids = _fetch_tracked_ids()
     if token:
         rec_resp, authed = _try_with_refresh(
             lambda t: current_app.api_client.get(_API_ADMIT_CARDS + _PATH_RECOMMENDED, token=t, params={"limit": 20, "offset": 0})
@@ -806,8 +806,8 @@ def admit_cards():
         cards=data.get("data", []),
         pagination=data.get("pagination", {}),
         recommended_cards=recommended_cards,
-        watched_job_ids=watched_job_ids,
-        watched_admission_ids=watched_admission_ids,
+        tracked_job_ids=tracked_job_ids,
+        tracked_admission_ids=tracked_admission_ids,
     )
 
 
@@ -819,14 +819,14 @@ def admit_cards_partial():
     pagination = data.get("pagination", {})
     has_more = pagination.get("has_more", False)
     next_offset = params["offset"] + params["limit"] if has_more else 0
-    watched_job_ids, watched_admission_ids = _fetch_watched_ids()
+    tracked_job_ids, tracked_admission_ids = _fetch_tracked_ids()
     return render_template(
         "admit_cards/_cards.html",
         cards=data.get("data", []),
         has_more=has_more,
         next_offset=next_offset,
-        watched_job_ids=watched_job_ids,
-        watched_admission_ids=watched_admission_ids,
+        tracked_job_ids=tracked_job_ids,
+        tracked_admission_ids=tracked_admission_ids,
     )
 
 
@@ -836,16 +836,16 @@ def admit_card_detail(slug):
     if not resp.ok:
         return render_template(_TEMPLATE_404), 404
     card = resp.json()
-    watching = False
+    tracking = False
     token = session.get("token")
     if token:
         if card.get("job"):
-            w = current_app.api_client.get(f"/jobs/{card['job']['id']}/watch", token=token)
-            watching = w.json().get("watching", False) if w.ok else False
+            w = current_app.api_client.get(f"/jobs/{card['job']['id']}/track", token=token)
+            tracking = w.json().get("tracking", False) if w.ok else False
         elif card.get("admission"):
-            w = current_app.api_client.get(f"/admissions/{card['admission']['id']}/watch", token=token)
-            watching = w.json().get("watching", False) if w.ok else False
-    return render_template("admit_cards/detail.html", card=card, watching=watching)
+            w = current_app.api_client.get(f"/admissions/{card['admission']['id']}/track", token=token)
+            tracking = w.json().get("tracking", False) if w.ok else False
+    return render_template("admit_cards/detail.html", card=card, tracking=tracking)
 
 
 # ─── Answer Keys Section ─────────────────────────────────────────────────
@@ -858,7 +858,7 @@ def answer_keys():
     resp = current_app.api_client.get(_API_ANSWER_KEYS, params=params)
     data = resp.json() if resp.ok else {"data": [], "pagination": {}}
     recommended_keys = []
-    watched_job_ids, watched_admission_ids = _fetch_watched_ids()
+    tracked_job_ids, tracked_admission_ids = _fetch_tracked_ids()
     if token:
         rec_resp, authed = _try_with_refresh(
             lambda t: current_app.api_client.get(_API_ANSWER_KEYS + _PATH_RECOMMENDED, token=t, params={"limit": 20, "offset": 0})
@@ -870,8 +870,8 @@ def answer_keys():
         keys=data.get("data", []),
         pagination=data.get("pagination", {}),
         recommended_keys=recommended_keys,
-        watched_job_ids=watched_job_ids,
-        watched_admission_ids=watched_admission_ids,
+        tracked_job_ids=tracked_job_ids,
+        tracked_admission_ids=tracked_admission_ids,
     )
 
 
@@ -883,14 +883,14 @@ def answer_keys_partial():
     pagination = data.get("pagination", {})
     has_more = pagination.get("has_more", False)
     next_offset = params["offset"] + params["limit"] if has_more else 0
-    watched_job_ids, watched_admission_ids = _fetch_watched_ids()
+    tracked_job_ids, tracked_admission_ids = _fetch_tracked_ids()
     return render_template(
         "answer_keys/_cards.html",
         keys=data.get("data", []),
         has_more=has_more,
         next_offset=next_offset,
-        watched_job_ids=watched_job_ids,
-        watched_admission_ids=watched_admission_ids,
+        tracked_job_ids=tracked_job_ids,
+        tracked_admission_ids=tracked_admission_ids,
     )
 
 
@@ -900,16 +900,16 @@ def answer_key_detail(slug):
     if not resp.ok:
         return render_template(_TEMPLATE_404), 404
     key = resp.json()
-    watching = False
+    tracking = False
     token = session.get("token")
     if token:
         if key.get("job"):
-            w = current_app.api_client.get(f"/jobs/{key['job']['id']}/watch", token=token)
-            watching = w.json().get("watching", False) if w.ok else False
+            w = current_app.api_client.get(f"/jobs/{key['job']['id']}/track", token=token)
+            tracking = w.json().get("tracking", False) if w.ok else False
         elif key.get("admission"):
-            w = current_app.api_client.get(f"/admissions/{key['admission']['id']}/watch", token=token)
-            watching = w.json().get("watching", False) if w.ok else False
-    return render_template("answer_keys/detail.html", key=key, watching=watching)
+            w = current_app.api_client.get(f"/admissions/{key['admission']['id']}/track", token=token)
+            tracking = w.json().get("tracking", False) if w.ok else False
+    return render_template("answer_keys/detail.html", key=key, tracking=tracking)
 
 
 # ─── Results Section ─────────────────────────────────────────────────────
@@ -922,7 +922,7 @@ def results():
     resp = current_app.api_client.get(_API_RESULTS, params=params)
     data = resp.json() if resp.ok else {"data": [], "pagination": {}}
     recommended_results = []
-    watched_job_ids, watched_admission_ids = _fetch_watched_ids()
+    tracked_job_ids, tracked_admission_ids = _fetch_tracked_ids()
     if token:
         rec_resp, authed = _try_with_refresh(
             lambda t: current_app.api_client.get(_API_RESULTS + _PATH_RECOMMENDED, token=t, params={"limit": 20, "offset": 0})
@@ -934,8 +934,8 @@ def results():
         results=data.get("data", []),
         pagination=data.get("pagination", {}),
         recommended_results=recommended_results,
-        watched_job_ids=watched_job_ids,
-        watched_admission_ids=watched_admission_ids,
+        tracked_job_ids=tracked_job_ids,
+        tracked_admission_ids=tracked_admission_ids,
     )
 
 
@@ -947,14 +947,14 @@ def results_partial():
     pagination = data.get("pagination", {})
     has_more = pagination.get("has_more", False)
     next_offset = params["offset"] + params["limit"] if has_more else 0
-    watched_job_ids, watched_admission_ids = _fetch_watched_ids()
+    tracked_job_ids, tracked_admission_ids = _fetch_tracked_ids()
     return render_template(
         "results/_cards.html",
         results=data.get("data", []),
         has_more=has_more,
         next_offset=next_offset,
-        watched_job_ids=watched_job_ids,
-        watched_admission_ids=watched_admission_ids,
+        tracked_job_ids=tracked_job_ids,
+        tracked_admission_ids=tracked_admission_ids,
     )
 
 
@@ -964,16 +964,16 @@ def result_detail(slug):
     if not resp.ok:
         return render_template(_TEMPLATE_404), 404
     result = resp.json()
-    watching = False
+    tracking = False
     token = session.get("token")
     if token:
         if result.get("job"):
-            w = current_app.api_client.get(f"/jobs/{result['job']['id']}/watch", token=token)
-            watching = w.json().get("watching", False) if w.ok else False
+            w = current_app.api_client.get(f"/jobs/{result['job']['id']}/track", token=token)
+            tracking = w.json().get("tracking", False) if w.ok else False
         elif result.get("admission"):
-            w = current_app.api_client.get(f"/admissions/{result['admission']['id']}/watch", token=token)
-            watching = w.json().get("watching", False) if w.ok else False
-    return render_template("results/detail.html", result=result, watching=watching)
+            w = current_app.api_client.get(f"/admissions/{result['admission']['id']}/track", token=token)
+            tracking = w.json().get("tracking", False) if w.ok else False
+    return render_template("results/detail.html", result=result, tracking=tracking)
 
 
 # ─── Admissions Section ──────────────────────────────────────────────────────
@@ -992,7 +992,7 @@ def admissions():
     resp = current_app.api_client.get(_API_ADMISSIONS, token=token, params=params)
     data = resp.json() if resp.ok else {"data": [], "pagination": {}}
     recommended_admissions = []
-    watched_job_ids, watched_admission_ids = _fetch_watched_ids()
+    tracked_job_ids, tracked_admission_ids = _fetch_tracked_ids()
     if token:
         rec_resp, authed = _try_with_refresh(
             lambda t: current_app.api_client.get(_API_ADMISSIONS + _PATH_RECOMMENDED, token=t, params={"limit": 20, "offset": 0})
@@ -1004,8 +1004,8 @@ def admissions():
         admissions=data.get("data", []),
         pagination=data.get("pagination", {}),
         recommended_admissions=recommended_admissions,
-        watched_job_ids=watched_job_ids,
-        watched_admission_ids=watched_admission_ids,
+        tracked_job_ids=tracked_job_ids,
+        tracked_admission_ids=tracked_admission_ids,
         q=request.args.get("q", ""),
         stream=request.args.get("stream", ""),
         admission_type=request.args.get("admission_type", ""),
@@ -1043,24 +1043,24 @@ def admission_detail(slug):
     if not resp.ok:
         return render_template(_TEMPLATE_404), 404
     admission = resp.json()
-    watching = False
+    tracking = False
     token = session.get("token")
     if token:
-        w_resp = current_app.api_client.get(f"/admissions/{admission['id']}/watch", token=token)
+        w_resp = current_app.api_client.get(f"/admissions/{admission['id']}/track", token=token)
         if w_resp.ok:
-            watching = w_resp.json().get("watching", False)
-    return render_template("admissions/detail.html", admission=admission, watching=watching)
+            tracking = w_resp.json().get("tracking", False)
+    return render_template("admissions/detail.html", admission=admission, tracking=tracking)
 
 
-@bp.route("/admissions/<admission_id>/watch", methods=["POST"])
-def watch_admission(admission_id):
+@bp.route("/admissions/<admission_id>/track", methods=["POST"])
+def track_admission(admission_id):
     try:
         _uuid.UUID(admission_id)
     except ValueError:
         return render_template(_TEMPLATE_404), 404
     slug = request.form.get("slug")
     back = _safe_back(f"/admissions/{slug}" if slug else "/")
-    resp, authed = _try_with_refresh(lambda t: current_app.api_client.post(f"/admissions/{admission_id}/watch", token=t))
+    resp, authed = _try_with_refresh(lambda t: current_app.api_client.post(f"/admissions/{admission_id}/track", token=t))
     if not authed:
         return redirect(f"/login?next={back}")
     if resp and not resp.ok and resp.status_code != 400:
@@ -1068,15 +1068,15 @@ def watch_admission(admission_id):
     return redirect(back)
 
 
-@bp.route("/admissions/<admission_id>/unwatch", methods=["POST"])
-def unwatch_admission(admission_id):
+@bp.route("/admissions/<admission_id>/untrack", methods=["POST"])
+def untrack_admission(admission_id):
     try:
         _uuid.UUID(admission_id)
     except ValueError:
         return render_template(_TEMPLATE_404), 404
     slug = request.form.get("slug")
     back = _safe_back(f"/admissions/{slug}" if slug else "/")
-    _resp, authed = _try_with_refresh(lambda t: current_app.api_client.delete(f"/admissions/{admission_id}/watch", token=t))
+    _resp, authed = _try_with_refresh(lambda t: current_app.api_client.delete(f"/admissions/{admission_id}/track", token=t))
     if not authed:
         return redirect(f"/login?next={back}")
     return redirect(back)

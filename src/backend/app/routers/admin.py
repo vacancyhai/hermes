@@ -411,11 +411,11 @@ async def create_job(
         request=request,
     )
 
-    # If created as active, notify watchers
+    # If created as active, notify trackers
     if body.status == "active":
-        from app.tasks.notifications import notify_watchers_on_update
+        from app.tasks.notifications import notify_trackers_on_update
 
-        notify_watchers_on_update.delay("job", str(job.id))
+        notify_trackers_on_update.delay("job", str(job.id))
 
     return JobResponse.model_validate(job).model_dump()
 
@@ -544,11 +544,11 @@ async def update_job(
         db, admin, "update_job", "job", job.id, changes=changes, request=request
     )
 
-    # If status changed to active, also notify watchers
+    # If status changed to active, also notify trackers
     if "status" in changes and body.status == "active":
-        from app.tasks.notifications import notify_watchers_on_update
+        from app.tasks.notifications import notify_trackers_on_update
 
-        notify_watchers_on_update.delay("job", str(job.id))
+        notify_trackers_on_update.delay("job", str(job.id))
 
     await db.refresh(job)
     return JobResponse.model_validate(job).model_dump()

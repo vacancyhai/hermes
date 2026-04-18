@@ -108,11 +108,11 @@
                 {% if admission.admission_date %}<span class="meta-pill pill-purple">Exam: {{ admission.admission_date }}</span>{% endif %}
             </div>
             <div style="display:flex;gap:.4rem;align-items:center">
-                {% set is_watching = admission.id|string in watched_admission_ids %}
-                <form method="post" action="/admissions/{{ admission.slug }}/{{ 'unwatch' if is_watching else 'watch' }}" style="display:inline">
+                {% set is_tracking = admission.id|string in tracked_admission_ids %}
+                <form method="post" action="/admissions/{{ admission.slug }}/{{ 'untrack' if is_tracking else 'track' }}" style="display:inline">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                    <button type="submit" class="{{ 'btn-watching btn btn-sm' if is_watching else 'btn btn-outline btn-sm' }}">
-                        {{ '★ Watching' if is_watching else '☆ Watch' }}
+                    <button type="submit" class="{{ 'btn-tracking btn btn-sm' if is_tracking else 'btn btn-outline btn-sm' }}">
+                        {{ '★ Tracking' if is_tracking else '☆ Track' }}
                     </button>
                 </form>
                 <a href="/admissions/{{ admission.slug }}" class="btn btn-sm" style="background:#7c3aed;color:#fff">View →</a>

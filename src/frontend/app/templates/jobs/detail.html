@@ -77,25 +77,25 @@
 <!-- Action bar -->
 <div class="action-bar">
     {% if session.get('token') %}
-        {% if watching %}
-        <form method="post" action="/jobs/{{ job.id }}/unwatch" style="display:inline">
+        {% if tracking %}
+        <form method="post" action="/jobs/{{ job.id }}/untrack" style="display:inline">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <input type="hidden" name="slug" value="{{ job.slug }}">
             <button type="submit" class="share-btn" style="background:#fef3c7;color:#92400e;border-color:#fde68a">
-                ★ Watching — Remove
+                ★ Tracking — Remove
             </button>
         </form>
         {% else %}
-        <form method="post" action="/jobs/{{ job.id }}/watch" style="display:inline">
+        <form method="post" action="/jobs/{{ job.id }}/track" style="display:inline">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <input type="hidden" name="slug" value="{{ job.slug }}">
             <button type="submit" class="share-btn" style="background:#dbeafe;color:#1e40af;border-color:#bfdbfe">
-                ☆ Watch for Reminders
+                ☆ Track for Reminders
             </button>
         </form>
         {% endif %}
     {% else %}
-    <a href="/login?next=/jobs/{{ job.slug }}" class="share-btn" style="background:#dbeafe;color:#1e40af;border-color:#bfdbfe">☆ Watch for Reminders</a>
+    <a href="/login?next=/jobs/{{ job.slug }}" class="share-btn" style="background:#dbeafe;color:#1e40af;border-color:#bfdbfe">☆ Track for Reminders</a>
     {% endif %}
     {% if job.source_url %}
     <a href="{{ job.source_url }}" target="_blank" rel="noopener" class="share-btn">🔗 Official Website</a>

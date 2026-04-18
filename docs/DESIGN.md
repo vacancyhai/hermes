@@ -173,7 +173,7 @@ See **[DATABASE.md](DATABASE.md)** for the complete schema — ERD, all 14 table
 
 **4 Alembic migrations (`0001` → `0004`). Tables:**
 `users`, `admin_users`, `user_profiles`, `user_devices`, `jobs`,
-`notifications`, `notification_delivery_log`, `admin_logs`, `user_watches`,
+`notifications`, `notification_delivery_log`, `admin_logs`, `user_tracks`,
 `admit_cards`, `answer_keys`, `results`, `admissions`.
 
 **Polymorphic document tables:** `admit_cards`, `answer_keys`, `results` each
@@ -193,7 +193,7 @@ All endpoints versioned under `/api/v1/`. List responses: `{ "data": [...], "pag
 | `auth.py` | `/api/v1/auth` | Firebase verify-token, logout, refresh; admin login/logout/refresh; email OTP registration |
 | `users.py` | `/api/v1/users` | Profile CRUD, FCM tokens, phone, password management |
 | `jobs.py` | `/api/v1/jobs` | Public listing (FTS + filters), recommended, detail by slug |
-| `watches.py` | `/api/v1/jobs/{id}/watch`, `/api/v1/admissions/{id}/watch` | Watch/unwatch jobs and admissions; list watched |
+| `tracks.py` | `/api/v1/jobs/{id}/track`, `/api/v1/admissions/{id}/track` | Track/untrack jobs and admissions; list tracked |
 | `notifications.py` | `/api/v1/notifications` | List, count, mark read, delete |
 | `admin.py` | `/api/v1/admin` | Job CRUD + approve, user mgmt, stats, audit logs, admin-user creation |
 | `content.py` | `/api/v1/admit-cards`, `/api/v1/answer-keys`, `/api/v1/results` | Public + admin CRUD for admit cards, answer keys, results |
@@ -339,7 +339,7 @@ For email/password and Google login, create a test user via the Firebase Console
 | Trigger                       | Task                           | Description                            |
 | ----------------------------- | ------------------------------ | -------------------------------------- |
 | Any notification needed       | `smart_notify`                 | Unified entry — instant or staggered delivery to all 5 channels |
-| Job/admission approved or updated  | `notify_watchers_on_update`    | Notify all users watching that job/admission via `smart_notify(staggered)` |
+| Job/admission approved or updated  | `notify_trackers_on_update`    | Notify all users tracking that job/admission via `smart_notify(staggered)` |
 | Staggered email delivery      | `deliver_delayed_email`        | Fires after `NOTIFY_EMAIL_DELAY` — sends the email |
 | Staggered WhatsApp            | `deliver_delayed_whatsapp`     | Fires after `NOTIFY_WHATSAPP_DELAY` — sends the WhatsApp |
 | Staggered Telegram            | `deliver_delayed_telegram`     | Fires after `NOTIFY_TELEGRAM_DELAY` — sends the Telegram message |
@@ -544,7 +544,7 @@ notified whenever that org posts *any* job — regardless of profile match.
 Followed organizations are stored in `user_profiles.followed_organizations` (JSONB array, added by migration 0002).
 Users manage this list by updating their profile via `PUT /api/v1/users/profile` — there are no dedicated follow/unfollow endpoints.
 
-> **Note:** Dedicated org-follow endpoints (`/organizations/{name}/follow`) and new-job alert dispatch (`send_new_job_notifications`) are **not yet implemented**. The `followed_organizations` field is stored and displayed, but watcher notifications for new org jobs are a no-op stub.
+> **Note:** Dedicated org-follow endpoints (`/organizations/{name}/follow`) and new-job alert dispatch (`send_new_job_notifications`) are **not yet implemented**. The `followed_organizations` field is stored and displayed, but tracker notifications for new org jobs are a no-op stub.
 
 ### Share Button (Web Share API)
 
@@ -996,4 +996,4 @@ docker exec -i hermes_postgresql psql -U hermes_user hermes_db < <backup_file>
 
 ## Related Documentation
 
-- [Workflow Diagrams](DIAGRAMS.md) — ASCII diagrams for user registration, job creation, watch flow, deadline reminders, admin dashboard, RBAC enforcement, and JWT token flows.
+- [Workflow Diagrams](DIAGRAMS.md) — ASCII diagrams for user registration, job creation, track flow, deadline reminders, admin dashboard, RBAC enforcement, and JWT token flows.
