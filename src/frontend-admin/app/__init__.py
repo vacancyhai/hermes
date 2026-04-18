@@ -394,11 +394,8 @@ def job_add_admit_card(job_id):
     payload = {
         "job_id": job_id,
         "title": form.get("title", ""),
-        "download_url": form.get("download_url", ""),
-        "phase_number": int(form["phase_number"]) if form.get("phase_number") else None,
         "exam_start": form.get("exam_start") or None,
         "exam_end": form.get("exam_end") or None,
-        "notes": form.get("notes") or None,
     }
     current_app.api_client.post(_API_ADMIN_ADMIT_CARDS, token=token, json=payload)
     flash("Admit card added.", "success")
@@ -418,10 +415,7 @@ def job_add_answer_key(job_id):
     payload = {
         "job_id": job_id,
         "title": form.get("title", ""),
-        "answer_key_type": form.get("answer_key_type", "provisional"),
-        "phase_number": int(form["phase_number"]) if form.get("phase_number") else None,
         "files": files,
-        "objection_url": form.get("objection_url") or None,
         "objection_deadline": form.get("objection_deadline") or None,
     }
     current_app.api_client.post(_API_ADMIN_ANSWER_KEYS, token=token, json=payload)
@@ -439,10 +433,7 @@ def job_add_result(job_id):
         "job_id": job_id,
         "title": form.get("title", ""),
         "result_type": form.get("result_type", "merit_list"),
-        "phase_number": int(form["phase_number"]) if form.get("phase_number") else None,
-        "download_url": form.get("download_url") or None,
         "total_qualified": int(form["total_qualified"]) if form.get("total_qualified") else None,
-        "notes": form.get("notes") or None,
     }
     current_app.api_client.post(_API_ADMIN_RESULTS, token=token, json=payload)
     flash("Result added.", "success")
@@ -682,11 +673,8 @@ def admission_add_admit_card(admission_id):
     payload = {
         "admission_id": admission_id,
         "title": form.get("title", ""),
-        "download_url": form.get("download_url", ""),
-        "phase_number": int(form["phase_number"]) if form.get("phase_number") else None,
         "exam_start": form.get("exam_start") or None,
         "exam_end": form.get("exam_end") or None,
-        "notes": form.get("notes") or None,
     }
     current_app.api_client.post(_API_ADMIN_ADMIT_CARDS, token=token, json=payload)
     flash("Admit card added.", "success")
@@ -706,10 +694,7 @@ def admission_add_answer_key(admission_id):
     payload = {
         "admission_id": admission_id,
         "title": form.get("title", ""),
-        "answer_key_type": form.get("answer_key_type", "provisional"),
-        "phase_number": int(form["phase_number"]) if form.get("phase_number") else None,
         "files": files,
-        "objection_url": form.get("objection_url") or None,
         "objection_deadline": form.get("objection_deadline") or None,
     }
     current_app.api_client.post(_API_ADMIN_ANSWER_KEYS, token=token, json=payload)
@@ -727,10 +712,7 @@ def admission_add_result(admission_id):
         "admission_id": admission_id,
         "title": form.get("title", ""),
         "result_type": form.get("result_type", "merit_list"),
-        "phase_number": int(form["phase_number"]) if form.get("phase_number") else None,
-        "download_url": form.get("download_url") or None,
         "total_qualified": int(form["total_qualified"]) if form.get("total_qualified") else None,
-        "notes": form.get("notes") or None,
     }
     current_app.api_client.post(_API_ADMIN_RESULTS, token=token, json=payload)
     flash("Result added.", "success")
