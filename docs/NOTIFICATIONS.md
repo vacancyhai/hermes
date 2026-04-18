@@ -16,7 +16,7 @@ All templates are in `src/backend/app/templates/email/` and extend `base.html`.
 | `phone_added.html` | `users.py` | User adds/updates phone number | `name`, `phone`, `timestamp`, `base_url` |
 | `phone_verified.html` | `users.py` | User successfully verifies phone number with OTP | `name`, `phone`, `timestamp`, `base_url` |
 | `password_changed.html` | `users.py` | User changes their password | `name`, `timestamp`, `base_url` |
-| `deadline_reminder.html` | `tasks/notifications.py` | 7/3/1 day deadline reminder for watched jobs/admissions | `name`, `title`, `deadline`, `url` |
+| `deadline_reminder.html` | `tasks/notifications.py` | 7/3/1 day deadline reminder for tracked jobs/admissions | `name`, `title`, `deadline`, `url` |
 | `new_job_alert.html` | `tasks/notifications.py` | New job matching user's org follows or preferences | `name`, `job_title`, `organization`, `url` |
 
 ### Standby Templates (Firebase handles these flows)
@@ -75,7 +75,7 @@ MAIL_DEFAULT_SENDER=noreply@hermes.com
 | Add/update phone number | `phone_added.html` | Marks phone as unverified |
 | Verify phone with OTP | `phone_verified.html` | Sets `is_phone_verified = true` |
 | Link email to phone account | `email_linked.html` | Sets Firebase email provider |
-| 7/3/1 day before `application_end` | `deadline_reminder.html` | Sent to all watchers of the job/admission |
+| 7/3/1 day before `application_end` | `deadline_reminder.html` | Sent to all trackers of the job/admission |
 | New job from followed organization | `new_job_alert.html` | **Not yet triggered** — `send_new_job_notifications` is a registered Celery task but is a no-op stub (`pass` body). Template exists for future use. |
 
 ### Admin Actions

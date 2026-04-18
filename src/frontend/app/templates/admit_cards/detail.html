@@ -8,10 +8,7 @@
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.75rem;flex-wrap:wrap">
         <div style="flex:1;min-width:0">
             <div style="margin-bottom:.5rem">
-                {% if card.phase_number %}
-                <span style="background:rgba(255,255,255,.2);color:#fff;padding:.15rem .55rem;border-radius:9999px;font-size:.75rem;font-weight:600">Phase {{ card.phase_number }}</span>
-                {% endif %}
-                <span style="background:rgba(255,255,255,.2);color:#fff;padding:.15rem .55rem;border-radius:9999px;font-size:.75rem;font-weight:600;margin-left:.25rem">Admit Card</span>
+                <span style="background:rgba(255,255,255,.2);color:#fff;padding:.15rem .55rem;border-radius:9999px;font-size:.75rem;font-weight:600">Admit Card</span>
             </div>
             <h1>{{ card.title }}</h1>
             {% if card.get('job') %}
@@ -25,30 +22,27 @@
 
 <!-- Action bar -->
 <div class="action-bar">
-    <a href="{{ card.download_url }}" target="_blank" rel="noopener" class="btn btn-primary" style="display:inline-flex;align-items:center;gap:.3rem">
-        ⬇ Download Admit Card
-    </a>
     {% if card.get('job') %}
     <a href="/jobs/{{ card.job.slug }}" class="share-btn">View Job Details →</a>
     {% if session.get('token') %}
-    <form method="post" action="/jobs/{{ card.job.id }}/{{ 'unwatch' if watching else 'watch' }}" style="display:inline">
+    <form method="post" action="/jobs/{{ card.job.id }}/{{ 'untrack' if tracking else 'track' }}" style="display:inline">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <input type="hidden" name="slug" value="{{ card.job.slug }}">
-        <button type="submit" class="{{ 'btn-watching btn btn-sm' if watching else 'btn btn-outline btn-sm' }}">{{ '★ Watching Job' if watching else '☆ Watch Job' }}</button>
+        <button type="submit" class="{{ 'btn-tracking btn btn-sm' if tracking else 'btn btn-outline btn-sm' }}">{{ '★ Tracking Job' if tracking else '☆ Track Job' }}</button>
     </form>
     {% else %}
-    <a href="/login?next=/admit-cards/{{ card.slug }}" class="btn btn-outline btn-sm">☆ Watch Job</a>
+    <a href="/login?next=/admit-cards/{{ card.slug }}" class="btn btn-outline btn-sm">☆ Track Job</a>
     {% endif %}
     {% elif card.get('admission') %}
     <a href="/admissions/{{ card.admission.slug }}" class="share-btn">View Admission Details →</a>
     {% if session.get('token') %}
-    <form method="post" action="/admissions/{{ card.admission.id }}/{{ 'unwatch' if watching else 'watch' }}" style="display:inline">
+    <form method="post" action="/admissions/{{ card.admission.id }}/{{ 'untrack' if tracking else 'track' }}" style="display:inline">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <input type="hidden" name="slug" value="{{ card.admission.slug }}">
-        <button type="submit" class="{{ 'btn-watching btn btn-sm' if watching else 'btn btn-outline btn-sm' }}">{{ '★ Watching Admission' if watching else '☆ Watch Admission' }}</button>
+        <button type="submit" class="{{ 'btn-tracking btn btn-sm' if tracking else 'btn btn-outline btn-sm' }}">{{ '★ Tracking Admission' if tracking else '☆ Track Admission' }}</button>
     </form>
     {% else %}
-    <a href="/login?next=/admit-cards/{{ card.slug }}" class="btn btn-outline btn-sm">☆ Watch Admission</a>
+    <a href="/login?next=/admit-cards/{{ card.slug }}" class="btn btn-outline btn-sm">☆ Track Admission</a>
     {% endif %}
     {% endif %}
     <button type="button" class="share-btn" onclick="if(navigator.share){navigator.share({title:document.title,url:window.location.href})}else{navigator.clipboard.writeText(window.location.href);alert('Link copied!')}">⬆ Share</button>
@@ -68,12 +62,6 @@
         <div class="value urgent">{{ card.exam_end }}</div>
     </div>
     {% endif %}
-    {% if card.phase_number %}
-    <div class="detail-item">
-        <div class="label">Phase</div>
-        <div class="value">Phase {{ card.phase_number }}</div>
-    </div>
-    {% endif %}
     {% if card.published_at %}
     <div class="detail-item">
         <div class="label">Published</div>
@@ -82,10 +70,14 @@
     {% endif %}
 </div>
 
-{% if card.notes %}
-<div class="detail-section" style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:.5rem;padding:1rem 1.25rem">
-    <h2 style="color:#1e40af">📋 Important Instructions</h2>
-    <p style="color:#1e3a8a">{{ card.notes }}</p>
+{% if card.links %}
+<div class="detail-section">
+    <h2>🔗 Important Links</h2>
+    {% for link in card.links %}
+    <div style="margin-bottom:.4rem">
+        <a href="{{ link.url }}" target="_blank" rel="noopener" class="doc-btn doc-btn-blue">{{ link.text or link.type }}</a>
+    </div>
+    {% endfor %}
 </div>
 {% endif %}
 
@@ -99,15 +91,9 @@
     </ul>
 </div>
 
-<!-- Download CTA -->
-<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:.5rem;padding:1.25rem;text-align:center;margin-top:1.5rem">
-    <p style="color:#1e40af;font-weight:500;margin-bottom:.75rem">Ready to download your admit card?</p>
-    <a href="{{ card.download_url }}" target="_blank" rel="noopener" class="btn btn-primary" style="font-size:.95rem;padding:.6rem 1.5rem">
-        ⬇ Download Admit Card
-    </a>
-    {% if card.exam_end %}
-    <p style="font-size:.8rem;color:#1e40af;margin-top:.5rem">Exam ends: <strong>{{ card.exam_end }}</strong></p>
-    {% endif %}
-    <p style="font-size:.78rem;color:#64748b;margin-top:.25rem">Opens official source in a new tab</p>
+{% if card.exam_end %}
+<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:.5rem;padding:1rem 1.25rem;text-align:center;margin-top:1.5rem">
+    <p style="font-size:.85rem;color:#1e40af;margin:0">Exam ends: <strong>{{ card.exam_end }}</strong></p>
 </div>
+{% endif %}
 {% endblock %}

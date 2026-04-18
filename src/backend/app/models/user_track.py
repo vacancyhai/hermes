@@ -1,4 +1,4 @@
-"""UserWatch model — maps to `user_watches` table."""
+"""UserTrack model — maps to `user_tracks` table."""
 
 import uuid
 from datetime import datetime
@@ -9,8 +9,8 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 
-class UserWatch(Base):
-    __tablename__ = "user_watches"
+class UserTrack(Base):
+    __tablename__ = "user_tracks"
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
@@ -30,7 +30,7 @@ class UserWatch(Base):
     )
 
     __table_args__ = (
-        UniqueConstraint("user_id", "entity_type", "entity_id", name="uq_user_watch"),
+        UniqueConstraint("user_id", "entity_type", "entity_id", name="uq_user_track"),
     )
 
-    user = relationship("User", back_populates="watches")
+    user = relationship("User", back_populates="tracks")

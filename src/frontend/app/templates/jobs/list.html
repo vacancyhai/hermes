@@ -121,11 +121,11 @@
                 {% if job.fee_general is not none %}<span class="meta-pill pill-amber">Fee: {% if job.fee_general == 0 %}Free{% else %}₹{{ job.fee_general }}{% endif %}</span>{% endif %}
             </div>
             <div style="display:flex;gap:.4rem;align-items:center">
-                {% set is_watching = job.id|string in watched_job_ids %}
-                <form method="post" action="/jobs/{{ job.slug }}/{{ 'unwatch' if is_watching else 'watch' }}" style="display:inline">
+                {% set is_tracking = job.id|string in tracked_job_ids %}
+                <form method="post" action="/jobs/{{ job.slug }}/{{ 'untrack' if is_tracking else 'track' }}" style="display:inline">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                    <button type="submit" class="{{ 'btn-watching btn btn-sm' if is_watching else 'btn btn-outline btn-sm' }}">
-                        {{ '★ Watching' if is_watching else '☆ Watch' }}
+                    <button type="submit" class="{{ 'btn-tracking btn btn-sm' if is_tracking else 'btn btn-outline btn-sm' }}">
+                        {{ '★ Tracking' if is_tracking else '☆ Track' }}
                     </button>
                 </form>
                 <a href="/jobs/{{ job.slug }}" class="btn btn-primary btn-sm">View →</a>

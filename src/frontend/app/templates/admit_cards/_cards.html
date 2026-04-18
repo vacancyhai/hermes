@@ -4,7 +4,6 @@
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem">
             <div style="flex:1;min-width:0">
                 <div style="display:flex;gap:.35rem;flex-wrap:wrap;margin-bottom:.3rem">
-                    {% if card.phase_number %}<span class="doc-phase-pill phase-blue">Phase {{ card.phase_number }}</span>{% endif %}
                     <span class="card-type-tag" style="background:#dbeafe;color:#1e40af">Admit Card</span>
                 </div>
                 <div class="doc-title">{{ card.title }}</div>
@@ -18,14 +17,14 @@
             </div>
             {% set _wid = card.job_id if card.job_id else card.admission_id %}
             {% set _wtype = 'job' if card.job_id else 'admission' %}
-            {% set _watching = card.job_id|string in watched_job_ids if card.job_id else (card.admission_id|string in watched_admission_ids if card.admission_id else False) %}
+            {% set _tracking = card.job_id|string in tracked_job_ids if card.job_id else (card.admission_id|string in tracked_admission_ids if card.admission_id else False) %}
             {% if _wid %}
             <div style="flex-shrink:0" onclick="event.stopPropagation()">
                 {% if session.get('token') %}
-                <form method="post" action="/{{ _wtype }}s/{{ _wid }}/{{ 'unwatch' if _watching else 'watch' }}">
+                <form method="post" action="/{{ _wtype }}s/{{ _wid }}/{{ 'untrack' if _tracking else 'track' }}">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <input type="hidden" name="slug" value="{{ _wid }}">
-                    <button type="submit" class="{{ 'btn-watching btn btn-sm' if _watching else 'btn btn-outline btn-sm' }}">{{ '★' if _watching else '☆' }}</button>
+                    <button type="submit" class="{{ 'btn-tracking btn btn-sm' if _tracking else 'btn btn-outline btn-sm' }}">{{ '★' if _tracking else '☆' }}</button>
                 </form>
                 {% else %}
                 <a href="/login?next=/admit-cards/{{ card.slug }}" class="btn btn-outline btn-sm">☆</a>

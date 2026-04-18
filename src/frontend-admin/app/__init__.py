@@ -29,6 +29,7 @@ import base64
 import json
 import os
 import secrets
+import uuid as _uuid
 
 from datetime import timedelta
 
@@ -58,13 +59,70 @@ def _jwt_payload(token: str) -> dict:
 
 
 _URL_LOGIN = "/login"
+_URL_JOBS = "/jobs"
+_URL_ADMISSIONS = "/admissions"
 _API_ADMIN_JOBS = "/admin/jobs"
 _API_ADMIN_ADMIT_CARDS = "/admin/admit-cards"
 _API_ADMIN_ANSWER_KEYS = "/admin/answer-keys"
 _API_ADMIN_RESULTS = "/admin/results"
+_API_ADMIN_ADMISSIONS = "/admin/admissions"
 _CONTENT_TYPE_JSON = "application/json"
 _URL_USERS = "/users"
-_API_ADMIN_ADMISSIONS = "/admin/admissions"
+
+_DOC_TYPE_API = {
+    "admit-cards": _API_ADMIN_ADMIT_CARDS,
+    "answer-keys": _API_ADMIN_ANSWER_KEYS,
+    "results": _API_ADMIN_RESULTS,
+}
+
+_DOC_FLASH = {
+    "admit-cards": "Admit card added.",
+    "answer-keys": "Answer key added.",
+    "results": "Result added.",
+}
+
+_PARENT_BASE_URL = {
+    "job_id": _URL_JOBS,
+    "admission_id": _URL_ADMISSIONS,
+}
+
+
+def _add_doc(parent_key: str, parent_id: str, doc_type: str):
+    """Shared handler for adding a phase document (admit card / answer key / result)."""
+    token = session.get("token")
+    if not token:
+        return redirect(_URL_LOGIN)
+    try:
+        safe_id = str(_uuid.UUID(parent_id))
+    except ValueError:
+        flash("Invalid parent ID.", "error")
+        return redirect(_PARENT_BASE_URL.get(parent_key, "/"))
+    base = _PARENT_BASE_URL.get(parent_key, "/")
+    back_url = f"{base}/{safe_id}/edit#docs"
+    api_url = _DOC_TYPE_API.get(doc_type)
+    if not api_url:
+        flash("Unknown document type.", "error")
+        return redirect(back_url)
+    form = request.form.to_dict()
+    try:
+        links = json.loads(form.get("links_json", "[]"))
+    except Exception:
+        links = []
+    payload = {
+        parent_key: parent_id,
+        "slug": form.get("slug", ""),
+        "title": form.get("title", ""),
+        "links": links,
+    }
+    if doc_type == "admit-cards":
+        payload["exam_start"] = form.get("exam_start") or None
+        payload["exam_end"] = form.get("exam_end") or None
+    else:
+        payload["start_date"] = form.get("start_date") or None
+        payload["end_date"] = form.get("end_date") or None
+    current_app.api_client.post(api_url, token=token, json=payload)
+    flash(_DOC_FLASH.get(doc_type, "Document added."), "success")
+    return redirect(back_url)
 
 
 bp = Blueprint("admin", __name__)
@@ -305,7 +363,7 @@ def delete_job(job_id):
         return redirect(_URL_LOGIN)
     current_app.api_client.delete(f"/admin/jobs/{job_id}", token=token)
     flash("Job deleted.", "success")
-    return redirect("/jobs")
+    return redirect(_URL_JOBS)
 
 
 # --- Job Edit ---
@@ -363,7 +421,7 @@ def edit_job(job_id):
     resp = current_app.api_client.get(f"/admin/jobs/{job_id}", token=token)
     if not resp.ok:
         flash("Job not found.", "error")
-        return redirect("/jobs")
+        return redirect(_URL_JOBS)
     job = resp.json()
 
     ac_resp = current_app.api_client.get(
@@ -385,68 +443,9 @@ def edit_job(job_id):
     )
 
 
-@bp.route("/jobs/<job_id>/docs/admit-cards", methods=["POST"])
-def job_add_admit_card(job_id):
-    token = session.get("token")
-    if not token:
-        return redirect(_URL_LOGIN)
-    form = request.form.to_dict()
-    payload = {
-        "job_id": job_id,
-        "title": form.get("title", ""),
-        "download_url": form.get("download_url", ""),
-        "phase_number": int(form["phase_number"]) if form.get("phase_number") else None,
-        "exam_start": form.get("exam_start") or None,
-        "exam_end": form.get("exam_end") or None,
-        "notes": form.get("notes") or None,
-    }
-    current_app.api_client.post(_API_ADMIN_ADMIT_CARDS, token=token, json=payload)
-    flash("Admit card added.", "success")
-    return redirect(f"/jobs/{job_id}/edit#docs")
-
-
-@bp.route("/jobs/<job_id>/docs/answer-keys", methods=["POST"])
-def job_add_answer_key(job_id):
-    token = session.get("token")
-    if not token:
-        return redirect(_URL_LOGIN)
-    form = request.form.to_dict()
-    try:
-        files = json.loads(form.get("files_json", "[]"))
-    except Exception:
-        files = []
-    payload = {
-        "job_id": job_id,
-        "title": form.get("title", ""),
-        "answer_key_type": form.get("answer_key_type", "provisional"),
-        "phase_number": int(form["phase_number"]) if form.get("phase_number") else None,
-        "files": files,
-        "objection_url": form.get("objection_url") or None,
-        "objection_deadline": form.get("objection_deadline") or None,
-    }
-    current_app.api_client.post(_API_ADMIN_ANSWER_KEYS, token=token, json=payload)
-    flash("Answer key added.", "success")
-    return redirect(f"/jobs/{job_id}/edit#docs")
-
-
-@bp.route("/jobs/<job_id>/docs/results", methods=["POST"])
-def job_add_result(job_id):
-    token = session.get("token")
-    if not token:
-        return redirect(_URL_LOGIN)
-    form = request.form.to_dict()
-    payload = {
-        "job_id": job_id,
-        "title": form.get("title", ""),
-        "result_type": form.get("result_type", "merit_list"),
-        "phase_number": int(form["phase_number"]) if form.get("phase_number") else None,
-        "download_url": form.get("download_url") or None,
-        "total_qualified": int(form["total_qualified"]) if form.get("total_qualified") else None,
-        "notes": form.get("notes") or None,
-    }
-    current_app.api_client.post(_API_ADMIN_RESULTS, token=token, json=payload)
-    flash("Result added.", "success")
-    return redirect(f"/jobs/{job_id}/edit#docs")
+@bp.route("/jobs/<job_id>/docs/<doc_type>", methods=["POST"])
+def job_add_doc(job_id, doc_type):
+    return _add_doc("job_id", job_id, doc_type)
 
 
 @bp.route("/jobs/<job_id>/docs/<doc_type>/<doc_id>/delete", methods=["POST"])
@@ -637,7 +636,7 @@ def edit_admission(admission_id):
     resp_detail_req = current_app.api_client.get(f"/admin/admissions/{admission_id}", token=token)
     if not resp_detail_req.ok:
         flash("Admission not found.", "error")
-        return redirect("/admissions")
+        return redirect(_URL_ADMISSIONS)
     resp_detail = resp_detail_req.json()
 
     ac_resp = current_app.api_client.get(
@@ -667,74 +666,15 @@ def delete_admission(admission_id):
         return redirect(_URL_LOGIN)
     current_app.api_client.delete(f"/admin/admissions/{admission_id}", token=token)
     flash("Admission deleted.", "success")
-    return redirect("/admissions")
+    return redirect(_URL_ADMISSIONS)
 
 
 # Per-admission phase document management
 
 
-@bp.route("/admissions/<admission_id>/docs/admit-cards", methods=["POST"])
-def admission_add_admit_card(admission_id):
-    token = session.get("token")
-    if not token:
-        return redirect(_URL_LOGIN)
-    form = request.form.to_dict()
-    payload = {
-        "admission_id": admission_id,
-        "title": form.get("title", ""),
-        "download_url": form.get("download_url", ""),
-        "phase_number": int(form["phase_number"]) if form.get("phase_number") else None,
-        "exam_start": form.get("exam_start") or None,
-        "exam_end": form.get("exam_end") or None,
-        "notes": form.get("notes") or None,
-    }
-    current_app.api_client.post(_API_ADMIN_ADMIT_CARDS, token=token, json=payload)
-    flash("Admit card added.", "success")
-    return redirect(f"/admissions/{admission_id}/edit#docs")
-
-
-@bp.route("/admissions/<admission_id>/docs/answer-keys", methods=["POST"])
-def admission_add_answer_key(admission_id):
-    token = session.get("token")
-    if not token:
-        return redirect(_URL_LOGIN)
-    form = request.form.to_dict()
-    try:
-        files = json.loads(form.get("files_json", "[]"))
-    except Exception:
-        files = []
-    payload = {
-        "admission_id": admission_id,
-        "title": form.get("title", ""),
-        "answer_key_type": form.get("answer_key_type", "provisional"),
-        "phase_number": int(form["phase_number"]) if form.get("phase_number") else None,
-        "files": files,
-        "objection_url": form.get("objection_url") or None,
-        "objection_deadline": form.get("objection_deadline") or None,
-    }
-    current_app.api_client.post(_API_ADMIN_ANSWER_KEYS, token=token, json=payload)
-    flash("Answer key added.", "success")
-    return redirect(f"/admissions/{admission_id}/edit#docs")
-
-
-@bp.route("/admissions/<admission_id>/docs/results", methods=["POST"])
-def admission_add_result(admission_id):
-    token = session.get("token")
-    if not token:
-        return redirect(_URL_LOGIN)
-    form = request.form.to_dict()
-    payload = {
-        "admission_id": admission_id,
-        "title": form.get("title", ""),
-        "result_type": form.get("result_type", "merit_list"),
-        "phase_number": int(form["phase_number"]) if form.get("phase_number") else None,
-        "download_url": form.get("download_url") or None,
-        "total_qualified": int(form["total_qualified"]) if form.get("total_qualified") else None,
-        "notes": form.get("notes") or None,
-    }
-    current_app.api_client.post(_API_ADMIN_RESULTS, token=token, json=payload)
-    flash("Result added.", "success")
-    return redirect(f"/admissions/{admission_id}/edit#docs")
+@bp.route("/admissions/<admission_id>/docs/<doc_type>", methods=["POST"])
+def admission_add_doc(admission_id, doc_type):
+    return _add_doc("admission_id", admission_id, doc_type)
 
 
 @bp.route("/admissions/<admission_id>/docs/<doc_type>/<doc_id>/delete", methods=["POST"])

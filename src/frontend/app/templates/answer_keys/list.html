@@ -64,15 +64,13 @@
 {% if recommended_keys %}
 <div x-show="tab==='foryou'" x-cloak>
     <p style="font-size:.85rem;color:#64748b;margin-bottom:.9rem">
-        Answer keys for jobs and admissions you are watching.
-        <a href="/" style="color:#d97706">View watchlist →</a>
+        Answer keys for jobs and admissions you are tracking.
+        <a href="/" style="color:#d97706">View tracker →</a>
     </p>
     {% for key in recommended_keys %}
     <div class="doc-card doc-card-answer" style="border-radius:.5rem;margin-bottom:.75rem">
         <div class="doc-card-body">
             <div style="display:flex;gap:.35rem;flex-wrap:wrap;margin-bottom:.3rem">
-                {% if key.phase_number %}<span class="doc-phase-pill phase-amber">Phase {{ key.phase_number }}</span>{% endif %}
-                {% if key.answer_key_type %}<span class="doc-phase-pill {{ 'type-final' if key.answer_key_type == 'final' else 'type-prov' }}">{{ key.answer_key_type|title }}</span>{% endif %}
                 <span class="card-type-tag" style="background:#fef3c7;color:#92400e">Answer Key</span>
             </div>
             <div class="doc-title">{{ key.title }}</div>

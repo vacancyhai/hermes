@@ -22,12 +22,12 @@
             {% endif %}
         </div>
         <div style="display:flex;gap:.4rem;align-items:center">
-            {% if watched_admission_ids is defined %}
-            {% set is_watching = admission.id|string in watched_admission_ids %}
-            <form method="post" action="/admissions/{{ admission.slug }}/{{ 'unwatch' if is_watching else 'watch' }}" style="display:inline" onclick="event.stopPropagation()">
+            {% if tracked_admission_ids is defined %}
+            {% set is_tracking = admission.id|string in tracked_admission_ids %}
+            <form method="post" action="/admissions/{{ admission.slug }}/{{ 'untrack' if is_tracking else 'track' }}" style="display:inline" onclick="event.stopPropagation()">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                <button type="submit" class="{{ 'btn-watching btn btn-sm' if is_watching else 'btn btn-outline btn-sm' }}">
-                    {{ '★ Watching' if is_watching else '☆ Watch' }}
+                <button type="submit" class="{{ 'btn-tracking btn btn-sm' if is_tracking else 'btn btn-outline btn-sm' }}">
+                    {{ '★ Tracking' if is_tracking else '☆ Track' }}
                 </button>
             </form>
             {% endif %}

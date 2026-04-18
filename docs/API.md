@@ -84,25 +84,25 @@ If `refresh_token` is provided, its JTI is also added to the Redis blocklist so 
 
 ---
 
-## Watch (Track Jobs & Admissions)
+## Track Jobs & Admissions
 
-Users can watch specific jobs or admissions to receive automatic notifications.
+Users can track specific jobs or admissions to receive automatic notifications.
 
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
-| POST | `/jobs/{job_id}/watch` | User | Watch a job (idempotent, max 100) |
-| DELETE | `/jobs/{job_id}/watch` | User | Unwatch a job (404 if not watching) |
-| POST | `/admissions/{admission_id}/watch` | User | Watch an admission (idempotent) |
-| DELETE | `/admissions/{admission_id}/watch` | User | Unwatch an admission |
-| GET | `/users/me/watched` | User | List all watched jobs + admissions |
+| POST | `/jobs/{job_id}/track` | User | Track a job (idempotent, max 100) |
+| DELETE | `/jobs/{job_id}/track` | User | Untrack a job (404 if not tracking) |
+| POST | `/admissions/{admission_id}/track` | User | Track an admission (idempotent) |
+| DELETE | `/admissions/{admission_id}/track` | User | Untrack an admission |
+| GET | `/users/me/tracked` | User | List all tracked jobs + admissions |
 
-**Automatic notifications triggered by watching:**
+**Automatic notifications triggered by tracking:**
 - `deadline_reminder_7d` — 7 days before `application_end`
 - `deadline_reminder_3d` — 3 days before `application_end`
 - `deadline_reminder_1d` — Last day to apply (high priority)
-- `watched_item_updated` — When admin approves or updates the job/admission
+- `tracked_item_updated` — When admin approves or updates the job/admission
 
-**Response for `GET /users/me/watched`:**
+**Response for `GET /users/me/tracked`:**
 ```json
 {
   "jobs": [{ "id": "uuid", "job_title": "...", "slug": "...", "organization": "...", "application_end": "2026-05-01", "status": "active" }],
@@ -840,7 +840,7 @@ Authorization: Bearer <admin_token>
 | `notification_delivery_log` | Per-channel delivery tracking (push/email/whatsapp/telegram) |
 | `user_devices` | Device registry (FCM token, fingerprint de-duplication) |
 | `admin_logs` | Admin audit trail |
-| `user_watches` | Jobs and admissions a user is tracking (for notifications) |
+| `user_tracks` | Jobs and admissions a user is tracking (for notifications) |
 | `admit_cards` | Per-phase admit cards (linked to job OR admission via polymorphic FK) |
 | `answer_keys` | Per-phase answer keys — provisional/final, multi-paper files JSONB |
 | `results` | Per-phase results — shortlist/cutoff/merit_list/final, cutoff_marks JSONB |

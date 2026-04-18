@@ -60,7 +60,7 @@
               |  [Answer Keys][Results][Bell+badge][Profile avatar]    |
               |                                                        |
               |  Same 5 horizontal rows, each card shows:             |
-              |  [Title][Org][Deadline badge][Watch][Share][Details->] |
+              |  [Title][Org][Deadline badge][Track][Share][Details->] |
               |                                                        |
               |  [View All ->] on each row -> section list page        |
               +---------------------------+----------------------------+
@@ -196,7 +196,7 @@
               |  | [Navy accent] Title   Org   Post badge     |   |
               |  |  Apply end: DD MMM   Exam: DD MMM          |   |
               |  |  Vacancies: NNN   Salary: X-Y LPA          |   |
-              |  |  [Watch] [Share] [View Details ->]         |   |
+              |  |  [Track] [Share] [View Details ->]         |   |
               |  +-------------------------------------------+   |
               +-------------+-------------------------------------+
                             |
@@ -222,7 +222,7 @@
               |                                                   |
               |  Action buttons:                                  |
               |  [Apply Online -> external site]                  |
-              |  [Watch for Reminders]                            |
+              |  [Track for Reminders]                            |
               |                                                   |
               |  Document tabs (HTMX loaded):                     |
               |  [Admit Cards] [Answer Keys] [Results]            |
@@ -230,7 +230,7 @@
                  |                  |
                  v                  v
         +--------+------+  +--------+--------------------------+
-        | [Apply Online]|  | [Watch for Reminders]            |
+        | [Apply Online]|  | [Track for Reminders]            |
         | -> external   |  +----+------------------+----------+
         |   site (tab)  |       |                  |
         +---------------+  Logged In?            NOT logged in
@@ -239,9 +239,9 @@
                                 |        +---------+---------+
                                 v        | /login page       |
                        +--------+------+ | (redirect back    |
-                       | WATCHING (*)  | |  after login)     |
+                       | TRACKING (*)  | |  after login)     |
                        | saved to      | +---------+---------+
-                       | watchlist     |           |
+                       | tracker     |           |
                        +--------+------+           | signs in
                                 |                  |
                                 v                  v
@@ -275,7 +275,7 @@
               |  +-------------------------------------------+   |
               |  | [Purple accent] Title   Institution        |   |
               |  |  Stream   Last Apply: DD MMM               |   |
-              |  |  [Watch] [Share] [View Details ->]         |   |
+              |  |  [Track] [Share] [View Details ->]         |   |
               |  +-------------------------------------------+   |
               +-------------+-------------------------------------+
                             |
@@ -295,12 +295,12 @@
               |  +- Admission Pattern / Counselling process ---+ |
               |  +- Links: [Apply Online] [Prospectus PDF] ----+ |
               |                                                   |
-              |  [Watch for Reminders]  (same guard as Jobs)      |
+              |  [Track for Reminders]  (same guard as Jobs)      |
               |                                                   |
               |  Document tabs (HTMX loaded):                     |
               |  [Admit Cards] [Answer Keys] [Results]            |
               +---------------------------------------------------+
-                  (Watch guard -> same as FLOW 4 Watch branch)
+                  (Track guard -> same as FLOW 4 Track branch)
 ```
 
 ---
@@ -389,7 +389,7 @@
 
 ---
 
-## FLOW 9 — My Account (Watchlist)
+## FLOW 9 — My Account (Tracker)
 
 ```
               +-----------------------------------+
@@ -419,20 +419,20 @@
               |                                               |
               |  Stats: [Total: 12]  [Jobs: 8]  [Adm: 4]     |
               |                                               |
-              |  +-- Watched Jobs -------------------------+  |
+              |  +-- Tracked Jobs -------------------------+  |
               |  |  Title  |  Org  |  Deadline             |  |
-              |  |  [View ->]      |  [Unwatch (*)]        |  |
-              |  |  (repeats for each watched job)         |  |
+              |  |  [View ->]      |  [Untrack (*)]        |  |
+              |  |  (repeats for each tracked job)         |  |
               |  +-----------------------------------------+  |
               |                                               |
-              |  +-- Watched Admissions -------------------+  |
+              |  +-- Tracked Admissions -------------------+  |
               |  |  Title  |  Institution  |  Deadline     |  |
-              |  |  [View ->]              |  [Unwatch (*)]|  |
-              |  |  (repeats for each watched admission)   |  |
+              |  |  [View ->]              |  [Untrack (*)]|  |
+              |  |  (repeats for each tracked admission)   |  |
               |  +-----------------------------------------+  |
               |                                               |
-              |  Empty state (nothing watched yet):           |
-              |  "No items watched yet."                      |
+              |  Empty state (nothing tracked yet):           |
+              |  "No items tracked yet."                      |
               |  [Browse Jobs ->]   [Browse Admissions ->]    |
               +-----------------------------------------------+
                      |                        |
@@ -495,10 +495,10 @@
     |  Type                    | Trigger                        |
     |--------------------------|--------------------------------|
     |  Deadline reminder       | T-7, T-3, T-1 before close    |
-    |  New Admit Card          | Published for watched item     |
-    |  New Answer Key          | Published for watched item     |
-    |  New Result              | Published for watched item     |
-    |  Status update           | Watched job/admission updated  |
+    |  New Admit Card          | Published for tracked item     |
+    |  New Answer Key          | Published for tracked item     |
+    |  New Result              | Published for tracked item     |
+    |  Status update           | Tracked job/admission updated  |
     |  Welcome                 | On first registration          |
     +-----------------------------------------------------------+
 
@@ -620,7 +620,7 @@
              |
              v
     +--------+-----------+
-    | Clicks [Watch]     |
+    | Clicks [Track]     |
     | (not logged in)    |
     +--------+-----------+
              |
@@ -635,7 +635,7 @@
     +--------+---------------------+
     | Returned to /jobs/{slug}     |
     | Star icon now filled         |
-    | "You are watching this job"  |
+    | "You are tracking this job"  |
     +--------+---------------------+
              |
              v
@@ -659,7 +659,7 @@
     +--------+-------------------------------------+
     | Bell icon lights up (unread badge)           |
     | (deadline reminder OR new admit card         |
-    |  published for watched job)                  |
+    |  published for tracked job)                  |
     +--------+-------------------------------------+
              |
              v
@@ -688,13 +688,13 @@
     |  Default       | White bg, left accent border |
     |                | in section colour            |
     +----------------+------------------------------+
-    |  Watched       | Filled star icon             |
+    |  Tracked       | Filled star icon             |
     |                | Subtle tinted background     |
     +----------------+------------------------------+
     |  Deadline <=3d | Red badge "X days left"      |
     +----------------+------------------------------+
     |  Closed /      | Grey card, "Closed" badge    |
-    |  Expired       | [Watch] button hidden        |
+    |  Expired       | [Track] button hidden        |
     +----------------+------------------------------+
     |  Loading       | Skeleton / shimmer           |
     |  (HTMX fetch)  | placeholder                  |
@@ -727,7 +727,7 @@
     | 13 | My Account             | /my-account          | Yes   |
     | 14 | Offline fallback       | /offline             | No    |
     +----+------------------------+----------------------+-------+
-     * = page public; Watch action + "For You" tab require login
+     * = page public; Track action + "For You" tab require login
 ```
 
 ---

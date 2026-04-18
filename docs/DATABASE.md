@@ -67,7 +67,7 @@ docker exec hermes_backend alembic -c /app/alembic.ini upgrade head
                           └──────────────────┘
 
   ┌──────────────┐  1     ┌──────────────────┐  *   ┌─────────────────────────┐
-  │    USERS     │───────►│  USER_WATCHES    │      │   USER_WATCHES entity   │
+  │    USERS     │───────►│  USER_TRACKS    │      │   USER_TRACKS entity   │
   │              │        │                  │      │                         │
   │ id           │        │ id               │      │ entity_type = 'job'     │
   │ email        │        │ user_id ─────────┼─────►│   entity_id → JOBS.id   │
@@ -436,20 +436,20 @@ These are educational admissioninations, not government job recruitments.
 
 ---
 
-### 13. `user_watches`
-Tracks which jobs or admissions a user is watching for notification delivery.
+### 13. `user_tracks`
+Tracks which jobs or admissions a user is tracking for notification delivery.
 
 | Column | Type | Nullable | Description |
 |--------|------|----------|-------------|
 | `id` | UUID (PK) | No | Auto-generated |
 | `user_id` | UUID (FK → `users.id`) | No | CASCADE delete |
-| `entity_type` | String(10) | No | `ck_user_watches_entity_type`: `job` \| `admission`|`ck_user_watches_entity_type`: `job` \| `admission` |
-| `entity_id` | UUID | No | ID of the watched job or admission |
-| `created_at` | DateTime | No | When the watch was created |
+| `entity_type` | String(10) | No | `ck_user_tracks_entity_type`: `job` \| `admission`|`ck_user_tracks_entity_type`: `job` \| `admission` |
+| `entity_id` | UUID | No | ID of the tracked job or admission |
+| `created_at` | DateTime | No | When the track was created |
 
-> UNIQUE constraint `uq_user_watch` on `(user_id, entity_type, entity_id)`. Max 100 watches per user (enforced in application layer).
+> UNIQUE constraint `uq_user_track` on `(user_id, entity_type, entity_id)`. Max 100 tracks per user (enforced in application layer).
 
-**Indexes:** `ix_user_watches_user_id`, `ix_user_watches_entity`
+**Indexes:** `ix_user_tracks_user_id`, `ix_user_tracks_entity`
 
 ---
 

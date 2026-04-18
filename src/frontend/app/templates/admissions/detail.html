@@ -37,25 +37,25 @@
 <!-- Action bar -->
 <div class="action-bar">
     {% if session.get('token') %}
-        {% if watching %}
-        <form method="post" action="/admissions/{{ admission.id }}/unwatch" style="display:inline">
+        {% if tracking %}
+        <form method="post" action="/admissions/{{ admission.id }}/untrack" style="display:inline">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <input type="hidden" name="slug" value="{{ admission.slug }}">
             <button type="submit" class="share-btn" style="background:#ede9fe;color:#5b21b6;border-color:#c4b5fd">
-                ★ Watching — Remove
+                ★ Tracking — Remove
             </button>
         </form>
         {% else %}
-        <form method="post" action="/admissions/{{ admission.id }}/watch" style="display:inline">
+        <form method="post" action="/admissions/{{ admission.id }}/track" style="display:inline">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <input type="hidden" name="slug" value="{{ admission.slug }}">
             <button type="submit" class="share-btn" style="background:#ede9fe;color:#5b21b6;border-color:#c4b5fd">
-                ☆ Watch for Reminders
+                ☆ Track for Reminders
             </button>
         </form>
         {% endif %}
     {% else %}
-    <a href="/login?next=/admissions/{{ admission.slug }}" class="share-btn" style="background:#ede9fe;color:#5b21b6;border-color:#c4b5fd">☆ Watch for Reminders</a>
+    <a href="/login?next=/admissions/{{ admission.slug }}" class="share-btn" style="background:#ede9fe;color:#5b21b6;border-color:#c4b5fd">☆ Track for Reminders</a>
     {% endif %}
     {% if admission.source_url %}
     <a href="{{ admission.source_url }}" target="_blank" rel="noopener" class="share-btn">🔗 Official Website</a>
@@ -325,14 +325,11 @@
             {% for card in admission.admit_cards %}
             <div class="doc-card doc-card-admit">
                 <div class="doc-card-body">
-                    {% if card.phase_number %}<span class="doc-phase-pill phase-blue">Phase {{ card.phase_number }}</span>{% endif %}
                     <div class="doc-title">{{ card.title }}</div>
                     {% if card.exam_start or card.exam_end %}<div class="doc-deadline">Exam: {{ card.exam_start or '?' }} – {{ card.exam_end or '?' }}</div>{% endif %}
-                    {% if card.notes %}<div class="doc-note">{{ card.notes }}</div>{% endif %}
                 </div>
                 <div class="doc-card-actions">
-                    <a href="{{ card.download_url }}" target="_blank" rel="noopener" class="doc-btn doc-btn-blue">⬇ Download</a>
-                    <a href="/admit-cards/{{ card.slug }}" class="doc-btn" style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe">View →</a>
+                    <a href="/admit-cards/{{ card.slug }}" class="doc-btn doc-btn-blue">View →</a>
                 </div>
             </div>
             {% endfor %}
@@ -343,14 +340,10 @@
             {% for key in admission.answer_keys %}
             <div class="doc-card doc-card-answer">
                 <div class="doc-card-body">
-                    {% if key.phase_number %}<span class="doc-phase-pill phase-amber">Phase {{ key.phase_number }}</span>{% endif %}
-                    {% if key.answer_key_type %}<span class="doc-phase-pill {{ 'type-final' if key.answer_key_type == 'final' else 'type-prov' }}">{{ key.answer_key_type|title }}</span>{% endif %}
                     <div class="doc-title">{{ key.title }}</div>
-                    {% if key.notes %}<div class="doc-note">{{ key.notes }}</div>{% endif %}
+                    {% if key.start_date or key.end_date %}<div class="doc-meta">{{ key.start_date or '?' }} – {{ key.end_date or '?' }}</div>{% endif %}
                 </div>
                 <div class="doc-card-actions">
-                    {% if key.files %}<a href="{{ key.files[0].get('url') or key.files[0].get('download_url','#') }}" target="_blank" rel="noopener" class="doc-btn doc-btn-amber">⬇ Download</a>{% endif %}
-                    {% if key.objection_url %}<a href="{{ key.objection_url }}" target="_blank" rel="noopener" class="doc-btn" style="background:#fffbeb;color:#92400e;border:1px solid #fde68a">✍️ Objection</a>{% endif %}
                     <a href="/answer-keys/{{ key.slug }}" class="doc-btn" style="background:#f5f3ff;color:#6d28d9;border:1px solid #ddd6fe">View →</a>
                 </div>
             </div>
@@ -362,12 +355,10 @@
             {% for res in admission.results %}
             <div class="doc-card doc-card-result">
                 <div class="doc-card-body">
-                    {% if res.phase_number %}<span class="doc-phase-pill phase-green">Phase {{ res.phase_number }}</span>{% endif %}
                     <div class="doc-title">{{ res.title }}</div>
-                    {% if res.notes %}<div class="doc-note">{{ res.notes }}</div>{% endif %}
+                    {% if res.start_date or res.end_date %}<div class="doc-meta">{{ res.start_date or '?' }} – {{ res.end_date or '?' }}</div>{% endif %}
                 </div>
                 <div class="doc-card-actions">
-                    {% if res.download_url %}<a href="{{ res.download_url }}" target="_blank" rel="noopener" class="doc-btn doc-btn-green">⬇ Download</a>{% endif %}
                     <a href="/results/{{ res.slug }}" class="doc-btn" style="background:#f0fdf4;color:#166534;border:1px solid #bbf7d0">View →</a>
                 </div>
             </div>

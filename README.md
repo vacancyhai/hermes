@@ -2,12 +2,12 @@
 
 A web application that notifies Indian users about government job vacancies
 matched to their education, age, category, and preferences. Includes user
-authentication, profile-based job matching, watch-based deadline reminders,
+authentication, profile-based job matching, track-based deadline reminders,
 multi-channel notifications, and an admin panel.
 
 > **Status:** Phases 1–7 + 10 + 11 + UI/Content phase complete.
 > Auth (Firebase — Email/Password, Google OAuth, Phone OTP), job CRUD, full-text search, user profiles,
-> job matching & recommendations, org follow, watch-based deadline reminders (user_watches),
+> job matching & recommendations, org follow, track-based deadline reminders (user_tracks),
 > user dashboard, smart multi-channel notifications (in-app + FCM push + email + WhatsApp placeholder + Telegram),
 > full admin frontend (dashboard, job/user management, audit logs), SEO (sitemap, meta, JSON-LD),
 > PDF upload with AI extraction (Anthropic Claude), CSRF protection,
@@ -67,9 +67,9 @@ PostgreSQL and Redis are isolated inside Docker networks — never exposed to th
 ## Features
 
 - **Job Matching** — Scores jobs against user profile: reservation category eligibility (+4), state preference (+3), preferred categories (+2), education level (+2), age eligibility vs. `age_min`/`age_max` in job eligibility (+2), and recency bonus (+1); scoring engine in `services/matching.py`. The candidate pool is capped at the 500 most-recent active jobs (a known trade-off documented in the code).
-- **Watch Jobs & Admissions** — Users watch specific jobs or admissions (`user_watches` table, max 100 per user) to receive automatic deadline reminders and update notifications.
+- **Track Jobs & Admissions** — Users track specific jobs or admissions (`user_tracks` table, max 100 per user) to receive automatic deadline reminders and update notifications.
 - **Multi-Channel Notifications** — In-app, FCM push (tokens stored in `user_profiles.fcm_tokens`), email (OCI Email Delivery), **WhatsApp** (infrastructure ready, pending `WHATSAPP_API_TOKEN` + `WHATSAPP_PHONE_NUMBER_ID`), and **Telegram** (Bot API `sendMessage`; activated when `TELEGRAM_BOT_TOKEN` is set, user stores `telegram_chat_id` via preferences API); instant mode for OTP/auth, staggered mode for job alerts with configurable delays per channel.
-- **Deadline Reminders** — Celery task `send_deadline_reminders` fires automatic alerts at T-7, T-3, and T-1 days before `application_end` for all watchers of a job or admission. Scheduled daily at 08:00 UTC via `hermes-scheduler` (`celery_app.py` beat_schedule).
+- **Deadline Reminders** — Celery task `send_deadline_reminders` fires automatic alerts at T-7, T-3, and T-1 days before `application_end` for all trackers of a job or admission. Scheduled daily at 08:00 UTC via `hermes-scheduler` (`celery_app.py` beat_schedule).
 - **Dynamic UI** — HTMX for live search, infinite scroll, and real-time updates without JavaScript frameworks.
 - **Full-Text Search** — PostgreSQL tsvector/GIN-indexed ranked search on job titles, organisations, and descriptions (no Elasticsearch needed).
 - **SEO Optimized** — Dynamic sitemap, meta tags, and Google JobPosting JSON-LD structured data for organic traffic.
@@ -196,7 +196,7 @@ hermes/
 │   │   │   │   ├── auth.py           # /api/v1/auth/*
 │   │   │   │   ├── users.py          # /api/v1/users/*
 │   │   │   │   ├── jobs.py           # /api/v1/jobs/*
-│   │   │   │   ├── watches.py        # /api/v1/jobs/{id}/watch, /api/v1/admissions/{id}/watch
+│   │   │   │   ├── tracks.py        # /api/v1/jobs/{id}/track, /api/v1/admissions/{id}/track
 │   │   │   │   ├── notifications.py  # /api/v1/notifications/*
 │   │   │   │   ├── admin.py          # /api/v1/admin/*
 │   │   │   │   ├── content.py        # /api/v1/admit-cards, /answer-keys, /results
