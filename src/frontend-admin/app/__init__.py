@@ -29,6 +29,7 @@ import base64
 import json
 import os
 import secrets
+import uuid as _uuid
 
 from datetime import timedelta
 
@@ -58,6 +59,8 @@ def _jwt_payload(token: str) -> dict:
 
 
 _URL_LOGIN = "/login"
+_URL_JOBS = "/jobs"
+_URL_ADMISSIONS = "/admissions"
 _API_ADMIN_JOBS = "/admin/jobs"
 _API_ADMIN_ADMIT_CARDS = "/admin/admit-cards"
 _API_ADMIN_ANSWER_KEYS = "/admin/answer-keys"
@@ -79,18 +82,23 @@ _DOC_FLASH = {
 }
 
 _PARENT_BASE_URL = {
-    "job_id": "/jobs",
-    "admission_id": "/admissions",
+    "job_id": _URL_JOBS,
+    "admission_id": _URL_ADMISSIONS,
 }
 
 
 def _add_doc(parent_key: str, parent_id: str, doc_type: str):
     """Shared handler for adding a phase document (admit card / answer key / result)."""
     token = session.get("token")
-    base = _PARENT_BASE_URL.get(parent_key, "/")
-    back_url = f"{base}/{parent_id}/edit#docs"
     if not token:
         return redirect(_URL_LOGIN)
+    try:
+        safe_id = str(_uuid.UUID(parent_id))
+    except ValueError:
+        flash("Invalid parent ID.", "error")
+        return redirect(_PARENT_BASE_URL.get(parent_key, "/"))
+    base = _PARENT_BASE_URL.get(parent_key, "/")
+    back_url = f"{base}/{safe_id}/edit#docs"
     api_url = _DOC_TYPE_API.get(doc_type)
     if not api_url:
         flash("Unknown document type.", "error")
@@ -355,7 +363,7 @@ def delete_job(job_id):
         return redirect(_URL_LOGIN)
     current_app.api_client.delete(f"/admin/jobs/{job_id}", token=token)
     flash("Job deleted.", "success")
-    return redirect("/jobs")
+    return redirect(_URL_JOBS)
 
 
 # --- Job Edit ---
@@ -413,7 +421,7 @@ def edit_job(job_id):
     resp = current_app.api_client.get(f"/admin/jobs/{job_id}", token=token)
     if not resp.ok:
         flash("Job not found.", "error")
-        return redirect("/jobs")
+        return redirect(_URL_JOBS)
     job = resp.json()
 
     ac_resp = current_app.api_client.get(
@@ -628,7 +636,7 @@ def edit_admission(admission_id):
     resp_detail_req = current_app.api_client.get(f"/admin/admissions/{admission_id}", token=token)
     if not resp_detail_req.ok:
         flash("Admission not found.", "error")
-        return redirect("/admissions")
+        return redirect(_URL_ADMISSIONS)
     resp_detail = resp_detail_req.json()
 
     ac_resp = current_app.api_client.get(
@@ -658,7 +666,7 @@ def delete_admission(admission_id):
         return redirect(_URL_LOGIN)
     current_app.api_client.delete(f"/admin/admissions/{admission_id}", token=token)
     flash("Admission deleted.", "success")
-    return redirect("/admissions")
+    return redirect(_URL_ADMISSIONS)
 
 
 # Per-admission phase document management
