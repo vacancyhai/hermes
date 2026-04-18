@@ -628,21 +628,33 @@ When creating a document via the top-level admin endpoints, you must specify **e
 POST /api/v1/admin/admit-cards
 {
   "job_id": "uuid-here",
+  "slug": "ssc-cgl-tier1-admit-card-2026",
   "title": "SSC CGL Tier-1 Admit Card 2026",
-  "download_url": "https://...",
-  "valid_from": "2026-04-01",
-  "valid_until": "2026-04-15",
-  "phase_number": 1
+  "links": [{"label": "Download Admit Card", "url": "https://..."}],
+  "exam_start": "2026-04-01",
+  "exam_end": "2026-04-15"
 }
 
 // Create answer key for an admission
 POST /api/v1/admin/answer-keys
 {
   "admission_id": "uuid-here",
+  "slug": "neet-ug-2026-answer-key",
   "title": "NEET UG 2026 Provisional Answer Key",
-  "answer_key_type": "provisional",
-  "files": [{"label": "Set A", "url": "https://..."}],
-  "objection_deadline": "2026-05-15"
+  "links": [{"label": "Set A", "url": "https://..."}, {"label": "Objection Portal", "url": "https://..."}],
+  "start_date": "2026-05-10",
+  "end_date": "2026-05-15"
+}
+
+// Create result for a job
+POST /api/v1/admin/results
+{
+  "job_id": "uuid-here",
+  "slug": "ssc-cgl-2026-result",
+  "title": "SSC CGL 2026 Final Result",
+  "links": [{"label": "View Result", "url": "https://..."}, {"label": "Download Scorecard", "url": "https://..."}],
+  "start_date": "2026-08-01",
+  "end_date": "2026-08-31"
 }
 ```
 
@@ -650,21 +662,12 @@ POST /api/v1/admin/answer-keys
 - Cannot specify both `job_id` and `admission_id`
 - Must specify at least one
 - Parent job/admission must exist in database
+- `slug` is required and must be unique
 
-**`phase_number`** (optional integer 1–10) maps to the corresponding entry in the parent job's `selection_process` JSONB array — e.g. phase 1 = "Tier-1 CBT". `NULL` means the document applies to the whole job (e.g. a final merit list).
-
-**Answer key `files` field** is a JSONB array of paper sets:
+**`links` field** is a JSONB array of labelled URLs (same pattern across admit cards, answer keys, and results):
 ```json
-[{"label": "Set A", "url": "https://..."}, {"label": "Set B", "url": "https://..."}]
+[{"label": "Download", "url": "https://..."}, {"label": "Notice PDF", "url": "https://..."}]
 ```
-
-**Result `cutoff_marks` field:**
-```json
-{"general": 140.5, "obc": 135.0, "sc": 120.0, "st": 115.0, "ews": 138.0}
-```
-
-**`result_type`** values: `shortlist` | `cutoff` | `merit_list` | `final`
-**`answer_key_type`** values: `provisional` | `final`
 
 ---
 
@@ -716,15 +719,6 @@ They have admission-specific fields: `stream`, `admission_type`, `counselling_bo
 | POST | `/admin/admissions` | Create admission |
 | PUT | `/admin/admissions/{id}` | Update admission |
 | DELETE | `/admin/admissions/{id}` | Delete admission (cascades to linked docs) |
-| POST | `/admin/admissions/{id}/admit-cards` | Add admit card to admission |
-| PUT | `/admin/admissions/{id}/admit-cards/{doc_id}` | Update admit card |
-| DELETE | `/admin/admissions/{id}/admit-cards/{doc_id}` | Delete admit card |
-| POST | `/admin/admissions/{id}/answer-keys` | Add answer key |
-| PUT | `/admin/admissions/{id}/answer-keys/{doc_id}` | Update answer key |
-| DELETE | `/admin/admissions/{id}/answer-keys/{doc_id}` | Delete answer key |
-| POST | `/admin/admissions/{id}/results` | Add result |
-| PUT | `/admin/admissions/{id}/results/{doc_id}` | Update result |
-| DELETE | `/admin/admissions/{id}/results/{doc_id}` | Delete result |
 
 ### Example — List Medical Admissions
 ```
@@ -841,6 +835,6 @@ Authorization: Bearer <admin_token>
 | `user_devices` | Device registry (FCM token, fingerprint de-duplication) |
 | `admin_logs` | Admin audit trail |
 | `user_tracks` | Jobs and admissions a user is tracking (for notifications) |
-| `admit_cards` | Per-phase admit cards (linked to job OR admission via polymorphic FK) |
-| `answer_keys` | Per-phase answer keys — provisional/final, multi-paper files JSONB |
-| `results` | Per-phase results — shortlist/cutoff/merit_list/final, cutoff_marks JSONB |
+| `admit_cards` | Admit cards linked to job OR admission — `slug`, `links` JSONB, `exam_start`/`exam_end` |
+| `answer_keys` | Answer keys linked to job OR admission — `slug`, `links` JSONB, `start_date`/`end_date` |
+| `results` | Results linked to job OR admission — `slug`, `links` JSONB, `start_date`/`end_date` |

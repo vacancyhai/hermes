@@ -8,8 +8,7 @@ Schema is managed with Alembic:
 
 | File | Description |
 |------|-------------|
-| `migrations/versions/0001_initial.py` | Complete initial schema — all 13 user tables |
-| `migrations/versions/0002_add_followed_organizations.py` | Adds `followed_organizations JSONB NOT NULL DEFAULT '[]'` to `user_profiles` |
+| `migrations/versions/0001_initial.py` | Complete consolidated schema — all 13 tables including all field changes |
 
 **Apply migrations:**
 ```bash
@@ -48,7 +47,8 @@ docker exec hermes_backend alembic -c /app/alembic.ini upgrade head
                             │  │ job_id ──────┼───┼── (FK jobs)  │   │ job_id       │                        │
                             │  │ admission_id─┼───┼── (FK adm.)  │   │ admission_id │                        │
                             │  │ title        │   │ title        │   │ title        │                        │
-                            │  │ phase_number │   │ phase_number │   │ phase_number │                        │
+                            │  │ slug (unique)│   │ slug (unique)│   │ slug (unique)│                        │
+                            │  │ links (JSONB)│   │ links (JSONB)│   │ links (JSONB)│                        │
                             │  └──────────────┘   └──────────────┘   └──────────────┘                        │
                             │                                                                                  │
                             │  CHECK: (job_id IS NOT NULL AND admission_id IS NULL)                            │
@@ -150,7 +150,7 @@ Detailed profile information and preferences. One row per user (UNIQUE on `user_
 | `preferred_states` | JSONB | No | States of interest for jobs; default `[]` |
 | `preferred_categories` | JSONB | No | Categories of interest; default `[]` |
 | `fcm_tokens` | JSONB | No | FCM tokens: `[{"token":"…","device_name":"…","registered_at":"…"}]`; default `[]` |
-| `followed_organizations` | JSONB | No | Org names user follows; default `[]` *(added in migration 0002)* |
+| `followed_organizations` | JSONB | No | Org names user follows; default `[]` |
 | `updated_at` | DateTime | No | Last update timestamp |
 
 **Indexes:** GIN on `education`, GIN on `notification_preferences`
@@ -206,7 +206,8 @@ Government job vacancies. Document releases (admit cards, answer keys, results) 
 | `exam_start` | Date | Yes | Date of first phase exam |
 | `exam_end` | Date | Yes | Date of last phase exam |
 | `result_date` | Date | Yes | Expected result date |
-| `admission_details` | JSONB | No | Exam pattern, phases; default `{}` |
+| `exam_details` | JSONB | No | Exam pattern, phases; default `{}` |
+| `links` | JSONB | No | Important links (application portal, notice PDF, etc.); default `[]` |
 | `salary_initial` | Integer | Yes | Minimum pay (INR) |
 | `salary_max` | Integer | Yes | Maximum pay (INR) |
 | `salary` | JSONB | No | Pay scale, level, allowances; default `{}` |
@@ -321,68 +322,64 @@ Per-phase admit card links. Linked to either a **job** or an **admission** (poly
 | `id` | UUID (PK) | No | Auto-generated |
 | `job_id` | UUID (FK → `jobs.id`, nullable) | Yes | CASCADE delete |
 | `admission_id` | UUID (FK → `admissions.id`, nullable) | Yes | CASCADE delete |
-| `phase_number` | SmallInteger | Yes | Exam phase (1, 2, …) |
 | `title` | String(255) | No | E.g. "SSC CGL Tier-1 2025 Admit Card" |
-| `download_url` | Text | No | Link to download the admit card |
-| `valid_from` | Date | Yes | Validity start (exam start date) |
-| `valid_until` | Date | Yes | Validity end (exam end date) |
-| `notes` | Text | Yes | Important instructions for candidates |
+| `slug` | String(500) | No | URL slug (unique) |
+| `links` | JSONB | No | Array of `{label, url}` — download links, notice links; default `[]` |
+| `exam_start` | Date | Yes | Exam start date |
+| `exam_end` | Date | Yes | Exam end date |
 | `published_at` | DateTime | Yes | When this admit card was released |
 | `created_at` | DateTime | No | Creation timestamp |
 | `updated_at` | DateTime | No | Last update timestamp |
 
 > `ck_admit_cards_source`: `(job_id IS NOT NULL AND admission_id IS NULL) OR (job_id IS NULL AND admission_id IS NOT NULL)`
 
-**Indexes:** `idx_admit_cards_job`, `idx_admit_cards_exam`, `idx_admit_cards_pub`
+**Indexes:** `idx_admit_cards_job`, `idx_admit_cards_admission`, `idx_admit_cards_pub`, `ix_admit_cards_slug` (unique)
 
 ---
 
 ### 10. `answer_keys`
-Per-phase answer keys (provisional or final). Polymorphic.
+Per-phase answer keys. Polymorphic.
 
 | Column | Type | Nullable | Description |
 |--------|------|----------|-------------|
 | `id` | UUID (PK) | No | Auto-generated |
 | `job_id` | UUID (FK → `jobs.id`, nullable) | Yes | CASCADE delete |
 | `admission_id` | UUID (FK → `admissions.id`, nullable) | Yes | CASCADE delete |
-| `phase_number` | SmallInteger | Yes | Exam phase |
 | `title` | String(255) | No | E.g. "JEE Main Session 1 Provisional Answer Key" |
-| `answer_key_type` | String(20) | No | `ck_answer_key_type`: `provisional` \| `final`; default `provisional` |
-| `files` | JSONB | No | Array of `{label, url}` — one entry per paper/set; default `[]` |
-| `objection_url` | Text | Yes | URL to raise objections (provisional keys only) |
-| `objection_deadline` | Date | Yes | Deadline for filing objections |
+| `slug` | String(500) | No | URL slug (unique) |
+| `links` | JSONB | No | Array of `{label, url}` — answer key files, objection portal; default `[]` |
+| `start_date` | Date | Yes | Answer key availability start date |
+| `end_date` | Date | Yes | Answer key / objection deadline |
 | `published_at` | DateTime | Yes | Release timestamp |
 | `created_at` | DateTime | No | Creation timestamp |
 | `updated_at` | DateTime | No | Last update timestamp |
 
 > `ck_answer_keys_source`: `(job_id IS NOT NULL AND admission_id IS NULL) OR (job_id IS NULL AND admission_id IS NOT NULL)`
 
-**Indexes:** `idx_answer_keys_job`, `idx_answer_keys_exam`, `idx_answer_keys_type`
+**Indexes:** `idx_answer_keys_job`, `idx_answer_keys_admission`, `idx_answer_keys_pub`, `ix_answer_keys_slug` (unique)
 
 ---
 
 ### 11. `results`
-Per-phase results (shortlist, cutoff, merit list, final). Polymorphic.
+Per-phase results. Polymorphic.
 
 | Column | Type | Nullable | Description |
 |--------|------|----------|-------------|
 | `id` | UUID (PK) | No | Auto-generated |
 | `job_id` | UUID (FK → `jobs.id`, nullable) | Yes | CASCADE delete |
 | `admission_id` | UUID (FK → `admissions.id`, nullable) | Yes | CASCADE delete |
-| `phase_number` | SmallInteger | Yes | Exam phase |
 | `title` | String(255) | No | E.g. "NEET PG 2026 Result & Score Card" |
-| `result_type` | String(20) | No | `ck_result_type`: `shortlist` \| `cutoff` \| `merit_list` \| `final` |
-| `download_url` | Text | Yes | Link to view/download the result |
-| `cutoff_marks` | JSONB | Yes | Category-wise cutoff marks `{"UR": 138, "OBC": 108, ...}` |
-| `total_qualified` | Integer | Yes | Number of candidates who qualified |
-| `notes` | Text | Yes | Additional notes |
+| `slug` | String(500) | No | URL slug (unique) |
+| `links` | JSONB | No | Array of `{label, url}` — result PDF, scorecard links; default `[]` |
+| `start_date` | Date | Yes | Result availability start date |
+| `end_date` | Date | Yes | Result / scorecard download deadline |
 | `published_at` | DateTime | Yes | Release timestamp |
 | `created_at` | DateTime | No | Creation timestamp |
 | `updated_at` | DateTime | No | Last update timestamp |
 
 > `ck_results_source`: `(job_id IS NOT NULL AND admission_id IS NULL) OR (job_id IS NULL AND admission_id IS NOT NULL)`
 
-**Indexes:** `idx_results_job`, `idx_results_exam`, `idx_results_pub`
+**Indexes:** `idx_results_job`, `idx_results_admission`, `idx_results_pub`, `ix_results_slug` (unique)
 
 ---
 
@@ -443,7 +440,7 @@ Tracks which jobs or admissions a user is tracking for notification delivery.
 |--------|------|----------|-------------|
 | `id` | UUID (PK) | No | Auto-generated |
 | `user_id` | UUID (FK → `users.id`) | No | CASCADE delete |
-| `entity_type` | String(10) | No | `ck_user_tracks_entity_type`: `job` \| `admission`|`ck_user_tracks_entity_type`: `job` \| `admission` |
+| `entity_type` | String(10) | No | `ck_user_tracks_entity_type`: `job` \| `admission` |
 | `entity_id` | UUID | No | ID of the tracked job or admission |
 | `created_at` | DateTime | No | When the track was created |
 
