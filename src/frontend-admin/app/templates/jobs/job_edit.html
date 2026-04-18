@@ -281,11 +281,10 @@
         <div class="pd-card-body">
             {% if admit_cards %}
             <table class="pd-table">
-                <thead><tr><th>Phase</th><th>Title</th><th>Valid Period</th><th></th></tr></thead>
+                <thead><tr><th>Title</th><th>Valid Period</th><th></th></tr></thead>
                 <tbody>
                 {% for ac in admit_cards %}
                 <tr>
-                    <td>{% if ac.phase_number %}<span class="pd-phase-badge">Phase {{ ac.phase_number }}</span>{% else %}—{% endif %}</td>
                     <td><strong>{{ ac.title }}</strong></td>
                     <td class="pd-meta">{{ ac.exam_start or '' }}{% if ac.exam_start and ac.exam_end %} → {% endif %}{{ ac.exam_end or '' }}</td>
                     <td>
@@ -305,11 +304,9 @@
                 <form method="POST" action="/jobs/{{ job.id }}/docs/admit-cards" class="pd-add-form">
                     <div class="pd-form-grid">
                         <div class="pd-fg pd-full"><label>Title *</label><input type="text" name="title" required placeholder="SSC CGL Tier-I Admit Card"></div>
-                        <div class="pd-fg pd-full"><label>Download URL *</label><input type="url" name="download_url" required placeholder="https://ssc.nic.in/admit-card"></div>
-                        <div class="pd-fg"><label>Phase #</label><input type="number" name="phase_number" min="1" max="10" placeholder="1"></div>
+                        <div class="pd-fg pd-full"><label>Slug *</label><input type="text" name="slug" required placeholder="ssc-cgl-tier-1-admit-card" pattern="[a-z0-9]+(?:-[a-z0-9]+)*"></div>
                         <div class="pd-fg"><label>Exam Start</label><input type="date" name="exam_start"></div>
                         <div class="pd-fg"><label>Exam End</label><input type="date" name="exam_end"></div>
-                        <div class="pd-fg pd-full"><label>Notes</label><input type="text" name="notes" placeholder="Carry printout + Govt photo ID"></div>
                     </div>
                     <button type="submit" class="btn btn-primary btn-sm" style="margin-top:.6rem">&#10003; Add Admit Card</button>
                 </form>
@@ -326,13 +323,11 @@
         <div class="pd-card-body">
             {% if answer_keys %}
             <table class="pd-table">
-                <thead><tr><th>Phase</th><th>Title</th><th>Type</th><th>Objection By</th><th></th></tr></thead>
+                <thead><tr><th>Title</th><th>Objection By</th><th></th></tr></thead>
                 <tbody>
                 {% for ak in answer_keys %}
                 <tr>
-                    <td>{% if ak.phase_number %}<span class="pd-phase-badge">Phase {{ ak.phase_number }}</span>{% else %}—{% endif %}</td>
                     <td><strong>{{ ak.title }}</strong></td>
-                    <td><span class="badge {{ 'badge-success' if ak.answer_key_type == 'final' else 'badge-warning' }}">{{ ak.answer_key_type | title }}</span></td>
                     <td class="pd-meta">{{ ak.objection_deadline or '—' }}</td>
                     <td>
                         <form method="POST" action="/jobs/{{ job.id }}/docs/answer-keys/{{ ak.id }}/delete" onsubmit="return confirm('Delete this answer key?')">
@@ -351,11 +346,9 @@
                 <form method="POST" action="/jobs/{{ job.id }}/docs/answer-keys" class="pd-add-form" onsubmit="buildAKFilesJson(this)">
                     <div class="pd-form-grid">
                         <div class="pd-fg pd-full"><label>Title *</label><input type="text" name="title" required placeholder="SSC CGL Tier-I Answer Key"></div>
-                        <div class="pd-fg"><label>Type</label><select name="answer_key_type"><option value="provisional">Provisional</option><option value="final">Final</option></select></div>
-                        <div class="pd-fg"><label>Phase #</label><input type="number" name="phase_number" min="1" max="10" placeholder="1"></div>
+                        <div class="pd-fg pd-full"><label>Slug *</label><input type="text" name="slug" required placeholder="ssc-cgl-tier-1-answer-key" pattern="[a-z0-9]+(?:-[a-z0-9]+)*"></div>
                         <div class="pd-fg"><label>Objection Deadline</label><input type="date" name="objection_deadline"></div>
                         <div class="pd-fg pd-full"><label>Download URL</label><input type="url" class="ak-file-url" placeholder="https://ssc.nic.in/answer-key.pdf"></div>
-                        <div class="pd-fg pd-full"><label>Objection URL</label><input type="url" name="objection_url" placeholder="https://ssc.nic.in/raise-objection"></div>
                     </div>
                     <input type="hidden" name="files_json" value="[]">
                     <button type="submit" class="btn btn-primary btn-sm" style="margin-top:.6rem">&#10003; Add Answer Key</button>
@@ -373,11 +366,10 @@
         <div class="pd-card-body">
             {% if results %}
             <table class="pd-table">
-                <thead><tr><th>Phase</th><th>Title</th><th>Type</th><th>Qualified</th><th></th></tr></thead>
+                <thead><tr><th>Title</th><th>Type</th><th>Qualified</th><th></th></tr></thead>
                 <tbody>
                 {% for res in results %}
                 <tr>
-                    <td>{% if res.phase_number %}<span class="pd-phase-badge">Phase {{ res.phase_number }}</span>{% else %}—{% endif %}</td>
                     <td><strong>{{ res.title }}</strong></td>
                     <td><span class="badge badge-info">{{ res.result_type | replace('_',' ') | title }}</span></td>
                     <td class="pd-meta">{{ res.total_qualified or '—' }}</td>
@@ -398,11 +390,9 @@
                 <form method="POST" action="/jobs/{{ job.id }}/docs/results" class="pd-add-form">
                     <div class="pd-form-grid">
                         <div class="pd-fg pd-full"><label>Title *</label><input type="text" name="title" required placeholder="SSC CGL Tier-I Result"></div>
+                        <div class="pd-fg pd-full"><label>Slug *</label><input type="text" name="slug" required placeholder="ssc-cgl-tier-1-result" pattern="[a-z0-9]+(?:-[a-z0-9]+)*"></div>
                         <div class="pd-fg"><label>Result Type</label><select name="result_type"><option value="shortlist">Shortlist</option><option value="cutoff">Cut-off</option><option value="merit_list" selected>Merit List</option><option value="final">Final</option></select></div>
-                        <div class="pd-fg"><label>Phase #</label><input type="number" name="phase_number" min="1" max="10" placeholder="1"></div>
                         <div class="pd-fg"><label>Total Qualified</label><input type="number" name="total_qualified" min="0" placeholder="85000"></div>
-                        <div class="pd-fg pd-full"><label>Download URL</label><input type="url" name="download_url" placeholder="https://ssc.nic.in/result"></div>
-                        <div class="pd-fg pd-full"><label>Notes</label><input type="text" name="notes" placeholder="Candidates qualified for Tier-II."></div>
                     </div>
                     <button type="submit" class="btn btn-primary btn-sm" style="margin-top:.6rem">&#10003; Add Result</button>
                 </form>

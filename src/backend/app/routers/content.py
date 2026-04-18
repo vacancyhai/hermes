@@ -317,12 +317,20 @@ async def admin_list_admit_cards(
     db: Annotated[AsyncSession, Depends(get_db)],
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
     offset: Annotated[int, Query(ge=0)] = 0,
+    job_id: uuid.UUID | None = Query(None),
+    admission_id: uuid.UUID | None = Query(None),
 ):
     """Admin: List all admit cards (no filtering by parent status)."""
     query = select(AdmitCard).order_by(
         AdmitCard.published_at.desc().nulls_last(), AdmitCard.created_at.desc()
     )
     count_query = select(func.count(AdmitCard.id))
+    if job_id:
+        query = query.where(AdmitCard.job_id == job_id)
+        count_query = count_query.where(AdmitCard.job_id == job_id)
+    if admission_id:
+        query = query.where(AdmitCard.admission_id == admission_id)
+        count_query = count_query.where(AdmitCard.admission_id == admission_id)
 
     total = (await db.execute(count_query)).scalar()
     result = await db.execute(query.offset(offset).limit(limit))
@@ -343,7 +351,6 @@ async def admin_create_admit_card(
 ):
     """Create a new admit card. Must specify either job_id or admission_id."""
     await _validate_document_parent(body.job_id, body.admission_id, db)
-    # Validate slug uniqueness
     if (
         await db.execute(select(AdmitCard.id).where(AdmitCard.slug == body.slug))
     ).scalar():
@@ -412,12 +419,20 @@ async def admin_list_answer_keys(
     db: Annotated[AsyncSession, Depends(get_db)],
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
     offset: Annotated[int, Query(ge=0)] = 0,
+    job_id: uuid.UUID | None = Query(None),
+    admission_id: uuid.UUID | None = Query(None),
 ):
     """Admin: List all answer keys (no filtering by parent status)."""
     query = select(AnswerKey).order_by(
         AnswerKey.published_at.desc().nulls_last(), AnswerKey.created_at.desc()
     )
     count_query = select(func.count(AnswerKey.id))
+    if job_id:
+        query = query.where(AnswerKey.job_id == job_id)
+        count_query = count_query.where(AnswerKey.job_id == job_id)
+    if admission_id:
+        query = query.where(AnswerKey.admission_id == admission_id)
+        count_query = count_query.where(AnswerKey.admission_id == admission_id)
 
     total = (await db.execute(count_query)).scalar()
     result = await db.execute(query.offset(offset).limit(limit))
@@ -438,7 +453,6 @@ async def admin_create_answer_key(
 ):
     """Create a new answer key. Must specify either job_id or admission_id."""
     await _validate_document_parent(body.job_id, body.admission_id, db)
-    # Validate slug uniqueness
     if (
         await db.execute(select(AnswerKey.id).where(AnswerKey.slug == body.slug))
     ).scalar():
@@ -507,12 +521,20 @@ async def admin_list_results(
     db: Annotated[AsyncSession, Depends(get_db)],
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
     offset: Annotated[int, Query(ge=0)] = 0,
+    job_id: uuid.UUID | None = Query(None),
+    admission_id: uuid.UUID | None = Query(None),
 ):
     """Admin: List all results (no filtering by parent status)."""
     query = select(Result).order_by(
         Result.published_at.desc().nulls_last(), Result.created_at.desc()
     )
     count_query = select(func.count(Result.id))
+    if job_id:
+        query = query.where(Result.job_id == job_id)
+        count_query = count_query.where(Result.job_id == job_id)
+    if admission_id:
+        query = query.where(Result.admission_id == admission_id)
+        count_query = count_query.where(Result.admission_id == admission_id)
 
     total = (await db.execute(count_query)).scalar()
     result = await db.execute(query.offset(offset).limit(limit))
@@ -533,7 +555,6 @@ async def admin_create_result(
 ):
     """Create a new result. Must specify either job_id or admission_id."""
     await _validate_document_parent(body.job_id, body.admission_id, db)
-    # Validate slug uniqueness
     if (await db.execute(select(Result.id).where(Result.slug == body.slug))).scalar():
         raise HTTPException(
             status_code=409, detail=f"Slug '{body.slug}' is already in use"
