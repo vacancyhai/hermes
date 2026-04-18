@@ -4,8 +4,6 @@
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem">
             <div style="flex:1;min-width:0">
                 <div style="display:flex;gap:.35rem;flex-wrap:wrap;margin-bottom:.3rem">
-                    {% if res.phase_number %}<span class="doc-phase-pill phase-green">Phase {{ res.phase_number }}</span>{% endif %}
-                    {% if res.result_type %}<span class="doc-phase-pill" style="background:#dcfce7;color:#166534">{{ res.result_type | replace('_',' ') | title }}</span>{% endif %}
                     <span class="card-type-tag" style="background:#dcfce7;color:#166534">Result</span>
                 </div>
                 <div class="doc-title">{{ res.title }}</div>

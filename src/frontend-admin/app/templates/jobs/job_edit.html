@@ -973,14 +973,6 @@ function buildDocLinksJson(form) {
     });
     form.querySelector('[name="links_json"]').value = JSON.stringify(links);
 }
-function buildAKFilesJson(form) {
-    const urlEl = form.querySelector('.ak-file-url');
-    const hiddenEl = form.querySelector('[name="files_json"]');
-    if (urlEl && hiddenEl) {
-        const url = urlEl.value.trim();
-        hiddenEl.value = url ? JSON.stringify([{url: url, name: 'Answer Key'}]) : '[]';
-    }
-}
 
 document.getElementById('job-edit-form').addEventListener('submit', function() {
     serializeTotalVacancy();

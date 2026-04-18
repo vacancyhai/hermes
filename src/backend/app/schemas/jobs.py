@@ -258,8 +258,6 @@ class ResultCreateRequest(BaseModel):
     links: list[dict] = Field(default_factory=list)
     start_date: date | None = None
     end_date: date | None = None
-    cutoff_marks: dict | None = None
-    total_qualified: int | None = Field(None, ge=0)
     published_at: datetime | None = None
 
 
@@ -269,8 +267,6 @@ class ResultUpdateRequest(BaseModel):
     links: list[dict] | None = None
     start_date: date | None = None
     end_date: date | None = None
-    cutoff_marks: dict | None = None
-    total_qualified: int | None = Field(None, ge=0)
     published_at: datetime | None = None
 
 
@@ -283,8 +279,6 @@ class ResultResponse(BaseModel):
     links: list
     start_date: date | None
     end_date: date | None
-    cutoff_marks: dict | None
-    total_qualified: int | None
     published_at: datetime | None
     created_at: datetime
     updated_at: datetime

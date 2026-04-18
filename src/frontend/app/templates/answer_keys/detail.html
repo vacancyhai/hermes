@@ -8,12 +8,6 @@
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.75rem;flex-wrap:wrap">
         <div style="flex:1;min-width:0">
             <div style="margin-bottom:.5rem;display:flex;gap:.35rem;flex-wrap:wrap">
-                {% if key.phase_number %}
-                <span style="background:rgba(255,255,255,.2);color:#fff;padding:.15rem .55rem;border-radius:9999px;font-size:.75rem;font-weight:600">Phase {{ key.phase_number }}</span>
-                {% endif %}
-                {% if key.answer_key_type %}
-                <span style="background:rgba(255,255,255,.25);color:#fff;padding:.15rem .55rem;border-radius:9999px;font-size:.75rem;font-weight:600">{{ key.answer_key_type|title }}</span>
-                {% endif %}
                 <span style="background:rgba(255,255,255,.2);color:#fff;padding:.15rem .55rem;border-radius:9999px;font-size:.75rem;font-weight:600">Answer Key</span>
             </div>
             <h1>{{ key.title }}</h1>
@@ -28,15 +22,6 @@
 
 <!-- Action bar -->
 <div class="action-bar">
-    {% if key.files %}
-    {% set first_file = key.files[0] %}
-    <a href="{{ first_file.get('url') or first_file.get('download_url','#') }}" target="_blank" rel="noopener" class="btn btn-primary" style="background:#d97706;border-color:#d97706;display:inline-flex;align-items:center;gap:.3rem">
-        ⬇ Download Answer Key
-    </a>
-    {% endif %}
-    {% if key.objection_url %}
-    <a href="{{ key.objection_url }}" target="_blank" rel="noopener" class="share-btn" style="border-color:#d97706;color:#92400e">✍️ Raise Objection</a>
-    {% endif %}
     {% if key.get('job') %}
     <a href="/jobs/{{ key.job.slug }}" class="share-btn">View Job Details →</a>
     {% if session.get('token') %}
@@ -65,22 +50,16 @@
 
 <!-- Details grid -->
 <div class="detail-grid">
-    {% if key.answer_key_type %}
+    {% if key.start_date %}
     <div class="detail-item">
-        <div class="label">Type</div>
-        <div class="value">{{ key.answer_key_type|title }}</div>
+        <div class="label">Start Date</div>
+        <div class="value">{{ key.start_date }}</div>
     </div>
     {% endif %}
-    {% if key.phase_number %}
+    {% if key.end_date %}
     <div class="detail-item">
-        <div class="label">Phase</div>
-        <div class="value">Phase {{ key.phase_number }}</div>
-    </div>
-    {% endif %}
-    {% if key.objection_deadline %}
-    <div class="detail-item">
-        <div class="label">Objection Deadline</div>
-        <div class="value urgent">{{ key.objection_deadline }}</div>
+        <div class="label">End Date</div>
+        <div class="value">{{ key.end_date }}</div>
     </div>
     {% endif %}
     {% if key.published_at %}
@@ -91,59 +70,14 @@
     {% endif %}
 </div>
 
-<!-- Answer Key Files -->
-{% if key.files %}
+{% if key.links %}
 <div class="detail-section">
-    <h2>📄 Answer Key Files</h2>
-    {% for f in key.files %}
-    {% set f_url = f.get('url') or f.get('download_url') %}
-    {% set f_name = f.get('name') or f.get('subject') or ('File ' ~ loop.index) %}
-    <div style="display:flex;justify-content:space-between;align-items:center;padding:.65rem .85rem;background:#fffbeb;border:1px solid #fde68a;border-radius:.5rem;margin-bottom:.5rem;flex-wrap:wrap;gap:.5rem">
-        <span style="font-size:.9rem;font-weight:500;color:#1e293b">{{ f_name }}</span>
-        {% if f_url %}
-        <a href="{{ f_url }}" target="_blank" rel="noopener" class="doc-btn doc-btn-amber">⬇ Download</a>
-        {% endif %}
+    <h2>� Important Links</h2>
+    {% for link in key.links %}
+    <div style="margin-bottom:.4rem">
+        <a href="{{ link.url }}" target="_blank" rel="noopener" class="doc-btn doc-btn-amber">{{ link.text or link.type }}</a>
     </div>
     {% endfor %}
-</div>
-{% endif %}
-
-<!-- Objection section -->
-{% if key.objection_url or key.objection_deadline %}
-<div class="detail-section" style="background:#fffbeb;border:1px solid #fde68a;border-radius:.5rem;padding:1rem 1.25rem">
-    <h2 style="color:#92400e">✍️ Raise Objections</h2>
-    {% if key.answer_key_type == 'provisional' %}
-    <p style="color:#78350f;margin-bottom:.6rem">This is a <strong>provisional</strong> answer key. If you disagree with any answer, raise an official objection before the deadline.</p>
-    {% endif %}
-    {% if key.objection_deadline %}
-    <p style="font-size:.875rem;margin-bottom:.6rem"><strong>Last date to raise objection:</strong> <span style="color:#dc2626;font-weight:700">{{ key.objection_deadline }}</span></p>
-    {% endif %}
-    {% if key.objection_url %}
-    <a href="{{ key.objection_url }}" target="_blank" rel="noopener" class="btn btn-outline" style="border-color:#d97706;color:#92400e">
-        📎 Go to Objection Portal ↗
-    </a>
-    {% endif %}
-</div>
-{% endif %}
-
-{% if key.notes %}
-<div class="detail-section">
-    <h2>📋 Important Notes</h2>
-    <p>{{ key.notes }}</p>
-</div>
-{% endif %}
-
-<!-- CTA -->
-{% if key.files %}
-<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:.5rem;padding:1.25rem;text-align:center;margin-top:1.5rem">
-    <p style="color:#92400e;font-weight:500;margin-bottom:.75rem">
-        {% if key.answer_key_type == 'provisional' %}Provisional answer key — raise objections if needed.{% else %}Final answer key — download below.{% endif %}
-    </p>
-    {% set first_file = key.files[0] %}
-    <a href="{{ first_file.get('url') or first_file.get('download_url','#') }}" target="_blank" rel="noopener" class="btn btn-primary" style="background:#d97706;border-color:#d97706;font-size:.95rem;padding:.6rem 1.5rem">
-        ⬇ Download Answer Key
-    </a>
-    <p style="font-size:.78rem;color:#64748b;margin-top:.5rem">Opens official source in a new tab</p>
 </div>
 {% endif %}
 {% endblock %}

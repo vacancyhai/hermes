@@ -269,11 +269,6 @@
         <div class="mini-card mc-answer" onclick="window.location='/answer-keys/{{ key.slug }}'">
             <div>
                 <div class="mini-card-title">{{ key.title }}</div>
-                {% if key.answer_key_type %}
-                <div class="mini-card-meta" style="margin-top:.2rem">
-                    <span style="background:#fef3c7;color:#92400e;padding:.1rem .4rem;border-radius:9999px;font-size:.68rem;font-weight:700">{{ key.answer_key_type|title }}</span>
-                </div>
-                {% endif %}
                 {% if key.published_at %}
                 <div class="mini-card-meta">Published: {{ key.published_at[:10] }}</div>
                 {% endif %}

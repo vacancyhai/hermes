@@ -569,8 +569,6 @@ async def admin_create_result(
         links=body.links,
         start_date=body.start_date,
         end_date=body.end_date,
-        cutoff_marks=body.cutoff_marks,
-        total_qualified=body.total_qualified,
         published_at=body.published_at,
     )
     db.add(doc)

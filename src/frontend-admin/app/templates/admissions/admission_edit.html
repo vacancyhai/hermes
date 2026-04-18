@@ -672,14 +672,6 @@ function buildDocLinksJson(form) {
     });
     form.querySelector('[name="links_json"]').value = JSON.stringify(links);
 }
-function buildAKFilesJson(form) {
-    const urlEl = form.querySelector('.ak-file-url');
-    const hiddenEl = form.querySelector('[name="files_json"]');
-    if (urlEl && hiddenEl) {
-        const url = urlEl.value.trim();
-        hiddenEl.value = url ? JSON.stringify([{url: url, name: 'Answer Key'}]) : '[]';
-    }
-}
 
 document.getElementById('admission-edit-form').addEventListener('submit', function() {
     const g = id => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };

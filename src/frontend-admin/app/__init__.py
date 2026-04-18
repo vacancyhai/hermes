@@ -448,7 +448,6 @@ def job_add_result(job_id):
         "links": links,
         "start_date": form.get("start_date") or None,
         "end_date": form.get("end_date") or None,
-        "total_qualified": int(form["total_qualified"]) if form.get("total_qualified") else None,
     }
     current_app.api_client.post(_API_ADMIN_RESULTS, token=token, json=payload)
     flash("Result added.", "success")
@@ -742,7 +741,6 @@ def admission_add_result(admission_id):
         "links": links,
         "start_date": form.get("start_date") or None,
         "end_date": form.get("end_date") or None,
-        "total_qualified": int(form["total_qualified"]) if form.get("total_qualified") else None,
     }
     current_app.api_client.post(_API_ADMIN_RESULTS, token=token, json=payload)
     flash("Result added.", "success")
