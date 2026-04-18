@@ -349,19 +349,17 @@
             {% endif %}
             <details class="pd-add-panel">
                 <summary class="pd-add-toggle">&#43; Add Answer Key</summary>
-                <form method="POST" action="/jobs/{{ job.id }}/docs/answer-keys" class="pd-add-form" onsubmit="buildAKFilesJson(this);buildDocLinksJson(this)">
+                <form method="POST" action="/jobs/{{ job.id }}/docs/answer-keys" class="pd-add-form" onsubmit="buildDocLinksJson(this)">
                     <div class="pd-form-grid">
                         <div class="pd-fg pd-full"><label>Title *</label><input type="text" name="title" required placeholder="SSC CGL Tier-I Answer Key"></div>
                         <div class="pd-fg pd-full"><label>Slug *</label><input type="text" name="slug" required placeholder="ssc-cgl-tier-1-answer-key" pattern="[a-z0-9]+(?:-[a-z0-9]+)*"></div>
                         <div class="pd-fg"><label>Start Date</label><input type="date" name="start_date"></div>
                         <div class="pd-fg"><label>End Date</label><input type="date" name="end_date"></div>
-                        <div class="pd-fg pd-full"><label>Download URL</label><input type="url" class="ak-file-url" placeholder="https://ssc.nic.in/answer-key.pdf"></div>
                     </div>
                     <div class="doc-links-section">
                         <div class="doc-links-header">&#128279; Important Links <button type="button" class="btn-doc-add-link" onclick="addDocLink(this)">&#43; Add Link</button></div>
                         <div class="doc-links-container"></div>
                     </div>
-                    <input type="hidden" name="files_json" value="[]">
                     <input type="hidden" name="links_json" value="[]">
                     <button type="submit" class="btn btn-primary btn-sm" style="margin-top:.6rem">&#10003; Add Answer Key</button>
                 </form>

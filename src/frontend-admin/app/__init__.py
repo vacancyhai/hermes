@@ -415,10 +415,6 @@ def job_add_answer_key(job_id):
         return redirect(_URL_LOGIN)
     form = request.form.to_dict()
     try:
-        files = json.loads(form.get("files_json", "[]"))
-    except Exception:
-        files = []
-    try:
         links = json.loads(form.get("links_json", "[]"))
     except Exception:
         links = []
@@ -427,7 +423,6 @@ def job_add_answer_key(job_id):
         "slug": form.get("slug", ""),
         "title": form.get("title", ""),
         "links": links,
-        "files": files,
         "start_date": form.get("start_date") or None,
         "end_date": form.get("end_date") or None,
     }
@@ -714,10 +709,6 @@ def admission_add_answer_key(admission_id):
         return redirect(_URL_LOGIN)
     form = request.form.to_dict()
     try:
-        files = json.loads(form.get("files_json", "[]"))
-    except Exception:
-        files = []
-    try:
         links = json.loads(form.get("links_json", "[]"))
     except Exception:
         links = []
@@ -726,7 +717,6 @@ def admission_add_answer_key(admission_id):
         "slug": form.get("slug", ""),
         "title": form.get("title", ""),
         "links": links,
-        "files": files,
         "start_date": form.get("start_date") or None,
         "end_date": form.get("end_date") or None,
     }

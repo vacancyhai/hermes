@@ -217,7 +217,6 @@ class AnswerKeyCreateRequest(BaseModel):
     slug: str = Field(min_length=1, max_length=500, pattern=SLUG_PATTERN)
     title: str = Field(min_length=1, max_length=255)
     links: list[dict] = Field(default_factory=list)
-    files: list[dict] = Field(default_factory=list)
     start_date: date | None = None
     end_date: date | None = None
     published_at: datetime | None = None
@@ -227,7 +226,6 @@ class AnswerKeyUpdateRequest(BaseModel):
     slug: str | None = Field(None, min_length=1, max_length=500, pattern=SLUG_PATTERN)
     title: str | None = Field(None, min_length=1, max_length=255)
     links: list[dict] | None = None
-    files: list[dict] | None = None
     start_date: date | None = None
     end_date: date | None = None
     published_at: datetime | None = None
@@ -240,7 +238,6 @@ class AnswerKeyResponse(BaseModel):
     admission_id: uuid.UUID | None
     title: str
     links: list
-    files: list
     start_date: date | None
     end_date: date | None
     published_at: datetime | None

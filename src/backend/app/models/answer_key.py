@@ -16,7 +16,6 @@ class AnswerKey(PhaseDocMixin, Base):
     )
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     links: Mapped[list] = mapped_column(JSONB, nullable=False, server_default="[]")
-    files: Mapped[list] = mapped_column(JSONB, nullable=False, server_default="[]")
     start_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     end_date: Mapped[date | None] = mapped_column(Date, nullable=True)
 

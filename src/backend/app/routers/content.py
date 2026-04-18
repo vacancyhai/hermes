@@ -466,7 +466,6 @@ async def admin_create_answer_key(
         admission_id=body.admission_id,
         title=body.title,
         links=body.links,
-        files=body.files,
         start_date=body.start_date,
         end_date=body.end_date,
         published_at=body.published_at,
