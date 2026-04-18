@@ -95,6 +95,43 @@ def _enrich_with_parent(data: dict, obj) -> dict:
     return data
 
 
+async def _admin_list_docs(
+    model,
+    schema,
+    db: AsyncSession,
+    limit: int,
+    offset: int,
+    job_id: uuid.UUID | None,
+    admission_id: uuid.UUID | None,
+) -> dict:
+    """Shared paginated list query for document admin endpoints."""
+    query = select(model).order_by(
+        model.published_at.desc().nulls_last(), model.created_at.desc()
+    )
+    count_query = select(func.count(model.id))
+    if job_id:
+        query = query.where(model.job_id == job_id)
+        count_query = count_query.where(model.job_id == job_id)
+    if admission_id:
+        query = query.where(model.admission_id == admission_id)
+        count_query = count_query.where(model.admission_id == admission_id)
+    total = (await db.execute(count_query)).scalar()
+    rows = (await db.execute(query.offset(offset).limit(limit))).scalars().all()
+    return _paginated_response(rows, schema, limit, offset, total)
+
+
+async def _admin_delete_doc(
+    model, doc_id: uuid.UUID, not_found_msg: str, db: AsyncSession
+) -> None:
+    """Shared delete logic for document admin endpoints."""
+    doc = (
+        await db.execute(select(model).where(model.id == doc_id))
+    ).scalar_one_or_none()
+    if not doc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=not_found_msg)
+    await db.delete(doc)
+
+
 async def _validate_document_parent(
     job_id: uuid.UUID | None,
     admission_id: uuid.UUID | None,
@@ -317,25 +354,13 @@ async def admin_list_admit_cards(
     db: Annotated[AsyncSession, Depends(get_db)],
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
     offset: Annotated[int, Query(ge=0)] = 0,
-    job_id: uuid.UUID | None = Query(None),
-    admission_id: uuid.UUID | None = Query(None),
+    job_id: Annotated[uuid.UUID | None, Query()] = None,
+    admission_id: Annotated[uuid.UUID | None, Query()] = None,
 ):
     """Admin: List all admit cards (no filtering by parent status)."""
-    query = select(AdmitCard).order_by(
-        AdmitCard.published_at.desc().nulls_last(), AdmitCard.created_at.desc()
+    return await _admin_list_docs(
+        AdmitCard, AdmitCardResponse, db, limit, offset, job_id, admission_id
     )
-    count_query = select(func.count(AdmitCard.id))
-    if job_id:
-        query = query.where(AdmitCard.job_id == job_id)
-        count_query = count_query.where(AdmitCard.job_id == job_id)
-    if admission_id:
-        query = query.where(AdmitCard.admission_id == admission_id)
-        count_query = count_query.where(AdmitCard.admission_id == admission_id)
-
-    total = (await db.execute(count_query)).scalar()
-    result = await db.execute(query.offset(offset).limit(limit))
-    cards = result.scalars().all()
-    return _paginated_response(cards, AdmitCardResponse, limit, offset, total)
 
 
 @admit_cards_admin_router.post(
@@ -402,13 +427,7 @@ async def admin_delete_admit_card(
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Delete an admit card."""
-    result = await db.execute(select(AdmitCard).where(AdmitCard.id == card_id))
-    doc = result.scalar_one_or_none()
-    if not doc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=_ERR_ADMIT_CARD_NOT_FOUND
-        )
-    await db.delete(doc)
+    await _admin_delete_doc(AdmitCard, card_id, _ERR_ADMIT_CARD_NOT_FOUND, db)
 
 
 # ADMIN — Answer Keys CRUD
@@ -420,25 +439,13 @@ async def admin_list_answer_keys(
     db: Annotated[AsyncSession, Depends(get_db)],
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
     offset: Annotated[int, Query(ge=0)] = 0,
-    job_id: uuid.UUID | None = Query(None),
-    admission_id: uuid.UUID | None = Query(None),
+    job_id: Annotated[uuid.UUID | None, Query()] = None,
+    admission_id: Annotated[uuid.UUID | None, Query()] = None,
 ):
     """Admin: List all answer keys (no filtering by parent status)."""
-    query = select(AnswerKey).order_by(
-        AnswerKey.published_at.desc().nulls_last(), AnswerKey.created_at.desc()
+    return await _admin_list_docs(
+        AnswerKey, AnswerKeyResponse, db, limit, offset, job_id, admission_id
     )
-    count_query = select(func.count(AnswerKey.id))
-    if job_id:
-        query = query.where(AnswerKey.job_id == job_id)
-        count_query = count_query.where(AnswerKey.job_id == job_id)
-    if admission_id:
-        query = query.where(AnswerKey.admission_id == admission_id)
-        count_query = count_query.where(AnswerKey.admission_id == admission_id)
-
-    total = (await db.execute(count_query)).scalar()
-    result = await db.execute(query.offset(offset).limit(limit))
-    keys = result.scalars().all()
-    return _paginated_response(keys, AnswerKeyResponse, limit, offset, total)
 
 
 @answer_keys_admin_router.post(
@@ -505,13 +512,7 @@ async def admin_delete_answer_key(
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Delete an answer key."""
-    result = await db.execute(select(AnswerKey).where(AnswerKey.id == key_id))
-    doc = result.scalar_one_or_none()
-    if not doc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=_ERR_ANSWER_KEY_NOT_FOUND
-        )
-    await db.delete(doc)
+    await _admin_delete_doc(AnswerKey, key_id, _ERR_ANSWER_KEY_NOT_FOUND, db)
 
 
 # ADMIN — Results CRUD
@@ -523,25 +524,13 @@ async def admin_list_results(
     db: Annotated[AsyncSession, Depends(get_db)],
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
     offset: Annotated[int, Query(ge=0)] = 0,
-    job_id: uuid.UUID | None = Query(None),
-    admission_id: uuid.UUID | None = Query(None),
+    job_id: Annotated[uuid.UUID | None, Query()] = None,
+    admission_id: Annotated[uuid.UUID | None, Query()] = None,
 ):
     """Admin: List all results (no filtering by parent status)."""
-    query = select(Result).order_by(
-        Result.published_at.desc().nulls_last(), Result.created_at.desc()
+    return await _admin_list_docs(
+        Result, ResultResponse, db, limit, offset, job_id, admission_id
     )
-    count_query = select(func.count(Result.id))
-    if job_id:
-        query = query.where(Result.job_id == job_id)
-        count_query = count_query.where(Result.job_id == job_id)
-    if admission_id:
-        query = query.where(Result.admission_id == admission_id)
-        count_query = count_query.where(Result.admission_id == admission_id)
-
-    total = (await db.execute(count_query)).scalar()
-    result = await db.execute(query.offset(offset).limit(limit))
-    results = result.scalars().all()
-    return _paginated_response(results, ResultResponse, limit, offset, total)
 
 
 @results_admin_router.post(
@@ -606,13 +595,7 @@ async def admin_delete_result(
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Delete a result."""
-    result = await db.execute(select(Result).where(Result.id == result_id))
-    doc = result.scalar_one_or_none()
-    if not doc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=_ERR_RESULT_NOT_FOUND
-        )
-    await db.delete(doc)
+    await _admin_delete_doc(Result, result_id, _ERR_RESULT_NOT_FOUND, db)
 
 
 # ── Exam Reminders ─────────────────────────────────────────────────────────────────────────────
