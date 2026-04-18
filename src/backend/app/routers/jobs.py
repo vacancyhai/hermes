@@ -129,7 +129,7 @@ async def get_job(slug: str, db: Annotated[AsyncSession, Depends(get_db)]):
     admit_cards_result = await db.execute(
         select(AdmitCard)
         .where(AdmitCard.job_id == job_id)
-        .order_by(AdmitCard.phase_number.nulls_last(), AdmitCard.published_at.desc())
+        .order_by(AdmitCard.published_at.desc())
     )
     admit_cards = [
         AdmitCardResponse.model_validate(card).model_dump()
@@ -139,11 +139,7 @@ async def get_job(slug: str, db: Annotated[AsyncSession, Depends(get_db)]):
     answer_keys_result = await db.execute(
         select(AnswerKey)
         .where(AnswerKey.job_id == job_id)
-        .order_by(
-            AnswerKey.phase_number.nulls_last(),
-            AnswerKey.answer_key_type,
-            AnswerKey.published_at.desc(),
-        )
+        .order_by(AnswerKey.published_at.desc())
     )
     answer_keys = [
         AnswerKeyResponse.model_validate(key).model_dump()
@@ -153,7 +149,7 @@ async def get_job(slug: str, db: Annotated[AsyncSession, Depends(get_db)]):
     results_result = await db.execute(
         select(Result)
         .where(Result.job_id == job_id)
-        .order_by(Result.phase_number.nulls_last(), Result.published_at.desc())
+        .order_by(Result.published_at.desc())
     )
     results = [
         ResultResponse.model_validate(res).model_dump()

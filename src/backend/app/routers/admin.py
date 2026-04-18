@@ -227,9 +227,7 @@ async def list_admit_cards(
     admission_id: uuid.UUID | None = None,
 ):
     """List all admit cards."""
-    query = select(AdmitCard).order_by(
-        AdmitCard.phase_number.nulls_last(), AdmitCard.created_at.desc()
-    )
+    query = select(AdmitCard).order_by(AdmitCard.created_at.desc())
     count_query = select(func.count(AdmitCard.id))
     if job_id:
         query = query.where(AdmitCard.job_id == job_id)
@@ -263,9 +261,7 @@ async def list_answer_keys(
     admission_id: uuid.UUID | None = None,
 ):
     """List all answer keys."""
-    query = select(AnswerKey).order_by(
-        AnswerKey.phase_number.nulls_last(), AnswerKey.created_at.desc()
-    )
+    query = select(AnswerKey).order_by(AnswerKey.created_at.desc())
     count_query = select(func.count(AnswerKey.id))
     if job_id:
         query = query.where(AnswerKey.job_id == job_id)
@@ -299,9 +295,7 @@ async def list_results(
     admission_id: uuid.UUID | None = None,
 ):
     """List all results."""
-    query = select(Result).order_by(
-        Result.phase_number.nulls_last(), Result.created_at.desc()
-    )
+    query = select(Result).order_by(Result.created_at.desc())
     count_query = select(func.count(Result.id))
     if job_id:
         query = query.where(Result.job_id == job_id)
