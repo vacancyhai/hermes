@@ -218,7 +218,8 @@ class AnswerKeyCreateRequest(BaseModel):
     title: str = Field(min_length=1, max_length=255)
     links: list[dict] = Field(default_factory=list)
     files: list[dict] = Field(default_factory=list)
-    objection_deadline: date | None = None
+    start_date: date | None = None
+    end_date: date | None = None
     published_at: datetime | None = None
 
 
@@ -227,7 +228,8 @@ class AnswerKeyUpdateRequest(BaseModel):
     title: str | None = Field(None, min_length=1, max_length=255)
     links: list[dict] | None = None
     files: list[dict] | None = None
-    objection_deadline: date | None = None
+    start_date: date | None = None
+    end_date: date | None = None
     published_at: datetime | None = None
 
 
@@ -239,7 +241,8 @@ class AnswerKeyResponse(BaseModel):
     title: str
     links: list
     files: list
-    objection_deadline: date | None
+    start_date: date | None
+    end_date: date | None
     published_at: datetime | None
     created_at: datetime
     updated_at: datetime
@@ -249,8 +252,6 @@ class AnswerKeyResponse(BaseModel):
 
 # ── Result schemas ────────────────────────────────────────────────────────────
 
-RESULT_TYPES = Literal["shortlist", "cutoff", "merit_list", "final"]
-
 
 class ResultCreateRequest(BaseModel):
     job_id: uuid.UUID | None = None
@@ -258,7 +259,8 @@ class ResultCreateRequest(BaseModel):
     slug: str = Field(min_length=1, max_length=500, pattern=SLUG_PATTERN)
     title: str = Field(min_length=1, max_length=255)
     links: list[dict] = Field(default_factory=list)
-    result_type: RESULT_TYPES
+    start_date: date | None = None
+    end_date: date | None = None
     cutoff_marks: dict | None = None
     total_qualified: int | None = Field(None, ge=0)
     published_at: datetime | None = None
@@ -268,7 +270,8 @@ class ResultUpdateRequest(BaseModel):
     slug: str | None = Field(None, min_length=1, max_length=500, pattern=SLUG_PATTERN)
     title: str | None = Field(None, min_length=1, max_length=255)
     links: list[dict] | None = None
-    result_type: RESULT_TYPES | None = None
+    start_date: date | None = None
+    end_date: date | None = None
     cutoff_marks: dict | None = None
     total_qualified: int | None = Field(None, ge=0)
     published_at: datetime | None = None
@@ -281,7 +284,8 @@ class ResultResponse(BaseModel):
     admission_id: uuid.UUID | None
     title: str
     links: list
-    result_type: str
+    start_date: date | None
+    end_date: date | None
     cutoff_marks: dict | None
     total_qualified: int | None
     published_at: datetime | None

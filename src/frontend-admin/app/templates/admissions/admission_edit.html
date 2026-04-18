@@ -483,12 +483,13 @@ Biology, 100, 360"></textarea>
         <div class="pd-card-body">
             {% if answer_keys %}
             <table class="pd-table">
-                <thead><tr><th>Title</th><th>Objection By</th><th></th></tr></thead>
+                <thead><tr><th>Title</th><th>Start Date</th><th>End Date</th><th></th></tr></thead>
                 <tbody>
                 {% for ak in answer_keys %}
                 <tr>
                     <td><strong>{{ ak.title }}</strong></td>
-                    <td class="pd-meta">{{ ak.objection_deadline or '—' }}</td>
+                    <td class="pd-meta">{{ ak.start_date or '—' }}</td>
+                    <td class="pd-meta">{{ ak.end_date or '—' }}</td>
                     <td>
                         <form method="POST" action="/admissions/{{ admission.id }}/docs/answer-keys/{{ ak.id }}/delete" onsubmit="return confirm('Delete this answer key?')">
                             <button type="submit" class="btn btn-sm pd-del-btn">&#10005; Delete</button>
@@ -507,7 +508,8 @@ Biology, 100, 360"></textarea>
                     <div class="pd-form-grid">
                         <div class="pd-fg pd-full"><label>Title *</label><input type="text" name="title" required placeholder="NEET PG 2026 Provisional Answer Key"></div>
                         <div class="pd-fg pd-full"><label>Slug *</label><input type="text" name="slug" required placeholder="neet-pg-2026-answer-key" pattern="[a-z0-9]+(?:-[a-z0-9]+)*"></div>
-                        <div class="pd-fg"><label>Objection Deadline</label><input type="date" name="objection_deadline"></div>
+                        <div class="pd-fg"><label>Start Date</label><input type="date" name="start_date"></div>
+                        <div class="pd-fg"><label>End Date</label><input type="date" name="end_date"></div>
                         <div class="pd-fg pd-full"><label>Download URL</label><input type="url" class="ak-file-url" placeholder="https://nta.ac.in/answer-key.pdf"></div>
                     </div>
                     <div class="doc-links-section">
@@ -531,13 +533,13 @@ Biology, 100, 360"></textarea>
         <div class="pd-card-body">
             {% if results %}
             <table class="pd-table">
-                <thead><tr><th>Title</th><th>Type</th><th>Qualified</th><th></th></tr></thead>
+                <thead><tr><th>Title</th><th>Start Date</th><th>End Date</th><th></th></tr></thead>
                 <tbody>
                 {% for res in results %}
                 <tr>
                     <td><strong>{{ res.title }}</strong></td>
-                    <td><span class="badge badge-info">{{ res.result_type | replace('_',' ') | title }}</span></td>
-                    <td class="pd-meta">{{ res.total_qualified or '—' }}</td>
+                    <td class="pd-meta">{{ res.start_date or '—' }}</td>
+                    <td class="pd-meta">{{ res.end_date or '—' }}</td>
                     <td>
                         <form method="POST" action="/admissions/{{ admission.id }}/docs/results/{{ res.id }}/delete" onsubmit="return confirm('Delete this result?')">
                             <button type="submit" class="btn btn-sm pd-del-btn">&#10005; Delete</button>
@@ -556,8 +558,8 @@ Biology, 100, 360"></textarea>
                     <div class="pd-form-grid">
                         <div class="pd-fg pd-full"><label>Title *</label><input type="text" name="title" required placeholder="NEET PG 2026 Result & Score Card"></div>
                         <div class="pd-fg pd-full"><label>Slug *</label><input type="text" name="slug" required placeholder="neet-pg-2026-result" pattern="[a-z0-9]+(?:-[a-z0-9]+)*"></div>
-                        <div class="pd-fg"><label>Result Type</label><select name="result_type"><option value="shortlist">Shortlist</option><option value="cutoff">Cut-off</option><option value="merit_list" selected>Merit List</option><option value="final">Final</option></select></div>
-                        <div class="pd-fg"><label>Total Qualified</label><input type="number" name="total_qualified" min="0" placeholder="52000"></div>
+                        <div class="pd-fg"><label>Start Date</label><input type="date" name="start_date"></div>
+                        <div class="pd-fg"><label>End Date</label><input type="date" name="end_date"></div>
                     </div>
                     <div class="doc-links-section">
                         <div class="doc-links-header">&#128279; Important Links <button type="button" class="btn-doc-add-link" onclick="addDocLink(this)">&#43; Add Link</button></div>

@@ -467,7 +467,8 @@ async def admin_create_answer_key(
         title=body.title,
         links=body.links,
         files=body.files,
-        objection_deadline=body.objection_deadline,
+        start_date=body.start_date,
+        end_date=body.end_date,
         published_at=body.published_at,
     )
     db.add(doc)
@@ -567,7 +568,8 @@ async def admin_create_result(
         admission_id=body.admission_id,
         title=body.title,
         links=body.links,
-        result_type=body.result_type,
+        start_date=body.start_date,
+        end_date=body.end_date,
         cutoff_marks=body.cutoff_marks,
         total_qualified=body.total_qualified,
         published_at=body.published_at,

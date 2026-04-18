@@ -428,7 +428,8 @@ def job_add_answer_key(job_id):
         "title": form.get("title", ""),
         "links": links,
         "files": files,
-        "objection_deadline": form.get("objection_deadline") or None,
+        "start_date": form.get("start_date") or None,
+        "end_date": form.get("end_date") or None,
     }
     current_app.api_client.post(_API_ADMIN_ANSWER_KEYS, token=token, json=payload)
     flash("Answer key added.", "success")
@@ -450,7 +451,8 @@ def job_add_result(job_id):
         "slug": form.get("slug", ""),
         "title": form.get("title", ""),
         "links": links,
-        "result_type": form.get("result_type", "merit_list"),
+        "start_date": form.get("start_date") or None,
+        "end_date": form.get("end_date") or None,
         "total_qualified": int(form["total_qualified"]) if form.get("total_qualified") else None,
     }
     current_app.api_client.post(_API_ADMIN_RESULTS, token=token, json=payload)
@@ -725,7 +727,8 @@ def admission_add_answer_key(admission_id):
         "title": form.get("title", ""),
         "links": links,
         "files": files,
-        "objection_deadline": form.get("objection_deadline") or None,
+        "start_date": form.get("start_date") or None,
+        "end_date": form.get("end_date") or None,
     }
     current_app.api_client.post(_API_ADMIN_ANSWER_KEYS, token=token, json=payload)
     flash("Answer key added.", "success")
@@ -747,7 +750,8 @@ def admission_add_result(admission_id):
         "slug": form.get("slug", ""),
         "title": form.get("title", ""),
         "links": links,
-        "result_type": form.get("result_type", "merit_list"),
+        "start_date": form.get("start_date") or None,
+        "end_date": form.get("end_date") or None,
         "total_qualified": int(form["total_qualified"]) if form.get("total_qualified") else None,
     }
     current_app.api_client.post(_API_ADMIN_RESULTS, token=token, json=payload)
