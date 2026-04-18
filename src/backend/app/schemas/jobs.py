@@ -175,24 +175,18 @@ class JobListItem(BaseModel):
 class AdmitCardCreateRequest(BaseModel):
     job_id: uuid.UUID | None = None
     admission_id: uuid.UUID | None = None
-    phase_number: int | None = Field(None, ge=1, le=10)
     slug: str = Field(min_length=1, max_length=500, pattern=SLUG_PATTERN)
     title: str = Field(min_length=1, max_length=255)
-    download_url: str = Field(min_length=1)
     exam_start: date | None = None
     exam_end: date | None = None
-    notes: str | None = None
     published_at: datetime | None = None
 
 
 class AdmitCardUpdateRequest(BaseModel):
-    phase_number: int | None = None
     slug: str | None = Field(None, min_length=1, max_length=500, pattern=SLUG_PATTERN)
     title: str | None = Field(None, min_length=1, max_length=255)
-    download_url: str | None = None
     exam_start: date | None = None
     exam_end: date | None = None
-    notes: str | None = None
     published_at: datetime | None = None
 
 
@@ -201,12 +195,9 @@ class AdmitCardResponse(BaseModel):
     slug: str
     job_id: uuid.UUID | None
     admission_id: uuid.UUID | None
-    phase_number: int | None
     title: str
-    download_url: str
     exam_start: date | None
     exam_end: date | None
-    notes: str | None
     published_at: datetime | None
     created_at: datetime
     updated_at: datetime
@@ -216,29 +207,21 @@ class AdmitCardResponse(BaseModel):
 
 # ── Answer Key schemas ────────────────────────────────────────────────────────
 
-ANSWER_KEY_TYPES = Literal["provisional", "final"]
-
 
 class AnswerKeyCreateRequest(BaseModel):
     job_id: uuid.UUID | None = None
     admission_id: uuid.UUID | None = None
-    phase_number: int | None = Field(None, ge=1, le=10)
     slug: str = Field(min_length=1, max_length=500, pattern=SLUG_PATTERN)
     title: str = Field(min_length=1, max_length=255)
-    answer_key_type: ANSWER_KEY_TYPES = "provisional"
     files: list[dict] = Field(default_factory=list)
-    objection_url: str | None = None
     objection_deadline: date | None = None
     published_at: datetime | None = None
 
 
 class AnswerKeyUpdateRequest(BaseModel):
-    phase_number: int | None = None
     slug: str | None = Field(None, min_length=1, max_length=500, pattern=SLUG_PATTERN)
     title: str | None = Field(None, min_length=1, max_length=255)
-    answer_key_type: ANSWER_KEY_TYPES | None = None
     files: list[dict] | None = None
-    objection_url: str | None = None
     objection_deadline: date | None = None
     published_at: datetime | None = None
 
@@ -248,11 +231,8 @@ class AnswerKeyResponse(BaseModel):
     slug: str
     job_id: uuid.UUID | None
     admission_id: uuid.UUID | None
-    phase_number: int | None
     title: str
-    answer_key_type: str
     files: list
-    objection_url: str | None
     objection_deadline: date | None
     published_at: datetime | None
     created_at: datetime
@@ -269,26 +249,20 @@ RESULT_TYPES = Literal["shortlist", "cutoff", "merit_list", "final"]
 class ResultCreateRequest(BaseModel):
     job_id: uuid.UUID | None = None
     admission_id: uuid.UUID | None = None
-    phase_number: int | None = Field(None, ge=1, le=10)
     slug: str = Field(min_length=1, max_length=500, pattern=SLUG_PATTERN)
     title: str = Field(min_length=1, max_length=255)
     result_type: RESULT_TYPES
-    download_url: str | None = None
     cutoff_marks: dict | None = None
     total_qualified: int | None = Field(None, ge=0)
-    notes: str | None = None
     published_at: datetime | None = None
 
 
 class ResultUpdateRequest(BaseModel):
-    phase_number: int | None = None
     slug: str | None = Field(None, min_length=1, max_length=500, pattern=SLUG_PATTERN)
     title: str | None = Field(None, min_length=1, max_length=255)
     result_type: RESULT_TYPES | None = None
-    download_url: str | None = None
     cutoff_marks: dict | None = None
     total_qualified: int | None = Field(None, ge=0)
-    notes: str | None = None
     published_at: datetime | None = None
 
 
@@ -297,13 +271,10 @@ class ResultResponse(BaseModel):
     slug: str
     job_id: uuid.UUID | None
     admission_id: uuid.UUID | None
-    phase_number: int | None
     title: str
     result_type: str
-    download_url: str | None
     cutoff_marks: dict | None
     total_qualified: int | None
-    notes: str | None
     published_at: datetime | None
     created_at: datetime
     updated_at: datetime

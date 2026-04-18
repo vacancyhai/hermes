@@ -298,13 +298,10 @@ def upgrade() -> None:
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
         sa.Column("job_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("jobs.id", ondelete="CASCADE"), nullable=True),
         sa.Column("admission_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("admissions.id", ondelete="CASCADE"), nullable=True),
-        sa.Column("phase_number", sa.SmallInteger(), nullable=True),
         sa.Column("title", sa.String(255), nullable=False),
-        sa.Column("download_url", sa.Text(), nullable=False),
         sa.Column("slug", sa.String(500), nullable=True),
         sa.Column("exam_start", sa.Date(), nullable=True),
         sa.Column("exam_end", sa.Date(), nullable=True),
-        sa.Column("notes", sa.Text(), nullable=True),
         sa.Column("published_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("NOW()")),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("NOW()")),
@@ -313,8 +310,8 @@ def upgrade() -> None:
             name="ck_admit_cards_source",
         ),
     )
-    op.create_index("idx_admit_cards_job", "admit_cards", ["job_id", "phase_number"])
-    op.create_index("idx_admit_cards_admission", "admit_cards", ["admission_id", "phase_number"])
+    op.create_index("idx_admit_cards_job", "admit_cards", ["job_id"])
+    op.create_index("idx_admit_cards_admission", "admit_cards", ["admission_id"])
     op.create_index("idx_admit_cards_pub", "admit_cards", ["published_at"])
     op.create_index("ix_admit_cards_slug", "admit_cards", ["slug"], unique=True)
 
@@ -324,25 +321,20 @@ def upgrade() -> None:
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
         sa.Column("job_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("jobs.id", ondelete="CASCADE"), nullable=True),
         sa.Column("admission_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("admissions.id", ondelete="CASCADE"), nullable=True),
-        sa.Column("phase_number", sa.SmallInteger(), nullable=True),
         sa.Column("title", sa.String(255), nullable=False),
-        sa.Column("answer_key_type", sa.String(20), nullable=False, server_default="provisional"),
         sa.Column("slug", sa.String(500), nullable=True),
         sa.Column("files", postgresql.JSONB(), nullable=False, server_default="[]"),
-        sa.Column("objection_url", sa.Text(), nullable=True),
         sa.Column("objection_deadline", sa.Date(), nullable=True),
         sa.Column("published_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("NOW()")),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("NOW()")),
-        sa.CheckConstraint("answer_key_type IN ('provisional', 'final')", name="ck_answer_key_type"),
         sa.CheckConstraint(
             "(job_id IS NOT NULL AND admission_id IS NULL) OR (job_id IS NULL AND admission_id IS NOT NULL)",
             name="ck_answer_keys_source",
         ),
     )
-    op.create_index("idx_answer_keys_job", "answer_keys", ["job_id", "phase_number"])
-    op.create_index("idx_answer_keys_admission", "answer_keys", ["admission_id", "phase_number"])
-    op.create_index("idx_answer_keys_type", "answer_keys", ["job_id", "answer_key_type"])
+    op.create_index("idx_answer_keys_job", "answer_keys", ["job_id"])
+    op.create_index("idx_answer_keys_admission", "answer_keys", ["admission_id"])
     op.create_index("ix_answer_keys_slug", "answer_keys", ["slug"], unique=True)
 
     # ── 12. results ───────────────────────────────────────────────────────────
@@ -351,14 +343,11 @@ def upgrade() -> None:
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
         sa.Column("job_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("jobs.id", ondelete="CASCADE"), nullable=True),
         sa.Column("admission_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("admissions.id", ondelete="CASCADE"), nullable=True),
-        sa.Column("phase_number", sa.SmallInteger(), nullable=True),
         sa.Column("title", sa.String(255), nullable=False),
         sa.Column("result_type", sa.String(20), nullable=False),
         sa.Column("slug", sa.String(500), nullable=True),
-        sa.Column("download_url", sa.Text(), nullable=True),
         sa.Column("cutoff_marks", postgresql.JSONB(), nullable=True),
         sa.Column("total_qualified", sa.Integer(), nullable=True),
-        sa.Column("notes", sa.Text(), nullable=True),
         sa.Column("published_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("NOW()")),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("NOW()")),
@@ -368,8 +357,8 @@ def upgrade() -> None:
             name="ck_results_source",
         ),
     )
-    op.create_index("idx_results_job", "results", ["job_id", "phase_number"])
-    op.create_index("idx_results_admission", "results", ["admission_id", "phase_number"])
+    op.create_index("idx_results_job", "results", ["job_id"])
+    op.create_index("idx_results_admission", "results", ["admission_id"])
     op.create_index("idx_results_pub", "results", ["published_at"])
     op.create_index("ix_results_slug", "results", ["slug"], unique=True)
 

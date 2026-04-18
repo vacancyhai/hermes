@@ -3,7 +3,7 @@
 from datetime import date
 
 from app.models.base import Base, PhaseDocMixin
-from sqlalchemy import Date, String, Text
+from sqlalchemy import Date, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 
@@ -14,10 +14,8 @@ class AdmitCard(PhaseDocMixin, Base):
         String(500), nullable=False, unique=True, index=True
     )
     title: Mapped[str] = mapped_column(String(255), nullable=False)
-    download_url: Mapped[str] = mapped_column(Text, nullable=False)
     exam_start: Mapped[date | None] = mapped_column(Date, nullable=True)
     exam_end: Mapped[date | None] = mapped_column(Date, nullable=True)
-    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     job = relationship("Job", back_populates="admit_cards")
     admission = relationship("Admission", back_populates="admit_cards")
