@@ -10,6 +10,7 @@ Schema is managed with Alembic:
 |------|-------------|
 | `migrations/versions/0001_initial.py` | Complete consolidated schema — all 13 tables including all field changes |
 | `migrations/versions/0002_organizations.py` | Add `organizations` table, `jobs.organization_id` FK, extend `user_tracks` entity_type to include `organization` |
+| `migrations/versions/0003_drop_org_slug.py` | Drop `slug` column and its index from `organizations` — routing changed to UUID-based |
 
 **Apply migrations:**
 ```bash
@@ -67,15 +68,29 @@ docker exec hermes_backend alembic -c /app/alembic.ini upgrade head
                           │ status           │
                           └──────────────────┘
 
-  ┌──────────────┐  1     ┌──────────────────┐  *   ┌─────────────────────────┐
-  │    USERS     │───────►│  USER_TRACKS    │      │   USER_TRACKS entity   │
-  │              │        │                  │      │                         │
-  │ id           │        │ id               │      │ entity_type = 'job'     │
-  │ email        │        │ user_id ─────────┼─────►│   entity_id → JOBS.id   │
-  │ status       │        │ entity_type      │      │                         │
-  └──────┬───────┘        │ entity_id        │      │ entity_type = 'admission'    │
-         │                └──────────────────┘      │   entity_id → ADMISSIONS│
-         │ 1                                        └─────────────────────────┘
+  ┌──────────────┐  1     ┌──────────────────┐  *   ┌────────────────────────────┐
+  │    USERS     │───────►│  USER_TRACKS     │      │   USER_TRACKS entity       │
+  │              │        │                  │      │                            │
+  │ id           │        │ id               │      │ entity_type = 'job'        │
+  │ email        │        │ user_id ─────────┼─────►│   entity_id → JOBS.id      │
+  │ status       │        │ entity_type      │      │                            │
+  └──────┬───────┘        │ entity_id        │      │ entity_type = 'admission'  │
+         │                └──────────────────┘      │   entity_id → ADMISSIONS   │
+         │ 1                                        │                            │
+                                                    │ entity_type = 'organization'│
+                                                    │   entity_id → ORGANIZATIONS│
+                                                    └────────────────────────────┘
+
+  ┌──────────────────┐       organization_id (FK, nullable)
+  │  ORGANIZATIONS   │◄──────────────────────────────────────────── JOBS
+  │                  │
+  │ id (UUID PK)     │
+  │ name (unique)    │
+  │ short_name       │
+  │ logo_url         │
+  │ website_url      │
+  └──────────────────┘
+
          ├──────────────────────┐
          │                      │
          ▼ 0..1                 ▼ *
@@ -104,7 +119,7 @@ docker exec hermes_backend alembic -c /app/alembic.ini upgrade head
 
 ---
 
-## Tables (14 total)
+## Tables (15 total)
 
 ### 1. `users`
 Core user account table. Integrated with Firebase Auth.
@@ -151,7 +166,7 @@ Detailed profile information and preferences. One row per user (UNIQUE on `user_
 | `preferred_states` | JSONB | No | States of interest for jobs; default `[]` |
 | `preferred_categories` | JSONB | No | Categories of interest; default `[]` |
 | `fcm_tokens` | JSONB | No | FCM tokens: `[{"token":"…","device_name":"…","registered_at":"…"}]`; default `[]` |
-| `followed_organizations` | JSONB | No | Org names user follows; default `[]` |
+| `followed_organizations` | JSONB | No | **Deprecated** — legacy org names list; superseded by `user_tracks` with `entity_type='organization'`; default `[]` |
 | `updated_at` | DateTime | No | Last update timestamp |
 
 **Indexes:** GIN on `education`, GIN on `notification_preferences`
@@ -182,19 +197,27 @@ Internal staff accounts (Admin/Operator).
 ---
 
 ### 4. `organizations`
-Organization registry — backfilled from `jobs.organization` on migration.
+Organization registry — backfilled from `jobs.organization` on migration. Identified by UUID; no slug needed.
 
 | Column | Type | Nullable | Description |
 |--------|------|----------|-----------|
 | `id` | UUID (PK) | No | Auto-generated |
 | `name` | String(255) | No | Full name (unique, indexed) — e.g. "Staff Selection Commission" |
-| `slug` | String(255) | No | URL slug (unique, indexed) — e.g. "staff-selection-commission" |
 | `short_name` | String(50) | Yes | Abbreviation — e.g. "SSC" |
 | `logo_url` | Text | Yes | Logo image URL |
 | `website_url` | Text | Yes | Official website |
 | `created_at` | DateTime | No | Creation timestamp |
 
-**Indexes:** `idx_organizations_slug`, `idx_organizations_name`
+**Indexes:** `idx_organizations_name`
+
+> **No slug:** Organizations are addressed by UUID in all API routes (`GET /api/v1/organizations/{org_id}`). The slug column was dropped in migration `0003_drop_org_slug`.
+
+**Public API routes:**
+- `GET /api/v1/organizations` — list all orgs (with job counts)
+- `GET /api/v1/organizations/tracked` — list orgs the current user follows (auth required)
+- `GET /api/v1/organizations/{org_id}` — org detail + recent jobs
+- `POST /api/v1/organizations/{org_id}/track` — follow org (auth required)
+- `DELETE /api/v1/organizations/{org_id}/track` — unfollow org (auth required)
 
 ---
 
@@ -453,14 +476,14 @@ These are educational admissioninations, not government job recruitments.
 ---
 
 ### 14. `user_tracks`
-Tracks which jobs or admissions a user is tracking for notification delivery.
+Polymorphic tracking table. Records which jobs, admissions, or organizations a user is following. Used to drive notification dispatch.
 
 | Column | Type | Nullable | Description |
 |--------|------|----------|-------------|
 | `id` | UUID (PK) | No | Auto-generated |
 | `user_id` | UUID (FK → `users.id`) | No | CASCADE delete |
 | `entity_type` | String(12) | No | `ck_user_tracks_entity_type`: `job` \| `admission` \| `organization` |
-| `entity_id` | UUID | No | ID of the tracked job or admission |
+| `entity_id` | UUID | No | ID of the tracked entity — `jobs.id`, `admissions.id`, or `organizations.id` |
 | `created_at` | DateTime | No | When the track was created |
 
 > UNIQUE constraint `uq_user_track` on `(user_id, entity_type, entity_id)`. Max 100 tracks per user (enforced in application layer).
