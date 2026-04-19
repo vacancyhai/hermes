@@ -48,6 +48,7 @@ class Job(Base):
     )
     salary_initial: Mapped[int | None] = mapped_column(Integer)
     salary_max: Mapped[int | None] = mapped_column(Integer)
+    links: Mapped[list] = mapped_column(JSONB, nullable=False, server_default="[]")
     salary: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default="{}")
     selection_process: Mapped[list] = mapped_column(
         JSONB, nullable=False, server_default="[]"

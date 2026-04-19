@@ -41,6 +41,7 @@ class JobCreateRequest(BaseModel):
     exam_details: dict = Field(default_factory=dict)
     salary_initial: int | None = None
     salary_max: int | None = None
+    links: list = Field(default_factory=list)
     salary: dict = Field(default_factory=dict)
     selection_process: list = Field(default_factory=list)
     fee_general: int | None = None
@@ -82,6 +83,7 @@ class JobUpdateRequest(BaseModel):
     exam_details: dict | None = None
     salary_initial: int | None = None
     salary_max: int | None = None
+    links: list | None = None
     salary: dict | None = None
     selection_process: list | None = None
     fee_general: int | None = None
@@ -127,6 +129,7 @@ class JobResponse(BaseModel):
     exam_details: dict
     salary_initial: int | None
     salary_max: int | None
+    links: list
     salary: dict
     selection_process: list
     fee_general: int | None
