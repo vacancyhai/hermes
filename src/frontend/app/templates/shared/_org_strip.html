@@ -3,7 +3,7 @@
     <div class="org-strip-label">&#127970; Organizations</div>
     <div class="org-strip">
         {% for org in organizations %}
-        {% set is_tracking = org.id|string in (tracked_org_ids or set()) %}
+        {% set is_tracking = tracked_org_ids is defined and org.id|string in tracked_org_ids %}
         <div class="org-chip">
             {% if org.logo_url %}
             <img src="{{ org.logo_url }}" alt="{{ org.short_name or org.name }}" class="org-chip-logo">
