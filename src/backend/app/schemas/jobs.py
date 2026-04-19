@@ -21,6 +21,7 @@ class JobCreateRequest(BaseModel):
     job_title: str = Field(min_length=1, max_length=500)
     slug: str = Field(min_length=1, max_length=500, pattern=SLUG_PATTERN)
     organization: str = Field(min_length=1, max_length=255)
+    organization_id: uuid.UUID | None = None
     department: str | None = None
     employment_type: EMPLOYMENT_TYPES | None = "permanent"
     qualification_level: QUALIFICATION_LEVELS | None = None
@@ -63,6 +64,7 @@ class JobUpdateRequest(BaseModel):
     job_title: str | None = None
     slug: str | None = Field(None, min_length=1, max_length=500, pattern=SLUG_PATTERN)
     organization: str | None = None
+    organization_id: uuid.UUID | None = None
     department: str | None = None
     employment_type: EMPLOYMENT_TYPES | None = None
     qualification_level: QUALIFICATION_LEVELS | None = None
@@ -109,6 +111,7 @@ class JobResponse(BaseModel):
     job_title: str
     slug: str
     organization: str
+    organization_id: uuid.UUID | None = None
     department: str | None
     employment_type: str | None
     qualification_level: str | None

@@ -35,6 +35,7 @@ from app.models.admission import Admission
 from app.models.admit_card import AdmitCard
 from app.models.answer_key import AnswerKey
 from app.models.job import Job
+from app.models.organization import Organization
 from app.models.result import Result
 from app.models.user import User
 from app.models.user_profile import UserProfile
@@ -360,6 +361,7 @@ async def create_job(
         job_title=body.job_title,
         slug=slug,
         organization=body.organization,
+        organization_id=body.organization_id,
         department=body.department,
         employment_type=body.employment_type,
         qualification_level=body.qualification_level,
@@ -884,3 +886,185 @@ async def admin_logs(
             "has_more": (offset + limit) < total,
         },
     }
+
+
+# ─── Organizations ────────────────────────────────────────────────────────────
+
+
+def _slugify(name: str) -> str:
+    import re
+
+    s = re.sub(r"[^a-zA-Z0-9\s]", "", name)
+    return re.sub(r"\s+", "-", s).lower().strip("-")
+
+
+@router.get("/organizations")
+async def admin_list_organizations(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    admin: Annotated[Any, Depends(require_operator)],
+    limit: Annotated[int, Query(ge=1, le=200)] = 200,
+    offset: Annotated[int, Query(ge=0)] = 0,
+    search: Annotated[str | None, Query(max_length=255)] = None,
+):
+    """List all organizations."""
+    q = select(Organization).order_by(Organization.name)
+    cq = select(func.count(Organization.id))
+    if search:
+        q = q.where(Organization.name.ilike(f"%{search}%"))
+        cq = cq.where(Organization.name.ilike(f"%{search}%"))
+    total = (await db.execute(cq)).scalar()
+    orgs = (await db.execute(q.offset(offset).limit(limit))).scalars().all()
+    return {
+        "data": [
+            {
+                "id": str(o.id),
+                "name": o.name,
+                "slug": o.slug,
+                "short_name": o.short_name,
+                "logo_url": o.logo_url,
+                "website_url": o.website_url,
+                "created_at": o.created_at.isoformat() if o.created_at else None,
+            }
+            for o in orgs
+        ],
+        "total": total,
+    }
+
+
+@router.post("/organizations", status_code=status.HTTP_201_CREATED)
+async def admin_create_organization(
+    body: dict,
+    request: Request,
+    current_admin: Annotated[Any, Depends(require_operator)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Create a new organization."""
+    name = (body.get("name") or "").strip()
+    if not name:
+        raise HTTPException(status_code=422, detail="name is required")
+    slug = (body.get("slug") or _slugify(name)).strip()
+    existing = (
+        await db.execute(select(Organization).where(Organization.name == name))
+    ).scalar_one_or_none()
+    if existing:
+        raise HTTPException(
+            status_code=409, detail=f"Organization '{name}' already exists"
+        )
+    slug_exists = (
+        await db.execute(select(Organization).where(Organization.slug == slug))
+    ).scalar_one_or_none()
+    if slug_exists:
+        raise HTTPException(status_code=409, detail=f"Slug '{slug}' already in use")
+    org = Organization(
+        name=name,
+        slug=slug,
+        short_name=(body.get("short_name") or "").strip() or None,
+        logo_url=(body.get("logo_url") or "").strip() or None,
+        website_url=(body.get("website_url") or "").strip() or None,
+    )
+    db.add(org)
+    await db.flush()
+    await _log_action(
+        db,
+        current_admin,
+        "create_organization",
+        "organization",
+        org.id,
+        details=f"Created organization: {name}",
+        request=request,
+    )
+    return {
+        "id": str(org.id),
+        "name": org.name,
+        "slug": org.slug,
+        "short_name": org.short_name,
+        "logo_url": org.logo_url,
+        "website_url": org.website_url,
+    }
+
+
+@router.get("/organizations/{org_id}")
+async def admin_get_organization(
+    org_id: uuid.UUID,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    admin: Annotated[Any, Depends(require_operator)],
+):
+    """Get a single organization by ID."""
+    org = (
+        await db.execute(select(Organization).where(Organization.id == org_id))
+    ).scalar_one_or_none()
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found")
+    return {
+        "id": str(org.id),
+        "name": org.name,
+        "slug": org.slug,
+        "short_name": org.short_name,
+        "logo_url": org.logo_url,
+        "website_url": org.website_url,
+        "created_at": org.created_at.isoformat() if org.created_at else None,
+    }
+
+
+@router.put("/organizations/{org_id}")
+async def admin_update_organization(
+    org_id: uuid.UUID,
+    body: dict,
+    request: Request,
+    current_admin: Annotated[Any, Depends(require_operator)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Update an organization."""
+    org = (
+        await db.execute(select(Organization).where(Organization.id == org_id))
+    ).scalar_one_or_none()
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found")
+    for field in ("name", "slug", "short_name", "logo_url", "website_url"):
+        if field in body:
+            val = (body[field] or "").strip() or None
+            if field in ("name", "slug") and not val:
+                raise HTTPException(status_code=422, detail=f"{field} cannot be empty")
+            setattr(org, field, val)
+    await _log_action(
+        db,
+        current_admin,
+        "update_organization",
+        "organization",
+        org.id,
+        details=f"Updated organization: {org.name}",
+        request=request,
+    )
+    return {
+        "id": str(org.id),
+        "name": org.name,
+        "slug": org.slug,
+        "short_name": org.short_name,
+        "logo_url": org.logo_url,
+        "website_url": org.website_url,
+    }
+
+
+@router.delete("/organizations/{org_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def admin_delete_organization(
+    org_id: uuid.UUID,
+    request: Request,
+    current_admin: Annotated[Any, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Delete an organization (admin only). Jobs linked will have organization_id set to NULL."""
+    org = (
+        await db.execute(select(Organization).where(Organization.id == org_id))
+    ).scalar_one_or_none()
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found")
+    await _log_action(
+        db,
+        current_admin,
+        "delete_organization",
+        "organization",
+        org_id,
+        details=f"Deleted organization: {org.name}",
+        request=request,
+    )
+    await db.delete(org)

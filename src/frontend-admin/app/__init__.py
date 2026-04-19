@@ -23,6 +23,10 @@ Routes:
   /users/<id>/suspend             — Toggle user suspend/activate
   /users/<id>/delete              — Permanently delete user
   /logs                           — Admin audit log viewer
+  /organizations                   — Organization management (list)
+  /organizations/new               — Create organization
+  /organizations/<id>/edit         — Edit organization
+  /organizations/<id>/delete       — POST: delete organization
 """
 
 import base64
@@ -68,6 +72,8 @@ _API_ADMIN_RESULTS = "/admin/results"
 _API_ADMIN_ADMISSIONS = "/admin/admissions"
 _CONTENT_TYPE_JSON = "application/json"
 _URL_USERS = "/users"
+_URL_ORGANIZATIONS = "/organizations"
+_API_ADMIN_ORGANIZATIONS = "/admin/organizations"
 
 _DOC_TYPE_API = {
     "admit-cards": _API_ADMIN_ADMIT_CARDS,
@@ -314,6 +320,8 @@ def new_job():
         _pick_text_fields(form, ["job_title", "slug", "organization", "department",
                                   "qualification_level", "employment_type",
                                   "description", "short_description", "source_url"], payload)
+        if form.get("organization_id"):
+            payload["organization_id"] = form["organization_id"]
         _pick_int_fields(form, ["total_vacancies", "fee_general", "fee_obc", "fee_sc_st",
                                  "fee_ews", "fee_female", "salary_initial", "salary_max"], payload)
         _pick_date_fields(form, ["notification_date", "application_start", "application_end",
@@ -353,7 +361,9 @@ def new_job():
         flash(detail, "error")
         return render_template("jobs/job_create.html")
 
-    return render_template("jobs/job_create.html")
+    orgs_resp = current_app.api_client.get(_API_ADMIN_ORGANIZATIONS, token=token, params={"limit": 200})
+    organizations = orgs_resp.json().get("data", []) if orgs_resp.ok else []
+    return render_template("jobs/job_create.html", organizations=organizations)
 
 
 @bp.route("/jobs/<job_id>/delete", methods=["POST"])
@@ -383,6 +393,8 @@ def edit_job(job_id):
         _pick_text_fields(form, ["job_title", "slug", "organization", "department",
                                   "qualification_level", "description",
                                   "short_description", "source_url", "status"], update)
+        if form.get("organization_id"):
+            update["organization_id"] = form["organization_id"]
         _pick_int_fields(form, ["total_vacancies", "fee_general", "fee_obc", "fee_sc_st",
                                  "fee_ews", "fee_female", "salary_initial", "salary_max"], update)
         _pick_date_fields(form, ["notification_date", "application_start",
@@ -435,9 +447,13 @@ def edit_job(job_id):
         f"{_API_ADMIN_RESULTS}?job_id={job_id}&limit=100", token=token
     )
 
+    orgs_resp = current_app.api_client.get(_API_ADMIN_ORGANIZATIONS, token=token, params={"limit": 200})
+    organizations = orgs_resp.json().get("data", []) if orgs_resp.ok else []
+
     return render_template(
         "jobs/job_edit.html",
         job=job,
+        organizations=organizations,
         admit_cards=ac_resp.json().get("data", []) if ac_resp.ok else [],
         answer_keys=ak_resp.json().get("data", []) if ak_resp.ok else [],
         results=re_resp.json().get("data", []) if re_resp.ok else [],
@@ -598,7 +614,9 @@ def new_admission():
             return redirect(f"/admissions/{admission_id}/edit")
         detail = resp.json().get("detail", "Failed to create admission") if resp.headers.get("content-type", "").startswith(_CONTENT_TYPE_JSON) else "Failed to create admission"
         flash(detail, "error")
-    return render_template("admissions/admission_create.html")
+    orgs_resp = current_app.api_client.get(_API_ADMIN_ORGANIZATIONS, token=token, params={"limit": 200})
+    organizations = orgs_resp.json().get("data", []) if orgs_resp.ok else []
+    return render_template("admissions/admission_create.html", organizations=organizations)
 
 
 @bp.route("/admissions/<admission_id>/edit", methods=["GET", "POST"])  # NOSONAR
@@ -650,9 +668,13 @@ def edit_admission(admission_id):
         f"{_API_ADMIN_RESULTS}?admission_id={admission_id}&limit=100", token=token
     )
 
+    orgs_resp = current_app.api_client.get(_API_ADMIN_ORGANIZATIONS, token=token, params={"limit": 200})
+    organizations = orgs_resp.json().get("data", []) if orgs_resp.ok else []
+
     return render_template(
         "admissions/admission_edit.html",
         admission=resp_detail,
+        organizations=organizations,
         admit_cards=ac_resp.json().get("data", []) if ac_resp.ok else [],
         answer_keys=ak_resp.json().get("data", []) if ak_resp.ok else [],
         results=re_resp.json().get("data", []) if re_resp.ok else [],
@@ -686,6 +708,81 @@ def admission_delete_doc(admission_id, doc_type, doc_id):
     current_app.api_client.delete(f"/admin/{doc_type}/{doc_id}", token=token)
     flash("Document deleted.", "success")
     return redirect(f"/admissions/{admission_id}/edit#docs")
+
+
+# --- Organization Management ---
+
+
+@bp.route(_URL_ORGANIZATIONS, methods=["GET"])
+def organizations():
+    token = session.get("token")
+    if not token:
+        return redirect(_URL_LOGIN)
+    resp = current_app.api_client.get(_API_ADMIN_ORGANIZATIONS, token=token, params={"limit": 200})
+    data = resp.json() if resp.ok else {"data": [], "total": 0}
+    return render_template("organizations/organizations.html", organizations=data["data"], total=data.get("total", 0))
+
+
+@bp.route("/organizations/new", methods=["GET", "POST"])  # NOSONAR
+def new_organization():
+    token = session.get("token")
+    if not token:
+        return redirect(_URL_LOGIN)
+    if request.method == "POST":
+        form = request.form.to_dict()
+        payload = {
+            "name": form.get("name", "").strip(),
+            "slug": form.get("slug", "").strip() or None,
+            "short_name": form.get("short_name", "").strip() or None,
+            "logo_url": form.get("logo_url", "").strip() or None,
+            "website_url": form.get("website_url", "").strip() or None,
+        }
+        resp = current_app.api_client.post(_API_ADMIN_ORGANIZATIONS, token=token, json=payload)
+        if resp.ok:
+            flash("Organization created.", "success")
+            return redirect(_URL_ORGANIZATIONS)
+        detail = resp.json().get("detail", "Failed to create organization") if resp.headers.get("content-type", "").startswith(_CONTENT_TYPE_JSON) else "Failed to create organization"
+        flash(detail, "error")
+    return render_template("organizations/org_create.html")
+
+
+@bp.route("/organizations/<org_id>/edit", methods=["GET", "POST"])  # NOSONAR
+def edit_organization(org_id):
+    token = session.get("token")
+    if not token:
+        return redirect(_URL_LOGIN)
+    if request.method == "POST":
+        form = request.form.to_dict()
+        payload = {
+            "name": form.get("name", "").strip(),
+            "slug": form.get("slug", "").strip() or None,
+            "short_name": form.get("short_name", "").strip() or None,
+            "logo_url": form.get("logo_url", "").strip() or None,
+            "website_url": form.get("website_url", "").strip() or None,
+        }
+        resp = current_app.api_client.put(f"/admin/organizations/{org_id}", token=token, json=payload)
+        if resp.ok:
+            flash("Organization updated.", "success")
+        else:
+            detail = resp.json().get("detail", "Failed to update") if resp.headers.get("content-type", "").startswith(_CONTENT_TYPE_JSON) else "Failed to update"
+            flash(detail, "error")
+        return redirect(f"/organizations/{org_id}/edit")
+    resp = current_app.api_client.get(f"/admin/organizations/{org_id}", token=token)
+    if not resp.ok:
+        flash("Organization not found.", "error")
+        return redirect(_URL_ORGANIZATIONS)
+    org = resp.json()
+    return render_template("organizations/org_edit.html", org=org)
+
+
+@bp.route("/organizations/<org_id>/delete", methods=["POST"])
+def delete_organization(org_id):
+    token = session.get("token")
+    if not token:
+        return redirect(_URL_LOGIN)
+    current_app.api_client.delete(f"/admin/organizations/{org_id}", token=token)
+    flash("Organization deleted.", "success")
+    return redirect(_URL_ORGANIZATIONS)
 
 
 # --- Audit Logs ---

@@ -44,6 +44,14 @@
                 </div>
                 <div class="form-group col-span-2">
                     <label for="ec_conducting_body">Conducting Body <span class="req">*</span></label>
+                    {% if organizations %}
+                    <select id="ec_org_picker" onchange="pickOrg(this)" style="margin-bottom:.35rem">
+                        <option value="">— Pick from organizations (optional) —</option>
+                        {% for org in organizations %}
+                        <option value="{{ org.name }}">{{ org.name }}{% if org.short_name %} ({{ org.short_name }}){% endif %}</option>
+                        {% endfor %}
+                    </select>
+                    {% endif %}
                     <input id="ec_conducting_body" type="text" name="conducting_body" required
                            placeholder="e.g. National Testing Agency">
                 </div>
@@ -573,4 +581,12 @@ function toggleExPhaseFields(sel) {
 @media(max-width:768px){.form-grid-3{grid-template-columns:1fr 1fr}.col-span-3{grid-column:span 2}.fee-grid{grid-template-columns:repeat(3,1fr)}.page-header-row{flex-direction:column}.header-actions{width:100%;justify-content:flex-end}}
 @media(max-width:480px){.form-grid-3{grid-template-columns:1fr}.col-span-2,.col-span-3{grid-column:span 1}.fee-grid{grid-template-columns:1fr 1fr}}
 </style>
+<script>
+function pickOrg(sel) {
+    if (sel.value) {
+        document.getElementById('ec_conducting_body').value = sel.value;
+        sel.value = '';
+    }
+}
+</script>
 {% endblock %}
