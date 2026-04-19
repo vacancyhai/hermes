@@ -313,35 +313,13 @@ payload["published_at"] = form.get("published_at") or None
 
 ---
 
-### Issue #11 — Public Frontend Pe Admit Card/Answer Key/Result Detail Pages Nahi Hain
+### Issue #11 — ~~Public Frontend Pe Admit Card/Answer Key/Result Detail Pages Nahi Hain~~ ✅ Already Fixed
 
-**Kya problem hai?**
-Backend pe ye public endpoints exist karte hain:
-- `GET /api/v1/admit-cards/{slug}`
-- `GET /api/v1/answer-keys/{slug}`
-- `GET /api/v1/results/{slug}`
-
-Lekin `src/frontend/app/__init__.py` mein koi route nahi hai in slugs ko render karne ke liye. User kisi admit card ke detail page pe ja hi nahi sakta directly.
-
-**Kyun hua?**
-Backend API ready hai, lekin frontend routes aur templates banana reh gaya.
-
-**Kaise fix karein?**
-`src/frontend/app/__init__.py` mein:
-```python
-@bp.route("/admit-cards/<slug>")
-def admit_card_detail(slug):
-    resp = current_app.api_client.get(f"/admit-cards/{slug}")
-    if not resp.ok:
-        abort(404)
-    return render_template("admit_cards/detail.html", card=resp.json())
-```
-Similarly answer keys aur results ke liye.
-
-**Fix ke baad kya hoga?**
-- Users direct URL se admit card detail dekh sakenge
-- Share button aur SEO ke liye proper URLs ban sakenge
-- Notifications mein `action_url` actually kisi useful page pe le jayega
+**Status:** Yeh issue already resolved hai. Routes aur templates dono exist karte hain:
+- `src/frontend/app/__init__.py` line 833: `/admit-cards/<slug>` → `admit_card_detail()`
+- `src/frontend/app/__init__.py` line 897: `/answer-keys/<slug>` → `answer_key_detail()`
+- `src/frontend/app/__init__.py` line 961: `/results/<slug>` → `result_detail()`
+- Templates: `admit_cards/detail.html`, `answer_keys/detail.html`, `results/detail.html` — sab exist karte hain.
 
 ---
 
