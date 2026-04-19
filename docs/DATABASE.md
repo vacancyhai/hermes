@@ -207,7 +207,6 @@ Government job vacancies. Document releases (admit cards, answer keys, results) 
 | `exam_end` | Date | Yes | Date of last phase exam |
 | `result_date` | Date | Yes | Expected result date |
 | `exam_details` | JSONB | No | Exam pattern, phases; default `{}` |
-| `links` | JSONB | No | Important links (application portal, notice PDF, etc.); default `[]` |
 | `salary_initial` | Integer | Yes | Minimum pay (INR) |
 | `salary_max` | Integer | Yes | Maximum pay (INR) |
 | `salary` | JSONB | No | Pay scale, level, allowances; default `{}` |
@@ -224,6 +223,7 @@ Government job vacancies. Document releases (admit cards, answer keys, results) 
 | `published_at` | DateTime | Yes | When job was approved and published |
 | `created_at` | DateTime | No | Creation timestamp |
 | `updated_at` | DateTime | No | Last update timestamp |
+| `links` | JSONB | No | Important links (application portal, notice PDF, etc.); default `[]` |
 | `search_vector` | tsvector | — | GENERATED ALWAYS (job_title A, organization B, description C) — GIN indexed |
 
 **Indexes:** `idx_jobs_organization`, `idx_jobs_status_created`, `idx_jobs_qual_level`, `idx_jobs_application_end`, `idx_jobs_org_status`, GIN on `eligibility`, GIN on `search_vector`
