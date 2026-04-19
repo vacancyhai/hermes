@@ -112,6 +112,36 @@ async def list_organizations(
     }
 
 
+@router.get("/api/v1/organizations/tracked")
+async def list_tracked_organizations(
+    current_user: Annotated[Any, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """List all organizations followed by the current user."""
+    user, _ = current_user
+    rows = (
+        (
+            await db.execute(
+                select(UserTrack).where(
+                    UserTrack.user_id == user.id,
+                    UserTrack.entity_type == "organization",
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    org_ids = [r.entity_id for r in rows]
+    if not org_ids:
+        return {"data": []}
+    orgs = (
+        (await db.execute(select(Organization).where(Organization.id.in_(org_ids))))
+        .scalars()
+        .all()
+    )
+    return {"data": [_org_to_dict(o) for o in orgs]}
+
+
 @router.get("/api/v1/organizations/{slug}")
 async def get_organization(
     slug: str,
@@ -153,36 +183,6 @@ async def get_organization(
 
 
 # ── Authenticated track endpoints ────────────────────────────────────────────────
-
-
-@router.get("/api/v1/organizations/tracked")
-async def list_tracked_organizations(
-    current_user: Annotated[Any, Depends(get_current_user)],
-    db: Annotated[AsyncSession, Depends(get_db)],
-):
-    """List all organizations followed by the current user."""
-    user, _ = current_user
-    rows = (
-        (
-            await db.execute(
-                select(UserTrack).where(
-                    UserTrack.user_id == user.id,
-                    UserTrack.entity_type == "organization",
-                )
-            )
-        )
-        .scalars()
-        .all()
-    )
-    org_ids = [r.entity_id for r in rows]
-    if not org_ids:
-        return {"data": []}
-    orgs = (
-        (await db.execute(select(Organization).where(Organization.id.in_(org_ids))))
-        .scalars()
-        .all()
-    )
-    return {"data": [_org_to_dict(o) for o in orgs]}
 
 
 @router.post("/api/v1/organizations/{org_id}/track", status_code=status.HTTP_200_OK)
