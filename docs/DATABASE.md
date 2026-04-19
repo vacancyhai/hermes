@@ -11,6 +11,7 @@ Schema is managed with Alembic:
 | `migrations/versions/0001_initial.py` | Complete consolidated schema — all 13 tables including all field changes |
 | `migrations/versions/0002_organizations.py` | Add `organizations` table, `jobs.organization_id` FK, extend `user_tracks` entity_type to include `organization` |
 | `migrations/versions/0003_drop_org_slug.py` | Drop `slug` column and its index from `organizations` — routing changed to UUID-based |
+| `migrations/versions/0004_admissions_organization_id.py` | Add `admissions.organization_id` FK → `organizations.id` (SET NULL on delete) with index |
 
 **Apply migrations:**
 ```bash
@@ -83,6 +84,7 @@ docker exec hermes_backend alembic -c /app/alembic.ini upgrade head
 
   ┌──────────────────┐       organization_id (FK, nullable)
   │  ORGANIZATIONS   │◄──────────────────────────────────────────── JOBS
+  │                  │◄──────────────────────────────────────────── ADMISSIONS
   │                  │
   │ id (UUID PK)     │
   │ name (unique)    │
@@ -213,9 +215,9 @@ Organization registry — backfilled from `jobs.organization` on migration. Iden
 > **No slug:** Organizations are addressed by UUID in all API routes (`GET /api/v1/organizations/{org_id}`). The slug column was dropped in migration `0003_drop_org_slug`.
 
 **Public API routes:**
-- `GET /api/v1/organizations` — list all orgs (with job counts)
+- `GET /api/v1/organizations` — list all orgs (with `job_count` + `admission_count`)
 - `GET /api/v1/organizations/tracked` — list orgs the current user follows (auth required)
-- `GET /api/v1/organizations/{org_id}` — org detail + recent jobs
+- `GET /api/v1/organizations/{org_id}` — org detail + recent jobs and admissions
 - `POST /api/v1/organizations/{org_id}/track` — follow org (auth required)
 - `DELETE /api/v1/organizations/{org_id}/track` — unfollow org (auth required)
 
@@ -433,6 +435,7 @@ These are educational admissioninations, not government job recruitments.
 |--------|------|----------|-------------|
 | `id` | UUID (PK) | No | Auto-generated |
 | `slug` | String(500) | No | URL slug (unique) |
+| `organization_id` | UUID (FK → `organizations.id`) | Yes | SET NULL on delete; links to `organizations` table |
 | `admission_name` | String(500) | No | E.g. "NTA NEET PG 2026 — Medical PG Entrance" |
 | `conducting_body` | String(255) | No | E.g. "National Testing Agency" |
 | `counselling_body` | String(255) | Yes | E.g. "MCC", "JoSAA", "CLAT Consortium" |
@@ -445,6 +448,8 @@ These are educational admissioninations, not government job recruitments.
 | `application_start` | Date | Yes | Registration opens |
 | `application_end` | Date | Yes | Registration deadline |
 | `admission_date` | Date | Yes | Date of main admission |
+| `exam_start` | Date | Yes | Exam start date |
+| `exam_end` | Date | Yes | Exam end date |
 | `result_date` | Date | Yes | Expected result date |
 | `counselling_start` | Date | Yes | Counselling round start |
 | `fee_general` | Integer | Yes | Application fee — General/UR (INR) |
@@ -461,7 +466,7 @@ These are educational admissioninations, not government job recruitments.
 | `updated_at` | DateTime | No | Last update timestamp |
 | `search_vector` | tsvector | — | GENERATED ALWAYS (admission_name A, conducting_body B, description C) — GIN indexed |
 
-**Indexes:** `idx_admissions_slug` (unique), `idx_admissions_stream_status`, `idx_admissions_search` (GIN)
+**Indexes:** `idx_admissions_slug` (unique), `idx_admissions_stream_status`, `idx_admissions_search` (GIN), `idx_admissions_organization_id`
 
 **Key design difference from `jobs`:**
 
@@ -470,6 +475,7 @@ These are educational admissioninations, not government job recruitments.
 | Outcome | Employment (govt job) | Education (college/IIT/NLU seat) |
 | Vacancies | `total_vacancies` + `vacancy_breakdown` | `seats_info` (seats by institution) |
 | Salary | `salary_initial`, `salary_max` | — (not applicable) |
+| Organization FK | `organization_id` → `organizations.id` | `organization_id` → `organizations.id` |
 | Counselling | — | `counselling_body`, `counselling_start` |
 | Attempts | — | `eligibility.attempts_limit` |
 
