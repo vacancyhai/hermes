@@ -4,7 +4,7 @@
 > Yeh document un saare gaps ko cover karta hai jo project ke full audit mein mile.
 > Har issue mein: **Kya problem hai → Kyun hua → Kaise fix karein → Fix ke baad kya hoga**
 >
-> **Fixed so far:** #1 (jobs.links), #2 (answer_keys index), #3 (user_tracks rename), #10 (published_at form), #11 (detail pages already existed)
+> **Fixed so far:** #1 (jobs.links), #2 (answer_keys index), #3 (user_tracks rename), #10 (published_at form), #11 (detail pages already existed), #12 (DESIGN.md status line)
 
 ---
 
@@ -190,19 +190,6 @@ def test_track_status_after_tracking(user_client, job):
 
 ---
 
-### Issue #12 — `DESIGN.md` Status Line Purana Hai
-
-**Kya problem hai?**
-`DESIGN.md` line 3 pe:
-> "Phase 8 (OCI deployment) next"
-
-Yeh status ab accurate nahi hai — rename/refactor aur multiple phases already complete ho chuki hain.
-
-**Kaise fix karein?**
-Update karo to reflect current state aur pending items.
-
----
-
 ### Issue #13 — `DIAGRAMS.md` ERD Mein `USER_TRACKS` Label Galat Spacing
 
 **Kya problem hai?**
@@ -218,4 +205,4 @@ ERD mein `USER_TRACKS entity` section mein `entity_type = 'admission'` ke baad e
 | 🟠 P2 | #7, #8, #9 — Test coverage add karo | Medium (3 hrs) | Medium — CI confidence |
 | 🟠 P2 | #5 — Stub task remove ya implement karo | Low (30 min) | Low — dead code |
 | 🟠 P2 | #6 — WhatsApp ya hide karo | High (1 day) | Low (optional feature) |
-| 🟡 P3 | #12, #13 — Docs update | Low (15 min) | Low |
+| 🟡 P3 | #13 — `DIAGRAMS.md` spacing fix | Low (5 min) | Low |

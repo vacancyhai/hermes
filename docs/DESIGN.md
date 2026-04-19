@@ -1,10 +1,10 @@
 # Hermes — System Design Document
 
-> **Status:** Phases 1–7.5 + 10 + 11 + 12 complete. Auth (Firebase — Email/Password with OTP verification, Google OAuth, Phone OTP), job CRUD, full-text search,
-> user profiles, job matching, org follow, application tracking, notifications
-> (email, push, in-app), admin panel, SEO, PDF AI extraction, PWA,
-> security audit + 24 bug fixes, 5-section navigation,
-> admissions, polymorphic document tables, email notifications for account actions — all implemented. Phase 8 (OCI deployment) next.
+> **Status:** Core platform complete. Auth (Email/OTP, Google OAuth, Phone OTP), job & admission CRUD, full-text search,
+> user profiles, job matching, org follow, tracking, notifications (email, push, in-app, Telegram),
+> admin panel, SEO, PDF AI extraction, PWA, security audit,
+> admissions, polymorphic document tables (admit cards, answer keys, results), audit log — all implemented.
+> **Pending:** `send_new_job_notifications` implementation, WhatsApp delivery integration, OCI deployment.
 
 ---
 
