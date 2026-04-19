@@ -21,6 +21,7 @@
         <thead>
             <tr>
                 <th>Name</th>
+                <th>Type</th>
                 <th>Short Name</th>
                 <th>Website</th>
                 <th style="width:120px">Actions</th>
@@ -31,6 +32,15 @@
             <tr>
                 <td>
                     <div style="font-weight:600;color:#111827">{{ org.name }}</div>
+                </td>
+                <td>
+                    {% if org.org_type == 'jobs' %}
+                        <span class="badge badge-info">Jobs</span>
+                    {% elif org.org_type == 'admissions' %}
+                        <span class="badge badge-success">Admissions</span>
+                    {% else %}
+                        <span class="badge">Both</span>
+                    {% endif %}
                 </td>
                 <td>
                     {% if org.short_name %}

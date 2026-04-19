@@ -8,6 +8,8 @@ from sqlalchemy import DateTime, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+_ORG_TYPES = ("jobs", "admissions", "both")
+
 
 class Organization(Base):
     __tablename__ = "organizations"
@@ -18,6 +20,10 @@ class Organization(Base):
     name: Mapped[str] = mapped_column(
         String(255), nullable=False, unique=True, index=True
     )
+    slug: Mapped[str] = mapped_column(
+        String(255), nullable=False, unique=True, index=True
+    )
+    org_type: Mapped[str] = mapped_column(String(20), nullable=False, default="both")
     short_name: Mapped[str | None] = mapped_column(String(50))
     logo_url: Mapped[str | None] = mapped_column(Text)
     website_url: Mapped[str | None] = mapped_column(Text)

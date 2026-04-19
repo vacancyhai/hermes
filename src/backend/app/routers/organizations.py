@@ -64,6 +64,8 @@ def _org_to_dict(
     return {
         "id": str(org.id),
         "name": org.name,
+        "slug": org.slug,
+        "org_type": org.org_type,
         "short_name": org.short_name,
         "logo_url": org.logo_url,
         "website_url": org.website_url,

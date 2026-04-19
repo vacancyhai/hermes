@@ -38,6 +38,22 @@
                            placeholder="e.g. Staff Selection Commission">
                 </div>
                 <div class="form-group">
+                    <label for="slug">Slug <span class="req">*</span></label>
+                    <input id="slug" type="text" name="slug" required
+                           value="{{ org.slug or '' }}"
+                           placeholder="e.g. staff-selection-commission"
+                           pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
+                           title="Lowercase letters, numbers and hyphens only">
+                </div>
+                <div class="form-group">
+                    <label for="org_type">Type <span class="req">*</span></label>
+                    <select id="org_type" name="org_type" required>
+                        <option value="both" {% if org.org_type == 'both' or not org.org_type %}selected{% endif %}>Both (Jobs &amp; Admissions)</option>
+                        <option value="jobs" {% if org.org_type == 'jobs' %}selected{% endif %}>Jobs only</option>
+                        <option value="admissions" {% if org.org_type == 'admissions' %}selected{% endif %}>Admissions only</option>
+                    </select>
+                </div>
+                <div class="form-group">
                     <label for="short_name">Short Name / Abbreviation</label>
                     <input id="short_name" type="text" name="short_name"
                            value="{{ org.short_name or '' }}"
@@ -91,6 +107,8 @@
 .form-group label{font-size:.78rem;font-weight:600;color:#374151}
 .form-group input{padding:.45rem .65rem;border:1px solid #d1d5db;border-radius:.375rem;font-size:.875rem;font-family:inherit;background:#fff}
 .form-group input:focus{outline:none;border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.1)}
+.form-group select{padding:.45rem .65rem;border:1px solid #d1d5db;border-radius:.375rem;font-size:.875rem;font-family:inherit;background:#fff}
+.form-group select:focus{outline:none;border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.1)}
 .req{color:#ef4444}
 </style>
 

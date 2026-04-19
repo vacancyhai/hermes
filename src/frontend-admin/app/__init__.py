@@ -737,6 +737,8 @@ def new_organization():
         form = request.form.to_dict()
         payload = {
             "name": form.get("name", "").strip(),
+            "slug": form.get("slug", "").strip() or None,
+            "org_type": form.get("org_type", "both").strip() or "both",
             "short_name": form.get("short_name", "").strip() or None,
             "logo_url": form.get("logo_url", "").strip() or None,
             "website_url": form.get("website_url", "").strip() or None,
@@ -759,6 +761,8 @@ def edit_organization(org_id):
         form = request.form.to_dict()
         payload = {
             "name": form.get("name", "").strip(),
+            "slug": form.get("slug", "").strip() or None,
+            "org_type": form.get("org_type", "both").strip() or "both",
             "short_name": form.get("short_name", "").strip() or None,
             "logo_url": form.get("logo_url", "").strip() or None,
             "website_url": form.get("website_url", "").strip() or None,

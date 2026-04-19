@@ -34,7 +34,23 @@
                 <div class="form-group col-span-2">
                     <label for="name">Full Name <span class="req">*</span></label>
                     <input id="name" type="text" name="name" required
-                           placeholder="e.g. Staff Selection Commission">
+                           placeholder="e.g. Staff Selection Commission"
+                           oninput="autoSlug(this.value)">
+                </div>
+                <div class="form-group">
+                    <label for="slug">Slug <span class="req">*</span></label>
+                    <input id="slug" type="text" name="slug" required
+                           placeholder="e.g. staff-selection-commission"
+                           pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
+                           title="Lowercase letters, numbers and hyphens only">
+                </div>
+                <div class="form-group">
+                    <label for="org_type">Type <span class="req">*</span></label>
+                    <select id="org_type" name="org_type" required>
+                        <option value="both" selected>Both (Jobs &amp; Admissions)</option>
+                        <option value="jobs">Jobs only</option>
+                        <option value="admissions">Admissions only</option>
+                    </select>
                 </div>
                 <div class="form-group">
                     <label for="short_name">Short Name / Abbreviation</label>
@@ -83,6 +99,13 @@
 .form-group input{padding:.45rem .65rem;border:1px solid #d1d5db;border-radius:.375rem;font-size:.875rem;font-family:inherit;background:#fff}
 .form-group input:focus{outline:none;border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.1)}
 .req{color:#ef4444}
+.form-group select{padding:.45rem .65rem;border:1px solid #d1d5db;border-radius:.375rem;font-size:.875rem;font-family:inherit;background:#fff}
+.form-group select:focus{outline:none;border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.1)}
 </style>
-
+<script>
+function autoSlug(val) {
+    var slug = val.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim().replace(/\s+/g, '-');
+    document.getElementById('slug').value = slug;
+}
+</script>
 {% endblock %}
