@@ -18,9 +18,6 @@ class Organization(Base):
     name: Mapped[str] = mapped_column(
         String(255), nullable=False, unique=True, index=True
     )
-    slug: Mapped[str] = mapped_column(
-        String(255), nullable=False, unique=True, index=True
-    )
     short_name: Mapped[str | None] = mapped_column(String(50))
     logo_url: Mapped[str | None] = mapped_column(Text)
     website_url: Mapped[str | None] = mapped_column(Text)

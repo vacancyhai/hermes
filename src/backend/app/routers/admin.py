@@ -891,13 +891,6 @@ async def admin_logs(
 # ─── Organizations ────────────────────────────────────────────────────────────
 
 
-def _slugify(name: str) -> str:
-    import re
-
-    s = re.sub(r"[^a-zA-Z0-9\s]", "", name)
-    return re.sub(r"\s+", "-", s).lower().strip("-")
-
-
 @router.get("/organizations")
 async def admin_list_organizations(
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -919,7 +912,6 @@ async def admin_list_organizations(
             {
                 "id": str(o.id),
                 "name": o.name,
-                "slug": o.slug,
                 "short_name": o.short_name,
                 "logo_url": o.logo_url,
                 "website_url": o.website_url,
@@ -942,7 +934,6 @@ async def admin_create_organization(
     name = (body.get("name") or "").strip()
     if not name:
         raise HTTPException(status_code=422, detail="name is required")
-    slug = (body.get("slug") or _slugify(name)).strip()
     existing = (
         await db.execute(select(Organization).where(Organization.name == name))
     ).scalar_one_or_none()
@@ -950,14 +941,8 @@ async def admin_create_organization(
         raise HTTPException(
             status_code=409, detail=f"Organization '{name}' already exists"
         )
-    slug_exists = (
-        await db.execute(select(Organization).where(Organization.slug == slug))
-    ).scalar_one_or_none()
-    if slug_exists:
-        raise HTTPException(status_code=409, detail=f"Slug '{slug}' already in use")
     org = Organization(
         name=name,
-        slug=slug,
         short_name=(body.get("short_name") or "").strip() or None,
         logo_url=(body.get("logo_url") or "").strip() or None,
         website_url=(body.get("website_url") or "").strip() or None,
@@ -976,7 +961,6 @@ async def admin_create_organization(
     return {
         "id": str(org.id),
         "name": org.name,
-        "slug": org.slug,
         "short_name": org.short_name,
         "logo_url": org.logo_url,
         "website_url": org.website_url,
@@ -998,7 +982,6 @@ async def admin_get_organization(
     return {
         "id": str(org.id),
         "name": org.name,
-        "slug": org.slug,
         "short_name": org.short_name,
         "logo_url": org.logo_url,
         "website_url": org.website_url,
@@ -1020,11 +1003,11 @@ async def admin_update_organization(
     ).scalar_one_or_none()
     if not org:
         raise HTTPException(status_code=404, detail="Organization not found")
-    for field in ("name", "slug", "short_name", "logo_url", "website_url"):
+    for field in ("name", "short_name", "logo_url", "website_url"):
         if field in body:
             val = (body[field] or "").strip() or None
-            if field in ("name", "slug") and not val:
-                raise HTTPException(status_code=422, detail=f"{field} cannot be empty")
+            if field == "name" and not val:
+                raise HTTPException(status_code=422, detail="name cannot be empty")
             setattr(org, field, val)
     await _log_action(
         db,
@@ -1038,7 +1021,6 @@ async def admin_update_organization(
     return {
         "id": str(org.id),
         "name": org.name,
-        "slug": org.slug,
         "short_name": org.short_name,
         "logo_url": org.logo_url,
         "website_url": org.website_url,

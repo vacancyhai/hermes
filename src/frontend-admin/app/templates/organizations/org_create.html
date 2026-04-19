@@ -34,15 +34,13 @@
                 <div class="form-group col-span-2">
                     <label for="name">Full Name <span class="req">*</span></label>
                     <input id="name" type="text" name="name" required
-                           placeholder="e.g. Staff Selection Commission"
-                           oninput="autoSlug(this.value)">
+                           placeholder="e.g. Staff Selection Commission">
                 </div>
                 <div class="form-group">
                     <label for="short_name">Short Name / Abbreviation</label>
                     <input id="short_name" type="text" name="short_name"
                            placeholder="e.g. SSC" maxlength="50">
                 </div>
-                <input type="hidden" id="slug" name="slug" value="">
                 <div class="form-group">
                     <label for="logo_url">Logo URL</label>
                     <input id="logo_url" type="url" name="logo_url"
@@ -86,15 +84,5 @@
 .form-group input:focus{outline:none;border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.1)}
 .req{color:#ef4444}
 </style>
-
-<script>
-function autoSlug(val) {
-    var slug = val.toLowerCase()
-        .replace(/[^a-z0-9\s]/g, '')
-        .trim()
-        .replace(/\s+/g, '-');
-    document.getElementById('slug').value = slug;
-}
-</script>
 
 {% endblock %}

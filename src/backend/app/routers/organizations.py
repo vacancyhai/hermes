@@ -61,7 +61,6 @@ def _org_to_dict(org: Organization, job_count: int = 0) -> dict:
     return {
         "id": str(org.id),
         "name": org.name,
-        "slug": org.slug,
         "short_name": org.short_name,
         "logo_url": org.logo_url,
         "website_url": org.website_url,
@@ -142,18 +141,13 @@ async def list_tracked_organizations(
     return {"data": [_org_to_dict(o) for o in orgs]}
 
 
-@router.get("/api/v1/organizations/{slug}")
+@router.get("/api/v1/organizations/{org_id}")
 async def get_organization(
-    slug: str,
+    org_id: uuid.UUID,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Get organization detail and its recent active jobs."""
-    result = await db.execute(select(Organization).where(Organization.slug == slug))
-    org = result.scalar_one_or_none()
-    if not org:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found"
-        )
+    org = await _get_org_or_404(org_id, db)
 
     jobs_result = await db.execute(
         select(Job)
