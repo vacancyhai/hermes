@@ -120,6 +120,7 @@ def _add_doc(parent_key: str, parent_id: str, doc_type: str):
     else:
         payload["start_date"] = form.get("start_date") or None
         payload["end_date"] = form.get("end_date") or None
+    payload["published_at"] = form.get("published_at") or None
     current_app.api_client.post(api_url, token=token, json=payload)
     flash(_DOC_FLASH.get(doc_type, "Document added."), "success")
     return redirect(back_url)
