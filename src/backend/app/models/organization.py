@@ -28,3 +28,8 @@ class Organization(Base):
     jobs = relationship(
         "Job", back_populates="organization_ref", foreign_keys="Job.organization_id"
     )
+    admissions = relationship(
+        "Admission",
+        back_populates="organization_ref",
+        foreign_keys="Admission.organization_id",
+    )

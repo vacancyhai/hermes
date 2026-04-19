@@ -14,6 +14,7 @@ import uuid
 from typing import Annotated, Any
 
 from app.dependencies import get_current_user, get_db
+from app.models.admission import Admission
 from app.models.job import Job
 from app.models.organization import Organization
 from app.models.user_track import UserTrack
@@ -57,7 +58,9 @@ async def _count_tracks(user_id: uuid.UUID, db: AsyncSession) -> int:
     return result.scalar()
 
 
-def _org_to_dict(org: Organization, job_count: int = 0) -> dict:
+def _org_to_dict(
+    org: Organization, job_count: int = 0, admission_count: int = 0
+) -> dict:
     return {
         "id": str(org.id),
         "name": org.name,
@@ -65,6 +68,7 @@ def _org_to_dict(org: Organization, job_count: int = 0) -> dict:
         "logo_url": org.logo_url,
         "website_url": org.website_url,
         "job_count": job_count,
+        "admission_count": admission_count,
         "created_at": org.created_at.isoformat() if org.created_at else None,
     }
 
@@ -93,18 +97,30 @@ async def list_organizations(
 
     org_ids = [o.id for o in orgs]
     job_counts: dict = {}
+    admission_counts: dict = {}
     if org_ids:
-        rows = (
+        job_rows = (
             await db.execute(
                 select(Job.organization_id, func.count(Job.id))
                 .where(Job.organization_id.in_(org_ids))
                 .group_by(Job.organization_id)
             )
         ).all()
-        job_counts = {row[0]: row[1] for row in rows}
+        job_counts = {row[0]: row[1] for row in job_rows}
+        adm_rows = (
+            await db.execute(
+                select(Admission.organization_id, func.count(Admission.id))
+                .where(Admission.organization_id.in_(org_ids))
+                .group_by(Admission.organization_id)
+            )
+        ).all()
+        admission_counts = {row[0]: row[1] for row in adm_rows}
 
     return {
-        "data": [_org_to_dict(o, job_counts.get(o.id, 0)) for o in orgs],
+        "data": [
+            _org_to_dict(o, job_counts.get(o.id, 0), admission_counts.get(o.id, 0))
+            for o in orgs
+        ],
         "total": total,
         "limit": limit,
         "offset": offset,

@@ -43,15 +43,16 @@
                            placeholder="e.g. neet-pg-2026" pattern="[a-z0-9]+(?:-[a-z0-9]+)*" title="Lowercase letters, numbers and hyphens only">
                 </div>
                 <div class="form-group col-span-2">
-                    <label for="ec_conducting_body">Conducting Body <span class="req">*</span></label>
-                    {% if organizations %}
-                    <select id="ec_org_picker" onchange="pickOrg(this)" style="margin-bottom:.35rem">
-                        <option value="">— Pick from organizations (optional) —</option>
+                    <label for="ec_org_picker">Organization</label>
+                    <select id="ec_org_picker" name="organization_id" onchange="pickOrg(this)">
+                        <option value="">— Select organization (optional) —</option>
                         {% for org in organizations %}
-                        <option value="{{ org.name }}">{{ org.name }}{% if org.short_name %} ({{ org.short_name }}){% endif %}</option>
+                        <option value="{{ org.id }}" data-name="{{ org.name }}">{{ org.name }}{% if org.short_name %} ({{ org.short_name }}){% endif %}</option>
                         {% endfor %}
                     </select>
-                    {% endif %}
+                </div>
+                <div class="form-group col-span-2">
+                    <label for="ec_conducting_body">Conducting Body <span class="req">*</span></label>
                     <input id="ec_conducting_body" type="text" name="conducting_body" required
                            placeholder="e.g. National Testing Agency">
                 </div>
@@ -583,9 +584,11 @@ function toggleExPhaseFields(sel) {
 </style>
 <script>
 function pickOrg(sel) {
-    if (sel.value) {
-        document.getElementById('ec_conducting_body').value = sel.value;
-        sel.value = '';
+    var opt = sel.options[sel.selectedIndex];
+    if (opt && opt.value) {
+        document.getElementById('ec_conducting_body').value = opt.getAttribute('data-name') || '';
+    } else {
+        document.getElementById('ec_conducting_body').value = '';
     }
 }
 </script>

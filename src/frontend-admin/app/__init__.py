@@ -606,6 +606,8 @@ def new_admission():
                     payload[key] = _json.loads(raw)
                 except Exception:
                     pass
+        if form.get("organization_id"):
+            payload["organization_id"] = form["organization_id"]
         payload.setdefault("status", "active")
         resp = current_app.api_client.post(_API_ADMIN_ADMISSIONS, token=token, json=payload)
         if resp.ok:
@@ -634,6 +636,8 @@ def edit_admission(admission_id):
         _set_optional(form, ["application_start", "application_end", "admission_date",
                               "exam_start", "exam_end",
                               "result_date", "counselling_start"], update)
+        if form.get("organization_id"):
+            update["organization_id"] = form["organization_id"]
         import json as _json
         for json_field, key in [("admission_details_json", "admission_details"),
                                   ("eligibility_json", "eligibility"),

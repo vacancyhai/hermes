@@ -14,6 +14,7 @@ ADMISSION_STATUSES = Literal["upcoming", "active", "inactive", "closed"]
 
 
 class AdmissionCreateRequest(BaseModel):
+    organization_id: uuid.UUID | None = None
     admission_name: str = Field(min_length=1, max_length=500)
     slug: str = Field(
         min_length=1, max_length=500, pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$"
@@ -45,6 +46,7 @@ class AdmissionCreateRequest(BaseModel):
 
 
 class AdmissionUpdateRequest(BaseModel):
+    organization_id: uuid.UUID | None = None
     admission_name: str | None = Field(None, min_length=1, max_length=500)
     slug: str | None = Field(
         None, min_length=1, max_length=500, pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$"
@@ -77,6 +79,7 @@ class AdmissionUpdateRequest(BaseModel):
 
 class AdmissionResponse(BaseModel):
     id: uuid.UUID
+    organization_id: uuid.UUID | None = None
     slug: str
     admission_name: str
     conducting_body: str
@@ -112,6 +115,7 @@ class AdmissionResponse(BaseModel):
 
 class AdmissionListItem(BaseModel):
     id: uuid.UUID
+    organization_id: uuid.UUID | None = None
     slug: str
     admission_name: str
     conducting_body: str

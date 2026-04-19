@@ -251,6 +251,7 @@ async def create_admission(
 
     admission = Admission(
         slug=slug,
+        organization_id=body.organization_id,
         admission_name=body.admission_name,
         conducting_body=body.conducting_body,
         counselling_body=body.counselling_body,
