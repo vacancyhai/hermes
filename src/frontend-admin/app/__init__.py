@@ -313,6 +313,9 @@ def new_job():
     if not token:
         return redirect(_URL_LOGIN)
 
+    orgs_resp = current_app.api_client.get(_API_ADMIN_ORGANIZATIONS, token=token, params={"limit": 200})
+    organizations = orgs_resp.json().get("data", []) if orgs_resp.ok else []
+
     if request.method == "POST":
         import json as _json
         form = request.form.to_dict()
@@ -351,7 +354,7 @@ def new_job():
                     payload["application_details"] = {"important_links": parsed_links}
         except ValueError:
             flash("Invalid form data. Please try again.", "error")
-            return render_template("jobs/job_create.html")
+            return render_template("jobs/job_create.html", organizations=organizations)
         resp = current_app.api_client.post(_API_ADMIN_JOBS, token=token, json=payload)
         if resp.ok:
             job_id = resp.json().get("id")
@@ -359,10 +362,8 @@ def new_job():
             return redirect(f"/jobs/{job_id}/edit")
         detail = resp.json().get("detail", "Failed to create job") if resp.headers.get("content-type", "").startswith(_CONTENT_TYPE_JSON) else "Failed to create job"
         flash(detail, "error")
-        return render_template("jobs/job_create.html")
+        return render_template("jobs/job_create.html", organizations=organizations)
 
-    orgs_resp = current_app.api_client.get(_API_ADMIN_ORGANIZATIONS, token=token, params={"limit": 200})
-    organizations = orgs_resp.json().get("data", []) if orgs_resp.ok else []
     return render_template("jobs/job_create.html", organizations=organizations)
 
 
