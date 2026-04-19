@@ -21,6 +21,7 @@ _CONTENT_TYPE_JSON = "application/json"
 _ERR_MISSING_FIELDS = "Missing fields"
 _API_JOBS = "/jobs"
 _API_ADMISSIONS = "/admissions"
+_API_ORGANIZATIONS = "/organizations"
 _API_ADMIT_CARDS = "/admit-cards"
 _API_ANSWER_KEYS = "/answer-keys"
 _API_RESULTS = "/results"
@@ -121,6 +122,20 @@ def _fetch_tracked_ids():
         {str(j["id"]) for j in data.get("jobs", [])},
         {str(e["id"]) for e in data.get("admissions", [])},
     )
+
+
+def _fetch_organizations(token=None):
+    """Return (organizations list, tracked_org_ids set)."""
+    orgs_resp = current_app.api_client.get(_API_ORGANIZATIONS, params={"limit": 50})
+    orgs = orgs_resp.json().get("data", []) if orgs_resp.ok else []
+    tracked_org_ids = set()
+    if token:
+        w_resp, authed = _try_with_refresh(
+            lambda t: current_app.api_client.get(_API_ORGANIZATIONS + "/tracked", token=t)
+        )
+        if authed and w_resp and w_resp.ok:
+            tracked_org_ids = {str(o["id"]) for o in w_resp.json().get("data", [])}
+    return orgs, tracked_org_ids
 
 
 
@@ -701,12 +716,15 @@ def jobs():
         w_resp = current_app.api_client.get(_API_TRACKED, token=session.get("token"))
         if w_resp.ok:
             tracked_job_ids = {str(j["id"]) for j in w_resp.json().get("jobs", [])}
+    organizations, tracked_org_ids = _fetch_organizations(token)
     return render_template(
         "jobs/list.html",
         jobs=data.get("data", []),
         pagination=data.get("pagination", {}),
         recommended_jobs=recommended_jobs,
         tracked_job_ids=tracked_job_ids,
+        organizations=organizations,
+        tracked_org_ids=tracked_org_ids,
         q=request.args.get("q", ""),
         qualification_level=request.args.get("qualification_level", ""),
         organization=request.args.get("organization", ""),
@@ -779,6 +797,39 @@ def untrack_job(job_id):
     slug = request.form.get("slug")
     back = _safe_back(f"/jobs/{slug}" if slug else "/")
     _, authed = _try_with_refresh(lambda t: current_app.api_client.delete(f"/jobs/{job_id}/track", token=t))
+    if not authed:
+        return redirect(f"/login?next={back}")
+    return redirect(back)
+
+
+# ─── Organization Track ──────────────────────────────────────────────────
+
+
+@bp.route("/organizations/<org_id>/track", methods=["POST"])
+def track_organization(org_id):
+    try:
+        _uuid.UUID(org_id)
+    except ValueError:
+        return render_template(_TEMPLATE_404), 404
+    back = _safe_back("/jobs")
+    resp, authed = _try_with_refresh(
+        lambda t: current_app.api_client.post(f"/organizations/{org_id}/track", token=t)
+    )
+    if not authed:
+        return redirect(f"/login?next={back}")
+    return redirect(back)
+
+
+@bp.route("/organizations/<org_id>/untrack", methods=["POST"])
+def untrack_organization(org_id):
+    try:
+        _uuid.UUID(org_id)
+    except ValueError:
+        return render_template(_TEMPLATE_404), 404
+    back = _safe_back("/jobs")
+    _, authed = _try_with_refresh(
+        lambda t: current_app.api_client.delete(f"/organizations/{org_id}/track", token=t)
+    )
     if not authed:
         return redirect(f"/login?next={back}")
     return redirect(back)
@@ -999,6 +1050,7 @@ def admissions():
         )
         if authed and rec_resp and rec_resp.ok:
             recommended_admissions = rec_resp.json().get("data", [])
+    organizations, tracked_org_ids = _fetch_organizations(token)
     return render_template(
         "admissions/list.html",
         admissions=data.get("data", []),
@@ -1006,6 +1058,8 @@ def admissions():
         recommended_admissions=recommended_admissions,
         tracked_job_ids=tracked_job_ids,
         tracked_admission_ids=tracked_admission_ids,
+        organizations=organizations,
+        tracked_org_ids=tracked_org_ids,
         q=request.args.get("q", ""),
         stream=request.args.get("stream", ""),
         admission_type=request.args.get("admission_type", ""),

@@ -42,14 +42,7 @@
                     <input id="short_name" type="text" name="short_name"
                            placeholder="e.g. SSC" maxlength="50">
                 </div>
-                <div class="form-group">
-                    <label for="slug">Slug <span class="req">*</span></label>
-                    <input id="slug" type="text" name="slug"
-                           placeholder="e.g. staff-selection-commission"
-                           pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
-                           title="Lowercase letters, numbers and hyphens only">
-                    <span style="font-size:.72rem;color:#9ca3af">Auto-generated from name. Editable.</span>
-                </div>
+                <input type="hidden" id="slug" name="slug" value="">
                 <div class="form-group">
                     <label for="logo_url">Logo URL</label>
                     <input id="logo_url" type="url" name="logo_url"

@@ -1,0 +1,42 @@
+{% if organizations %}
+<div class="org-strip-wrap">
+    <div class="org-strip-label">&#127970; Organizations</div>
+    <div class="org-strip">
+        {% for org in organizations %}
+        {% set is_tracking = org.id|string in (tracked_org_ids or set()) %}
+        <div class="org-chip">
+            {% if org.logo_url %}
+            <img src="{{ org.logo_url }}" alt="{{ org.short_name or org.name }}" class="org-chip-logo">
+            {% else %}
+            <span class="org-chip-icon">&#127970;</span>
+            {% endif %}
+            <span class="org-chip-name" title="{{ org.name }}">{{ org.short_name or org.name }}</span>
+            <form method="POST"
+                  action="/organizations/{{ org.id }}/{{ 'untrack' if is_tracking else 'track' }}"
+                  style="display:inline;margin:0">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <button type="submit" class="org-chip-btn {{ 'org-chip-btn--tracking' if is_tracking else '' }}"
+                        title="{{ 'Unfollow ' if is_tracking else 'Follow ' }}{{ org.name }}">
+                    {{ '★' if is_tracking else '☆' }}
+                </button>
+            </form>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<style>
+.org-strip-wrap{margin-bottom:1rem;background:#fff;border:1px solid var(--slate-200);border-radius:var(--radius);padding:.6rem .85rem}
+.org-strip-label{font-size:.72rem;font-weight:700;color:var(--slate-500);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.5rem}
+.org-strip{display:flex;gap:.5rem;overflow-x:auto;scrollbar-width:none;padding-bottom:.1rem}
+.org-strip::-webkit-scrollbar{display:none}
+.org-chip{display:inline-flex;align-items:center;gap:.35rem;background:#f8fafc;border:1px solid var(--slate-200);border-radius:9999px;padding:.25rem .6rem .25rem .45rem;white-space:nowrap;flex-shrink:0;transition:border-color .15s}
+.org-chip:hover{border-color:#94a3b8}
+.org-chip-logo{width:18px;height:18px;border-radius:50%;object-fit:cover;flex-shrink:0}
+.org-chip-icon{font-size:.85rem;line-height:1}
+.org-chip-name{font-size:.78rem;font-weight:600;color:#374151;max-width:120px;overflow:hidden;text-overflow:ellipsis}
+.org-chip-btn{background:none;border:none;cursor:pointer;font-size:.9rem;color:#9ca3af;padding:0 .1rem;line-height:1;transition:color .15s}
+.org-chip-btn:hover{color:#f59e0b}
+.org-chip-btn--tracking{color:#f59e0b}
+</style>
+{% endif %}
