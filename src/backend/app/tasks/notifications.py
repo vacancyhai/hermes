@@ -519,9 +519,3 @@ def send_new_job_notifications(job_id: str):
                     "url": f"{BASE_URL}/jobs/{slug}",
                 },
             )
-
-
-@celery.task(name="app.tasks.notifications.notify_priority_subscribers")
-def notify_priority_subscribers(job_id: str):
-    """Notify users who are priority-tracking a job when it gets updated."""
-    pass

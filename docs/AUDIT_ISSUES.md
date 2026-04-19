@@ -4,7 +4,8 @@
 > Yeh document un saare gaps ko cover karta hai jo project ke full audit mein mile.
 > Har issue mein: **Kya problem hai → Kyun hua → Kaise fix karein → Fix ke baad kya hoga**
 >
-> **Fixed so far:** #1 (jobs.links), #2 (answer_keys index), #3 (user_tracks rename), #10 (published_at form), #11 (detail pages already existed), #12 (DESIGN.md status line)
+> **Fixed so far:** #1 (jobs.links), #2 (answer_keys index), #3 (user_tracks rename), #4 (send_new_job_notifications implemented), #5 (notify_priority_subscribers dead code removed), #10 (published_at form), #11 (detail pages already existed), #12 (DESIGN.md status line)
+> **Skipped:** #7/#8/#9 (tests — deferred), #6 (WhatsApp — silently skips already), #13 (cosmetic spacing — already aligned)
 
 ---
 
