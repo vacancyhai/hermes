@@ -124,9 +124,15 @@ def _fetch_tracked_ids():
     )
 
 
-def _fetch_organizations(token=None):
-    """Return (organizations list, tracked_org_ids set)."""
-    orgs_resp = current_app.api_client.get(_API_ORGANIZATIONS, params={"limit": 50})
+def _fetch_organizations(token=None, page_type=None):
+    """Return (organizations list, tracked_org_ids set).
+
+    page_type: 'jobs' | 'admissions' | None (all)
+    """
+    params = {"limit": 50}
+    if page_type:
+        params["org_type"] = page_type
+    orgs_resp = current_app.api_client.get(_API_ORGANIZATIONS, params=params)
     orgs = orgs_resp.json().get("data", []) if orgs_resp.ok else []
     tracked_org_ids = set()
     if token:
@@ -716,7 +722,7 @@ def jobs():
         w_resp = current_app.api_client.get(_API_TRACKED, token=session.get("token"))
         if w_resp.ok:
             tracked_job_ids = {str(j["id"]) for j in w_resp.json().get("jobs", [])}
-    organizations, tracked_org_ids = _fetch_organizations(token)
+    organizations, tracked_org_ids = _fetch_organizations(token, page_type="jobs")
     return render_template(
         "jobs/list.html",
         jobs=data.get("data", []),
@@ -1050,7 +1056,7 @@ def admissions():
         )
         if authed and rec_resp and rec_resp.ok:
             recommended_admissions = rec_resp.json().get("data", [])
-    organizations, tracked_org_ids = _fetch_organizations(token)
+    organizations, tracked_org_ids = _fetch_organizations(token, page_type="admissions")
     return render_template(
         "admissions/list.html",
         admissions=data.get("data", []),

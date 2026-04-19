@@ -11,6 +11,11 @@
             <span class="org-chip-icon">&#127970;</span>
             {% endif %}
             <span class="org-chip-name" title="{{ org.name }}">{{ org.short_name or org.name }}</span>
+            {% if org.job_count and org.job_count > 0 and (org.org_type == 'jobs' or org.org_type == 'both') %}
+            <span class="org-chip-count">{{ org.job_count }}</span>
+            {% elif org.admission_count and org.admission_count > 0 %}
+            <span class="org-chip-count" style="background:#ede9fe;color:#6d28d9">{{ org.admission_count }}</span>
+            {% endif %}
             <form method="POST"
                   action="/organizations/{{ org.id }}/{{ 'untrack' if is_tracking else 'track' }}"
                   style="display:inline;margin:0">
@@ -38,5 +43,6 @@
 .org-chip-btn{background:none;border:none;cursor:pointer;font-size:.9rem;color:#9ca3af;padding:0 .1rem;line-height:1;transition:color .15s}
 .org-chip-btn:hover{color:#f59e0b}
 .org-chip-btn--tracking{color:#f59e0b}
+.org-chip-count{font-size:.65rem;font-weight:700;background:#dbeafe;color:#1d4ed8;border-radius:9999px;padding:.05rem .35rem;line-height:1.4;flex-shrink:0}
 </style>
 {% endif %}

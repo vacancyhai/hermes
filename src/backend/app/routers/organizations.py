@@ -84,8 +84,13 @@ async def list_organizations(
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
     search: Annotated[str | None, Query(max_length=255)] = None,
+    org_type: Annotated[str | None, Query(max_length=20)] = None,
 ):
-    """List all organizations with active job counts."""
+    """List all organizations with active job/admission counts.
+
+    Filter by org_type ('jobs', 'admissions', 'both') — passing 'jobs' returns
+    orgs with org_type IN ('jobs','both') and 'admissions' returns ('admissions','both').
+    """
     query = select(Organization).order_by(Organization.name)
     count_query = select(func.count(Organization.id))
 
@@ -93,6 +98,15 @@ async def list_organizations(
         pattern = f"%{search}%"
         query = query.where(Organization.name.ilike(pattern))
         count_query = count_query.where(Organization.name.ilike(pattern))
+
+    if org_type == "jobs":
+        query = query.where(Organization.org_type.in_(["jobs", "both"]))
+        count_query = count_query.where(Organization.org_type.in_(["jobs", "both"]))
+    elif org_type == "admissions":
+        query = query.where(Organization.org_type.in_(["admissions", "both"]))
+        count_query = count_query.where(
+            Organization.org_type.in_(["admissions", "both"])
+        )
 
     total = (await db.execute(count_query)).scalar()
     orgs = (await db.execute(query.offset(offset).limit(limit))).scalars().all()
