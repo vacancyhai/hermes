@@ -338,6 +338,7 @@ def upgrade() -> None:
     )
     op.create_index("idx_answer_keys_job", "answer_keys", ["job_id"])
     op.create_index("idx_answer_keys_admission", "answer_keys", ["admission_id"])
+    op.create_index("idx_answer_keys_pub", "answer_keys", ["published_at"])
     op.create_index("ix_answer_keys_slug", "answer_keys", ["slug"], unique=True)
 
     # ── 12. results ───────────────────────────────────────────────────────────
