@@ -8,10 +8,7 @@ Schema is managed with Alembic:
 
 | File | Description |
 |------|-------------|
-| `migrations/versions/0001_initial.py` | Complete consolidated schema — all 13 tables including all field changes |
-| `migrations/versions/0002_organizations.py` | Add `organizations` table, `jobs.organization_id` FK, extend `user_tracks` entity_type to include `organization` |
-| `migrations/versions/0003_drop_org_slug.py` | Drop `slug` column and its index from `organizations` — routing changed to UUID-based |
-| `migrations/versions/0004_admissions_organization_id.py` | Add `admissions.organization_id` FK → `organizations.id` (SET NULL on delete) with index |
+| `migrations/versions/0001_initial.py` | **Complete consolidated schema** — all 14 tables with final state: `organizations` (with `slug` + `org_type`), `jobs.organization_id` FK, `admissions.organization_id` FK, `user_tracks` supporting `job`/`admission`/`organization` entity types |
 
 **Apply migrations:**
 ```bash
