@@ -20,6 +20,12 @@ class Job(Base):
     job_title: Mapped[str] = mapped_column(String(500), nullable=False)
     slug: Mapped[str] = mapped_column(String(500), unique=True, nullable=False)
     organization: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    organization_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("organizations.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     department: Mapped[str | None] = mapped_column(String(255))
     employment_type: Mapped[str | None] = mapped_column(String(50), default="permanent")
     qualification_level: Mapped[str | None] = mapped_column(String(50), index=True)
@@ -76,6 +82,9 @@ class Job(Base):
     )
 
     # Relationships
+    organization_ref = relationship(
+        "Organization", back_populates="jobs", foreign_keys=[organization_id]
+    )
     admit_cards = relationship(
         "AdmitCard",
         back_populates="job",

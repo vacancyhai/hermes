@@ -460,7 +460,65 @@ def notify_tracker_batch(
 @celery.task(name="app.tasks.notifications.send_new_job_notifications")
 def send_new_job_notifications(job_id: str):
     """Notify users who follow the job's organization when a new job is posted."""
-    pass
+    with Session(sync_engine) as session:
+        job_row = session.execute(
+            text(
+                "SELECT job_title, organization, organization_id, slug "
+                "FROM jobs WHERE id = :id"
+            ),
+            {"id": job_id},
+        ).fetchone()
+        if not job_row:
+            logger.warning("send_new_job_notifications_no_job", job_id=job_id)
+            return
+
+        job_title, org_name, org_id, slug = job_row
+        if not org_id:
+            logger.info(
+                "send_new_job_notifications_no_org_id",
+                job_id=job_id,
+                org_name=org_name,
+            )
+            return
+
+        followers = session.execute(
+            text(
+                "SELECT ut.user_id FROM user_tracks ut "
+                "WHERE ut.entity_type = 'organization' AND ut.entity_id = :org_id"
+            ),
+            {"org_id": str(org_id)},
+        ).fetchall()
+
+        if not followers:
+            logger.info(
+                "send_new_job_notifications_no_followers",
+                org_id=str(org_id),
+                org_name=org_name,
+            )
+            return
+
+        logger.info(
+            "send_new_job_notifications_dispatching",
+            org_name=org_name,
+            followers=len(followers),
+        )
+        for (user_id,) in followers:
+            smart_notify.delay(
+                user_id=str(user_id),
+                title=f"New Job: {job_title}",
+                message=f"{org_name} ne ek nayi vacancy post ki hai.",
+                notification_type="new_job_from_followed_org",
+                priority="medium",
+                entity_type="job",
+                entity_id=job_id,
+                action_url=f"/jobs/{slug}",
+                email_template="new_job_alert.html",
+                email_context={
+                    "job_title": job_title,
+                    "organization": org_name,
+                    "url": f"{BASE_URL}/jobs/{slug}",
+                },
+            )
 
 
 @celery.task(name="app.tasks.notifications.notify_priority_subscribers")

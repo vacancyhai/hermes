@@ -407,9 +407,13 @@ async def create_job(
 
     # If created as active, notify trackers
     if body.status == "active":
-        from app.tasks.notifications import notify_trackers_on_update
+        from app.tasks.notifications import (
+            notify_trackers_on_update,
+            send_new_job_notifications,
+        )
 
         notify_trackers_on_update.delay("job", str(job.id))
+        send_new_job_notifications.delay(str(job.id))
 
     return JobResponse.model_validate(job).model_dump()
 

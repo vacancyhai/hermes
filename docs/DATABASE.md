@@ -9,6 +9,7 @@ Schema is managed with Alembic:
 | File | Description |
 |------|-------------|
 | `migrations/versions/0001_initial.py` | Complete consolidated schema — all 13 tables including all field changes |
+| `migrations/versions/0002_organizations.py` | Add `organizations` table, `jobs.organization_id` FK, extend `user_tracks` entity_type to include `organization` |
 
 **Apply migrations:**
 ```bash
@@ -103,7 +104,7 @@ docker exec hermes_backend alembic -c /app/alembic.ini upgrade head
 
 ---
 
-## Tables (13 total)
+## Tables (14 total)
 
 ### 1. `users`
 Core user account table. Integrated with Firebase Auth.
@@ -180,7 +181,24 @@ Internal staff accounts (Admin/Operator).
 
 ---
 
-### 4. `jobs`
+### 4. `organizations`
+Organization registry — backfilled from `jobs.organization` on migration.
+
+| Column | Type | Nullable | Description |
+|--------|------|----------|-----------|
+| `id` | UUID (PK) | No | Auto-generated |
+| `name` | String(255) | No | Full name (unique, indexed) — e.g. "Staff Selection Commission" |
+| `slug` | String(255) | No | URL slug (unique, indexed) — e.g. "staff-selection-commission" |
+| `short_name` | String(50) | Yes | Abbreviation — e.g. "SSC" |
+| `logo_url` | Text | Yes | Logo image URL |
+| `website_url` | Text | Yes | Official website |
+| `created_at` | DateTime | No | Creation timestamp |
+
+**Indexes:** `idx_organizations_slug`, `idx_organizations_name`
+
+---
+
+### 5. `jobs`
 Government job vacancies. Document releases (admit cards, answer keys, results) are stored in their own tables and link back via `job_id`.
 
 | Column | Type | Nullable | Description |
@@ -188,7 +206,8 @@ Government job vacancies. Document releases (admit cards, answer keys, results) 
 | `id` | UUID (PK) | No | Auto-generated |
 | `job_title` | String(500) | No | Full title of the recruitment |
 | `slug` | String(500) | No | URL slug (unique) |
-| `organization` | String(255) | No | Hiring authority (SSC, UPSC, etc.), indexed |
+| `organization` | String(255) | No | Hiring authority name (free-text, indexed) — kept for backward compat |
+| `organization_id` | UUID (FK → `organizations.id`) | Yes | SET NULL on delete; links to `organizations` table |
 | `department` | String(255) | Yes | Specific department |
 | `employment_type` | String(50) | Yes | `ck_jobs_employment_type`: `permanent` \| `temporary` \| `contract` \| `apprentice`; default `permanent` |
 | `qualification_level` | String(50) | Yes | `10th`, `graduate`, etc., indexed |
@@ -230,7 +249,7 @@ Government job vacancies. Document releases (admit cards, answer keys, results) 
 
 ---
 
-### 5. `notifications`
+### 6. `notifications`
 Master records for all system notifications.
 
 | Column | Type | Nullable | Description |
@@ -254,7 +273,7 @@ Master records for all system notifications.
 
 ---
 
-### 6. `admin_logs`
+### 7. `admin_logs`
 Audit logs for staff actions. Auto-expire after 30 days.
 
 | Column | Type | Nullable | Description |
@@ -275,7 +294,7 @@ Audit logs for staff actions. Auto-expire after 30 days.
 
 ---
 
-### 7. `user_devices`
+### 8. `user_devices`
 Device registry — stores device metadata. **Push notifications read FCM tokens from `user_profiles.fcm_tokens`, not this table.** `user_devices` exists for future use (device-level fingerprint deduplication, device management UI) but is not populated by the current FCM token registration API.
 
 | Column | Type | Nullable | Description |
@@ -294,7 +313,7 @@ Device registry — stores device metadata. **Push notifications read FCM tokens
 
 ---
 
-### 8. `notification_delivery_log`
+### 9. `notification_delivery_log`
 Channel-level delivery tracking per notification attempt.
 
 | Column | Type | Nullable | Description |
@@ -314,7 +333,7 @@ Channel-level delivery tracking per notification attempt.
 
 ---
 
-### 9. `admit_cards`
+### 10. `admit_cards`
 Per-phase admit card links. Linked to either a **job** or an **admission** (polymorphic).
 
 | Column | Type | Nullable | Description |
@@ -337,7 +356,7 @@ Per-phase admit card links. Linked to either a **job** or an **admission** (poly
 
 ---
 
-### 10. `answer_keys`
+### 11. `answer_keys`
 Per-phase answer keys. Polymorphic.
 
 | Column | Type | Nullable | Description |
@@ -360,7 +379,7 @@ Per-phase answer keys. Polymorphic.
 
 ---
 
-### 11. `results`
+### 12. `results`
 Per-phase results. Polymorphic.
 
 | Column | Type | Nullable | Description |
@@ -383,7 +402,7 @@ Per-phase results. Polymorphic.
 
 ---
 
-### 12. `admissions`
+### 13. `admissions`
 Admissions (NEET, JEE, CLAT, CAT, GATE, CUET etc.) — separate from `jobs`.
 These are educational admissioninations, not government job recruitments.
 
@@ -433,14 +452,14 @@ These are educational admissioninations, not government job recruitments.
 
 ---
 
-### 13. `user_tracks`
+### 14. `user_tracks`
 Tracks which jobs or admissions a user is tracking for notification delivery.
 
 | Column | Type | Nullable | Description |
 |--------|------|----------|-------------|
 | `id` | UUID (PK) | No | Auto-generated |
 | `user_id` | UUID (FK → `users.id`) | No | CASCADE delete |
-| `entity_type` | String(10) | No | `ck_user_tracks_entity_type`: `job` \| `admission` |
+| `entity_type` | String(12) | No | `ck_user_tracks_entity_type`: `job` \| `admission` \| `organization` |
 | `entity_id` | UUID | No | ID of the tracked job or admission |
 | `created_at` | DateTime | No | When the track was created |
 
