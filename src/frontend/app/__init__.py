@@ -234,6 +234,7 @@ def dashboard():
     upcoming_exams = exam_resp.json().get("data", [])[:8] if exam_resp.ok else []
 
     token = session.get("token")
+    organizations, tracked_org_ids = _fetch_organizations(token)
     if not token:
         return render_template(
             "dashboard/home.html",
@@ -247,6 +248,8 @@ def dashboard():
             tracked_admissions=[],
             tracked_job_ids=set(),
             tracked_admission_ids=set(),
+            organizations=organizations,
+            tracked_org_ids=tracked_org_ids,
             total=0,
             logged_in=False,
             firebase_api_key=os.environ.get("FIREBASE_WEB_API_KEY", ""),
@@ -274,6 +277,8 @@ def dashboard():
         tracked_admissions=tracked.get("admissions", []),
         tracked_job_ids=tracked_job_ids,
         tracked_admission_ids=tracked_admission_ids,
+        organizations=organizations,
+        tracked_org_ids=tracked_org_ids,
         total=tracked.get("total", 0),
         logged_in=True,
     )
