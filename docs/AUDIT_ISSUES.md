@@ -3,103 +3,8 @@
 > **Audit Date:** April 19, 2026
 > Yeh document un saare gaps ko cover karta hai jo project ke full audit mein mile.
 > Har issue mein: **Kya problem hai → Kyun hua → Kaise fix karein → Fix ke baad kya hoga**
-
----
-
-## 🔴 Critical Issues (Abhi Fix Karni Chahiye)
-
----
-
-### Issue #1 — `jobs` Table ka `links` Field Model/Schema Mein Nahi Hai
-
-**Kya problem hai?**
-Database ke `jobs` table mein ek `links JSONB` column exist karta hai (migration mein add hua tha), lekin:
-- `Job` SQLAlchemy model mein yeh field nahi hai
-- `JobCreateRequest` schema mein nahi hai — matlab admin job banate waqt links set nahi kar sakta
-- `JobResponse` mein nahi hai — API response mein links kabhi return nahi hote
-- Frontend/Admin templates mein bhi missing hai
-
-**Kyun hua?**
-Schema changes migrate karte waqt DB column add kar diya gaya tha, lekin corresponding Python model aur Pydantic schema update karna bhool gaya.
-
-**Kaise fix karein?**
-```python
-# src/backend/app/models/job.py mein add karo:
-links: Mapped[list] = mapped_column(JSONB, nullable=False, server_default="[]")
-```
-```python
-# src/backend/app/schemas/jobs.py mein add karo:
-# JobCreateRequest, JobUpdateRequest, JobResponse teeno mein:
-links: list = Field(default_factory=list)   # Create/Update mein
-links: list                                  # Response mein
-```
-
-**Fix ke baad kya hoga?**
-- Admin portal se job create/edit karte waqt links add kar sakenge
-- Public API `GET /jobs/{slug}` response mein links dikhenge
-- Frontend job detail page pe links render ho sakenge (application portal, notice PDF, etc.)
-
----
-
-### Issue #2 — `answer_keys` Table Pe `published_at` Index Missing
-
-**Kya problem hai?**
-`answer_keys` table pe `published_at` column pe koi index nahi hai.
-Admin list endpoint `_admin_list_docs` ORDER BY `published_at DESC` use karta hai — bina index ke large data pe **full table scan** hogi, query slow ho jayegi.
-
-Compare karo:
-- `admit_cards` → `idx_admit_cards_pub` ✅ exists
-- `results` → `idx_results_pub` ✅ exists
-- `answer_keys` → `idx_answer_keys_pub` ❌ **missing**
-
-**Kyun hua?**
-Migration consolidation ke waqt `admit_cards` aur `results` ke pub indexes copy ho gaye lekin `answer_keys` ka index accidentally skip ho gaya.
-
-**Kaise fix karein?**
-Naya migration ya existing migration mein add karo:
-```sql
-CREATE INDEX idx_answer_keys_pub ON answer_keys(published_at);
-```
-Ya Alembic migration mein:
-```python
-op.create_index("idx_answer_keys_pub", "answer_keys", ["published_at"])
-```
-
-**Fix ke baad kya hoga?**
-- Admin `GET /admin/answer-keys` query fast ho jayegi
-- Jab answer keys badhenge (thousands), ORDER BY `published_at` instantly execute hogi
-
----
-
-### Issue #3 — `user_watches_*` DB Index/Constraint Names Rename Nahi Hue
-
-**Kya problem hai?**
-Table `user_watches` ko rename karke `user_tracks` kiya gaya tha, lekin DB ke andar indexes aur constraints ke naam abhi bhi purane hain:
-```
-user_watches_pkey          ← should be: user_tracks_pkey
-ix_user_watches_user_id    ← should be: ix_user_tracks_user_id
-ix_user_watches_entity     ← should be: ix_user_tracks_entity
-ck_user_watches_entity_type ← should be: ck_user_tracks_entity_type
-user_watches_user_id_fkey  ← FK constraint bhi purana naam
-```
-
-**Kyun hua?**
-Migration mein sirf `ALTER TABLE user_watches RENAME TO user_tracks` kiya gaya, lekin index/constraint rename statements (`ALTER INDEX`, `ALTER TABLE ... RENAME CONSTRAINT`) nahi likhe gaye.
-
-**Kaise fix karein?**
-Ek naya migration banao:
-```python
-op.execute("ALTER INDEX user_watches_pkey RENAME TO user_tracks_pkey")
-op.execute("ALTER INDEX ix_user_watches_user_id RENAME TO ix_user_tracks_user_id")
-op.execute("ALTER INDEX ix_user_watches_entity RENAME TO ix_user_tracks_entity")
-op.execute("ALTER TABLE user_tracks RENAME CONSTRAINT ck_user_watches_entity_type TO ck_user_tracks_entity_type")
-op.execute("ALTER TABLE user_tracks RENAME CONSTRAINT user_watches_user_id_fkey TO user_tracks_user_id_fkey")
-```
-
-**Fix ke baad kya hoga?**
-- DB schema properly clean ho jayega
-- Future developers confuse nahi honge "watch" aur "track" ke beech
-- `\d user_tracks` clean output dikhayega
+>
+> **Fixed so far:** #1 (jobs.links), #2 (answer_keys index), #3 (user_tracks rename), #10 (published_at form), #11 (detail pages already existed)
 
 ---
 
@@ -281,49 +186,7 @@ def test_track_status_after_tracking(user_client, job):
 
 ---
 
-## 🟠 Admin UI / Frontend Gaps
-
----
-
-### Issue #10 — Admin Doc Form Mein `published_at` Field Nahi Hai
-
-**Kya problem hai?**
-Jab admin job ya admission ke liye admit card, answer key, ya result add karta hai, form mein `published_at` date field nahi hai. Isliye:
-- Naye docs hamesha `published_at = NULL` ke saath create hote hain
-- `_admin_list_docs` ORDER BY `published_at DESC NULLS LAST` karta hai — null wale items hamesha list ke **end** mein aate hain
-- Public endpoints bhi published_at se order karte hain — naye docs public listing mein neeche dikhte hain
-
-**Kyun hua?**
-Form HTML mein `published_at` input field add karna bhool gaye.
-
-**Kaise fix karein?**
-`src/frontend-admin/app/templates/jobs/job_edit.html` aur `admissions/admission_edit.html` ke add-doc forms mein:
-```html
-<label>Published At (optional)</label>
-<input type="datetime-local" name="published_at">
-```
-Aur `__init__.py` mein `_add_doc()` helper mein:
-```python
-payload["published_at"] = form.get("published_at") or None
-```
-
-**Fix ke baad kya hoga?**
-- Admin newly created docs ko "published" mark kar sakenge
-- Docs sahi order mein listing pe dikhenge — latest published pehle
-
----
-
-### Issue #11 — ~~Public Frontend Pe Admit Card/Answer Key/Result Detail Pages Nahi Hain~~ ✅ Already Fixed
-
-**Status:** Yeh issue already resolved hai. Routes aur templates dono exist karte hain:
-- `src/frontend/app/__init__.py` line 833: `/admit-cards/<slug>` → `admit_card_detail()`
-- `src/frontend/app/__init__.py` line 897: `/answer-keys/<slug>` → `answer_key_detail()`
-- `src/frontend/app/__init__.py` line 961: `/results/<slug>` → `result_detail()`
-- Templates: `admit_cards/detail.html`, `answer_keys/detail.html`, `results/detail.html` — sab exist karte hain.
-
----
-
-## 🟡 Docs Gaps (Minor)
+##  Docs Gaps (Minor)
 
 ---
 
@@ -347,28 +210,12 @@ ERD mein `USER_TRACKS entity` section mein `entity_type = 'admission'` ke baad e
 
 ---
 
-## 📋 Priority Order (Kya Pehle Fix Karein)
+## 📋 Priority Order (Remaining Issues)
 
 | Priority | Issue | Effort | Impact |
 |----------|-------|--------|--------|
-| 🔴 P1 | #1 — `jobs.links` model/schema mein add karo | Low (30 min) | High — field completely missing |
-| 🔴 P1 | #2 — `answer_keys` published_at index | Low (10 min) | Medium — performance |
-| 🔴 P1 | #3 — DB index names rename | Low (15 min) | Medium — cleanliness |
-| 🟡 P2 | #10 — Admin form mein `published_at` add karo | Low (20 min) | High — docs order broken |
-| 🟡 P2 | #4 — `send_new_job_notifications` implement karo | Medium (2 hrs) | High — follow org feature broken |
-| 🟡 P2 | #11 — Frontend detail page routes | Medium (2 hrs) | High — UX gap |
-| 🟠 P3 | #7, #8, #9 — Test coverage add karo | Medium (3 hrs) | Medium — CI confidence |
-| 🟠 P3 | #5 — Stub task remove ya implement karo | Low (30 min) | Low — dead code |
-| 🟠 P3 | #6 — WhatsApp ya hide karo | High (1 day) | Low (optional feature) |
-| 🟡 P4 | #12, #13 — Docs update | Low (15 min) | Low |
-
----
-
-## 🔧 Quick Wins (< 1 hour mein fix)
-
-Yeh 4 issues ek saath fix kar sakte ho ek single PR mein:
-
-1. `jobs.links` model + schema mein add karo
-2. `answer_keys` published_at migration/index add karo
-3. `user_tracks` DB indexes rename karo
-4. Admin add-doc form mein `published_at` field add karo
+| 🟡 P1 | #4 — `send_new_job_notifications` implement karo | Medium (2 hrs) | High — follow org feature broken |
+| 🟠 P2 | #7, #8, #9 — Test coverage add karo | Medium (3 hrs) | Medium — CI confidence |
+| 🟠 P2 | #5 — Stub task remove ya implement karo | Low (30 min) | Low — dead code |
+| 🟠 P2 | #6 — WhatsApp ya hide karo | High (1 day) | Low (optional feature) |
+| 🟡 P3 | #12, #13 — Docs update | Low (15 min) | Low |
