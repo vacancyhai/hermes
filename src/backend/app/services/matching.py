@@ -8,12 +8,31 @@ Status values:
   "partially_eligible" — at least one criterion passes, at least one fails
   "not_eligible"       — every checked criterion fails
   "unknown"            — profile has no data to evaluate against (prompt user to complete profile)
+
+Criteria checked (job):
+  1. Education     — profile.highest_qualification vs job.qualification_level
+  2. Age           — profile.date_of_birth vs eligibility.age_min/age_max
+                     with category-based relaxation from eligibility.age_relaxation
+  3. Category      — profile.category vs job.vacancy_breakdown keys + eligibility.category
+  4. PWD           — profile.is_pwd vs eligibility.pwd_eligible
+  5. Ex-serviceman — profile.is_ex_serviceman vs eligibility.ex_serviceman_eligible
+  6. Domicile      — profile.state vs eligibility.domicile_required
 """
 
 from datetime import date
 
 # Education level hierarchy (higher index = higher qualification)
 EDUCATION_LEVELS = ["10th", "12th", "diploma", "graduate", "postgraduate", "phd"]
+
+# Default age relaxation (years) by category — standard govt job rules
+_DEFAULT_AGE_RELAXATION: dict[str, int] = {
+    "obc": 3,
+    "sc": 5,
+    "st": 5,
+    "ews": 0,
+    "ebc": 3,
+    "pwd": 10,
+}
 
 
 def _education_rank(level: str | None) -> int:
@@ -78,6 +97,31 @@ def _check_education(
         reasons.append(f"Required qualification: {req_level} — yours: {user_level}")
 
 
+def _age_relaxation(profile, eligibility: dict) -> int:
+    """Return age relaxation years for this user.
+
+    Uses eligibility.age_relaxation dict for job-specific overrides,
+    falls back to _DEFAULT_AGE_RELAXATION by category.
+    PWD relaxation applies if profile.is_pwd is True.
+    """
+    relaxation = 0
+    user_cat = profile.category.lower() if (profile and profile.category) else None
+    job_relax: dict = eligibility.get("age_relaxation") or {}
+    if user_cat:
+        if isinstance(job_relax, dict) and user_cat in job_relax:
+            relaxation = int(job_relax[user_cat])
+        else:
+            relaxation = _DEFAULT_AGE_RELAXATION.get(user_cat, 0)
+    if profile and getattr(profile, "is_pwd", False):
+        pwd_extra = (
+            int(job_relax.get("pwd", _DEFAULT_AGE_RELAXATION["pwd"]))
+            if isinstance(job_relax, dict)
+            else _DEFAULT_AGE_RELAXATION["pwd"]
+        )
+        relaxation = max(relaxation, pwd_extra)
+    return relaxation
+
+
 def _check_age(
     age_min,
     age_max,
@@ -85,17 +129,21 @@ def _check_age(
     passed: list,
     failed: list,
     reasons: list,
+    relaxation: int = 0,
 ) -> None:
     if user_age is None or (age_min is None and age_max is None):
         return
+    effective_max = (int(age_max) + relaxation) if age_max is not None else None
     msg_parts = []
     if age_min is not None and user_age < int(age_min):
         msg_parts.append(f"minimum age is {age_min}")
-    if age_max is not None and user_age > int(age_max):
-        msg_parts.append(f"maximum age is {age_max}")
+    if effective_max is not None and user_age > effective_max:
+        relax_note = f" (including {relaxation}yr relaxation)" if relaxation else ""
+        msg_parts.append(f"maximum age is {effective_max}{relax_note}")
     if not msg_parts:
+        relax_note = f" (with {relaxation}yr relaxation)" if relaxation else ""
         passed.append(True)
-        reasons.append(f"Age {user_age} is within the eligible range")
+        reasons.append(f"Age {user_age} is within the eligible range{relax_note}")
     else:
         failed.append(True)
         reasons.append(f"Age {user_age} does not meet criteria: {', '.join(msg_parts)}")
@@ -117,6 +165,74 @@ def _check_category(
     else:
         failed.append(True)
         reasons.append(f"Your category ({user_category}) is not in the eligible list")
+
+
+def _check_pwd(
+    eligibility: dict,
+    profile,
+    passed: list,
+    failed: list,
+    reasons: list,
+    label: str = "vacancy",
+) -> None:
+    pwd_eligible = eligibility.get("pwd_eligible")
+    if pwd_eligible is None:
+        return
+    user_is_pwd = getattr(profile, "is_pwd", False)
+    if pwd_eligible:
+        if user_is_pwd:
+            passed.append(True)
+            reasons.append(f"PWD candidates are eligible for this {label}")
+    else:
+        if user_is_pwd:
+            failed.append(True)
+            reasons.append(f"This {label} does not have PWD reservation")
+
+
+def _check_ex_serviceman(
+    eligibility: dict,
+    profile,
+    passed: list,
+    failed: list,
+    reasons: list,
+    label: str = "vacancy",
+) -> None:
+    esm_eligible = eligibility.get("ex_serviceman_eligible")
+    if esm_eligible is None:
+        return
+    user_is_esm = getattr(profile, "is_ex_serviceman", False)
+    if esm_eligible:
+        if user_is_esm:
+            passed.append(True)
+            reasons.append(f"Ex-serviceman candidates are eligible for this {label}")
+    else:
+        if user_is_esm:
+            failed.append(True)
+            reasons.append(f"This {label} does not have ex-serviceman reservation")
+
+
+def _check_domicile(
+    eligibility: dict,
+    profile,
+    passed: list,
+    failed: list,
+    reasons: list,
+    label: str = "vacancy",
+) -> None:
+    domicile_required = eligibility.get("domicile_required")
+    if not domicile_required:
+        return
+    user_state = getattr(profile, "state", None)
+    if not user_state:
+        return
+    if user_state.lower() == domicile_required.lower():
+        passed.append(True)
+        reasons.append(f"Your state ({user_state}) matches the required domicile")
+    else:
+        failed.append(True)
+        reasons.append(
+            f"This {label} requires domicile of {domicile_required} — yours: {user_state}"
+        )
 
 
 def _cats_from_eligibility(eligibility: dict, extra: dict | None = None) -> set[str]:
@@ -166,6 +282,7 @@ def check_job_eligibility(job, profile) -> dict:
         passed,
         failed,
         reasons,
+        relaxation=_age_relaxation(profile, eligibility),
     )
     _check_category(
         _cats_from_eligibility(eligibility, job.vacancy_breakdown),
@@ -174,6 +291,9 @@ def check_job_eligibility(job, profile) -> dict:
         failed,
         reasons,
     )
+    _check_pwd(eligibility, profile, passed, failed, reasons, label="vacancy")
+    _check_ex_serviceman(eligibility, profile, passed, failed, reasons, label="vacancy")
+    _check_domicile(eligibility, profile, passed, failed, reasons, label="vacancy")
 
     return {"status": _resolve_status(passed, failed), "reasons": reasons}
 
@@ -209,6 +329,7 @@ def check_admission_eligibility(admission, profile) -> dict:
         passed,
         failed,
         reasons,
+        relaxation=_age_relaxation(profile, eligibility),
     )
     _check_category(
         _cats_from_eligibility(eligibility),
@@ -217,5 +338,10 @@ def check_admission_eligibility(admission, profile) -> dict:
         failed,
         reasons,
     )
+    _check_pwd(eligibility, profile, passed, failed, reasons, label="admission")
+    _check_ex_serviceman(
+        eligibility, profile, passed, failed, reasons, label="admission"
+    )
+    _check_domicile(eligibility, profile, passed, failed, reasons, label="admission")
 
     return {"status": _resolve_status(passed, failed), "reasons": reasons}
