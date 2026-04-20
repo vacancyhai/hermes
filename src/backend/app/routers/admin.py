@@ -84,8 +84,26 @@ class AdminCreateRequest(BaseModel):
 
 _admin_pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
+
+def _collect_changes(obj, update_data: dict) -> dict:
+    """Diff update_data against obj fields; apply changes and return a changes dict."""
+    changes = {}
+    for field, value in update_data.items():
+        old_value = getattr(obj, field)
+        if old_value != value:
+            changes[field] = {
+                "old": (
+                    old_value if isinstance(old_value, (dict, list)) else str(old_value)
+                ),
+                "new": value if isinstance(value, (dict, list)) else str(value),
+            }
+            setattr(obj, field, value)
+    return changes
+
+
 _ERR_JOB_NOT_FOUND = "Job not found"
 _ERR_USER_NOT_FOUND = "User not found"
+_ERR_ADMIN_NOT_FOUND = "Admin user not found"
 
 
 async def _log_action(
@@ -310,7 +328,6 @@ async def update_job(
             status_code=status.HTTP_404_NOT_FOUND, detail=_ERR_JOB_NOT_FOUND
         )
 
-    changes = {}
     update_data = body.model_dump(exclude_unset=True)
 
     if admin.role == "operator":
@@ -321,33 +338,20 @@ async def update_job(
                 detail=f"Operators cannot modify: {', '.join(sorted(restricted))}",
             )
 
-    for field, value in update_data.items():
-        old_value = getattr(job, field)
-        if old_value != value:
-            changes[field] = {
-                "old": (
-                    old_value if isinstance(old_value, (dict, list)) else str(old_value)
-                ),
-                "new": value if isinstance(value, (dict, list)) else str(value),
-            }
-            setattr(job, field, value)
-
+    changes = _collect_changes(job, update_data)
     if not changes:
         return JobResponse.model_validate(job).model_dump()
 
-    # If status changed to active, set published_at
-    if "status" in changes and body.status == "active" and not job.published_at:
-        job.published_at = datetime.now(timezone.utc)
+    if "status" in changes and body.status == "active":
+        if not job.published_at:
+            job.published_at = datetime.now(timezone.utc)
+        from app.tasks.notifications import notify_trackers_on_update
+
+        notify_trackers_on_update.delay("job", str(job.id))
 
     await _log_action(
         db, admin, "update_job", "job", job.id, changes=changes, request=request
     )
-
-    # If status changed to active, also notify trackers
-    if "status" in changes and body.status == "active":
-        from app.tasks.notifications import notify_trackers_on_update
-
-        notify_trackers_on_update.delay("job", str(job.id))
 
     await db.refresh(job)
     return JobResponse.model_validate(job).model_dump()
@@ -698,7 +702,7 @@ async def get_admin_user(
     ).scalar_one_or_none()
     if not target:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Admin user not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=_ERR_ADMIN_NOT_FOUND
         )
     return AdminUserResponse.model_validate(target).model_dump()
 
@@ -717,7 +721,7 @@ async def update_admin_user(
     ).scalar_one_or_none()
     if not target:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Admin user not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=_ERR_ADMIN_NOT_FOUND
         )
     update_data = body.model_dump(exclude_unset=True)
     if "role" in update_data and update_data["role"] not in ("admin", "operator"):
@@ -764,7 +768,7 @@ async def delete_admin_user(
     ).scalar_one_or_none()
     if not target:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Admin user not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=_ERR_ADMIN_NOT_FOUND
         )
     await _log_action(
         db,

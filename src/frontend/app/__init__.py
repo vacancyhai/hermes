@@ -908,7 +908,6 @@ def untrack_organization(org_id):
 @bp.route("/admit-cards", methods=["GET"])
 def admit_cards():
     params = {"limit": min(_int_arg("limit", 20), 100), "offset": _int_arg("offset", 0)}
-    token = session.get("token")
     resp = current_app.api_client.get(_API_ADMIT_CARDS, params=params)
     data = resp.json() if resp.ok else {"data": [], "pagination": {}}
     tracked_job_ids, tracked_admission_ids = _fetch_tracked_ids()
@@ -964,7 +963,6 @@ def admit_card_detail(slug):
 @bp.route("/answer-keys", methods=["GET"])
 def answer_keys():
     params = {"limit": min(_int_arg("limit", 20), 100), "offset": _int_arg("offset", 0)}
-    token = session.get("token")
     resp = current_app.api_client.get(_API_ANSWER_KEYS, params=params)
     data = resp.json() if resp.ok else {"data": [], "pagination": {}}
     tracked_job_ids, tracked_admission_ids = _fetch_tracked_ids()
@@ -1020,7 +1018,6 @@ def answer_key_detail(slug):
 @bp.route("/results", methods=["GET"])
 def results():
     params = {"limit": min(_int_arg("limit", 20), 100), "offset": _int_arg("offset", 0)}
-    token = session.get("token")
     resp = current_app.api_client.get(_API_RESULTS, params=params)
     data = resp.json() if resp.ok else {"data": [], "pagination": {}}
     tracked_job_ids, tracked_admission_ids = _fetch_tracked_ids()

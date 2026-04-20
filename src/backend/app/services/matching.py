@@ -57,16 +57,94 @@ def _resolve_status(passed: list[bool], failed: list[bool]) -> str:
     return "partially_eligible"
 
 
+def _check_education(
+    req_level: str | None,
+    user_level: str | None,
+    passed: list,
+    failed: list,
+    reasons: list,
+) -> None:
+    req_rank = _education_rank(req_level)
+    user_rank = _education_rank(user_level)
+    if req_rank < 0 or user_rank < 0:
+        return
+    if user_rank >= req_rank:
+        passed.append(True)
+        reasons.append(
+            f"Your qualification ({user_level}) meets the requirement ({req_level})"
+        )
+    else:
+        failed.append(True)
+        reasons.append(f"Required qualification: {req_level} — yours: {user_level}")
+
+
+def _check_age(
+    age_min,
+    age_max,
+    user_age: int | None,
+    passed: list,
+    failed: list,
+    reasons: list,
+) -> None:
+    if user_age is None or (age_min is None and age_max is None):
+        return
+    msg_parts = []
+    if age_min is not None and user_age < int(age_min):
+        msg_parts.append(f"minimum age is {age_min}")
+    if age_max is not None and user_age > int(age_max):
+        msg_parts.append(f"maximum age is {age_max}")
+    if not msg_parts:
+        passed.append(True)
+        reasons.append(f"Age {user_age} is within the eligible range")
+    else:
+        failed.append(True)
+        reasons.append(f"Age {user_age} does not meet criteria: {', '.join(msg_parts)}")
+
+
+def _check_category(
+    allowed_cats: set[str],
+    user_category: str | None,
+    passed: list,
+    failed: list,
+    reasons: list,
+) -> None:
+    if not allowed_cats or not user_category:
+        return
+    user_cat = user_category.lower()
+    if user_cat in allowed_cats:
+        passed.append(True)
+        reasons.append(f"Your category ({user_category}) is eligible")
+    else:
+        failed.append(True)
+        reasons.append(f"Your category ({user_category}) is not in the eligible list")
+
+
+def _cats_from_eligibility(eligibility: dict, extra: dict | None = None) -> set[str]:
+    """Build a set of lowercase category strings from eligibility and optional extra dict."""
+    cats: set[str] = set()
+    cat_val = eligibility.get("category")
+    if isinstance(cat_val, list):
+        cats = {c.lower() for c in cat_val}
+    elif isinstance(cat_val, str):
+        cats.add(cat_val.lower())
+    if isinstance(extra, dict):
+        cats.update(k.lower() for k in extra)
+    return cats
+
+
+_UNKNOWN_PROFILE = {
+    "status": "unknown",
+    "reasons": ["Complete your profile to check eligibility"],
+}
+
+
 def check_job_eligibility(job, profile) -> dict:
     """Check whether a user's profile meets the eligibility criteria for a job.
 
     Returns {"status": str, "reasons": list[str]}
     """
     if not _profile_complete(profile):
-        return {
-            "status": "unknown",
-            "reasons": ["Complete your profile to check eligibility"],
-        }
+        return _UNKNOWN_PROFILE
 
     reasons: list[str] = []
     passed: list[bool] = []
@@ -74,69 +152,30 @@ def check_job_eligibility(job, profile) -> dict:
 
     eligibility = job.eligibility if isinstance(job.eligibility, dict) else {}
 
-    # ── Education ────────────────────────────────────────────────────────────
-    job_edu_rank = _education_rank(job.qualification_level)
-    user_edu_rank = _education_rank(profile.highest_qualification if profile else None)
-    if job_edu_rank >= 0:
-        if user_edu_rank >= 0:
-            if user_edu_rank >= job_edu_rank:
-                passed.append(True)
-                reasons.append(
-                    f"Your qualification ({profile.highest_qualification})"
-                    f" meets the requirement ({job.qualification_level})"
-                )
-            else:
-                failed.append(True)
-                reasons.append(
-                    f"Required qualification: {job.qualification_level} — yours: {profile.highest_qualification}"
-                )
-        # if user edu unknown, skip criterion
+    _check_education(
+        job.qualification_level,
+        profile.highest_qualification,
+        passed,
+        failed,
+        reasons,
+    )
+    _check_age(
+        eligibility.get("age_min"),
+        eligibility.get("age_max"),
+        _user_age(profile.date_of_birth),
+        passed,
+        failed,
+        reasons,
+    )
+    _check_category(
+        _cats_from_eligibility(eligibility, job.vacancy_breakdown),
+        profile.category,
+        passed,
+        failed,
+        reasons,
+    )
 
-    # ── Age ──────────────────────────────────────────────────────────────────
-    age_min = eligibility.get("age_min")
-    age_max = eligibility.get("age_max")
-    user_age = _user_age(profile.date_of_birth if profile else None)
-    if (age_min is not None or age_max is not None) and user_age is not None:
-        age_ok = True
-        msg_parts = []
-        if age_min is not None and user_age < int(age_min):
-            age_ok = False
-            msg_parts.append(f"minimum age is {age_min}")
-        if age_max is not None and user_age > int(age_max):
-            age_ok = False
-            msg_parts.append(f"maximum age is {age_max}")
-        if age_ok:
-            passed.append(True)
-            reasons.append(f"Age {user_age} is within the eligible range")
-        else:
-            failed.append(True)
-            reasons.append(
-                f"Age {user_age} does not meet criteria: {', '.join(msg_parts)}"
-            )
-
-    # ── Category ─────────────────────────────────────────────────────────────
-    job_cats: set[str] = set()
-    if isinstance(job.vacancy_breakdown, dict):
-        job_cats = {k.lower() for k in job.vacancy_breakdown}
-    cat_val = eligibility.get("category")
-    if isinstance(cat_val, list):
-        job_cats.update(c.lower() for c in cat_val)
-    elif isinstance(cat_val, str):
-        job_cats.add(cat_val.lower())
-
-    user_cat = profile.category.lower() if (profile and profile.category) else None
-    if job_cats and user_cat:
-        if user_cat in job_cats:
-            passed.append(True)
-            reasons.append(f"Your category ({profile.category}) is eligible")
-        else:
-            failed.append(True)
-            reasons.append(
-                f"Your category ({profile.category}) is not in the eligible list"
-            )
-
-    status = _resolve_status(passed, failed)
-    return {"status": status, "reasons": reasons}
+    return {"status": _resolve_status(passed, failed), "reasons": reasons}
 
 
 def check_admission_eligibility(admission, profile) -> dict:
@@ -145,10 +184,7 @@ def check_admission_eligibility(admission, profile) -> dict:
     Returns {"status": str, "reasons": list[str]}
     """
     if not _profile_complete(profile):
-        return {
-            "status": "unknown",
-            "reasons": ["Complete your profile to check eligibility"],
-        }
+        return _UNKNOWN_PROFILE
 
     reasons: list[str] = []
     passed: list[bool] = []
@@ -158,69 +194,28 @@ def check_admission_eligibility(admission, profile) -> dict:
         admission.eligibility if isinstance(admission.eligibility, dict) else {}
     )
 
-    # ── Education ────────────────────────────────────────────────────────────
+    # Resolve required qualification: explicit field or infer from admission_type
     qual_req = eligibility.get("qualification") or eligibility.get("min_qualification")
-    req_edu_rank = _education_rank(qual_req)
-    user_edu_rank = _education_rank(profile.highest_qualification if profile else None)
+    if not qual_req and admission.admission_type:
+        qual_req = {"ug": "12th", "pg": "graduate"}.get(
+            admission.admission_type.lower()
+        )
 
-    # Also use admission_type as a proxy: ug→12th, pg→graduate
-    if req_edu_rank < 0 and admission.admission_type:
-        type_map = {"ug": "12th", "pg": "graduate"}
-        qual_req = type_map.get(admission.admission_type.lower())
-        req_edu_rank = _education_rank(qual_req)
+    _check_education(qual_req, profile.highest_qualification, passed, failed, reasons)
+    _check_age(
+        eligibility.get("age_min") or eligibility.get("min_age"),
+        eligibility.get("age_max") or eligibility.get("max_age"),
+        _user_age(profile.date_of_birth),
+        passed,
+        failed,
+        reasons,
+    )
+    _check_category(
+        _cats_from_eligibility(eligibility),
+        profile.category,
+        passed,
+        failed,
+        reasons,
+    )
 
-    if req_edu_rank >= 0 and user_edu_rank >= 0:
-        if user_edu_rank >= req_edu_rank:
-            passed.append(True)
-            reasons.append(
-                f"Your qualification ({profile.highest_qualification}) meets the requirement ({qual_req})"
-            )
-        else:
-            failed.append(True)
-            reasons.append(
-                f"Required qualification: {qual_req} — yours: {profile.highest_qualification}"
-            )
-
-    # ── Age ──────────────────────────────────────────────────────────────────
-    age_min = eligibility.get("age_min") or eligibility.get("min_age")
-    age_max = eligibility.get("age_max") or eligibility.get("max_age")
-    user_age = _user_age(profile.date_of_birth if profile else None)
-    if (age_min is not None or age_max is not None) and user_age is not None:
-        age_ok = True
-        msg_parts = []
-        if age_min is not None and user_age < int(age_min):
-            age_ok = False
-            msg_parts.append(f"minimum age is {age_min}")
-        if age_max is not None and user_age > int(age_max):
-            age_ok = False
-            msg_parts.append(f"maximum age is {age_max}")
-        if age_ok:
-            passed.append(True)
-            reasons.append(f"Age {user_age} is within the eligible range")
-        else:
-            failed.append(True)
-            reasons.append(
-                f"Age {user_age} does not meet criteria: {', '.join(msg_parts)}"
-            )
-
-    # ── Category ─────────────────────────────────────────────────────────────
-    adm_cats: set[str] = set()
-    cat_val = eligibility.get("category")
-    if isinstance(cat_val, list):
-        adm_cats = {c.lower() for c in cat_val}
-    elif isinstance(cat_val, str):
-        adm_cats.add(cat_val.lower())
-
-    user_cat = profile.category.lower() if (profile and profile.category) else None
-    if adm_cats and user_cat:
-        if user_cat in adm_cats:
-            passed.append(True)
-            reasons.append(f"Your category ({profile.category}) is eligible")
-        else:
-            failed.append(True)
-            reasons.append(
-                f"Your category ({profile.category}) is not in the eligible list"
-            )
-
-    status = _resolve_status(passed, failed)
-    return {"status": status, "reasons": reasons}
+    return {"status": _resolve_status(passed, failed), "reasons": reasons}

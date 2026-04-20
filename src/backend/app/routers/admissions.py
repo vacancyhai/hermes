@@ -42,12 +42,15 @@ public_router = APIRouter(prefix="/api/v1/admissions", tags=["admissions"])
 admin_router = APIRouter(prefix="/api/v1/admin/admissions", tags=["admin-admissions"])
 
 
+_ERR_ADMISSION_NOT_FOUND = "Admission not found"
+
+
 async def _require_admission(admission_id: uuid.UUID, db: AsyncSession) -> Admission:
     result = await db.execute(select(Admission).where(Admission.id == admission_id))
     admission = result.scalar_one_or_none()
     if not admission:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Admission not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=_ERR_ADMISSION_NOT_FOUND
         )
     return admission
 
@@ -119,7 +122,7 @@ async def admission_eligibility(
     admission = adm_result.scalar_one_or_none()
     if not admission:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Admission not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=_ERR_ADMISSION_NOT_FOUND
         )
 
     user, _ = current_user
@@ -140,7 +143,7 @@ async def get_admission(slug: str, db: Annotated[AsyncSession, Depends(get_db)])
     admission = result.scalar_one_or_none()
     if not admission:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Admission not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=_ERR_ADMISSION_NOT_FOUND
         )
     admission_id = admission.id
     admit_cards_result = await db.execute(

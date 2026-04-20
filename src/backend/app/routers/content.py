@@ -658,7 +658,7 @@ _EXAM_REMINDERS_TTL = 300  # 5 minutes
 @exam_reminders_router.get("")
 async def list_exam_reminders(
     db: Annotated[AsyncSession, Depends(get_db)],
-    redis=Depends(get_redis),
+    redis: Annotated[Any, Depends(get_redis)],
 ):
     """Return upcoming exams sorted by exam_start.
 
