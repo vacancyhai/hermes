@@ -10,7 +10,7 @@ multi-channel notifications, and an admin panel.
 > job matching & recommendations, org follow, track-based deadline reminders (user_tracks),
 > user dashboard, smart multi-channel notifications (in-app + FCM push + email + WhatsApp placeholder + Telegram),
 > full admin frontend (dashboard, job/user management, audit logs), SEO (sitemap, meta, JSON-LD),
-> PDF upload with AI extraction (Anthropic Claude), CSRF protection,
+> CSRF protection,
 > PWA (manifest, service worker, offline fallback), security audit.
 >
 > **Latest additions:** Separate `admissions` table for admissions (NEET, JEE, CLAT, CAT, GATE, CUET etc.)
@@ -73,7 +73,6 @@ PostgreSQL and Redis are isolated inside Docker networks — never exposed to th
 - **Dynamic UI** — HTMX for live search, infinite scroll, and real-time updates without JavaScript frameworks.
 - **Full-Text Search** — PostgreSQL tsvector/GIN-indexed ranked search on job titles, organisations, and descriptions (no Elasticsearch needed).
 - **SEO Optimized** — Dynamic sitemap, meta tags, and Google JobPosting JSON-LD structured data for organic traffic.
-- **PDF Job Ingestion** — Upload government notification PDFs; AI (Claude) extracts structured data; operator reviews, edits, and publishes.
 - **PWA Support** — Add-to-home-screen, offline fallback page, and web push notifications via service worker.
 - **Admin Panel** — Job CRUD, admission management, user management, and audit log viewer on a separate frontend (port 8081).
 - **Firebase Auth** — Email/password (OTP-verified), Google OAuth (popup), and Phone OTP login via Firebase JS SDK; backend verifies Firebase ID tokens and issues internal JWTs; auto-links existing accounts by email; supports legacy user migration. On logout, both the access token and (if provided) the refresh token are revoked in Redis so neither can be reused.
@@ -106,7 +105,6 @@ PostgreSQL and Redis are isolated inside Docker networks — never exposed to th
 # Edit config/development/.env.backend — required: POSTGRES_PASSWORD, JWT_SECRET_KEY,
 # FIREBASE_WEB_API_KEY, FIREBASE_AUTH_DOMAIN, FIREBASE_PROJECT_ID,
 # FIREBASE_CREDENTIALS_PATH for your Firebase project.
-# Optional: ANTHROPIC_API_KEY (enables AI PDF extraction).
 # (docker-compose.yml reads config/development/.env.* directly — no copying needed)
 
 # 2. Start all services (PostgreSQL, Redis, PgBouncer, FastAPI, hermes-worker, hermes-scheduler, Frontends, Mailpit)
@@ -114,7 +112,7 @@ docker compose up -d --build
 
 # 3. Run database migrations
 docker exec hermes_backend alembic -c /app/alembic.ini upgrade head
-# Migrations: 0001 (initial schema), 0002 (followed_organizations), 0003 (drop is_featured/is_urgent), 0004 (drop views)
+# Migrations: 0001_initial (consolidated schema — single migration covers all tables)
 
 # 4. Create the first admin account (required — no self-registration for admins)
 docker exec hermes_backend python -c "
@@ -180,7 +178,7 @@ hermes/
 ├── docker-compose.yml            # Dev: all services (PostgreSQL, Redis, PgBouncer, Backend,
 │                                 #   hermes-worker, hermes-scheduler, Frontend, Admin Frontend, Mailpit)
 ├── alembic.ini                   # Alembic config (URL overridden by env.py at runtime)
-├── migrations/                   # Alembic migrations (0001–0004)
+├── migrations/                   # Alembic migrations (0001_initial — consolidated)
 ├── src/
 │   ├── backend/                  # FastAPI REST API (port 8000)
 │   │   ├── Dockerfile
@@ -206,13 +204,11 @@ hermes/
 │   │   │   ├── schemas/          # Pydantic v2 request/response models
 │   │   │   ├── services/
 │   │   │   │   ├── matching.py       # Job scoring engine (category +4, state +3, education +2…)
-│   │   │   │   ├── notifications.py  # NotificationService — 5-channel smart routing
-│   │   │   │   ├── pdf_extractor.py  # PDF text extraction (pdfplumber)
-│   │   │   │   └── ai_extractor.py   # Structured extraction (Anthropic Claude)
+│   │   │   │   └── notifications.py  # NotificationService — 5-channel smart routing
 │   │   │   └── tasks/            # Celery tasks
 │   │   │       ├── notifications.py  # smart_notify, deadline reminders, job alerts
 │   │   │       ├── cleanup.py        # Purge expired notifications + logs
-│   │   │       ├── jobs.py           # Close expired listings, PDF extraction, admission status update
+│   │   │       ├── jobs.py           # Close expired listings, admission status update
 │   │   │       └── seo.py            # Generate sitemap.xml
 │   ├── frontend/                 # User Frontend (Flask + HTMX + Alpine.js, port 8080)
 │   │   ├── Dockerfile
@@ -232,7 +228,7 @@ hermes/
 │   │   │   │                     # Phase documents (admit cards, answer keys, results) managed via
 │   │   │   │                     # /jobs/<id>/edit#docs and /admissions/<id>/edit#docs only
 │   │   │   ├── _base_api_client.py  # Shared HTTP client base class
-│   │   │   ├── api_client.py     # Extends BaseApiClient + inherits post_file() for PDF uploads
+│   │   │   ├── api_client.py     # Extends BaseApiClient
 │   │   │   └── templates/        # Job/admission CRUD, user management, audit logs (no standalone doc pages)
 │   └── nginx/                    # Reverse Proxy (port 80/443)
 │       ├── nginx.conf            # Rate limiting, routing, security headers
