@@ -632,3 +632,26 @@ async def update_notification_preferences(
         extra={"user_id": str(user.id), "channels": list(update_data.keys())},
     )
     return {"message": "Preferences updated", "notification_preferences": prefs}
+
+
+@router.delete(
+    "/api/v1/users/me/notification-preferences", status_code=status.HTTP_200_OK
+)
+async def reset_notification_preferences(
+    current_user: Annotated[Any, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Reset notification preferences to defaults (empty — all channels enabled by app defaults)."""
+    user, _ = current_user
+    result = await db.execute(select(UserProfile).where(UserProfile.user_id == user.id))
+    profile = result.scalar_one_or_none()
+    if not profile:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=_PROFILE_NOT_FOUND
+        )
+    profile.notification_preferences = {}
+    logger.info("notification_preferences_reset", extra={"user_id": str(user.id)})
+    return {
+        "message": "Notification preferences reset to defaults",
+        "notification_preferences": {},
+    }

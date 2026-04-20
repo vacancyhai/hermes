@@ -7,7 +7,7 @@ multi-channel notifications, and an admin panel.
 
 > **Status:** Phases 1–7 + 10 + 11 + UI/Content phase complete.
 > Auth (Firebase — Email/Password, Google OAuth, Phone OTP), job CRUD, full-text search, user profiles,
-> job matching & recommendations, org follow, track-based deadline reminders (user_tracks),
+> per-job/admission eligibility checking, org follow, track-based deadline reminders (user_tracks),
 > user dashboard, smart multi-channel notifications (in-app + FCM push + email + WhatsApp placeholder + Telegram),
 > full admin frontend (dashboard, job/user management, audit logs), SEO (sitemap, meta, JSON-LD),
 > CSRF protection,

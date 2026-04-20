@@ -26,15 +26,24 @@ logger = structlog.get_logger()
 REMINDER_DAYS = [7, 3, 1]  # T-7, T-3, T-1
 BASE_URL = settings.FRONTEND_URL
 
-# Jinja2 env for email templates
-_template_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "templates")
-_jinja_env = Environment(loader=FileSystemLoader(_template_dir), autoescape=True)
+# Jinja2 env — lazily initialised on first use to avoid startup crash if templates dir is missing
+_jinja_env: Environment | None = None
+
+
+def _get_jinja_env() -> Environment:
+    global _jinja_env
+    if _jinja_env is None:
+        template_dir = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)), "templates"
+        )
+        _jinja_env = Environment(loader=FileSystemLoader(template_dir), autoescape=True)
+    return _jinja_env
 
 
 def _render_email(template_name: str, context: dict) -> str:
     """Render a Jinja2 email template to HTML string."""
     context.setdefault("base_url", BASE_URL)
-    template = _jinja_env.get_template(f"email/{template_name}")
+    template = _get_jinja_env().get_template(f"email/{template_name}")
     return template.render(**context)
 
 
@@ -92,6 +101,15 @@ def send_email_notification(
         html = _render_email(template_name, context)
         _send_smtp(to, subject, html)
     except Exception as exc:
+        if self.request.retries >= self.max_retries:
+            logger.error(
+                "email_failed_permanently",
+                to=to,
+                subject=subject,
+                error=str(exc),
+                retries=self.request.retries,
+            )
+            return
         countdown = 2**self.request.retries * 30
         logger.warning(
             "email_retry",

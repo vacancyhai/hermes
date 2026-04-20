@@ -17,11 +17,16 @@
             {% if job.application_end %}
             <span class="deadline">Deadline: {{ job.application_end }}</span>
             {% endif %}
-            {% if job.fee and job.fee.get('general') is not none %}
-            <span class="meta-pill pill-amber">Fee: {% if job.fee.get('general') == 0 %}Free{% else %}₹{{ job.fee.get('general') }}{% endif %}</span>
-            {% endif %}
         </div>
-        <div style="display:flex;gap:.4rem;align-items:center">
+        <div style="display:flex;gap:.4rem;align-items:center;flex-wrap:wrap">
+            {% if not session.get('token') or not profile_complete %}
+            <a href="/profile" class="btn btn-outline btn-sm" onclick="event.stopPropagation()" style="font-size:.75rem;padding:.25rem .6rem">🔍 Check Eligibility</a>
+            {% else %}
+            <span hx-get="/partials/jobs/{{ job.slug }}/eligibility"
+                  hx-trigger="revealed"
+                  hx-swap="outerHTML"
+                  style="font-size:.75rem;color:var(--slate-400)">…</span>
+            {% endif %}
             {% if tracked_job_ids is defined %}
             {% set is_tracking = job.id|string in tracked_job_ids %}
             <form method="post" action="/jobs/{{ job.slug }}/{{ 'untrack' if is_tracking else 'track' }}" style="display:inline" onclick="event.stopPropagation()">

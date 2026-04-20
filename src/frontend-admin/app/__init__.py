@@ -29,7 +29,6 @@ Routes:
   /organizations/<id>/delete       — POST: delete organization
 """
 
-import base64
 import json
 import os
 import secrets
@@ -51,15 +50,6 @@ from app._flask_utils import (
 )
 from app.api_client import ApiClient
 
-
-def _jwt_payload(token: str) -> dict:
-    """Decode JWT payload without signature verification (read-only)."""
-    try:
-        part = token.split(".")[1]
-        part += "=" * (4 - len(part) % 4)
-        return json.loads(base64.b64decode(part))
-    except Exception:
-        return {}
 
 
 _URL_LOGIN = "/login"
@@ -204,10 +194,11 @@ def login():
         data = resp.json()
         session["token"] = data.get("access_token")
         session["refresh_token"] = data.get("refresh_token")
-        # Decode role from JWT payload (avoids an extra API call)
-        payload = _jwt_payload(session["token"])
-        session["admin_name"] = email
-        session["admin_role"] = payload.get("role", "operator")
+        # Fetch verified role from backend (avoids trusting unverified JWT decode)
+        me_resp = current_app.api_client.get("/admin/me", token=session["token"])
+        me = me_resp.json() if me_resp.ok else {}
+        session["admin_name"] = me.get("full_name") or email
+        session["admin_role"] = me.get("role", "operator")
         if request.form.get("remember"):
             session.permanent = True
             current_app.permanent_session_lifetime = timedelta(days=30)
@@ -216,7 +207,7 @@ def login():
     return redirect(_URL_LOGIN)
 
 
-@bp.route("/logout", methods=["GET"])
+@bp.route("/logout", methods=["POST"])
 def logout():
     token = session.get("token")
     if token:
@@ -291,48 +282,8 @@ def new_job():
     organizations = orgs_resp.json().get("data", []) if orgs_resp.ok else []
 
     if request.method == "POST":
-        import json as _json
-        form = request.form.to_dict()
-        payload = {}
-        _pick_text_fields(form, ["job_title", "slug", "organization", "department",
-                                  "qualification_level", "employment_type",
-                                  "description", "short_description", "source_url"], payload)
-        if form.get("organization_id"):
-            payload["organization_id"] = form["organization_id"]
-        _pick_int_fields(form, ["total_vacancies", "salary_initial", "salary_max"], payload)
-        fee = {k: int(v) for k, v in {
-            "general": form.get("fee_general", ""),
-            "obc": form.get("fee_obc", ""),
-            "sc_st": form.get("fee_sc_st", ""),
-            "ews": form.get("fee_ews", ""),
-            "female": form.get("fee_female", ""),
-        }.items() if v.strip() != ""}
-        payload["fee"] = fee
-        _pick_date_fields(form, ["notification_date", "application_start", "application_end",
-                                  "exam_start", "exam_end", "result_date"], payload)
-        payload["status"] = form.get("status", "active")
-        posts_raw = form.get("posts_json", "").strip()
-        zones_raw = form.get("zonewise_json", "").strip()
-        links_raw = form.get("links_json", "").strip()
-        tv_raw = form.get("total_vacancy_json", "").strip()
         try:
-            vacancy = {}
-            if posts_raw:
-                vacancy["posts"] = _json.loads(posts_raw)
-            if zones_raw:
-                parsed_zones = _json.loads(zones_raw)
-                if parsed_zones:
-                    vacancy["zonewise_vacancy"] = parsed_zones
-            if tv_raw:
-                parsed_tv = _json.loads(tv_raw)
-                if any(v is not None for v in parsed_tv.values()):
-                    vacancy["total_vacancy"] = parsed_tv
-            if vacancy:
-                payload["vacancy_breakdown"] = vacancy
-            if links_raw:
-                parsed_links = _json.loads(links_raw)
-                if parsed_links:
-                    payload["application_details"] = {"important_links": parsed_links}
+            payload = _build_job_payload(request.form.to_dict())
         except ValueError:
             flash("Invalid form data. Please try again.", "error")
             return render_template(_TEMPLATE_JOB_CREATE, organizations=organizations)
@@ -354,8 +305,12 @@ def delete_job(job_id):
     token = session.get("token")
     if not token:
         return redirect(_URL_LOGIN)
-    current_app.api_client.delete(f"/admin/jobs/{job_id}", token=token)
-    flash("Job deleted.", "success")
+    resp = current_app.api_client.delete(f"/admin/jobs/{job_id}", token=token)
+    if resp.ok:
+        flash("Job deleted.", "success")
+    else:
+        detail = resp.json().get("detail", "Failed to delete job") if resp.headers.get("content-type", "").startswith(_CONTENT_TYPE_JSON) else "Failed to delete job"
+        flash(detail, "error")
     return redirect(_URL_JOBS)
 
 
@@ -370,48 +325,8 @@ def edit_job(job_id):
         return redirect(_URL_LOGIN)
 
     if request.method == "POST":
-        form = request.form.to_dict()
-        update = {}
-        _pick_text_fields(form, ["job_title", "slug", "organization", "department",
-                                  "qualification_level", "description",
-                                  "short_description", "source_url", "status"], update)
-        if form.get("organization_id"):
-            update["organization_id"] = form["organization_id"]
-        _pick_int_fields(form, ["total_vacancies", "salary_initial", "salary_max"], update)
-        fee = {k: int(v) for k, v in {
-            "general": form.get("fee_general", ""),
-            "obc": form.get("fee_obc", ""),
-            "sc_st": form.get("fee_sc_st", ""),
-            "ews": form.get("fee_ews", ""),
-            "female": form.get("fee_female", ""),
-        }.items() if v.strip() != ""}
-        update["fee"] = fee
-        _pick_date_fields(form, ["notification_date", "application_start",
-                                  "application_end", "exam_start",
-                                  "exam_end", "result_date"], update)
-        import json as _json
-        posts_raw = form.get("posts_json", "").strip()
-        zones_raw = form.get("zonewise_json", "").strip()
-        tv_raw = form.get("total_vacancy_json", "").strip()
-        links_raw = form.get("links_json", "").strip()
         try:
-            vacancy = {}
-            if posts_raw:
-                vacancy["posts"] = _json.loads(posts_raw)
-            if zones_raw:
-                parsed_zones = _json.loads(zones_raw)
-                if parsed_zones:
-                    vacancy["zonewise_vacancy"] = parsed_zones
-            if tv_raw:
-                parsed_tv = _json.loads(tv_raw)
-                if any(v is not None for v in parsed_tv.values()):
-                    vacancy["total_vacancy"] = parsed_tv
-            if vacancy:
-                update["vacancy_breakdown"] = vacancy
-            if links_raw:
-                parsed_links = _json.loads(links_raw)
-                if parsed_links:
-                    update["application_details"] = {"important_links": parsed_links}
+            update = _build_job_payload(request.form.to_dict())
         except ValueError:
             flash("Invalid form data. Please try again.", "error")
             return redirect(f"/jobs/{job_id}/edit")
@@ -426,15 +341,9 @@ def edit_job(job_id):
         return redirect(_URL_JOBS)
     job = resp.json()
 
-    ac_resp = current_app.api_client.get(
-        f"{_API_ADMIN_ADMIT_CARDS}?job_id={job_id}&limit=100", token=token
-    )
-    ak_resp = current_app.api_client.get(
-        f"{_API_ADMIN_ANSWER_KEYS}?job_id={job_id}&limit=100", token=token
-    )
-    re_resp = current_app.api_client.get(
-        f"{_API_ADMIN_RESULTS}?job_id={job_id}&limit=100", token=token
-    )
+    ac_resp = current_app.api_client.get(_API_ADMIN_ADMIT_CARDS, token=token, params={"job_id": job_id, "limit": 100})
+    ak_resp = current_app.api_client.get(_API_ADMIN_ANSWER_KEYS, token=token, params={"job_id": job_id, "limit": 100})
+    re_resp = current_app.api_client.get(_API_ADMIN_RESULTS, token=token, params={"job_id": job_id, "limit": 100})
 
     orgs_resp = current_app.api_client.get(_API_ADMIN_ORGANIZATIONS, token=token, params={"limit": 200})
     organizations = orgs_resp.json().get("data", []) if orgs_resp.ok else []
@@ -569,6 +478,50 @@ def admissions_list_partial():
     return render_template("admissions/_admission_rows.html", admissions=data["data"], pagination=data.get("pagination", {}))
 
 
+def _build_job_payload(form):
+    """Build job API payload from POST form data."""
+    payload = {}
+    _pick_text_fields(form, ["job_title", "slug", "organization", "department",
+                              "qualification_level", "employment_type",
+                              "description", "short_description", "source_url"], payload)
+    if form.get("organization_id"):
+        payload["organization_id"] = form["organization_id"]
+    _pick_int_fields(form, ["total_vacancies", "salary_initial", "salary_max"], payload)
+    fee = {k: int(v) for k, v in {
+        "general": form.get("fee_general", ""),
+        "obc": form.get("fee_obc", ""),
+        "sc_st": form.get("fee_sc_st", ""),
+        "ews": form.get("fee_ews", ""),
+        "female": form.get("fee_female", ""),
+    }.items() if v.strip() != ""}
+    payload["fee"] = fee
+    _pick_date_fields(form, ["notification_date", "application_start", "application_end",
+                              "exam_start", "exam_end", "result_date"], payload)
+    payload["status"] = form.get("status", "active")
+    posts_raw = form.get("posts_json", "").strip()
+    zones_raw = form.get("zonewise_json", "").strip()
+    tv_raw = form.get("total_vacancy_json", "").strip()
+    links_raw = form.get("links_json", "").strip()
+    vacancy = {}
+    if posts_raw:
+        vacancy["posts"] = json.loads(posts_raw)
+    if zones_raw:
+        parsed_zones = json.loads(zones_raw)
+        if parsed_zones:
+            vacancy["zonewise_vacancy"] = parsed_zones
+    if tv_raw:
+        parsed_tv = json.loads(tv_raw)
+        if any(v is not None for v in parsed_tv.values()):
+            vacancy["total_vacancy"] = parsed_tv
+    if vacancy:
+        payload["vacancy_breakdown"] = vacancy
+    if links_raw:
+        parsed_links = json.loads(links_raw)
+        if parsed_links:
+            payload["application_details"] = {"important_links": parsed_links}
+    return payload
+
+
 def _build_admission_payload(form):
     """Build admission API payload from POST form data."""
     payload = {}
@@ -668,15 +621,9 @@ def edit_admission(admission_id):
         return redirect(_URL_ADMISSIONS)
     resp_detail = resp_detail_req.json()
 
-    ac_resp = current_app.api_client.get(
-        f"{_API_ADMIN_ADMIT_CARDS}?admission_id={admission_id}&limit=100", token=token
-    )
-    ak_resp = current_app.api_client.get(
-        f"{_API_ADMIN_ANSWER_KEYS}?admission_id={admission_id}&limit=100", token=token
-    )
-    re_resp = current_app.api_client.get(
-        f"{_API_ADMIN_RESULTS}?admission_id={admission_id}&limit=100", token=token
-    )
+    ac_resp = current_app.api_client.get(_API_ADMIN_ADMIT_CARDS, token=token, params={"admission_id": admission_id, "limit": 100})
+    ak_resp = current_app.api_client.get(_API_ADMIN_ANSWER_KEYS, token=token, params={"admission_id": admission_id, "limit": 100})
+    re_resp = current_app.api_client.get(_API_ADMIN_RESULTS, token=token, params={"admission_id": admission_id, "limit": 100})
 
     orgs_resp = current_app.api_client.get(_API_ADMIN_ORGANIZATIONS, token=token, params={"limit": 200})
     organizations = orgs_resp.json().get("data", []) if orgs_resp.ok else []
@@ -697,8 +644,12 @@ def delete_admission(admission_id):
     token = session.get("token")
     if not token:
         return redirect(_URL_LOGIN)
-    current_app.api_client.delete(f"/admin/admissions/{admission_id}", token=token)
-    flash("Admission deleted.", "success")
+    resp = current_app.api_client.delete(f"/admin/admissions/{admission_id}", token=token)
+    if resp.ok:
+        flash("Admission deleted.", "success")
+    else:
+        detail = resp.json().get("detail", "Failed to delete admission") if resp.headers.get("content-type", "").startswith(_CONTENT_TYPE_JSON) else "Failed to delete admission"
+        flash(detail, "error")
     return redirect(_URL_ADMISSIONS)
 
 

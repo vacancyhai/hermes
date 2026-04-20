@@ -19,11 +19,12 @@ import uuid
 from datetime import datetime, timezone
 from typing import Annotated, Any
 
-from app.dependencies import get_current_user, get_db, require_operator
+from app.dependencies import get_current_user, get_db, require_admin, require_operator
 from app.models.admission import Admission
 from app.models.admit_card import AdmitCard
 from app.models.answer_key import AnswerKey
 from app.models.result import Result
+from app.models.user_profile import UserProfile
 from app.schemas.admissions import (
     AdmissionCreateRequest,
     AdmissionListItem,
@@ -31,8 +32,9 @@ from app.schemas.admissions import (
     AdmissionUpdateRequest,
 )
 from app.schemas.jobs import AdmitCardResponse, AnswerKeyResponse, ResultResponse
-from app.services.matching import get_recommended_admissions
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from app.services.matching import check_admission_eligibility
+from app.utils import slugify
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -101,28 +103,32 @@ async def list_admissions(
     }
 
 
-@public_router.get("/recommended")
-async def recommended_admissions(
+@public_router.get("/eligibility/{slug}")
+async def admission_eligibility(
+    slug: str,
     current_user: Annotated[Any, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-    limit: Annotated[int, Query(ge=1, le=100)] = 20,
-    offset: Annotated[int, Query(ge=0)] = 0,
 ):
-    """Personalized admission recommendations based on user profile."""
-    user, _ = current_user
-    admissions, total = await get_recommended_admissions(
-        user.id, db, limit=limit, offset=offset
-    )
+    """Return eligibility status for the current user against a specific admission.
 
-    return {
-        "data": [AdmissionListItem.model_validate(e).model_dump() for e in admissions],
-        "pagination": {
-            "limit": limit,
-            "offset": offset,
-            "total": total,
-            "has_more": (offset + limit) < total,
-        },
-    }
+    Response: {"status": "eligible" | "partially_eligible" | "not_eligible", "reasons": [...]}
+    """
+    adm_result = await db.execute(
+        select(Admission).where(Admission.slug == slug, Admission.status != "inactive")
+    )
+    admission = adm_result.scalar_one_or_none()
+    if not admission:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Admission not found"
+        )
+
+    user, _ = current_user
+    profile_result = await db.execute(
+        select(UserProfile).where(UserProfile.user_id == user.id)
+    )
+    profile = profile_result.scalar_one_or_none()
+
+    return check_admission_eligibility(admission, profile)
 
 
 @public_router.get("/{slug}")
@@ -238,16 +244,13 @@ async def admin_get_admission(
 )
 async def create_admission(
     body: AdmissionCreateRequest,
+    request: Request,
     admin: Annotated[Any, Depends(require_operator)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    if (
-        await db.execute(select(Admission.id).where(Admission.slug == body.slug))
-    ).scalar():
-        raise HTTPException(
-            status_code=409, detail=f"Slug '{body.slug}' is already in use"
-        )
-    slug = body.slug
+    slug = body.slug or slugify(body.admission_name)
+    if (await db.execute(select(Admission.id).where(Admission.slug == slug))).scalar():
+        raise HTTPException(status_code=409, detail=f"Slug '{slug}' is already in use")
 
     admission = Admission(
         slug=slug,
@@ -277,6 +280,24 @@ async def create_admission(
     )
     db.add(admission)
     await db.flush()
+
+    from app.routers.admin import _log_action
+
+    await _log_action(
+        db,
+        admin,
+        "create_admission",
+        "admission",
+        admission.id,
+        details=f"Created admission: {body.admission_name}",
+        request=request,
+    )
+
+    if body.status == "active":
+        from app.tasks.notifications import notify_trackers_on_update
+
+        notify_trackers_on_update.delay("admission", str(admission.id))
+
     return AdmissionResponse.model_validate(admission).model_dump()
 
 
@@ -284,13 +305,52 @@ async def create_admission(
 async def update_admission(
     admission_id: uuid.UUID,
     body: AdmissionUpdateRequest,
+    request: Request,
     admin: Annotated[Any, Depends(require_operator)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     admission = await _require_admission(admission_id, db)
-    for field, value in body.model_dump(exclude_unset=True).items():
-        setattr(admission, field, value)
+    update_data = body.model_dump(exclude_unset=True)
+
+    changes = {}
+    for field, value in update_data.items():
+        old_value = getattr(admission, field)
+        if old_value != value:
+            changes[field] = {
+                "old": (
+                    old_value if isinstance(old_value, (dict, list)) else str(old_value)
+                ),
+                "new": value if isinstance(value, (dict, list)) else str(value),
+            }
+            setattr(admission, field, value)
+
+    if (
+        "status" in update_data
+        and update_data["status"] == "active"
+        and not admission.published_at
+    ):
+        admission.published_at = datetime.now(timezone.utc)
+
     await db.flush()
+
+    if changes:
+        from app.routers.admin import _log_action
+
+        await _log_action(
+            db,
+            admin,
+            "update_admission",
+            "admission",
+            admission.id,
+            changes=changes,
+            request=request,
+        )
+
+        if "status" in changes and body.status == "active":
+            from app.tasks.notifications import notify_trackers_on_update
+
+            notify_trackers_on_update.delay("admission", str(admission.id))
+
     await db.refresh(admission)
     return AdmissionResponse.model_validate(admission).model_dump()
 
@@ -298,7 +358,7 @@ async def update_admission(
 @admin_router.delete("/{admission_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_admission(
     admission_id: uuid.UUID,
-    admin: Annotated[Any, Depends(require_operator)],
+    admin: Annotated[Any, Depends(require_admin)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     admission = await _require_admission(admission_id, db)

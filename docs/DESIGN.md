@@ -192,7 +192,7 @@ All endpoints versioned under `/api/v1/`. List responses: `{ "data": [...], "pag
 |--------|--------|-------------|
 | `auth.py` | `/api/v1/auth` | Firebase verify-token, logout, refresh; admin login/logout/refresh; email OTP registration |
 | `users.py` | `/api/v1/users` | Profile CRUD, FCM tokens, phone, password management |
-| `jobs.py` | `/api/v1/jobs` | Public listing (FTS + filters), recommended, detail by slug |
+| `jobs.py` | `/api/v1/jobs` | Public listing (FTS + filters), per-job eligibility check, detail by slug |
 | `tracks.py` | `/api/v1/jobs/{id}/track`, `/api/v1/admissions/{id}/track` | Track/untrack jobs and admissions; list tracked |
 | `notifications.py` | `/api/v1/notifications` | List, count, mark read, delete |
 | `admin.py` | `/api/v1/admin` | Job CRUD + approve, user mgmt, stats, audit logs, admin-user creation |

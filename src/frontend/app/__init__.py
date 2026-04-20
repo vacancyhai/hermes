@@ -3,6 +3,7 @@
 import os
 import secrets
 import uuid as _uuid
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from urllib.parse import urlparse
 
 from flask import Blueprint, Flask, current_app, flash, redirect, render_template, request, send_from_directory, session
@@ -25,7 +26,6 @@ _API_ORGANIZATIONS = "/organizations"
 _API_ADMIT_CARDS = "/admit-cards"
 _API_ANSWER_KEYS = "/answer-keys"
 _API_RESULTS = "/results"
-_PATH_RECOMMENDED = "/recommended"
 
 
 _ERR_AUTH_REQUIRED = "Authentication required"
@@ -198,7 +198,7 @@ def _not_found(e):
 
 def _handle_unexpected_error(exc):
     current_app.logger.error("Unhandled exception: %s", exc, exc_info=True)
-    return render_template(_TEMPLATE_404), 500
+    return render_template("shared/500.html"), 500
 
 
 @bp.route("/health", methods=["GET"])
@@ -214,24 +214,32 @@ def dashboard():
     """Dashboard — latest 12 items per section + tracked items for logged-in users."""
     _latest_params = {"limit": 12, "offset": 0}
 
-    # Fetch latest 12 for each section (public, no auth needed)
-    jobs_resp = current_app.api_client.get(_API_JOBS, params=_latest_params)
-    latest_jobs = jobs_resp.json().get("data", []) if jobs_resp.ok else []
+    # Resolve api_client in the request thread before handing off to the pool
+    _api = current_app.api_client
 
-    admissions_resp = current_app.api_client.get(_API_ADMISSIONS, params=_latest_params)
-    latest_admissions = admissions_resp.json().get("data", []) if admissions_resp.ok else []
+    # Fetch latest 12 for each section in parallel (public, no auth needed)
+    _public_calls = {
+        "jobs":        lambda: _api.get(_API_JOBS, params=_latest_params),
+        "admissions":  lambda: _api.get(_API_ADMISSIONS, params=_latest_params),
+        "admit_cards": lambda: _api.get(_API_ADMIT_CARDS, params=_latest_params),
+        "answer_keys": lambda: _api.get(_API_ANSWER_KEYS, params=_latest_params),
+        "results":     lambda: _api.get(_API_RESULTS, params=_latest_params),
+        "exams":       lambda: _api.get("/exam-reminders"),
+    }
+    _public_results = {}
+    with ThreadPoolExecutor(max_workers=6) as _pool:
+        _futures = {_pool.submit(fn): key for key, fn in _public_calls.items()}
+        for _fut in as_completed(_futures):
+            _public_results[_futures[_fut]] = _fut.result()
 
-    admit_cards_resp = current_app.api_client.get(_API_ADMIT_CARDS, params=_latest_params)
-    latest_admit_cards = admit_cards_resp.json().get("data", []) if admit_cards_resp.ok else []
+    def _data(key): return _public_results[key].json().get("data", []) if _public_results[key].ok else []
 
-    answer_keys_resp = current_app.api_client.get(_API_ANSWER_KEYS, params=_latest_params)
-    latest_answer_keys = answer_keys_resp.json().get("data", []) if answer_keys_resp.ok else []
-
-    results_resp = current_app.api_client.get(_API_RESULTS, params=_latest_params)
-    latest_results = results_resp.json().get("data", []) if results_resp.ok else []
-
-    exam_resp = current_app.api_client.get("/exam-reminders")
-    upcoming_exams = exam_resp.json().get("data", [])[:8] if exam_resp.ok else []
+    latest_jobs = _data("jobs")
+    latest_admissions = _data("admissions")
+    latest_admit_cards = _data("admit_cards")
+    latest_answer_keys = _data("answer_keys")
+    latest_results = _data("results")
+    upcoming_exams = _data("exams")[:8]
 
     token = session.get("token")
     organizations, tracked_org_ids = _fetch_organizations(token)
@@ -264,6 +272,11 @@ def dashboard():
     tracked_job_ids = {str(j["id"]) for j in tracked.get("jobs", [])}
     tracked_admission_ids = {str(e["id"]) for e in tracked.get("admissions", [])}
 
+    profile_complete = False
+    me_resp, _ = _try_with_refresh(lambda t: _api.get(_API_USERS_PROFILE, token=t))
+    if me_resp and me_resp.ok:
+        p = me_resp.json().get("profile", {})
+        profile_complete = bool(p.get("highest_qualification") or p.get("category") or p.get("date_of_birth"))
 
     return render_template(
         "dashboard/home.html",
@@ -281,6 +294,7 @@ def dashboard():
         tracked_org_ids=tracked_org_ids,
         total=tracked.get("total", 0),
         logged_in=True,
+        profile_complete=profile_complete,
     )
 
 
@@ -575,10 +589,10 @@ def send_phone_otp():
 def verify_phone_otp():
     """Proxy: verify phone OTP."""
     data = request.get_json(silent=True) or {}
-    otp = data.get("otp", "")
-    if not otp:
-        return {"error": "OTP required"}, 400
-    resp, ok = _try_with_refresh(lambda token: current_app.api_client.post("/users/me/verify-phone-otp", token=token, json={"otp": otp}))
+    firebase_id_token = data.get("firebase_id_token", "")
+    if not firebase_id_token:
+        return {"error": "firebase_id_token required"}, 400
+    resp, ok = _try_with_refresh(lambda token: current_app.api_client.post("/users/me/verify-phone-otp", token=token, json={"firebase_id_token": firebase_id_token}))
     if not ok:
         return {"error": _ERR_AUTH_REQUIRED}, 401
     if not resp.ok:
@@ -716,24 +730,28 @@ def jobs():
     token = session.get("token")
     resp = current_app.api_client.get(_API_JOBS, token=token, params=params)
     data = resp.json() if resp.ok else {"data": [], "pagination": {}}
-    recommended_jobs = []
     tracked_job_ids = set()
+    profile_complete = False
     if token:
-        rec_resp, authed = _try_with_refresh(
-            lambda t: current_app.api_client.get(_API_JOBS + _PATH_RECOMMENDED, token=t, params={"limit": 20, "offset": 0})
+        w_resp, _ = _try_with_refresh(
+            lambda t: current_app.api_client.get(_API_TRACKED, token=t)
         )
-        if authed and rec_resp and rec_resp.ok:
-            recommended_jobs = rec_resp.json().get("data", [])
-        w_resp = current_app.api_client.get(_API_TRACKED, token=session.get("token"))
-        if w_resp.ok:
+        if w_resp and w_resp.ok:
             tracked_job_ids = {str(j["id"]) for j in w_resp.json().get("jobs", [])}
+        me_resp, _ = _try_with_refresh(
+            lambda t: current_app.api_client.get(_API_USERS_PROFILE, token=t)
+        )
+        if me_resp and me_resp.ok:
+            p = me_resp.json().get("profile", {})
+            profile_complete = bool(p.get("highest_qualification") or p.get("category") or p.get("date_of_birth"))
     organizations, tracked_org_ids = _fetch_organizations(token, page_type="jobs")
     return render_template(
         "jobs/list.html",
         jobs=data.get("data", []),
         pagination=data.get("pagination", {}),
-        recommended_jobs=recommended_jobs,
         tracked_job_ids=tracked_job_ids,
+        profile_complete=profile_complete,
+        eligibility_endpoint="/jobs/eligibility",
         organizations=organizations,
         tracked_org_ids=tracked_org_ids,
         q=request.args.get("q", ""),
@@ -766,6 +784,44 @@ def jobs_partial():
         qualification_level=request.args.get("qualification_level", ""),
         organization=request.args.get("organization", ""),
     )
+
+
+@bp.route("/partials/jobs/<slug>/eligibility", methods=["GET"])
+def job_eligibility_badge(slug):
+    """HTMX partial: returns an inline eligibility badge for a job card."""
+    resp, ok = _try_with_refresh(
+        lambda t: current_app.api_client.get(f"/jobs/eligibility/{slug}", token=t)
+    )
+    if not ok or not resp or not resp.ok:
+        return ""
+    result = resp.json()
+    status = result.get("status", "unknown")
+    _ELIGIBILITY_BADGE = {
+        "eligible": ("<span class=\"meta-pill\" style=\"background:#dcfce7;color:#166534\">✅ Eligible</span>", ),
+        "partially_eligible": ("<span class=\"meta-pill\" style=\"background:#fef9c3;color:#854d0e\">⚠️ Partially Eligible</span>", ),
+        "not_eligible": ("<span class=\"meta-pill\" style=\"background:#fee2e2;color:#991b1b\">❌ Not Eligible</span>", ),
+    }
+    badge_html = _ELIGIBILITY_BADGE.get(status, ("",))[0]
+    return badge_html or ""
+
+
+@bp.route("/partials/admissions/<slug>/eligibility", methods=["GET"])
+def admission_eligibility_badge(slug):
+    """HTMX partial: returns an inline eligibility badge for an admission card."""
+    resp, ok = _try_with_refresh(
+        lambda t: current_app.api_client.get(f"/admissions/eligibility/{slug}", token=t)
+    )
+    if not ok or not resp or not resp.ok:
+        return ""
+    result = resp.json()
+    status = result.get("status", "unknown")
+    _ELIGIBILITY_BADGE = {
+        "eligible": ("<span class=\"meta-pill\" style=\"background:#dcfce7;color:#166534\">✅ Eligible</span>", ),
+        "partially_eligible": ("<span class=\"meta-pill\" style=\"background:#fef9c3;color:#854d0e\">⚠️ Partially Eligible</span>", ),
+        "not_eligible": ("<span class=\"meta-pill\" style=\"background:#fee2e2;color:#991b1b\">❌ Not Eligible</span>", ),
+    }
+    badge_html = _ELIGIBILITY_BADGE.get(status, ("",))[0]
+    return badge_html or ""
 
 
 @bp.route("/jobs/<slug>", methods=["GET"])
@@ -855,19 +911,11 @@ def admit_cards():
     token = session.get("token")
     resp = current_app.api_client.get(_API_ADMIT_CARDS, params=params)
     data = resp.json() if resp.ok else {"data": [], "pagination": {}}
-    recommended_cards = []
     tracked_job_ids, tracked_admission_ids = _fetch_tracked_ids()
-    if token:
-        rec_resp, authed = _try_with_refresh(
-            lambda t: current_app.api_client.get(_API_ADMIT_CARDS + _PATH_RECOMMENDED, token=t, params={"limit": 20, "offset": 0})
-        )
-        if authed and rec_resp and rec_resp.ok:
-            recommended_cards = rec_resp.json().get("data", [])
     return render_template(
         "admit_cards/list.html",
         cards=data.get("data", []),
         pagination=data.get("pagination", {}),
-        recommended_cards=recommended_cards,
         tracked_job_ids=tracked_job_ids,
         tracked_admission_ids=tracked_admission_ids,
     )
@@ -919,19 +967,11 @@ def answer_keys():
     token = session.get("token")
     resp = current_app.api_client.get(_API_ANSWER_KEYS, params=params)
     data = resp.json() if resp.ok else {"data": [], "pagination": {}}
-    recommended_keys = []
     tracked_job_ids, tracked_admission_ids = _fetch_tracked_ids()
-    if token:
-        rec_resp, authed = _try_with_refresh(
-            lambda t: current_app.api_client.get(_API_ANSWER_KEYS + _PATH_RECOMMENDED, token=t, params={"limit": 20, "offset": 0})
-        )
-        if authed and rec_resp and rec_resp.ok:
-            recommended_keys = rec_resp.json().get("data", [])
     return render_template(
         "answer_keys/list.html",
         keys=data.get("data", []),
         pagination=data.get("pagination", {}),
-        recommended_keys=recommended_keys,
         tracked_job_ids=tracked_job_ids,
         tracked_admission_ids=tracked_admission_ids,
     )
@@ -983,19 +1023,11 @@ def results():
     token = session.get("token")
     resp = current_app.api_client.get(_API_RESULTS, params=params)
     data = resp.json() if resp.ok else {"data": [], "pagination": {}}
-    recommended_results = []
     tracked_job_ids, tracked_admission_ids = _fetch_tracked_ids()
-    if token:
-        rec_resp, authed = _try_with_refresh(
-            lambda t: current_app.api_client.get(_API_RESULTS + _PATH_RECOMMENDED, token=t, params={"limit": 20, "offset": 0})
-        )
-        if authed and rec_resp and rec_resp.ok:
-            recommended_results = rec_resp.json().get("data", [])
     return render_template(
         "results/list.html",
         results=data.get("data", []),
         pagination=data.get("pagination", {}),
-        recommended_results=recommended_results,
         tracked_job_ids=tracked_job_ids,
         tracked_admission_ids=tracked_admission_ids,
     )
@@ -1053,22 +1085,24 @@ def admissions():
     token = session.get("token")
     resp = current_app.api_client.get(_API_ADMISSIONS, token=token, params=params)
     data = resp.json() if resp.ok else {"data": [], "pagination": {}}
-    recommended_admissions = []
     tracked_job_ids, tracked_admission_ids = _fetch_tracked_ids()
+    profile_complete = False
     if token:
-        rec_resp, authed = _try_with_refresh(
-            lambda t: current_app.api_client.get(_API_ADMISSIONS + _PATH_RECOMMENDED, token=t, params={"limit": 20, "offset": 0})
+        me_resp, _ = _try_with_refresh(
+            lambda t: current_app.api_client.get(_API_USERS_PROFILE, token=t)
         )
-        if authed and rec_resp and rec_resp.ok:
-            recommended_admissions = rec_resp.json().get("data", [])
+        if me_resp and me_resp.ok:
+            p = me_resp.json().get("profile", {})
+            profile_complete = bool(p.get("highest_qualification") or p.get("category") or p.get("date_of_birth"))
     organizations, tracked_org_ids = _fetch_organizations(token, page_type="admissions")
     return render_template(
         "admissions/list.html",
         admissions=data.get("data", []),
         pagination=data.get("pagination", {}),
-        recommended_admissions=recommended_admissions,
         tracked_job_ids=tracked_job_ids,
         tracked_admission_ids=tracked_admission_ids,
+        profile_complete=profile_complete,
+        eligibility_endpoint="/admissions/eligibility",
         organizations=organizations,
         tracked_org_ids=tracked_org_ids,
         q=request.args.get("q", ""),
@@ -1161,6 +1195,7 @@ def create_app():
     )
     app.register_blueprint(bp)
     app.register_error_handler(404, _not_found)
+    app.register_error_handler(500, _handle_unexpected_error)
     app.register_error_handler(Exception, _handle_unexpected_error)
     return app
 

@@ -19,7 +19,6 @@ Dashboard:
   GET    /api/v1/admin/logs              — Admin activity logs
 """
 
-import asyncio
 import logging
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -36,16 +35,14 @@ from app.models.organization import Organization
 from app.models.result import Result
 from app.models.user import User
 from app.models.user_profile import UserProfile
-from app.schemas.auth import AdminUserResponse, UserResponse
+from app.schemas.auth import AdminUserResponse, AdminUserUpdateRequest, UserResponse
 from app.schemas.jobs import (
-    AdmitCardResponse,
-    AnswerKeyResponse,
     JobCreateRequest,
     JobListItem,
     JobResponse,
     JobUpdateRequest,
-    ResultResponse,
 )
+from app.utils import slugify
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from passlib.context import CryptContext
 from pydantic import BaseModel, Field
@@ -126,32 +123,26 @@ async def dashboard_stats(
 ):
     """Dashboard stats: separate counts for jobs, admit cards, answer keys, results, admissions."""
     week_ago = datetime.now(timezone.utc) - timedelta(days=7)
-    _r = await asyncio.gather(
-        db.execute(select(func.count(Job.id))),
-        db.execute(select(func.count(Job.id)).where(Job.status == "active")),
-        db.execute(select(func.count(AdmitCard.id))),
-        db.execute(select(func.count(AnswerKey.id))),
-        db.execute(select(func.count(Result.id))),
-        db.execute(select(func.count(Admission.id))),
-        db.execute(
+    jobs_count = (await db.execute(select(func.count(Job.id)))).scalar()
+    jobs_active = (
+        await db.execute(select(func.count(Job.id)).where(Job.status == "active"))
+    ).scalar()
+    admit_cards_count = (await db.execute(select(func.count(AdmitCard.id)))).scalar()
+    answer_keys_count = (await db.execute(select(func.count(AnswerKey.id)))).scalar()
+    results_count = (await db.execute(select(func.count(Result.id)))).scalar()
+    admissions_count = (await db.execute(select(func.count(Admission.id)))).scalar()
+    admissions_active = (
+        await db.execute(
             select(func.count(Admission.id)).where(Admission.status == "active")
-        ),
-        db.execute(select(func.count(User.id))),
-        db.execute(select(func.count(User.id)).where(User.status == "active")),
-        db.execute(select(func.count(User.id)).where(User.created_at >= week_ago)),
-    )
-    (
-        jobs_count,
-        jobs_active,
-        admit_cards_count,
-        answer_keys_count,
-        results_count,
-        admissions_count,
-        admissions_active,
-        users_total,
-        users_active,
-        users_new_this_week,
-    ) = [r.scalar() for r in _r]
+        )
+    ).scalar()
+    users_total = (await db.execute(select(func.count(User.id)))).scalar()
+    users_active = (
+        await db.execute(select(func.count(User.id)).where(User.status == "active"))
+    ).scalar()
+    users_new_this_week = (
+        await db.execute(select(func.count(User.id)).where(User.created_at >= week_ago))
+    ).scalar()
 
     return {
         "jobs": {"total": jobs_count, "active": jobs_active},
@@ -197,108 +188,6 @@ async def list_jobs(
 
     return {
         "data": [JobListItem.model_validate(j).model_dump() for j in jobs],
-        "pagination": {
-            "limit": limit,
-            "offset": offset,
-            "total": total,
-            "has_more": (offset + limit) < total,
-        },
-    }
-
-
-@router.get("/admit-cards")
-async def list_admit_cards(
-    admin: Annotated[Any, Depends(require_operator)],
-    db: Annotated[AsyncSession, Depends(get_db)],
-    limit: Annotated[int, Query(ge=1, le=100)] = 20,
-    offset: Annotated[int, Query(ge=0)] = 0,
-    job_id: uuid.UUID | None = None,
-    admission_id: uuid.UUID | None = None,
-):
-    """List all admit cards."""
-    query = select(AdmitCard).order_by(AdmitCard.created_at.desc())
-    count_query = select(func.count(AdmitCard.id))
-    if job_id:
-        query = query.where(AdmitCard.job_id == job_id)
-        count_query = count_query.where(AdmitCard.job_id == job_id)
-    if admission_id:
-        query = query.where(AdmitCard.admission_id == admission_id)
-        count_query = count_query.where(AdmitCard.admission_id == admission_id)
-
-    total = (await db.execute(count_query)).scalar()
-    result = await db.execute(query.offset(offset).limit(limit))
-    cards = result.scalars().all()
-
-    return {
-        "data": [AdmitCardResponse.model_validate(c).model_dump() for c in cards],
-        "pagination": {
-            "limit": limit,
-            "offset": offset,
-            "total": total,
-            "has_more": (offset + limit) < total,
-        },
-    }
-
-
-@router.get("/answer-keys")
-async def list_answer_keys(
-    admin: Annotated[Any, Depends(require_operator)],
-    db: Annotated[AsyncSession, Depends(get_db)],
-    limit: Annotated[int, Query(ge=1, le=100)] = 20,
-    offset: Annotated[int, Query(ge=0)] = 0,
-    job_id: uuid.UUID | None = None,
-    admission_id: uuid.UUID | None = None,
-):
-    """List all answer keys."""
-    query = select(AnswerKey).order_by(AnswerKey.created_at.desc())
-    count_query = select(func.count(AnswerKey.id))
-    if job_id:
-        query = query.where(AnswerKey.job_id == job_id)
-        count_query = count_query.where(AnswerKey.job_id == job_id)
-    if admission_id:
-        query = query.where(AnswerKey.admission_id == admission_id)
-        count_query = count_query.where(AnswerKey.admission_id == admission_id)
-
-    total = (await db.execute(count_query)).scalar()
-    result = await db.execute(query.offset(offset).limit(limit))
-    keys = result.scalars().all()
-
-    return {
-        "data": [AnswerKeyResponse.model_validate(k).model_dump() for k in keys],
-        "pagination": {
-            "limit": limit,
-            "offset": offset,
-            "total": total,
-            "has_more": (offset + limit) < total,
-        },
-    }
-
-
-@router.get("/results")
-async def list_results(
-    admin: Annotated[Any, Depends(require_operator)],
-    db: Annotated[AsyncSession, Depends(get_db)],
-    limit: Annotated[int, Query(ge=1, le=100)] = 20,
-    offset: Annotated[int, Query(ge=0)] = 0,
-    job_id: uuid.UUID | None = None,
-    admission_id: uuid.UUID | None = None,
-):
-    """List all results."""
-    query = select(Result).order_by(Result.created_at.desc())
-    count_query = select(func.count(Result.id))
-    if job_id:
-        query = query.where(Result.job_id == job_id)
-        count_query = count_query.where(Result.job_id == job_id)
-    if admission_id:
-        query = query.where(Result.admission_id == admission_id)
-        count_query = count_query.where(Result.admission_id == admission_id)
-
-    total = (await db.execute(count_query)).scalar()
-    result = await db.execute(query.offset(offset).limit(limit))
-    results = result.scalars().all()
-
-    return {
-        "data": [ResultResponse.model_validate(r).model_dump() for r in results],
         "pagination": {
             "limit": limit,
             "offset": offset,
@@ -435,7 +324,12 @@ async def update_job(
     for field, value in update_data.items():
         old_value = getattr(job, field)
         if old_value != value:
-            changes[field] = {"old": str(old_value), "new": str(value)}
+            changes[field] = {
+                "old": (
+                    old_value if isinstance(old_value, (dict, list)) else str(old_value)
+                ),
+                "new": value if isinstance(value, (dict, list)) else str(value),
+            }
             setattr(job, field, value)
 
     if not changes:
@@ -696,6 +590,17 @@ async def delete_user_permanently(
     return {"message": "User permanently deleted from both PostgreSQL and Firebase"}
 
 
+# ─── Admin Self ──────────────────────────────────────────────────────────────
+
+
+@router.get("/me")
+async def get_admin_me(
+    admin: Annotated[Any, Depends(require_operator)],
+):
+    """Return the currently authenticated admin/operator's profile."""
+    return AdminUserResponse.model_validate(admin).model_dump()
+
+
 # ─── Admin Account Management ───────────────────────────────────────────────
 
 
@@ -749,6 +654,130 @@ async def create_admin_user(
     return AdminUserResponse.model_validate(new_admin).model_dump()
 
 
+@router.get("/admin-users")
+async def list_admin_users(
+    admin: Annotated[Any, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+    offset: Annotated[int, Query(ge=0)] = 0,
+):
+    """List all admin and operator accounts. Admin role only."""
+    total = (await db.execute(select(func.count(AdminUser.id)))).scalar()
+    users = (
+        (
+            await db.execute(
+                select(AdminUser)
+                .order_by(AdminUser.created_at.desc())
+                .offset(offset)
+                .limit(limit)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    return {
+        "data": [AdminUserResponse.model_validate(u).model_dump() for u in users],
+        "pagination": {
+            "limit": limit,
+            "offset": offset,
+            "total": total,
+            "has_more": (offset + limit) < total,
+        },
+    }
+
+
+@router.get("/admin-users/{admin_user_id}")
+async def get_admin_user(
+    admin_user_id: uuid.UUID,
+    admin: Annotated[Any, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Get a single admin/operator account by ID. Admin role only."""
+    target = (
+        await db.execute(select(AdminUser).where(AdminUser.id == admin_user_id))
+    ).scalar_one_or_none()
+    if not target:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Admin user not found"
+        )
+    return AdminUserResponse.model_validate(target).model_dump()
+
+
+@router.put("/admin-users/{admin_user_id}")
+async def update_admin_user(
+    admin_user_id: uuid.UUID,
+    body: AdminUserUpdateRequest,
+    request: Request,
+    admin: Annotated[Any, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Update an admin/operator account (name, phone, department, role, status). Admin role only."""
+    target = (
+        await db.execute(select(AdminUser).where(AdminUser.id == admin_user_id))
+    ).scalar_one_or_none()
+    if not target:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Admin user not found"
+        )
+    update_data = body.model_dump(exclude_unset=True)
+    if "role" in update_data and update_data["role"] not in ("admin", "operator"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Role must be 'admin' or 'operator'",
+        )
+    if "status" in update_data and update_data["status"] not in ("active", "suspended"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Status must be 'active' or 'suspended'",
+        )
+    for field, value in update_data.items():
+        setattr(target, field, value)
+    await _log_action(
+        db,
+        admin,
+        "update_admin_user",
+        "admin_user",
+        target.id,
+        details=f"Updated fields: {', '.join(update_data.keys())}",
+        request=request,
+    )
+    await db.flush()
+    await db.refresh(target)
+    return AdminUserResponse.model_validate(target).model_dump()
+
+
+@router.delete("/admin-users/{admin_user_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_admin_user(
+    admin_user_id: uuid.UUID,
+    request: Request,
+    admin: Annotated[Any, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Delete an admin/operator account. Admin role only. Cannot delete your own account."""
+    if admin.id == admin_user_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot delete your own admin account",
+        )
+    target = (
+        await db.execute(select(AdminUser).where(AdminUser.id == admin_user_id))
+    ).scalar_one_or_none()
+    if not target:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Admin user not found"
+        )
+    await _log_action(
+        db,
+        admin,
+        "delete_admin_user",
+        "admin_user",
+        target.id,
+        details=f"Deleted admin account: {target.email}",
+        request=request,
+    )
+    await db.delete(target)
+
+
 # ─── Logs ────────────────────────────────────────────────────────────────────
 
 
@@ -758,13 +787,34 @@ async def admin_logs(
     db: Annotated[AsyncSession, Depends(get_db)],
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
     offset: Annotated[int, Query(ge=0)] = 0,
+    admin_id: Annotated[uuid.UUID | None, Query()] = None,
+    action: Annotated[str | None, Query(max_length=100)] = None,
+    resource_type: Annotated[str | None, Query(max_length=100)] = None,
+    date_from: Annotated[datetime | None, Query()] = None,
+    date_to: Annotated[datetime | None, Query()] = None,
 ):
-    """Admin activity logs."""
-    count_query = select(func.count(AdminLog.id))
+    """Admin activity logs with optional filters: admin_id, action, resource_type, date_from, date_to."""
+    filters = []
+    if admin_id:
+        filters.append(AdminLog.admin_id == admin_id)
+    if action:
+        filters.append(AdminLog.action == action)
+    if resource_type:
+        filters.append(AdminLog.resource_type == resource_type)
+    if date_from:
+        filters.append(AdminLog.timestamp >= date_from)
+    if date_to:
+        filters.append(AdminLog.timestamp <= date_to)
+
+    count_query = select(func.count(AdminLog.id)).where(*filters)
     total = (await db.execute(count_query)).scalar()
 
     query = (
-        select(AdminLog).order_by(AdminLog.timestamp.desc()).offset(offset).limit(limit)
+        select(AdminLog)
+        .where(*filters)
+        .order_by(AdminLog.timestamp.desc())
+        .offset(offset)
+        .limit(limit)
     )
     result = await db.execute(query)
     logs = result.scalars().all()
@@ -794,13 +844,6 @@ async def admin_logs(
 
 
 # ─── Organizations ────────────────────────────────────────────────────────────
-
-
-def _slugify(name: str) -> str:
-    import re
-
-    s = re.sub(r"[^a-zA-Z0-9\s]", "", name)
-    return re.sub(r"\s+", "-", s).lower().strip("-")
 
 
 @router.get("/organizations")
@@ -880,7 +923,7 @@ async def admin_create_organization(
         raise HTTPException(
             status_code=409, detail=f"Organization '{name}' already exists"
         )
-    slug = (body.get("slug") or _slugify(name)).strip()
+    slug = (body.get("slug") or slugify(name)).strip()
     slug_exists = (
         await db.execute(select(Organization).where(Organization.slug == slug))
     ).scalar_one_or_none()
@@ -966,7 +1009,7 @@ async def admin_update_organization(
         raise HTTPException(status_code=404, detail=_ORG_NOT_FOUND)
     _apply_org_fields(org, body)
     if "slug" in body:
-        new_slug = (body["slug"] or "").strip() or _slugify(org.name)
+        new_slug = (body["slug"] or "").strip() or slugify(org.name)
         if new_slug != org.slug:
             clash = (
                 await db.execute(

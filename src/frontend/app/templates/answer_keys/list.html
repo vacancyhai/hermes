@@ -49,52 +49,12 @@
 
 <!-- ── Main content ── -->
 <div>
-<div x-data="{tab: 'all'}">
-
-{% if recommended_keys %}
-<div style="display:flex;gap:0;border-bottom:2px solid #e2e8f0;margin-bottom:1.1rem">
-    <button @click="tab='all'" :class="tab==='all' ? 'list-tab list-tab-active' : 'list-tab'" style="border-bottom-width:2px;margin-bottom:-2px">All Answer Keys</button>
-    <button @click="tab='foryou'" :class="tab==='foryou' ? 'list-tab list-tab-active' : 'list-tab'" style="border-bottom-width:2px;margin-bottom:-2px">
-        ✨ For You
-        <span style="background:#d97706;color:#fff;border-radius:9999px;font-size:.7rem;font-weight:700;padding:.1rem .45rem;margin-left:.3rem">{{ recommended_keys|length }}</span>
-    </button>
-</div>
-{% endif %}
-
-{% if recommended_keys %}
-<div x-show="tab==='foryou'" x-cloak>
-    <p style="font-size:.85rem;color:#64748b;margin-bottom:.9rem">
-        Answer keys for jobs and admissions you are tracking.
-        <a href="/" style="color:#d97706">View tracker →</a>
-    </p>
-    {% for key in recommended_keys %}
-    <div class="doc-card doc-card-answer" style="border-radius:.5rem;margin-bottom:.75rem">
-        <div class="doc-card-body">
-            <div style="display:flex;gap:.35rem;flex-wrap:wrap;margin-bottom:.3rem">
-                <span class="card-type-tag" style="background:#fef3c7;color:#92400e">Answer Key</span>
-            </div>
-            <div class="doc-title">{{ key.title }}</div>
-            {% if key.notes %}<div class="doc-note">{{ key.notes }}</div>{% endif %}
-            {% if key.published_at %}<div class="doc-meta">Published: {{ key.published_at[:10] }}</div>{% endif %}
-        </div>
-        <div class="doc-card-actions">
-            <a href="/answer-keys/{{ key.slug }}" class="doc-btn doc-btn-amber">View Details →</a>
-        </div>
-    </div>
-    {% endfor %}
-</div>
-{% endif %}
-
-<div x-show="tab==='all'">
 <div class="results-meta">
     {% if pagination.total is defined %}{{ pagination.total }} answer key{{ 's' if pagination.total != 1 else '' }} available{% endif %}
 </div>
 <div id="keys-list">
     {% include "answer_keys/_cards.html" %}
 </div>
-</div>
-
-</div><!-- end alpine x-data -->
 </div><!-- end main content -->
 </div><!-- end list-page-grid -->
 {% endblock %}

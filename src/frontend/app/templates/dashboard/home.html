@@ -199,7 +199,12 @@
                 <div class="mini-card-meta">{{ "{:,}".format(job.total_vacancies) }} vacancies</div>
                 {% endif %}
             </div>
-            <div class="mini-card-footer">
+            <div class="mini-card-footer" style="flex-wrap:wrap;gap:.3rem">
+                {% if not session.get('token') or not profile_complete %}
+                <a href="/profile" class="btn btn-outline btn-sm" onclick="event.stopPropagation()" style="font-size:.65rem;padding:.15rem .4rem">🔍 Eligibility</a>
+                {% else %}
+                <span hx-get="/partials/jobs/{{ job.slug }}/eligibility" hx-trigger="revealed" hx-swap="outerHTML" style="font-size:.65rem;color:var(--slate-400)">…</span>
+                {% endif %}
                 {% if session.get('token') %}
                 {% set is_tracking = job.id|string in tracked_job_ids %}
                 <form method="post" action="/jobs/{{ job.id }}/{{ 'untrack' if is_tracking else 'track' }}" onclick="event.stopPropagation()">
@@ -363,7 +368,12 @@
                     <span style="background:#ede9fe;color:#5b21b6;padding:.1rem .4rem;border-radius:9999px;font-size:.68rem;font-weight:700">{{ admission.admission_type|upper }}</span>
                 </div>
             </div>
-            <div class="mini-card-footer">
+            <div class="mini-card-footer" style="flex-wrap:wrap;gap:.3rem">
+                {% if not session.get('token') or not profile_complete %}
+                <a href="/profile" class="btn btn-outline btn-sm" onclick="event.stopPropagation()" style="font-size:.65rem;padding:.15rem .4rem">🔍 Eligibility</a>
+                {% else %}
+                <span hx-get="/partials/admissions/{{ admission.slug }}/eligibility" hx-trigger="revealed" hx-swap="outerHTML" style="font-size:.65rem;color:var(--slate-400)">…</span>
+                {% endif %}
                 {% if session.get('token') %}
                 {% set is_tracking = admission.id|string in tracked_admission_ids %}
                 <form method="post" action="/admissions/{{ admission.id }}/{{ 'untrack' if is_tracking else 'track' }}" onclick="event.stopPropagation()">

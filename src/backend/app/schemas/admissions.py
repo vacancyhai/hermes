@@ -16,8 +16,8 @@ ADMISSION_STATUSES = Literal["upcoming", "active", "inactive", "closed"]
 class AdmissionCreateRequest(BaseModel):
     organization_id: uuid.UUID | None = None
     admission_name: str = Field(min_length=1, max_length=500)
-    slug: str = Field(
-        min_length=1, max_length=500, pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    slug: str | None = Field(
+        None, min_length=1, max_length=500, pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$"
     )
     conducting_body: str = Field(min_length=1, max_length=255)
     counselling_body: str | None = None

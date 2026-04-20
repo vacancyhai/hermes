@@ -3,13 +3,13 @@
 import uuid
 from typing import AsyncGenerator
 
+import jwt
 import redis.asyncio as aioredis
 from app.config import settings
 from app.database import async_session
 from app.utils import ALGORITHM
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from jose import JWTError, jwt
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -47,7 +47,7 @@ async def _decode_and_validate_token(
     token = credentials.credentials
     try:
         payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[ALGORITHM])
-    except JWTError:
+    except jwt.PyJWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token"
         )

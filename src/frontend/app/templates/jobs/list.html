@@ -22,11 +22,6 @@
     .deadline::before{content:'⏰';font-size:.75rem}
     .deadline.safe{color:#15803d}
     .load-more-wrap{text-align:center;padding:1.5rem 0}
-    .tab-bar{display:flex;gap:0;border-bottom:2px solid var(--slate-200);margin-bottom:1.1rem;overflow-x:auto;scrollbar-width:none}
-    .tab-bar::-webkit-scrollbar{display:none}
-    .foryou-intro{background:#eff6ff;border:1px solid #bfdbfe;border-radius:var(--radius);padding:.75rem 1rem;margin-bottom:1rem;font-size:.85rem;color:#1e40af;display:flex;align-items:center;gap:.5rem;flex-wrap:wrap}
-    .empty-jobs{text-align:center;padding:3.5rem 1rem;color:var(--slate-500);background:#fff;border:1px solid var(--slate-200);border-radius:var(--radius-lg)}
-    .empty-jobs p:first-child{font-size:1.05rem;font-weight:600;margin-bottom:.4rem;color:var(--text)}
 </style>
 {% endblock %}
 
@@ -77,76 +72,10 @@
 
 <!-- ── Main content ── -->
 <div>
-<div x-data="{tab: 'all'}">
-
-{% if recommended_jobs %}
-<div class="tab-bar">
-    <button @click="tab='all'"
-            :class="tab==='all' ? 'list-tab list-tab-active' : 'list-tab'"
-            style="border-bottom-width:2px;margin-bottom:-2px">
-        All Jobs
-    </button>
-    <button @click="tab='foryou'"
-            :class="tab==='foryou' ? 'list-tab list-tab-active' : 'list-tab'"
-            style="border-bottom-width:2px;margin-bottom:-2px">
-        ✨ For You
-        <span style="background:var(--blue);color:#fff;border-radius:9999px;font-size:.7rem;font-weight:700;padding:.1rem .45rem;margin-left:.3rem">{{ recommended_jobs|length }}</span>
-    </button>
-</div>
-{% endif %}
-
-<!-- ── FOR YOU tab ─────────────────────────────────────────────────── -->
-{% if recommended_jobs %}
-<div x-show="tab==='foryou'" x-cloak>
-    <div class="foryou-intro">
-        ✨ Personalised picks based on your qualification, category and location preferences.
-        <a href="/profile" style="color:var(--blue);font-weight:600;white-space:nowrap">Update profile →</a>
-    </div>
-    {% for job in recommended_jobs %}
-    <div class="job-card">
-        <div class="job-card-header">
-            <h3><a href="/jobs/{{ job.slug }}">{{ job.job_title }}</a></h3>
-        </div>
-        <div class="job-card-meta">
-            <span class="job-card-org">🏛 {{ job.organization }}</span>
-            {% if job.qualification_level %}<span class="meta-pill pill-blue">{{ job.qualification_level|title }}</span>{% endif %}
-            {% if job.total_vacancies %}<span class="meta-pill pill-purple">{{ "{:,}".format(job.total_vacancies) }} vacancies</span>{% endif %}
-        </div>
-        {% if job.short_description %}
-        <div class="job-card-desc">{{ job.short_description }}</div>
-        {% endif %}
-        <div class="job-card-footer">
-            <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
-                {% if job.application_end %}<span class="deadline">Deadline: {{ job.application_end }}</span>{% endif %}
-                {% if job.fee and job.fee.get('general') is not none %}<span class="meta-pill pill-amber">Fee: {% if job.fee.get('general') == 0 %}Free{% else %}₹{{ job.fee.get('general') }}{% endif %}</span>{% endif %}
-            </div>
-            <div style="display:flex;gap:.4rem;align-items:center">
-                {% set is_tracking = job.id|string in tracked_job_ids %}
-                <form method="post" action="/jobs/{{ job.slug }}/{{ 'untrack' if is_tracking else 'track' }}" style="display:inline">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                    <button type="submit" class="{{ 'btn-tracking btn btn-sm' if is_tracking else 'btn btn-outline btn-sm' }}">
-                        {{ '★ Tracking' if is_tracking else '☆ Track' }}
-                    </button>
-                </form>
-                <a href="/jobs/{{ job.slug }}" class="btn btn-primary btn-sm">View →</a>
-            </div>
-        </div>
-    </div>
-    {% endfor %}
-</div>
-{% endif %}
-
-<!-- ── ALL JOBS tab ────────────────────────────────────────────────── -->
-<div x-show="tab==='all'">
-
-
 <div id="job-list">
     {% include "jobs/_cards.html" %}
 </div>
 
-</div><!-- end all-jobs tab -->
-
-</div><!-- end alpine x-data -->
 </div><!-- end main content -->
 </div><!-- end list-page-grid -->
 {% endblock %}
