@@ -130,8 +130,8 @@ responses from the server drive UI updates:
 | Mark notification read | `hx-put="/notifications/123/read" hx-swap="outerHTML"` | None |
 | Delete confirmation modal | Alpine.js `x-show` + `x-on:click` | None |
 | Notification badge count | `hx-get="/notifications/count" hx-trigger="every 30s"` | None |
-| Deadline countdown on job cards | Jinja2 `{{ (job.application_end - today).days }} days left` + `hx-get` refresh | None |
-| Application fee for user's category | Jinja2 reads `eligibility.fee` + user's `category` → shows "Your fee: ₹0" | None |
+| Deadline countdown on job cards | Jinja2 `{{ (job.application_end - today).days }} days left` | None |
+| Application fee | Jinja2 iterates `job.fee` / `admission.fee` JSONB dict → shows all categories (General, OBC, SC/ST, EWS, Female) | None |
 | Share job / admission / card | `navigator.share({title, url})` (Web Share API); clipboard fallback on desktop | Inline `onclick` |
 
 The backend returns **HTML partials** (Jinja2 fragments) for HTMX requests
