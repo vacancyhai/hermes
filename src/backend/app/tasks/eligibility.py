@@ -42,7 +42,7 @@ def _upsert_job_rows(session: Session, rows: list[dict]) -> None:
         return
     stmt = insert(UserJobEligibility).values(rows)
     stmt = stmt.on_conflict_do_update(
-        constraint="uq_user_job",
+        constraint="uq_job_elig_user_job",
         set_={
             "status": stmt.excluded.status,
             "reasons": stmt.excluded.reasons,
@@ -57,7 +57,7 @@ def _upsert_admission_rows(session: Session, rows: list[dict]) -> None:
         return
     stmt = insert(UserAdmissionEligibility).values(rows)
     stmt = stmt.on_conflict_do_update(
-        constraint="uq_user_admission",
+        constraint="uq_adm_elig_user_admission",
         set_={
             "status": stmt.excluded.status,
             "reasons": stmt.excluded.reasons,
