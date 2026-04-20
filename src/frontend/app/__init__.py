@@ -816,13 +816,14 @@ def admission_eligibility_badge(slug):
         return ""
     result = resp.json()
     status = result.get("status", "unknown")
+    reasons = result.get("reasons", [])
+    tooltip = " | ".join(reasons) if reasons else ""
     _ELIGIBILITY_BADGE = {
-        "eligible": ("<span class=\"meta-pill\" style=\"background:#dcfce7;color:#166534\">✅ Eligible</span>", ),
-        "partially_eligible": ("<span class=\"meta-pill\" style=\"background:#fef9c3;color:#854d0e\">⚠️ Partially Eligible</span>", ),
-        "not_eligible": ("<span class=\"meta-pill\" style=\"background:#fee2e2;color:#991b1b\">❌ Not Eligible</span>", ),
+        "eligible": f'<span class="meta-pill" style="background:#dcfce7;color:#166534" title="{tooltip}">✅ Eligible</span>',
+        "partially_eligible": f'<span class="meta-pill" style="background:#fef9c3;color:#854d0e" title="{tooltip}">⚠️ Partial</span>',
+        "not_eligible": f'<span class="meta-pill" style="background:#fee2e2;color:#991b1b" title="{tooltip}">❌ Not Eligible</span>',
     }
-    badge_html = _ELIGIBILITY_BADGE.get(status, ("",))[0]
-    return badge_html or ""
+    return _ELIGIBILITY_BADGE.get(status, "") or ""
 
 
 @bp.route("/jobs/<slug>", methods=["GET"])
@@ -1161,12 +1162,32 @@ def admission_detail(slug):
         return render_template(_TEMPLATE_404), 404
     admission = resp.json()
     tracking = False
+    profile_complete = False
+    eligibility = None
     token = session.get("token")
     if token:
         w_resp = current_app.api_client.get(f"/admissions/{admission['id']}/track", token=token)
         if w_resp.ok:
             tracking = w_resp.json().get("tracking", False)
-    return render_template("admissions/detail.html", admission=admission, tracking=tracking)
+        me_resp = current_app.api_client.get(_API_USERS_PROFILE, token=token)
+        if me_resp and me_resp.ok:
+            p = me_resp.json().get("profile", {})
+            profile_complete = bool(
+                p.get("highest_qualification") or p.get("category") or p.get("date_of_birth")
+            )
+        if profile_complete:
+            elig_resp, ok = _try_with_refresh(
+                lambda t: current_app.api_client.get(f"/admissions/eligibility/{slug}", token=t)
+            )
+            if ok and elig_resp and elig_resp.ok:
+                eligibility = elig_resp.json()
+    return render_template(
+        "admissions/detail.html",
+        admission=admission,
+        tracking=tracking,
+        profile_complete=profile_complete,
+        eligibility=eligibility,
+    )
 
 
 @bp.route("/admissions/<admission_id>/track", methods=["POST"])

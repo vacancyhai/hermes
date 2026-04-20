@@ -63,6 +63,66 @@
     <button type="button" class="share-btn" onclick="shareAdmission()">⬆ Share</button>
 </div>
 
+<!-- Eligibility Banner -->
+{% if not session.get('token') %}
+<div style="background:#f8fafc;border:1px solid var(--slate-200);border-radius:var(--radius);padding:1rem 1.25rem;margin-bottom:1rem;display:flex;align-items:center;gap:.75rem;flex-wrap:wrap">
+    <span style="font-size:1.25rem">🔍</span>
+    <div style="flex:1;min-width:0">
+        <div style="font-weight:600;font-size:.9rem;color:var(--text)">Check Your Eligibility</div>
+        <div style="font-size:.8rem;color:var(--slate-500);margin-top:.15rem">Login and complete your profile to see if you qualify for this admission.</div>
+    </div>
+    <a href="/login?next=/admissions/{{ admission.slug }}" class="btn btn-primary btn-sm">Login to Check</a>
+</div>
+{% elif not profile_complete %}
+<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:var(--radius);padding:1rem 1.25rem;margin-bottom:1rem;display:flex;align-items:center;gap:.75rem;flex-wrap:wrap">
+    <span style="font-size:1.25rem">⚠️</span>
+    <div style="flex:1;min-width:0">
+        <div style="font-weight:600;font-size:.9rem;color:#92400e">Profile Incomplete</div>
+        <div style="font-size:.8rem;color:#a16207;margin-top:.15rem">Complete your profile to check eligibility for this admission.</div>
+    </div>
+    <a href="/profile" class="btn btn-sm" style="background:#fef3c7;color:#92400e;border:1px solid #fde68a">Complete Profile</a>
+</div>
+{% elif eligibility %}
+    {% set s = eligibility.status %}
+    {% if s == 'eligible' %}
+    <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:var(--radius);padding:1rem 1.25rem;margin-bottom:1rem">
+        <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.6rem">
+            <span style="font-size:1.25rem">✅</span>
+            <span style="font-weight:700;font-size:.95rem;color:#166534">You are Eligible</span>
+        </div>
+        {% if eligibility.reasons %}
+        <ul style="margin:0;padding-left:1.25rem;display:flex;flex-direction:column;gap:.25rem">
+            {% for r in eligibility.reasons %}<li style="font-size:.82rem;color:#166534">{{ r }}</li>{% endfor %}
+        </ul>
+        {% endif %}
+    </div>
+    {% elif s == 'partially_eligible' %}
+    <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:var(--radius);padding:1rem 1.25rem;margin-bottom:1rem">
+        <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.6rem">
+            <span style="font-size:1.25rem">⚠️</span>
+            <span style="font-weight:700;font-size:.95rem;color:#92400e">Partially Eligible</span>
+        </div>
+        {% if eligibility.reasons %}
+        <ul style="margin:0;padding-left:1.25rem;display:flex;flex-direction:column;gap:.25rem">
+            {% for r in eligibility.reasons %}<li style="font-size:.82rem;color:#92400e">{{ r }}</li>{% endfor %}
+        </ul>
+        {% endif %}
+    </div>
+    {% elif s == 'not_eligible' %}
+    <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:var(--radius);padding:1rem 1.25rem;margin-bottom:1rem">
+        <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.6rem">
+            <span style="font-size:1.25rem">❌</span>
+            <span style="font-weight:700;font-size:.95rem;color:#991b1b">Not Eligible</span>
+        </div>
+        {% if eligibility.reasons %}
+        <ul style="margin:0;padding-left:1.25rem;display:flex;flex-direction:column;gap:.25rem">
+            {% for r in eligibility.reasons %}<li style="font-size:.82rem;color:#991b1b">{{ r }}</li>{% endfor %}
+        </ul>
+        {% endif %}
+    </div>
+    {% endif %}
+{% endif %}
+
 <!-- Key Dates -->
 <div class="detail-grid">
     {% if admission.application_start %}
