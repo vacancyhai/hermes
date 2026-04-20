@@ -28,7 +28,7 @@ from app.models.job import Job
 from app.models.user_eligibility import UserAdmissionEligibility, UserJobEligibility
 from app.models.user_profile import UserProfile
 from app.services.matching import check_admission_eligibility, check_job_eligibility
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
@@ -131,12 +131,27 @@ def recompute_eligibility_for_user(user_id: str) -> dict:
 
 @celery.task(name="app.tasks.eligibility.recompute_eligibility_for_job")
 def recompute_eligibility_for_job(job_id: str) -> dict:
-    """Recompute eligibility for all users against one job after job create/update."""
+    """Recompute eligibility for all users against one job after job create/update.
+
+    If the job status is no longer active/upcoming, all rows for this job are
+    deleted from job_eligibility instead of recomputed.
+    """
     now = datetime.now(timezone.utc)
     with Session(sync_engine) as session:
         job = session.get(Job, job_id)
         if not job:
             return {"skipped": True, "reason": "job not found"}
+
+        if job.status not in _ACTIVE_STATUSES:
+            deleted = session.execute(
+                delete(UserJobEligibility).where(UserJobEligibility.job_id == job_id)
+            ).rowcount
+            session.commit()
+            logger.info(
+                "eligibility_purged_for_job",
+                extra={"job_id": job_id, "status": job.status, "deleted": deleted},
+            )
+            return {"job_id": job_id, "purged": deleted}
 
         profiles = session.execute(select(UserProfile)).scalars().all()
 
@@ -165,12 +180,33 @@ def recompute_eligibility_for_job(job_id: str) -> dict:
 
 @celery.task(name="app.tasks.eligibility.recompute_eligibility_for_admission")
 def recompute_eligibility_for_admission(admission_id: str) -> dict:
-    """Recompute eligibility for all users against one admission after create/update."""
+    """Recompute eligibility for all users against one admission after create/update.
+
+    If the admission status is no longer active/upcoming, all rows for this
+    admission are deleted from admission_eligibility instead of recomputed.
+    """
     now = datetime.now(timezone.utc)
     with Session(sync_engine) as session:
         admission = session.get(Admission, admission_id)
         if not admission:
             return {"skipped": True, "reason": "admission not found"}
+
+        if admission.status not in _ACTIVE_STATUSES:
+            deleted = session.execute(
+                delete(UserAdmissionEligibility).where(
+                    UserAdmissionEligibility.admission_id == admission_id
+                )
+            ).rowcount
+            session.commit()
+            logger.info(
+                "eligibility_purged_for_admission",
+                extra={
+                    "admission_id": admission_id,
+                    "status": admission.status,
+                    "deleted": deleted,
+                },
+            )
+            return {"admission_id": admission_id, "purged": deleted}
 
         profiles = session.execute(select(UserProfile)).scalars().all()
 
