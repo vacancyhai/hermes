@@ -551,7 +551,7 @@ file: <pdf_file>
 
 **Use Case:** Used in the job creation page (`/jobs/new`) to automatically populate form fields from uploaded PDF notifications. Does not create any database records.
 
-**Extracted fields:** job_title, organization, department, qualification_level, employment_type, total_vacancies, description, short_description, notification_date, application_start, application_end, exam_start, exam_end, result_date, fees (general/obc/sc_st/ews/female), salary (initial/max), source_url, eligibility, selection_process.
+**Extracted fields:** job_title, organization, department, qualification_level, employment_type, total_vacancies, description, short_description, notification_date, application_start, application_end, exam_start, exam_end, result_date, fee `{general, obc, sc_st, ews, female}`, salary (initial/max), source_url, eligibility, selection_process.
 
 ---
 
@@ -806,8 +806,7 @@ Authorization: Bearer <admin_token>
     ]
   },
   "admission_date": "2026-05-25",
-  "fee_general": 3200,
-  "fee_sc_st": 1600,
+  "fee": { "general": 3200, "sc_st": 1600 },
   "status": "active"
 }
 → 201 { "id": "uuid", "slug": "jee-advanced-2026", ... }

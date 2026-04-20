@@ -27,11 +27,13 @@ Extract the following structured fields from the given text. Return ONLY valid J
   "application_end": "YYYY-MM-DD or null",
   "notification_date": "YYYY-MM-DD or null",
   "exam_start": "YYYY-MM-DD or null",
-  "fee_general": "integer (INR) or null",
-  "fee_obc": "integer (INR) or null",
-  "fee_sc_st": "integer (INR) or null",
-  "fee_ews": "integer (INR) or null",
-  "fee_female": "integer (INR) or null",
+  "fee": {
+    "general": "integer (INR) or omit if not found",
+    "obc": "integer (INR) or omit",
+    "sc_st": "integer (INR) or omit",
+    "ews": "integer (INR) or omit",
+    "female": "integer (INR) or omit"
+  },
   "salary_initial": "integer (annual INR) or null",
   "salary_max": "integer (annual INR) or null",
   "eligibility": {"age_min": "int or null", "age_max": "int or null", "states": ["list of eligible states or empty"]},
