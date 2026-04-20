@@ -253,19 +253,9 @@ Admin/Operator → Admin Frontend (port 8081)
 └────┬─────────────────┘
      │
      ▼
-┌──────────────────────────────────────┐
-│ OPTIONAL: PDF Auto-Fill              │
-│                                      │
-│ 📄 Upload PDF notification           │
-│ → Click "Extract Data"               │
-│ → AI extracts fields (Claude API)    │
-│ → Form auto-filled instantly         │
-└────┬─────────────────────────────────┘
-     │
-     ▼
 ┌────────────────────────────────────────┐
-│ Fill/Review Job Details Form:          │◄──────┐
-│ (Manual entry OR review extracted data)│       │
+│ Fill in Job Details Form:              │◄──────┐
+│ (Manual entry)                         │       │
 │                                        │       │
 │ ┌───────────────────────────────────┐  │       │
 │ │ Basic Information                 │  │       │

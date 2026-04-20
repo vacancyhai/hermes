@@ -6,7 +6,7 @@ Routes:
   /login                          — Admin login
   /logout                         — Clear session
   /jobs                           — Job management (list)
-  /jobs/new                       — Create job with optional PDF extract
+  /jobs/new                       — Create job
   /jobs/<id>/edit                 — Edit job + manage phase docs
   /jobs/<id>/delete               — POST: soft-delete job
   /jobs/<id>/docs/admit-cards     — POST: add admit card to job

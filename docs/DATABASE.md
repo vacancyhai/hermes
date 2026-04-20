@@ -257,8 +257,8 @@ Government job vacancies. Document releases (admit cards, answer keys, results) 
 | `fee` | JSONB | No | Application fees by category `{general, obc, sc_st, ews, female}` (INR); `0` = Free; default `{}` |
 | `status` | String(20) | No | `ck_jobs_status`: `upcoming` \| `active` \| `inactive` \| `closed`; default `active` |
 | `created_by` | UUID (FK → `admin_users.id`) | Yes | Admin who created the job |
-| `source` | String(20) | No | `ck_jobs_source`: `manual` \| `pdf_upload`; default `manual` (`pdf_upload` unused — AI extractor removed) |
-| `source_pdf_path` | Text | Yes | Path to uploaded PDF (legacy; no longer populated) |
+| `source` | String(20) | No | `ck_jobs_source`: `manual`; default `manual` |
+| `source_pdf_path` | Text | Yes | Reserved; not populated |
 | `published_at` | DateTime | Yes | When job was approved and published |
 | `created_at` | DateTime | No | Creation timestamp |
 | `updated_at` | DateTime | No | Last update timestamp |
