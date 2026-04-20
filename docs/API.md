@@ -149,7 +149,6 @@ Content is stored across four dedicated tables: `jobs`, `admit_cards`, `answer_k
 |--------|----------|------|-------------|
 | GET | `/admin/jobs` | Operator+ | List all job vacancies |
 | POST | `/admin/jobs` | Operator+ | Create job vacancy |
-| POST | `/admin/jobs/extract-pdf` | Operator+ | Extract PDF data → return JSON (for form auto-fill) |
 
 #### Admit Cards
 
@@ -499,59 +498,6 @@ Every job card and detail page includes a single **Share** button using the Web 
 - URL and title are passed via `data-url` and `data-title` HTML attributes to avoid Jinja2/JS context issues
 
 WhatsApp and Telegram share links have been removed.
-
----
-
-## PDF Inline Extraction (Form Auto-Fill)
-
-### Extract PDF Data
-```
-POST /api/v1/admin/jobs/extract-pdf
-Authorization: Bearer <admin_token>
-Content-Type: multipart/form-data
-
-file: <pdf_file>
-
-→ 200 {
-  "status": "success",
-  "data": {
-    "job_title": "SSC CGL 2026",
-    "organization": "Staff Selection Commission",
-    "department": "Various Ministries",
-    "qualification_level": "graduate",
-    "total_vacancies": 5000,
-    "description": "Combined Graduate Level Examination...",
-    "short_description": "SSC CGL recruitment for Group B and C posts",
-    "notification_date": "2026-01-15",
-    "application_start": "2026-01-20",
-    "application_end": "2026-02-20",
-    "exam_start": "2026-03-15",
-    "fee": { "general": 100, "obc": 100, "sc_st": 0 },
-    "salary_initial": 500000,
-    "source_url": "https://ssc.nic.in/notification.pdf"
-  }
-}
-```
-
-**Constraints:**
-- Only `.pdf` files accepted
-- Maximum file size: 10MB (configurable via `PDF_MAX_SIZE_MB`)
-- Requires `ANTHROPIC_API_KEY` for AI extraction (graceful fallback if not set)
-- Rate limited: 10 requests/minute
-- Synchronous processing (no background task)
-
-**Workflow:**
-1. Upload PDF → temporary file created
-2. PDF text extracted via `pdfplumber` (up to 8000 chars)
-3. Text sent to Anthropic Claude for structured field extraction
-4. JSON data returned immediately to frontend
-5. Frontend JavaScript auto-fills form fields
-6. Admin reviews and edits extracted data
-7. Admin submits form to create content
-
-**Use Case:** Used in the job creation page (`/jobs/new`) to automatically populate form fields from uploaded PDF notifications. Does not create any database records.
-
-**Extracted fields:** job_title, organization, department, qualification_level, employment_type, total_vacancies, description, short_description, notification_date, application_start, application_end, exam_start, exam_end, result_date, fee `{general, obc, sc_st, ews, female}`, salary (initial/max), source_url, eligibility, selection_process.
 
 ---
 

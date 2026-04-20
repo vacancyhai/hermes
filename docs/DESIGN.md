@@ -2,7 +2,7 @@
 
 > **Status:** Core platform complete. Auth (Email/OTP, Google OAuth, Phone OTP), job & admission CRUD, full-text search,
 > user profiles, job matching, org follow, tracking, notifications (email, push, in-app, Telegram),
-> admin panel, SEO, PDF AI extraction, PWA, security audit,
+> admin panel, SEO, PWA, security audit,
 > admissions, polymorphic document tables (admit cards, answer keys, results), audit log — all implemented.
 > **Pending:** `send_new_job_notifications` implementation, WhatsApp delivery integration, OCI deployment.
 
@@ -350,81 +350,8 @@ For email/password and Google login, create a test user via the Firebase Console
 
 ## Job Ingestion Strategy
 
-Jobs enter the system through two paths:
-
-### Phase 1: Manual Entry (Current)
-
 Admin creates a job via `POST /api/v1/admin/jobs`. The job is created with
-`source='manual'` and `status='active'` (published immediately). This is the
-only method available in v1.
-
-### Phase 2: PDF Inline Extraction → Form Auto-Fill → Publish (Implemented)
-
-Government job notifications are published as PDF documents. Instead of
-manually typing every field, admin/operator can upload a PDF on creation pages
-and AI instantly extracts structured data to auto-fill the form.
-
-```
-Admin/Operator on creation page (/jobs/new, /admit-cards/new, etc.)
-    │
-    ▼
-┌────────────────────────────────────────┐
-│ Upload PDF + Click "Extract Data"       │
-└────────────────┬───────────────────────┘
-                 │
-                 ▼
-┌────────────────────────────────────────┐
-│ POST /admin/jobs/extract-pdf             │
-│ (Synchronous processing)                 │
-│                                          │
-│ 1. Parse PDF text (pdfplumber)           │
-│ 2. Send text to AI (Anthropic Claude)    │
-│ 3. AI returns JSON immediately:          │
-│    - job_title, organization, department │
-│    - eligibility, dates, vacancies       │
-│    - salary, fees, source_url            │
-│ 4. Return JSON to frontend               │
-│    (no database write)                   │
-└────────────────┬───────────────────────┘
-                 │
-                 ▼
-┌────────────────────────────────────────┐
-│ Frontend JavaScript Auto-Fills Form      │
-│                                          │
-│ All form fields populated with:          │
-│   ├─ Job title, org, department          │
-│   ├─ Eligibility (age, education, etc.)  │
-│   ├─ Dates (application, admission, result)   │
-│   ├─ Vacancies, salary, fee              │
-│   └─ Source URL                          │
-│                                          │
-│ Operator/Admin can:                      │
-│   ├─ Review all auto-filled data         │
-│   ├─ Edit any incorrect field            │
-│   ├─ Add missing data                    │
-│   └─ Submit → creates content in DB      │
-│        (triggers user notifications)     │
-└────────────────────────────────────────┘
-```
-
-### PDF Extraction Tech Stack
-
-| Component | Technology | Purpose |
-| --------- | ---------- | ------- |
-| PDF parsing | pdfplumber | Extract raw text from notification PDF |
-| AI extraction | Anthropic Claude API | Structured data extraction from text |
-| Storage | Temporary files only | Immediate cleanup after extraction |
-| Processing | Synchronous (no queue) | Instant response to frontend |
-
-The AI extraction prompt maps PDF text to the `jobs` schema
-fields. The creation form shows the extracted data inline, allowing
-immediate review and editing before submission.
-
-### API Endpoints for PDF Extraction
-
-| Method | Endpoint                          | Description                    | Access   |
-| ------ | --------------------------------- | ------------------------------ | -------- |
-| POST   | `/api/v1/admin/jobs/extract-pdf`  | Extract PDF → return JSON      | Operator+ |
+`source='manual'` and `status='active'` (published immediately).
 
 ---
 
@@ -827,7 +754,6 @@ All items below are implemented.
   | Update job | `update_job` — full before/after diff per field |
   | Approve job | `approve_job` — job title |
   | Delete job (soft) | `delete_job` — job title |
-  | Extract PDF | `extract_pdf` — filename |
   | Suspend/activate user | `update_user_status` — old → new status |
   | Change admin role | `update_user_role` — old → new role |
 

@@ -3,7 +3,6 @@
 Job Management:
   GET    /api/v1/admin/jobs              — List all jobs (any status)
   POST   /api/v1/admin/jobs              — Create job
-  POST   /api/v1/admin/jobs/extract-pdf  — Extract PDF data → return JSON (for form auto-fill)
   PUT    /api/v1/admin/jobs/:id          — Update job
   DELETE /api/v1/admin/jobs/:id          — Hard delete
 
@@ -22,12 +21,10 @@ Dashboard:
 
 import asyncio
 import logging
-import os
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Annotated, Any
 
-from app.config import settings
 from app.dependencies import get_db, require_admin, require_operator
 from app.models.admin_log import AdminLog
 from app.models.admin_user import AdminUser
@@ -39,7 +36,6 @@ from app.models.organization import Organization
 from app.models.result import Result
 from app.models.user import User
 from app.models.user_profile import UserProfile
-from app.rate_limit import limiter
 from app.schemas.auth import AdminUserResponse, UserResponse
 from app.schemas.jobs import (
     AdmitCardResponse,
@@ -50,15 +46,7 @@ from app.schemas.jobs import (
     JobUpdateRequest,
     ResultResponse,
 )
-from fastapi import (
-    APIRouter,
-    Depends,
-    HTTPException,
-    Query,
-    Request,
-    UploadFile,
-    status,
-)
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from passlib.context import CryptContext
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
@@ -414,85 +402,6 @@ async def create_job(
         send_new_job_notifications.delay(str(job.id))
 
     return JobResponse.model_validate(job).model_dump()
-
-
-@router.post("/jobs/extract-pdf", status_code=status.HTTP_200_OK)
-@limiter.limit("10/minute")
-async def extract_pdf_data(
-    file: UploadFile,
-    request: Request,
-    current_admin: Annotated[Any, Depends(require_operator)],
-    db: Annotated[AsyncSession, Depends(get_db)],
-):
-    """Upload PDF → extract data → return JSON (no job created). For inline form auto-fill."""
-    admin = current_admin
-
-    if not file.filename or not file.filename.lower().endswith(".pdf"):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Only PDF files are accepted",
-        )
-
-    if file.content_type and file.content_type != "application/pdf":
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Only PDF files are accepted",
-        )
-
-    content = await file.read()
-    max_bytes = settings.PDF_MAX_SIZE_MB * 1024 * 1024
-    if len(content) > max_bytes:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"File exceeds {settings.PDF_MAX_SIZE_MB}MB limit",
-        )
-
-    # Extract text from PDF
-    import tempfile
-
-    import anyio
-    from app.services.ai_extractor import extract_job_data
-    from app.services.pdf_extractor import extract_text_from_pdf
-
-    tmp_fd, tmp_path = tempfile.mkstemp(suffix=".pdf")
-    os.close(tmp_fd)
-    await anyio.Path(tmp_path).write_bytes(content)
-
-    try:
-        pdf_text = extract_text_from_pdf(tmp_path)
-        if not pdf_text.strip():
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="PDF has no extractable text",
-            )
-
-        # AI extraction
-        extracted = extract_job_data(pdf_text)
-        if not extracted:
-            # Fallback: return minimal data
-            extracted = {
-                "job_title": f"PDF Upload - {file.filename}",
-                "organization": "Unknown",
-                "description": pdf_text[:2000],
-            }
-
-        await _log_action(
-            db,
-            admin,
-            "extract_pdf",
-            "job",
-            details=f"PDF: {file.filename}",
-            request=request,
-        )
-
-        return {"status": "success", "data": extracted}
-
-    finally:
-        # Clean up temp file
-        try:
-            os.unlink(tmp_path)
-        except OSError:
-            pass
 
 
 @router.put("/jobs/{job_id}")
