@@ -131,6 +131,19 @@ async def admission_eligibility(
     )
     profile = profile_result.scalar_one_or_none()
 
+    from app.models.user_eligibility import UserAdmissionEligibility
+
+    cached = (
+        await db.execute(
+            select(UserAdmissionEligibility).where(
+                UserAdmissionEligibility.user_id == user.id,
+                UserAdmissionEligibility.admission_id == admission.id,
+            )
+        )
+    ).scalar_one_or_none()
+    if cached:
+        return {"status": cached.status, "reasons": cached.reasons}
+
     return check_admission_eligibility(admission, profile)
 
 
@@ -296,6 +309,10 @@ async def create_admission(
         request=request,
     )
 
+    from app.tasks.eligibility import recompute_eligibility_for_admission
+
+    recompute_eligibility_for_admission.delay(str(admission.id))
+
     if body.status == "active":
         from app.tasks.notifications import notify_trackers_on_update
 
@@ -353,6 +370,10 @@ async def update_admission(
             from app.tasks.notifications import notify_trackers_on_update
 
             notify_trackers_on_update.delay("admission", str(admission.id))
+
+    from app.tasks.eligibility import recompute_eligibility_for_admission
+
+    recompute_eligibility_for_admission.delay(str(admission_id))
 
     await db.refresh(admission)
     return AdmissionResponse.model_validate(admission).model_dump()

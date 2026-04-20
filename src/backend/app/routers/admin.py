@@ -298,6 +298,10 @@ async def create_job(
         request=request,
     )
 
+    from app.tasks.eligibility import recompute_eligibility_for_job
+
+    recompute_eligibility_for_job.delay(str(job.id))
+
     # If created as active, notify trackers
     if body.status == "active":
         from app.tasks.notifications import (
@@ -352,6 +356,10 @@ async def update_job(
     await _log_action(
         db, admin, "update_job", "job", job.id, changes=changes, request=request
     )
+
+    from app.tasks.eligibility import recompute_eligibility_for_job
+
+    recompute_eligibility_for_job.delay(str(job_id))
 
     await db.refresh(job)
     return JobResponse.model_validate(job).model_dump()

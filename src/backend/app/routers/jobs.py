@@ -116,6 +116,19 @@ async def job_eligibility(
     )
     profile = profile_result.scalar_one_or_none()
 
+    from app.models.user_eligibility import UserJobEligibility
+
+    cached = (
+        await db.execute(
+            select(UserJobEligibility).where(
+                UserJobEligibility.user_id == user.id,
+                UserJobEligibility.job_id == job.id,
+            )
+        )
+    ).scalar_one_or_none()
+    if cached:
+        return {"status": cached.status, "reasons": cached.reasons}
+
     return check_job_eligibility(job, profile)
 
 

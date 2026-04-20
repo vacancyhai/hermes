@@ -93,6 +93,11 @@ async def update_profile(
         "profile_updated",
         extra={"user_id": str(user.id), "fields": list(update_data.keys())},
     )
+
+    from app.tasks.eligibility import recompute_eligibility_for_user
+
+    recompute_eligibility_for_user.delay(str(user.id))
+
     return ProfileResponse.model_validate(profile).model_dump()
 
 
