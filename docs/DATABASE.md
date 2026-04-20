@@ -8,9 +8,7 @@ Schema is managed with Alembic:
 
 | File | Description |
 |------|-------------|
-| `migrations/versions/0001_initial.py` | **Complete consolidated schema** — all 14 tables with final state: `organizations` (with `slug` + `org_type`), `jobs.organization_id` FK, `admissions.organization_id` FK, `user_tracks` supporting `job`/`admission`/`organization` entity types |
-| `migrations/versions/0002_add_missing_timestamps.py` | Add `updated_at` to `organizations`, `notifications`, `user_devices`; add `created_at` to `user_profiles` |
-| `migrations/versions/0003_fee_jsonb.py` | Consolidate `fee_general/obc/sc_st/ews/female` into single `fee JSONB` on `jobs` and `admissions`; existing data backfilled |
+| `migrations/versions/0001_initial.py` | **Complete consolidated schema** — all 14 tables: `fee JSONB` on jobs+admissions, `created_at`+`updated_at` on all tables, `organizations` with `slug`+`org_type`+`updated_at`, `user_tracks` supporting `job`/`admission`/`organization` entity types |
 
 **Apply migrations:**
 ```bash
