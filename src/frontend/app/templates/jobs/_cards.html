@@ -25,7 +25,10 @@
             <span hx-get="/partials/jobs/{{ job.slug }}/eligibility"
                   hx-trigger="revealed"
                   hx-swap="outerHTML"
-                  style="font-size:.75rem;color:var(--slate-400)">…</span>
+                  hx-indicator=".elig-loading-{{ job.slug }}"
+                  style="font-size:.75rem;color:var(--slate-400)">
+                <span class="elig-loading-{{ job.slug }}" style="font-size:.72rem;color:var(--slate-400)">checking…</span>
+            </span>
             {% endif %}
             {% if tracked_job_ids is defined %}
             {% set is_tracking = job.id|string in tracked_job_ids %}
