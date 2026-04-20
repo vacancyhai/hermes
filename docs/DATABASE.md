@@ -9,6 +9,8 @@ Schema is managed with Alembic:
 | File | Description |
 |------|-------------|
 | `migrations/versions/0001_initial.py` | **Complete consolidated schema** — all 14 tables with final state: `organizations` (with `slug` + `org_type`), `jobs.organization_id` FK, `admissions.organization_id` FK, `user_tracks` supporting `job`/`admission`/`organization` entity types |
+| `migrations/versions/0002_add_missing_timestamps.py` | Add `updated_at` to `organizations`, `notifications`, `user_devices`; add `created_at` to `user_profiles` |
+| `migrations/versions/0003_fee_jsonb.py` | Consolidate `fee_general/obc/sc_st/ews/female` into single `fee JSONB` on `jobs` and `admissions`; existing data backfilled |
 
 **Apply migrations:**
 ```bash
@@ -166,6 +168,7 @@ Detailed profile information and preferences. One row per user (UNIQUE on `user_
 | `preferred_categories` | JSONB | No | Categories of interest; default `[]` |
 | `fcm_tokens` | JSONB | No | FCM tokens: `[{"token":"…","device_name":"…","registered_at":"…"}]`; default `[]` |
 | `followed_organizations` | JSONB | No | **Deprecated** — legacy org names list; superseded by `user_tracks` with `entity_type='organization'`; default `[]` |
+| `created_at` | DateTime | No | Creation timestamp |
 | `updated_at` | DateTime | No | Last update timestamp |
 
 **Indexes:** GIN on `education`, GIN on `notification_preferences`
@@ -196,7 +199,7 @@ Internal staff accounts (Admin/Operator).
 ---
 
 ### 4. `organizations`
-Organization registry — backfilled from `jobs.organization` on migration. Identified by UUID; no slug needed.
+Organization registry — backfilled from `jobs.organization` on migration. Identified by UUID or slug.
 
 | Column | Type | Nullable | Description |
 |--------|------|----------|-----------|
@@ -205,11 +208,12 @@ Organization registry — backfilled from `jobs.organization` on migration. Iden
 | `short_name` | String(50) | Yes | Abbreviation — e.g. "SSC" |
 | `logo_url` | Text | Yes | Logo image URL |
 | `website_url` | Text | Yes | Official website |
+| `slug` | String(255) | No | URL-friendly identifier (unique, indexed) |
+| `org_type` | String(20) | No | `ck_org_type`: `jobs` \| `admissions` \| `both`; default `both` |
 | `created_at` | DateTime | No | Creation timestamp |
+| `updated_at` | DateTime | No | Last update timestamp |
 
-**Indexes:** `idx_organizations_name`
-
-> **No slug:** Organizations are addressed by UUID in all API routes (`GET /api/v1/organizations/{org_id}`). The slug column was dropped in migration `0003_drop_org_slug`.
+**Indexes:** `idx_organizations_name`, `idx_organizations_slug`
 
 **Public API routes:**
 - `GET /api/v1/organizations` — list all orgs (with `job_count` + `admission_count`)
@@ -252,11 +256,7 @@ Government job vacancies. Document releases (admit cards, answer keys, results) 
 | `salary_max` | Integer | Yes | Maximum pay (INR) |
 | `salary` | JSONB | No | Pay scale, level, allowances; default `{}` |
 | `selection_process` | JSONB | No | List of selection stages; default `[]` |
-| `fee_general` | Integer | Yes | Application fee — General/UR (INR) |
-| `fee_obc` | Integer | Yes | Application fee — OBC-NCL (INR) |
-| `fee_sc_st` | Integer | Yes | Application fee — SC/ST (INR) |
-| `fee_ews` | Integer | Yes | Application fee — EWS (INR) |
-| `fee_female` | Integer | Yes | Application fee — Female/PwBD (INR) |
+| `fee` | JSONB | No | Application fees by category `{general, obc, sc_st, ews, female}` (INR); `0` = Free; default `{}` |
 | `status` | String(20) | No | `ck_jobs_status`: `upcoming` \| `active` \| `inactive` \| `closed`; default `active` |
 | `created_by` | UUID (FK → `admin_users.id`) | Yes | Admin who created the job |
 | `source` | String(20) | No | `ck_jobs_source`: `manual` \| `pdf_upload`; default `manual` |
@@ -288,6 +288,7 @@ Master records for all system notifications.
 | `sent_via` | ARRAY(String) | Yes | Channels actually used (e.g. `['push', 'email']`) |
 | `priority` | String(10) | No | `ck_notifications_priority`: `low` \| `medium` \| `high`; default `medium` |
 | `created_at` | DateTime | No | Creation timestamp |
+| `updated_at` | DateTime | No | Last update timestamp |
 | `read_at` | DateTime | Yes | When notification was read |
 | `expires_at` | DateTime | No | Auto-delete after 90 days; default `NOW() + 90 days` |
 
@@ -330,6 +331,7 @@ Device registry — stores device metadata. **Push notifications read FCM tokens
 | `is_active` | Boolean | No | Token validity; default `true` |
 | `last_active_at` | DateTime | No | Last seen timestamp; default `NOW()` |
 | `created_at` | DateTime | No | Registration timestamp |
+| `updated_at` | DateTime | No | Last update timestamp |
 
 **Indexes:** `idx_devices_user_id`, `idx_devices_fcm_token` (unique partial), `idx_devices_fingerprint`
 
@@ -449,11 +451,7 @@ These are educational admissioninations, not government job recruitments.
 | `exam_end` | Date | Yes | Exam end date |
 | `result_date` | Date | Yes | Expected result date |
 | `counselling_start` | Date | Yes | Counselling round start |
-| `fee_general` | Integer | Yes | Application fee — General/UR (INR) |
-| `fee_obc` | Integer | Yes | Application fee — OBC-NCL (INR) |
-| `fee_sc_st` | Integer | Yes | Application fee — SC/ST (INR) |
-| `fee_ews` | Integer | Yes | Application fee — EWS (INR) |
-| `fee_female` | Integer | Yes | Application fee — Female/PwBD (INR) |
+| `fee` | JSONB | No | Application fees by category `{general, obc, sc_st, ews, female}` (INR); `0` = Free; default `{}` |
 | `description` | Text | Yes | Full HTML description |
 | `short_description` | Text | Yes | One-liner for listing cards |
 | `source_url` | Text | Yes | Official website URL |

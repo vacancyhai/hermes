@@ -422,18 +422,18 @@ All errors follow the structured format from `app/main.py`:
 
 ## Application Fee Fields
 
-Job vacancies can include category-wise application fees (all nullable integers in INR):
+Fees are stored in a single `fee` JSONB field on both `jobs` and `admissions`. Keys are optional — only include categories that apply.
 
-| Field | Description |
-|-------|-------------|
-| `fee_general` | Fee for General category |
-| `fee_obc` | Fee for OBC category |
-| `fee_sc_st` | Fee for SC/ST category |
-| `fee_ews` | Fee for EWS category |
-| `fee_female` | Fee for Female candidates |
+| Key | Description |
+|-----|-------------|
+| `general` | Fee for General / UR category |
+| `obc` | Fee for OBC-NCL category |
+| `sc_st` | Fee for SC / ST category |
+| `ews` | Fee for EWS category |
+| `female` | Fee for Female / PwBD candidates |
 
-Fee fields are included in `JobCreateRequest`, `JobUpdateRequest`, `JobResponse`, and `JobListItem`.
-Value `0` means "Free". `null` means fee not specified (row hidden in UI).
+`fee` is included in `JobCreateRequest`, `JobUpdateRequest`, `JobResponse`, `JobListItem`, `AdmissionCreateRequest`, `AdmissionUpdateRequest`, `AdmissionResponse`, and `AdmissionListItem`.
+Value `0` means "Free". Omitting a key means fee not specified (hidden in UI).
 
 ### Create Job with Fees
 ```
@@ -442,11 +442,7 @@ Authorization: Bearer <admin_token>
 {
   "job_title": "SSC GD Constable 2026",
   "organization": "Staff Selection Commission",
-  "fee_general": 100,
-  "fee_obc": 100,
-  "fee_sc_st": 0,
-  "fee_ews": 0,
-  "fee_female": 0,
+  "fee": { "general": 100, "obc": 100, "sc_st": 0, "ews": 0, "female": 0 },
   ...
 }
 ```
@@ -530,9 +526,7 @@ file: <pdf_file>
     "application_start": "2026-01-20",
     "application_end": "2026-02-20",
     "exam_start": "2026-03-15",
-    "fee_general": 100,
-    "fee_obc": 100,
-    "fee_sc_st": 0,
+    "fee": { "general": 100, "obc": 100, "sc_st": 0 },
     "salary_initial": 500000,
     "source_url": "https://ssc.nic.in/notification.pdf"
   }
@@ -734,7 +728,7 @@ GET /api/v1/admissions?stream=medical&limit=10
       "stream": "medical",
       "application_end": "2025-11-30",
       "admission_date": "2026-03-09",
-      "fee_general": 4250
+      "fee": { "general": 4250, "obc": 4250, "sc_st": 2000 }
     },
     ...
   ],
