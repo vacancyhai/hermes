@@ -41,8 +41,15 @@
                     <input id="slug" type="text" name="slug" required placeholder="e.g. ssc-gd-2025" pattern="[a-z0-9]+(?:-[a-z0-9]+)*" title="Lowercase letters, numbers and hyphens only">
                 </div>
                 <div class="form-group col-span-2">
-                    <label for="organization">Organization <span class="req">*</span></label>
-                    <input id="organization" type="text" name="organization" required placeholder="e.g. Staff Selection Commission">
+                    <label for="organization_id">Organization <span class="req">*</span></label>
+                    <select id="organization_id" name="organization_id" required onchange="syncOrgName(this)">
+                        <option value="" disabled selected>— Select Organization —</option>
+                        {% for org in organizations %}
+                        <option value="{{ org.id }}" data-name="{{ org.name }}">{{ org.name }}{% if org.short_name %} ({{ org.short_name }}){% endif %}</option>
+                        {% endfor %}
+                    </select>
+                    <input type="hidden" id="organization" name="organization" value="">
+                    <a href="/organizations/new" target="_blank" style="font-size:.75rem;margin-top:.2rem">&#43; Add new organization</a>
                 </div>
                 <div class="form-group">
                     <label for="department">Department</label>
@@ -846,6 +853,11 @@ function serializeZones() {
         });
     });
     document.getElementById('zonewise_json').value = JSON.stringify(zones);
+}
+
+function syncOrgName(sel) {
+    var opt = sel.options[sel.selectedIndex];
+    document.getElementById('organization').value = opt ? (opt.getAttribute('data-name') || '') : '';
 }
 
 document.getElementById('job-form').addEventListener('submit', function() {

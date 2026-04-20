@@ -4,7 +4,7 @@ import uuid
 from datetime import date, datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field  # noqa: F401
 
 ADMISSION_TYPES = Literal["ug", "pg", "doctoral", "lateral"]
 ADMISSION_STREAMS = Literal[
@@ -14,6 +14,7 @@ ADMISSION_STATUSES = Literal["upcoming", "active", "inactive", "closed"]
 
 
 class AdmissionCreateRequest(BaseModel):
+    organization_id: uuid.UUID | None = None
     admission_name: str = Field(min_length=1, max_length=500)
     slug: str = Field(
         min_length=1, max_length=500, pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$"
@@ -33,11 +34,7 @@ class AdmissionCreateRequest(BaseModel):
     exam_end: date | None = None
     result_date: date | None = None
     counselling_start: date | None = None
-    fee_general: int | None = None
-    fee_obc: int | None = None
-    fee_sc_st: int | None = None
-    fee_ews: int | None = None
-    fee_female: int | None = None
+    fee: dict = Field(default_factory=dict)
     description: str | None = None
     short_description: str | None = None
     source_url: str | None = None
@@ -45,6 +42,7 @@ class AdmissionCreateRequest(BaseModel):
 
 
 class AdmissionUpdateRequest(BaseModel):
+    organization_id: uuid.UUID | None = None
     admission_name: str | None = Field(None, min_length=1, max_length=500)
     slug: str | None = Field(
         None, min_length=1, max_length=500, pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$"
@@ -64,11 +62,7 @@ class AdmissionUpdateRequest(BaseModel):
     exam_end: date | None = None
     result_date: date | None = None
     counselling_start: date | None = None
-    fee_general: int | None = None
-    fee_obc: int | None = None
-    fee_sc_st: int | None = None
-    fee_ews: int | None = None
-    fee_female: int | None = None
+    fee: dict | None = None
     description: str | None = None
     short_description: str | None = None
     source_url: str | None = None
@@ -77,6 +71,7 @@ class AdmissionUpdateRequest(BaseModel):
 
 class AdmissionResponse(BaseModel):
     id: uuid.UUID
+    organization_id: uuid.UUID | None = None
     slug: str
     admission_name: str
     conducting_body: str
@@ -94,11 +89,7 @@ class AdmissionResponse(BaseModel):
     exam_end: date | None
     result_date: date | None
     counselling_start: date | None
-    fee_general: int | None
-    fee_obc: int | None
-    fee_sc_st: int | None
-    fee_ews: int | None
-    fee_female: int | None
+    fee: dict
     description: str | None
     short_description: str | None
     source_url: str | None
@@ -112,6 +103,7 @@ class AdmissionResponse(BaseModel):
 
 class AdmissionListItem(BaseModel):
     id: uuid.UUID
+    organization_id: uuid.UUID | None = None
     slug: str
     admission_name: str
     conducting_body: str
@@ -124,7 +116,7 @@ class AdmissionListItem(BaseModel):
     exam_start: date | None
     exam_end: date | None
     result_date: date | None
-    fee_general: int | None
+    fee: dict = Field(default_factory=dict)
     status: str
     created_at: datetime
 

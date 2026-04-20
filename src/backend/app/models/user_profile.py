@@ -46,6 +46,9 @@ class UserProfile(Base):
         JSONB, nullable=False, server_default="[]"
     )
     fcm_tokens: Mapped[list] = mapped_column(JSONB, nullable=False, server_default="[]")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

@@ -50,9 +50,18 @@
                            value="{{ job.slug or '' }}" placeholder="e.g. ssc-cgl-2026" pattern="[a-z0-9]+(?:-[a-z0-9]+)*" title="Lowercase letters, numbers and hyphens only">
                 </div>
                 <div class="form-group col-span-2">
-                    <label for="ej_organization">Organization <span class="req">*</span></label>
-                    <input id="ej_organization" type="text" name="organization" required
-                           value="{{ job.organization or '' }}" placeholder="e.g. Staff Selection Commission">
+                    <label for="ej_organization_id">Organization <span class="req">*</span></label>
+                    <select id="ej_organization_id" name="organization_id" required onchange="syncOrgName(this)">
+                        <option value="" disabled {% if not job.organization_id %}selected{% endif %}>— Select Organization —</option>
+                        {% for org in organizations %}
+                        <option value="{{ org.id }}" data-name="{{ org.name }}"
+                            {% if job.organization_id and org.id == job.organization_id|string %}selected{% endif %}>
+                            {{ org.name }}{% if org.short_name %} ({{ org.short_name }}){% endif %}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <input type="hidden" id="ej_organization" name="organization" value="{{ job.organization or '' }}">
+                    <a href="/organizations/new" target="_blank" style="font-size:.75rem;margin-top:.2rem">&#43; Add new organization</a>
                 </div>
                 <div class="form-group">
                     <label for="ej_department">Department</label>
@@ -144,11 +153,11 @@
         <div class="section-body">
             <p class="subsection-label">Fee by Category (INR)</p>
             <div class="fee-grid">
-                {% for fname, flabel in [('fee_general','General / UR'),('fee_obc','OBC-NCL'),('fee_sc_st','SC / ST'),('fee_ews','EWS'),('fee_female','Female / PwBD')] %}
+                {% for fname, fkey, flabel in [('fee_general','general','General / UR'),('fee_obc','obc','OBC-NCL'),('fee_sc_st','sc_st','SC / ST'),('fee_ews','ews','EWS'),('fee_female','female','Female / PwBD')] %}
                 <div class="fee-cell">
                     <label>{{ flabel }}</label>
                     <input type="number" name="{{ fname }}" min="0"
-                           value="{{ job[fname] if job[fname] is not none else '' }}" placeholder="0">
+                           value="{{ job.fee.get(fkey, '') if job.fee else '' }}" placeholder="0">
                 </div>
                 {% endfor %}
             </div>
@@ -975,6 +984,11 @@ function buildDocLinksJson(form) {
         links.push({type: row.querySelector('.dl-type').value, text: row.querySelector('.dl-text').value.trim(), url});
     });
     form.querySelector('[name="links_json"]').value = JSON.stringify(links);
+}
+
+function syncOrgName(sel) {
+    var opt = sel.options[sel.selectedIndex];
+    document.getElementById('ej_organization').value = opt ? (opt.getAttribute('data-name') || '') : '';
 }
 
 document.getElementById('job-edit-form').addEventListener('submit', function() {

@@ -6,7 +6,7 @@ Routes:
   /login                          — Admin login
   /logout                         — Clear session
   /jobs                           — Job management (list)
-  /jobs/new                       — Create job with optional PDF extract
+  /jobs/new                       — Create job
   /jobs/<id>/edit                 — Edit job + manage phase docs
   /jobs/<id>/delete               — POST: soft-delete job
   /jobs/<id>/docs/admit-cards     — POST: add admit card to job
@@ -23,6 +23,10 @@ Routes:
   /users/<id>/suspend             — Toggle user suspend/activate
   /users/<id>/delete              — Permanently delete user
   /logs                           — Admin audit log viewer
+  /organizations                   — Organization management (list)
+  /organizations/new               — Create organization
+  /organizations/<id>/edit         — Edit organization
+  /organizations/<id>/delete       — POST: delete organization
 """
 
 import base64
@@ -67,7 +71,10 @@ _API_ADMIN_ANSWER_KEYS = "/admin/answer-keys"
 _API_ADMIN_RESULTS = "/admin/results"
 _API_ADMIN_ADMISSIONS = "/admin/admissions"
 _CONTENT_TYPE_JSON = "application/json"
+_TEMPLATE_JOB_CREATE = "jobs/job_create.html"
 _URL_USERS = "/users"
+_URL_ORGANIZATIONS = "/organizations"
+_API_ADMIN_ORGANIZATIONS = "/admin/organizations"
 
 _DOC_TYPE_API = {
     "admit-cards": _API_ADMIN_ADMIT_CARDS,
@@ -128,7 +135,7 @@ def _add_doc(parent_key: str, parent_id: str, doc_type: str):
 
 bp = Blueprint("admin", __name__)
 
-_CSRF_EXEMPT = {"/health", "/logout", "/api/extract-pdf"}
+_CSRF_EXEMPT = {"/health", "/logout"}
 
 
 
@@ -273,39 +280,15 @@ def jobs_list_partial():
     return render_template("jobs/_job_rows.html", jobs=data["data"], pagination=data.get("pagination", {}))
 
 
-
-@bp.route("/api/extract-pdf", methods=["POST"])
-def extract_pdf():
-    """Proxy endpoint for PDF extraction - uploads file to backend API and returns extracted data."""
-    token = session.get("token")
-    if not token:
-        return {"error": "Not authenticated"}, 401
-
-    if "file" not in request.files:
-        return {"error": "No file provided"}, 400
-
-    file = request.files["file"]
-
-    # Forward to backend API
-    resp = current_app.api_client.post_file(
-        "/admin/jobs/extract-pdf",
-        token=token,
-        files={"file": (file.filename, file.stream, file.content_type)}
-    )
-
-    if resp.ok:
-        return resp.json(), 200
-    else:
-        error_data = resp.json() if resp.headers.get("content-type", "").startswith(_CONTENT_TYPE_JSON) else {"detail": "Extraction failed"}
-        return error_data, resp.status_code
-
-
 @bp.route("/jobs/new", methods=["GET", "POST"])  # NOSONAR
 def new_job():
     """Create a job vacancy."""
     token = session.get("token")
     if not token:
         return redirect(_URL_LOGIN)
+
+    orgs_resp = current_app.api_client.get(_API_ADMIN_ORGANIZATIONS, token=token, params={"limit": 200})
+    organizations = orgs_resp.json().get("data", []) if orgs_resp.ok else []
 
     if request.method == "POST":
         import json as _json
@@ -314,8 +297,17 @@ def new_job():
         _pick_text_fields(form, ["job_title", "slug", "organization", "department",
                                   "qualification_level", "employment_type",
                                   "description", "short_description", "source_url"], payload)
-        _pick_int_fields(form, ["total_vacancies", "fee_general", "fee_obc", "fee_sc_st",
-                                 "fee_ews", "fee_female", "salary_initial", "salary_max"], payload)
+        if form.get("organization_id"):
+            payload["organization_id"] = form["organization_id"]
+        _pick_int_fields(form, ["total_vacancies", "salary_initial", "salary_max"], payload)
+        fee = {k: int(v) for k, v in {
+            "general": form.get("fee_general", ""),
+            "obc": form.get("fee_obc", ""),
+            "sc_st": form.get("fee_sc_st", ""),
+            "ews": form.get("fee_ews", ""),
+            "female": form.get("fee_female", ""),
+        }.items() if v.strip() != ""}
+        payload["fee"] = fee
         _pick_date_fields(form, ["notification_date", "application_start", "application_end",
                                   "exam_start", "exam_end", "result_date"], payload)
         payload["status"] = form.get("status", "active")
@@ -343,7 +335,7 @@ def new_job():
                     payload["application_details"] = {"important_links": parsed_links}
         except ValueError:
             flash("Invalid form data. Please try again.", "error")
-            return render_template("jobs/job_create.html")
+            return render_template(_TEMPLATE_JOB_CREATE, organizations=organizations)
         resp = current_app.api_client.post(_API_ADMIN_JOBS, token=token, json=payload)
         if resp.ok:
             job_id = resp.json().get("id")
@@ -351,9 +343,9 @@ def new_job():
             return redirect(f"/jobs/{job_id}/edit")
         detail = resp.json().get("detail", "Failed to create job") if resp.headers.get("content-type", "").startswith(_CONTENT_TYPE_JSON) else "Failed to create job"
         flash(detail, "error")
-        return render_template("jobs/job_create.html")
+        return render_template(_TEMPLATE_JOB_CREATE, organizations=organizations)
 
-    return render_template("jobs/job_create.html")
+    return render_template(_TEMPLATE_JOB_CREATE, organizations=organizations)
 
 
 @bp.route("/jobs/<job_id>/delete", methods=["POST"])
@@ -383,8 +375,17 @@ def edit_job(job_id):
         _pick_text_fields(form, ["job_title", "slug", "organization", "department",
                                   "qualification_level", "description",
                                   "short_description", "source_url", "status"], update)
-        _pick_int_fields(form, ["total_vacancies", "fee_general", "fee_obc", "fee_sc_st",
-                                 "fee_ews", "fee_female", "salary_initial", "salary_max"], update)
+        if form.get("organization_id"):
+            update["organization_id"] = form["organization_id"]
+        _pick_int_fields(form, ["total_vacancies", "salary_initial", "salary_max"], update)
+        fee = {k: int(v) for k, v in {
+            "general": form.get("fee_general", ""),
+            "obc": form.get("fee_obc", ""),
+            "sc_st": form.get("fee_sc_st", ""),
+            "ews": form.get("fee_ews", ""),
+            "female": form.get("fee_female", ""),
+        }.items() if v.strip() != ""}
+        update["fee"] = fee
         _pick_date_fields(form, ["notification_date", "application_start",
                                   "application_end", "exam_start",
                                   "exam_end", "result_date"], update)
@@ -435,9 +436,13 @@ def edit_job(job_id):
         f"{_API_ADMIN_RESULTS}?job_id={job_id}&limit=100", token=token
     )
 
+    orgs_resp = current_app.api_client.get(_API_ADMIN_ORGANIZATIONS, token=token, params={"limit": 200})
+    organizations = orgs_resp.json().get("data", []) if orgs_resp.ok else []
+
     return render_template(
         "jobs/job_edit.html",
         job=job,
+        organizations=organizations,
         admit_cards=ac_resp.json().get("data", []) if ac_resp.ok else [],
         answer_keys=ak_resp.json().get("data", []) if ak_resp.ok else [],
         results=re_resp.json().get("data", []) if re_resp.ok else [],
@@ -564,6 +569,37 @@ def admissions_list_partial():
     return render_template("admissions/_admission_rows.html", admissions=data["data"], pagination=data.get("pagination", {}))
 
 
+def _build_admission_payload(form):
+    """Build admission API payload from POST form data."""
+    payload = {}
+    _set_or_none(form, ["admission_name", "slug", "conducting_body", "counselling_body", "admission_type",
+                         "stream", "description", "short_description", "source_url", "status"], payload)
+    fee = {k: int(v) for k, v in {
+        "general": form.get("fee_general", ""),
+        "obc": form.get("fee_obc", ""),
+        "sc_st": form.get("fee_sc_st", ""),
+        "ews": form.get("fee_ews", ""),
+        "female": form.get("fee_female", ""),
+    }.items() if v.strip() != ""}
+    payload["fee"] = fee
+    _set_optional(form, ["application_start", "application_end", "admission_date",
+                          "exam_start", "exam_end", "result_date", "counselling_start"], payload)
+    for json_field, key in [("admission_details_json", "admission_details"),
+                              ("eligibility_json", "eligibility"),
+                              ("seats_info_json", "seats_info"),
+                              ("selection_process_json", "selection_process")]:
+        raw = form.get(json_field, "").strip()
+        if raw:
+            try:
+                payload[key] = json.loads(raw)
+            except Exception:
+                pass
+    if form.get("organization_id"):
+        payload["organization_id"] = form["organization_id"]
+    payload.setdefault("status", "active")
+    return payload
+
+
 @bp.route("/admissions/new", methods=["GET", "POST"])  # NOSONAR
 def new_admission():
     """Create a new admission."""
@@ -571,26 +607,7 @@ def new_admission():
     if not token:
         return redirect(_URL_LOGIN)
     if request.method == "POST":
-        form = request.form.to_dict()
-        payload = {}
-        _set_or_none(form, ["admission_name", "slug", "conducting_body", "counselling_body", "admission_type",
-                             "stream", "description", "short_description", "source_url", "status"], payload)
-        _set_int_fields(form, ["fee_general", "fee_obc", "fee_sc_st", "fee_ews", "fee_female"], payload)
-        _set_optional(form, ["application_start", "application_end", "admission_date",
-                              "exam_start", "exam_end",
-                              "result_date", "counselling_start"], payload)
-        import json as _json
-        for json_field, key in [("admission_details_json", "admission_details"),
-                                  ("eligibility_json", "eligibility"),
-                                  ("seats_info_json", "seats_info"),
-                                  ("selection_process_json", "selection_process")]:
-            raw = form.get(json_field, "").strip()
-            if raw:
-                try:
-                    payload[key] = _json.loads(raw)
-                except Exception:
-                    pass
-        payload.setdefault("status", "active")
+        payload = _build_admission_payload(request.form.to_dict())
         resp = current_app.api_client.post(_API_ADMIN_ADMISSIONS, token=token, json=payload)
         if resp.ok:
             admission_id = resp.json().get("id")
@@ -598,7 +615,9 @@ def new_admission():
             return redirect(f"/admissions/{admission_id}/edit")
         detail = resp.json().get("detail", "Failed to create admission") if resp.headers.get("content-type", "").startswith(_CONTENT_TYPE_JSON) else "Failed to create admission"
         flash(detail, "error")
-    return render_template("admissions/admission_create.html")
+    orgs_resp = current_app.api_client.get(_API_ADMIN_ORGANIZATIONS, token=token, params={"limit": 200})
+    organizations = orgs_resp.json().get("data", []) if orgs_resp.ok else []
+    return render_template("admissions/admission_create.html", organizations=organizations)
 
 
 @bp.route("/admissions/<admission_id>/edit", methods=["GET", "POST"])  # NOSONAR
@@ -612,10 +631,19 @@ def edit_admission(admission_id):
         update = {}
         _pick_text_fields(form, ["admission_name", "slug", "conducting_body", "counselling_body", "admission_type",
                                   "stream", "description", "short_description", "source_url", "status"], update)
-        _set_int_fields(form, ["fee_general", "fee_obc", "fee_sc_st", "fee_ews", "fee_female"], update)
+        fee = {k: int(v) for k, v in {
+            "general": form.get("fee_general", ""),
+            "obc": form.get("fee_obc", ""),
+            "sc_st": form.get("fee_sc_st", ""),
+            "ews": form.get("fee_ews", ""),
+            "female": form.get("fee_female", ""),
+        }.items() if v.strip() != ""}
+        update["fee"] = fee
         _set_optional(form, ["application_start", "application_end", "admission_date",
                               "exam_start", "exam_end",
                               "result_date", "counselling_start"], update)
+        if form.get("organization_id"):
+            update["organization_id"] = form["organization_id"]
         import json as _json
         for json_field, key in [("admission_details_json", "admission_details"),
                                   ("eligibility_json", "eligibility"),
@@ -650,9 +678,13 @@ def edit_admission(admission_id):
         f"{_API_ADMIN_RESULTS}?admission_id={admission_id}&limit=100", token=token
     )
 
+    orgs_resp = current_app.api_client.get(_API_ADMIN_ORGANIZATIONS, token=token, params={"limit": 200})
+    organizations = orgs_resp.json().get("data", []) if orgs_resp.ok else []
+
     return render_template(
         "admissions/admission_edit.html",
         admission=resp_detail,
+        organizations=organizations,
         admit_cards=ac_resp.json().get("data", []) if ac_resp.ok else [],
         answer_keys=ak_resp.json().get("data", []) if ak_resp.ok else [],
         results=re_resp.json().get("data", []) if re_resp.ok else [],
@@ -686,6 +718,83 @@ def admission_delete_doc(admission_id, doc_type, doc_id):
     current_app.api_client.delete(f"/admin/{doc_type}/{doc_id}", token=token)
     flash("Document deleted.", "success")
     return redirect(f"/admissions/{admission_id}/edit#docs")
+
+
+# --- Organization Management ---
+
+
+@bp.route(_URL_ORGANIZATIONS, methods=["GET"])
+def organizations():
+    token = session.get("token")
+    if not token:
+        return redirect(_URL_LOGIN)
+    resp = current_app.api_client.get(_API_ADMIN_ORGANIZATIONS, token=token, params={"limit": 200})
+    data = resp.json() if resp.ok else {"data": [], "total": 0}
+    return render_template("organizations/organizations.html", organizations=data["data"], total=data.get("total", 0))
+
+
+@bp.route("/organizations/new", methods=["GET", "POST"])  # NOSONAR
+def new_organization():
+    token = session.get("token")
+    if not token:
+        return redirect(_URL_LOGIN)
+    if request.method == "POST":
+        form = request.form.to_dict()
+        payload = {
+            "name": form.get("name", "").strip(),
+            "slug": form.get("slug", "").strip() or None,
+            "org_type": form.get("org_type", "both").strip() or "both",
+            "short_name": form.get("short_name", "").strip() or None,
+            "logo_url": form.get("logo_url", "").strip() or None,
+            "website_url": form.get("website_url", "").strip() or None,
+        }
+        resp = current_app.api_client.post(_API_ADMIN_ORGANIZATIONS, token=token, json=payload)
+        if resp.ok:
+            flash("Organization created.", "success")
+            return redirect(_URL_ORGANIZATIONS)
+        detail = resp.json().get("detail", "Failed to create organization") if resp.headers.get("content-type", "").startswith(_CONTENT_TYPE_JSON) else "Failed to create organization"
+        flash(detail, "error")
+    return render_template("organizations/org_create.html")
+
+
+@bp.route("/organizations/<org_id>/edit", methods=["GET", "POST"])  # NOSONAR
+def edit_organization(org_id):
+    token = session.get("token")
+    if not token:
+        return redirect(_URL_LOGIN)
+    if request.method == "POST":
+        form = request.form.to_dict()
+        payload = {
+            "name": form.get("name", "").strip(),
+            "slug": form.get("slug", "").strip() or None,
+            "org_type": form.get("org_type", "both").strip() or "both",
+            "short_name": form.get("short_name", "").strip() or None,
+            "logo_url": form.get("logo_url", "").strip() or None,
+            "website_url": form.get("website_url", "").strip() or None,
+        }
+        resp = current_app.api_client.put(f"/admin/organizations/{org_id}", token=token, json=payload)
+        if resp.ok:
+            flash("Organization updated.", "success")
+        else:
+            detail = resp.json().get("detail", "Failed to update") if resp.headers.get("content-type", "").startswith(_CONTENT_TYPE_JSON) else "Failed to update"
+            flash(detail, "error")
+        return redirect(f"/organizations/{org_id}/edit")
+    resp = current_app.api_client.get(f"/admin/organizations/{org_id}", token=token)
+    if not resp.ok:
+        flash("Organization not found.", "error")
+        return redirect(_URL_ORGANIZATIONS)
+    org = resp.json()
+    return render_template("organizations/org_edit.html", org=org)
+
+
+@bp.route("/organizations/<org_id>/delete", methods=["POST"])
+def delete_organization(org_id):
+    token = session.get("token")
+    if not token:
+        return redirect(_URL_LOGIN)
+    current_app.api_client.delete(f"/admin/organizations/{org_id}", token=token)
+    flash("Organization deleted.", "success")
+    return redirect(_URL_ORGANIZATIONS)
 
 
 # --- Audit Logs ---

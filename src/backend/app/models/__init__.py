@@ -9,6 +9,7 @@ from app.models.base import Base  # noqa: F401
 from app.models.job import Job  # noqa: F401
 from app.models.notification import Notification  # noqa: F401
 from app.models.notification_delivery_log import NotificationDeliveryLog  # noqa: F401
+from app.models.organization import Organization  # noqa: F401
 from app.models.result import Result  # noqa: F401
 from app.models.user import User  # noqa: F401
 from app.models.user_device import UserDevice  # noqa: F401

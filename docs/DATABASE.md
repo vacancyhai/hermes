@@ -8,7 +8,7 @@ Schema is managed with Alembic:
 
 | File | Description |
 |------|-------------|
-| `migrations/versions/0001_initial.py` | Complete consolidated schema — all 13 tables including all field changes |
+| `migrations/versions/0001_initial.py` | **Complete consolidated schema** — all 14 tables: `fee JSONB` on jobs+admissions, `created_at`+`updated_at` on all tables, `organizations` with `slug`+`org_type`+`updated_at`, `user_tracks` supporting `job`/`admission`/`organization` entity types |
 
 **Apply migrations:**
 ```bash
@@ -66,15 +66,30 @@ docker exec hermes_backend alembic -c /app/alembic.ini upgrade head
                           │ status           │
                           └──────────────────┘
 
-  ┌──────────────┐  1     ┌──────────────────┐  *   ┌─────────────────────────┐
-  │    USERS     │───────►│  USER_TRACKS    │      │   USER_TRACKS entity   │
-  │              │        │                  │      │                         │
-  │ id           │        │ id               │      │ entity_type = 'job'     │
-  │ email        │        │ user_id ─────────┼─────►│   entity_id → JOBS.id   │
-  │ status       │        │ entity_type      │      │                         │
-  └──────┬───────┘        │ entity_id        │      │ entity_type = 'admission'    │
-         │                └──────────────────┘      │   entity_id → ADMISSIONS│
-         │ 1                                        └─────────────────────────┘
+  ┌──────────────┐  1     ┌──────────────────┐  *   ┌────────────────────────────┐
+  │    USERS     │───────►│  USER_TRACKS     │      │   USER_TRACKS entity       │
+  │              │        │                  │      │                            │
+  │ id           │        │ id               │      │ entity_type = 'job'        │
+  │ email        │        │ user_id ─────────┼─────►│   entity_id → JOBS.id      │
+  │ status       │        │ entity_type      │      │                            │
+  └──────┬───────┘        │ entity_id        │      │ entity_type = 'admission'  │
+         │                └──────────────────┘      │   entity_id → ADMISSIONS   │
+         │ 1                                        │                            │
+                                                    │ entity_type = 'organization'│
+                                                    │   entity_id → ORGANIZATIONS│
+                                                    └────────────────────────────┘
+
+  ┌──────────────────┐       organization_id (FK, nullable)
+  │  ORGANIZATIONS   │◄──────────────────────────────────────────── JOBS
+  │                  │◄──────────────────────────────────────────── ADMISSIONS
+  │                  │
+  │ id (UUID PK)     │
+  │ name (unique)    │
+  │ short_name       │
+  │ logo_url         │
+  │ website_url      │
+  └──────────────────┘
+
          ├──────────────────────┐
          │                      │
          ▼ 0..1                 ▼ *
@@ -103,7 +118,7 @@ docker exec hermes_backend alembic -c /app/alembic.ini upgrade head
 
 ---
 
-## Tables (13 total)
+## Tables (15 total)
 
 ### 1. `users`
 Core user account table. Integrated with Firebase Auth.
@@ -150,7 +165,8 @@ Detailed profile information and preferences. One row per user (UNIQUE on `user_
 | `preferred_states` | JSONB | No | States of interest for jobs; default `[]` |
 | `preferred_categories` | JSONB | No | Categories of interest; default `[]` |
 | `fcm_tokens` | JSONB | No | FCM tokens: `[{"token":"…","device_name":"…","registered_at":"…"}]`; default `[]` |
-| `followed_organizations` | JSONB | No | Org names user follows; default `[]` |
+| `followed_organizations` | JSONB | No | **Deprecated** — legacy org names list; superseded by `user_tracks` with `entity_type='organization'`; default `[]` |
+| `created_at` | DateTime | No | Creation timestamp |
 | `updated_at` | DateTime | No | Last update timestamp |
 
 **Indexes:** GIN on `education`, GIN on `notification_preferences`
@@ -180,7 +196,33 @@ Internal staff accounts (Admin/Operator).
 
 ---
 
-### 4. `jobs`
+### 4. `organizations`
+Organization registry — backfilled from `jobs.organization` on migration. Identified by UUID or slug.
+
+| Column | Type | Nullable | Description |
+|--------|------|----------|-----------|
+| `id` | UUID (PK) | No | Auto-generated |
+| `name` | String(255) | No | Full name (unique, indexed) — e.g. "Staff Selection Commission" |
+| `short_name` | String(50) | Yes | Abbreviation — e.g. "SSC" |
+| `logo_url` | Text | Yes | Logo image URL |
+| `website_url` | Text | Yes | Official website |
+| `slug` | String(255) | No | URL-friendly identifier (unique, indexed) |
+| `org_type` | String(20) | No | `ck_org_type`: `jobs` \| `admissions` \| `both`; default `both` |
+| `created_at` | DateTime | No | Creation timestamp |
+| `updated_at` | DateTime | No | Last update timestamp |
+
+**Indexes:** `idx_organizations_name`, `idx_organizations_slug`
+
+**Public API routes:**
+- `GET /api/v1/organizations` — list all orgs (with `job_count` + `admission_count`)
+- `GET /api/v1/organizations/tracked` — list orgs the current user follows (auth required)
+- `GET /api/v1/organizations/{org_id}` — org detail + recent jobs and admissions
+- `POST /api/v1/organizations/{org_id}/track` — follow org (auth required)
+- `DELETE /api/v1/organizations/{org_id}/track` — unfollow org (auth required)
+
+---
+
+### 5. `jobs`
 Government job vacancies. Document releases (admit cards, answer keys, results) are stored in their own tables and link back via `job_id`.
 
 | Column | Type | Nullable | Description |
@@ -188,7 +230,8 @@ Government job vacancies. Document releases (admit cards, answer keys, results) 
 | `id` | UUID (PK) | No | Auto-generated |
 | `job_title` | String(500) | No | Full title of the recruitment |
 | `slug` | String(500) | No | URL slug (unique) |
-| `organization` | String(255) | No | Hiring authority (SSC, UPSC, etc.), indexed |
+| `organization` | String(255) | No | Hiring authority name (free-text, indexed) — kept for backward compat |
+| `organization_id` | UUID (FK → `organizations.id`) | Yes | SET NULL on delete; links to `organizations` table |
 | `department` | String(255) | Yes | Specific department |
 | `employment_type` | String(50) | Yes | `ck_jobs_employment_type`: `permanent` \| `temporary` \| `contract` \| `apprentice`; default `permanent` |
 | `qualification_level` | String(50) | Yes | `10th`, `graduate`, etc., indexed |
@@ -211,15 +254,11 @@ Government job vacancies. Document releases (admit cards, answer keys, results) 
 | `salary_max` | Integer | Yes | Maximum pay (INR) |
 | `salary` | JSONB | No | Pay scale, level, allowances; default `{}` |
 | `selection_process` | JSONB | No | List of selection stages; default `[]` |
-| `fee_general` | Integer | Yes | Application fee — General/UR (INR) |
-| `fee_obc` | Integer | Yes | Application fee — OBC-NCL (INR) |
-| `fee_sc_st` | Integer | Yes | Application fee — SC/ST (INR) |
-| `fee_ews` | Integer | Yes | Application fee — EWS (INR) |
-| `fee_female` | Integer | Yes | Application fee — Female/PwBD (INR) |
+| `fee` | JSONB | No | Application fees by category `{general, obc, sc_st, ews, female}` (INR); `0` = Free; default `{}` |
 | `status` | String(20) | No | `ck_jobs_status`: `upcoming` \| `active` \| `inactive` \| `closed`; default `active` |
 | `created_by` | UUID (FK → `admin_users.id`) | Yes | Admin who created the job |
-| `source` | String(20) | No | `ck_jobs_source`: `manual` \| `pdf_upload`; default `manual` |
-| `source_pdf_path` | Text | Yes | Path to uploaded PDF (if source = `pdf_upload`) |
+| `source` | String(20) | No | `ck_jobs_source`: `manual`; default `manual` |
+| `source_pdf_path` | Text | Yes | Reserved; not populated |
 | `published_at` | DateTime | Yes | When job was approved and published |
 | `created_at` | DateTime | No | Creation timestamp |
 | `updated_at` | DateTime | No | Last update timestamp |
@@ -230,7 +269,7 @@ Government job vacancies. Document releases (admit cards, answer keys, results) 
 
 ---
 
-### 5. `notifications`
+### 6. `notifications`
 Master records for all system notifications.
 
 | Column | Type | Nullable | Description |
@@ -247,6 +286,7 @@ Master records for all system notifications.
 | `sent_via` | ARRAY(String) | Yes | Channels actually used (e.g. `['push', 'email']`) |
 | `priority` | String(10) | No | `ck_notifications_priority`: `low` \| `medium` \| `high`; default `medium` |
 | `created_at` | DateTime | No | Creation timestamp |
+| `updated_at` | DateTime | No | Last update timestamp |
 | `read_at` | DateTime | Yes | When notification was read |
 | `expires_at` | DateTime | No | Auto-delete after 90 days; default `NOW() + 90 days` |
 
@@ -254,7 +294,7 @@ Master records for all system notifications.
 
 ---
 
-### 6. `admin_logs`
+### 7. `admin_logs`
 Audit logs for staff actions. Auto-expire after 30 days.
 
 | Column | Type | Nullable | Description |
@@ -275,7 +315,7 @@ Audit logs for staff actions. Auto-expire after 30 days.
 
 ---
 
-### 7. `user_devices`
+### 8. `user_devices`
 Device registry — stores device metadata. **Push notifications read FCM tokens from `user_profiles.fcm_tokens`, not this table.** `user_devices` exists for future use (device-level fingerprint deduplication, device management UI) but is not populated by the current FCM token registration API.
 
 | Column | Type | Nullable | Description |
@@ -289,12 +329,13 @@ Device registry — stores device metadata. **Push notifications read FCM tokens
 | `is_active` | Boolean | No | Token validity; default `true` |
 | `last_active_at` | DateTime | No | Last seen timestamp; default `NOW()` |
 | `created_at` | DateTime | No | Registration timestamp |
+| `updated_at` | DateTime | No | Last update timestamp |
 
 **Indexes:** `idx_devices_user_id`, `idx_devices_fcm_token` (unique partial), `idx_devices_fingerprint`
 
 ---
 
-### 8. `notification_delivery_log`
+### 9. `notification_delivery_log`
 Channel-level delivery tracking per notification attempt.
 
 | Column | Type | Nullable | Description |
@@ -314,7 +355,7 @@ Channel-level delivery tracking per notification attempt.
 
 ---
 
-### 9. `admit_cards`
+### 10. `admit_cards`
 Per-phase admit card links. Linked to either a **job** or an **admission** (polymorphic).
 
 | Column | Type | Nullable | Description |
@@ -337,7 +378,7 @@ Per-phase admit card links. Linked to either a **job** or an **admission** (poly
 
 ---
 
-### 10. `answer_keys`
+### 11. `answer_keys`
 Per-phase answer keys. Polymorphic.
 
 | Column | Type | Nullable | Description |
@@ -360,7 +401,7 @@ Per-phase answer keys. Polymorphic.
 
 ---
 
-### 11. `results`
+### 12. `results`
 Per-phase results. Polymorphic.
 
 | Column | Type | Nullable | Description |
@@ -383,7 +424,7 @@ Per-phase results. Polymorphic.
 
 ---
 
-### 12. `admissions`
+### 13. `admissions`
 Admissions (NEET, JEE, CLAT, CAT, GATE, CUET etc.) — separate from `jobs`.
 These are educational admissioninations, not government job recruitments.
 
@@ -391,6 +432,7 @@ These are educational admissioninations, not government job recruitments.
 |--------|------|----------|-------------|
 | `id` | UUID (PK) | No | Auto-generated |
 | `slug` | String(500) | No | URL slug (unique) |
+| `organization_id` | UUID (FK → `organizations.id`) | Yes | SET NULL on delete; links to `organizations` table |
 | `admission_name` | String(500) | No | E.g. "NTA NEET PG 2026 — Medical PG Entrance" |
 | `conducting_body` | String(255) | No | E.g. "National Testing Agency" |
 | `counselling_body` | String(255) | Yes | E.g. "MCC", "JoSAA", "CLAT Consortium" |
@@ -403,13 +445,11 @@ These are educational admissioninations, not government job recruitments.
 | `application_start` | Date | Yes | Registration opens |
 | `application_end` | Date | Yes | Registration deadline |
 | `admission_date` | Date | Yes | Date of main admission |
+| `exam_start` | Date | Yes | Exam start date |
+| `exam_end` | Date | Yes | Exam end date |
 | `result_date` | Date | Yes | Expected result date |
 | `counselling_start` | Date | Yes | Counselling round start |
-| `fee_general` | Integer | Yes | Application fee — General/UR (INR) |
-| `fee_obc` | Integer | Yes | Application fee — OBC-NCL (INR) |
-| `fee_sc_st` | Integer | Yes | Application fee — SC/ST (INR) |
-| `fee_ews` | Integer | Yes | Application fee — EWS (INR) |
-| `fee_female` | Integer | Yes | Application fee — Female/PwBD (INR) |
+| `fee` | JSONB | No | Application fees by category `{general, obc, sc_st, ews, female}` (INR); `0` = Free; default `{}` |
 | `description` | Text | Yes | Full HTML description |
 | `short_description` | Text | Yes | One-liner for listing cards |
 | `source_url` | Text | Yes | Official website URL |
@@ -419,7 +459,7 @@ These are educational admissioninations, not government job recruitments.
 | `updated_at` | DateTime | No | Last update timestamp |
 | `search_vector` | tsvector | — | GENERATED ALWAYS (admission_name A, conducting_body B, description C) — GIN indexed |
 
-**Indexes:** `idx_admissions_slug` (unique), `idx_admissions_stream_status`, `idx_admissions_search` (GIN)
+**Indexes:** `idx_admissions_slug` (unique), `idx_admissions_stream_status`, `idx_admissions_search` (GIN), `idx_admissions_organization_id`
 
 **Key design difference from `jobs`:**
 
@@ -428,20 +468,21 @@ These are educational admissioninations, not government job recruitments.
 | Outcome | Employment (govt job) | Education (college/IIT/NLU seat) |
 | Vacancies | `total_vacancies` + `vacancy_breakdown` | `seats_info` (seats by institution) |
 | Salary | `salary_initial`, `salary_max` | — (not applicable) |
+| Organization FK | `organization_id` → `organizations.id` | `organization_id` → `organizations.id` |
 | Counselling | — | `counselling_body`, `counselling_start` |
 | Attempts | — | `eligibility.attempts_limit` |
 
 ---
 
-### 13. `user_tracks`
-Tracks which jobs or admissions a user is tracking for notification delivery.
+### 14. `user_tracks`
+Polymorphic tracking table. Records which jobs, admissions, or organizations a user is following. Used to drive notification dispatch.
 
 | Column | Type | Nullable | Description |
 |--------|------|----------|-------------|
 | `id` | UUID (PK) | No | Auto-generated |
 | `user_id` | UUID (FK → `users.id`) | No | CASCADE delete |
-| `entity_type` | String(10) | No | `ck_user_tracks_entity_type`: `job` \| `admission` |
-| `entity_id` | UUID | No | ID of the tracked job or admission |
+| `entity_type` | String(12) | No | `ck_user_tracks_entity_type`: `job` \| `admission` \| `organization` |
+| `entity_id` | UUID | No | ID of the tracked entity — `jobs.id`, `admissions.id`, or `organizations.id` |
 | `created_at` | DateTime | No | When the track was created |
 
 > UNIQUE constraint `uq_user_track` on `(user_id, entity_type, entity_id)`. Max 100 tracks per user (enforced in application layer).

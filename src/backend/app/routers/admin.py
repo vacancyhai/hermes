@@ -3,7 +3,6 @@
 Job Management:
   GET    /api/v1/admin/jobs              — List all jobs (any status)
   POST   /api/v1/admin/jobs              — Create job
-  POST   /api/v1/admin/jobs/extract-pdf  — Extract PDF data → return JSON (for form auto-fill)
   PUT    /api/v1/admin/jobs/:id          — Update job
   DELETE /api/v1/admin/jobs/:id          — Hard delete
 
@@ -22,12 +21,10 @@ Dashboard:
 
 import asyncio
 import logging
-import os
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Annotated, Any
 
-from app.config import settings
 from app.dependencies import get_db, require_admin, require_operator
 from app.models.admin_log import AdminLog
 from app.models.admin_user import AdminUser
@@ -35,10 +32,10 @@ from app.models.admission import Admission
 from app.models.admit_card import AdmitCard
 from app.models.answer_key import AnswerKey
 from app.models.job import Job
+from app.models.organization import Organization
 from app.models.result import Result
 from app.models.user import User
 from app.models.user_profile import UserProfile
-from app.rate_limit import limiter
 from app.schemas.auth import AdminUserResponse, UserResponse
 from app.schemas.jobs import (
     AdmitCardResponse,
@@ -49,15 +46,7 @@ from app.schemas.jobs import (
     JobUpdateRequest,
     ResultResponse,
 )
-from fastapi import (
-    APIRouter,
-    Depends,
-    HTTPException,
-    Query,
-    Request,
-    UploadFile,
-    status,
-)
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from passlib.context import CryptContext
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
@@ -360,6 +349,7 @@ async def create_job(
         job_title=body.job_title,
         slug=slug,
         organization=body.organization,
+        organization_id=body.organization_id,
         department=body.department,
         employment_type=body.employment_type,
         qualification_level=body.qualification_level,
@@ -382,11 +372,7 @@ async def create_job(
         salary_max=body.salary_max,
         salary=body.salary,
         selection_process=body.selection_process,
-        fee_general=body.fee_general,
-        fee_obc=body.fee_obc,
-        fee_sc_st=body.fee_sc_st,
-        fee_ews=body.fee_ews,
-        fee_female=body.fee_female,
+        fee=body.fee,
         status=body.status,
         created_by=admin.id,
         source="manual",
@@ -407,90 +393,15 @@ async def create_job(
 
     # If created as active, notify trackers
     if body.status == "active":
-        from app.tasks.notifications import notify_trackers_on_update
+        from app.tasks.notifications import (
+            notify_trackers_on_update,
+            send_new_job_notifications,
+        )
 
         notify_trackers_on_update.delay("job", str(job.id))
+        send_new_job_notifications.delay(str(job.id))
 
     return JobResponse.model_validate(job).model_dump()
-
-
-@router.post("/jobs/extract-pdf", status_code=status.HTTP_200_OK)
-@limiter.limit("10/minute")
-async def extract_pdf_data(
-    file: UploadFile,
-    request: Request,
-    current_admin: Annotated[Any, Depends(require_operator)],
-    db: Annotated[AsyncSession, Depends(get_db)],
-):
-    """Upload PDF → extract data → return JSON (no job created). For inline form auto-fill."""
-    admin = current_admin
-
-    if not file.filename or not file.filename.lower().endswith(".pdf"):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Only PDF files are accepted",
-        )
-
-    if file.content_type and file.content_type != "application/pdf":
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Only PDF files are accepted",
-        )
-
-    content = await file.read()
-    max_bytes = settings.PDF_MAX_SIZE_MB * 1024 * 1024
-    if len(content) > max_bytes:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"File exceeds {settings.PDF_MAX_SIZE_MB}MB limit",
-        )
-
-    # Extract text from PDF
-    import tempfile
-
-    import anyio
-    from app.services.ai_extractor import extract_job_data
-    from app.services.pdf_extractor import extract_text_from_pdf
-
-    tmp_fd, tmp_path = tempfile.mkstemp(suffix=".pdf")
-    os.close(tmp_fd)
-    await anyio.Path(tmp_path).write_bytes(content)
-
-    try:
-        pdf_text = extract_text_from_pdf(tmp_path)
-        if not pdf_text.strip():
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="PDF has no extractable text",
-            )
-
-        # AI extraction
-        extracted = extract_job_data(pdf_text)
-        if not extracted:
-            # Fallback: return minimal data
-            extracted = {
-                "job_title": f"PDF Upload - {file.filename}",
-                "organization": "Unknown",
-                "description": pdf_text[:2000],
-            }
-
-        await _log_action(
-            db,
-            admin,
-            "extract_pdf",
-            "job",
-            details=f"PDF: {file.filename}",
-            request=request,
-        )
-
-        return {"status": "success", "data": extracted}
-
-    finally:
-        # Clean up temp file
-        try:
-            os.unlink(tmp_path)
-        except OSError:
-            pass
 
 
 @router.put("/jobs/{job_id}")
@@ -880,3 +791,240 @@ async def admin_logs(
             "has_more": (offset + limit) < total,
         },
     }
+
+
+# ─── Organizations ────────────────────────────────────────────────────────────
+
+
+def _slugify(name: str) -> str:
+    import re
+
+    s = re.sub(r"[^a-zA-Z0-9\s]", "", name)
+    return re.sub(r"\s+", "-", s).lower().strip("-")
+
+
+@router.get("/organizations")
+async def admin_list_organizations(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    admin: Annotated[Any, Depends(require_operator)],
+    limit: Annotated[int, Query(ge=1, le=200)] = 200,
+    offset: Annotated[int, Query(ge=0)] = 0,
+    search: Annotated[str | None, Query(max_length=255)] = None,
+):
+    """List all organizations."""
+    q = select(Organization).order_by(Organization.name)
+    cq = select(func.count(Organization.id))
+    if search:
+        q = q.where(Organization.name.ilike(f"%{search}%"))
+        cq = cq.where(Organization.name.ilike(f"%{search}%"))
+    total = (await db.execute(cq)).scalar()
+    orgs = (await db.execute(q.offset(offset).limit(limit))).scalars().all()
+    return {
+        "data": [
+            {
+                "id": str(o.id),
+                "name": o.name,
+                "slug": o.slug,
+                "org_type": o.org_type,
+                "short_name": o.short_name,
+                "logo_url": o.logo_url,
+                "website_url": o.website_url,
+                "created_at": o.created_at.isoformat() if o.created_at else None,
+            }
+            for o in orgs
+        ],
+        "total": total,
+    }
+
+
+_ORG_NOT_FOUND = "Organization not found"
+_ORG_TYPE_VALUES = ("jobs", "admissions", "both")
+_ORG_TYPE_ERR = "org_type must be 'jobs', 'admissions', or 'both'"
+
+
+def _apply_org_fields(org, body: dict) -> None:
+    """Apply simple scalar fields from body onto org in-place."""
+    for field in ("name", "short_name", "logo_url", "website_url", "org_type"):
+        if field not in body:
+            continue
+        val = (body[field] or "").strip() or None
+        if field in ("name", "org_type") and not val:
+            raise HTTPException(status_code=422, detail=f"{field} cannot be empty")
+        if field == "org_type" and val not in _ORG_TYPE_VALUES:
+            raise HTTPException(status_code=422, detail=_ORG_TYPE_ERR)
+        setattr(org, field, val)
+
+
+@router.post(
+    "/organizations",
+    status_code=status.HTTP_201_CREATED,
+    responses={
+        409: {"description": "Name or slug conflict"},
+        422: {"description": "Validation error"},
+    },
+)
+async def admin_create_organization(
+    body: dict,
+    request: Request,
+    current_admin: Annotated[Any, Depends(require_operator)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Create a new organization."""
+    name = (body.get("name") or "").strip()
+    if not name:
+        raise HTTPException(status_code=422, detail="name is required")
+    existing = (
+        await db.execute(select(Organization).where(Organization.name == name))
+    ).scalar_one_or_none()
+    if existing:
+        raise HTTPException(
+            status_code=409, detail=f"Organization '{name}' already exists"
+        )
+    slug = (body.get("slug") or _slugify(name)).strip()
+    slug_exists = (
+        await db.execute(select(Organization).where(Organization.slug == slug))
+    ).scalar_one_or_none()
+    if slug_exists:
+        raise HTTPException(status_code=409, detail=f"Slug '{slug}' already in use")
+    org_type = (body.get("org_type") or "both").strip()
+    if org_type not in _ORG_TYPE_VALUES:
+        raise HTTPException(status_code=422, detail=_ORG_TYPE_ERR)
+    org = Organization(
+        name=name,
+        slug=slug,
+        org_type=org_type,
+        short_name=(body.get("short_name") or "").strip() or None,
+        logo_url=(body.get("logo_url") or "").strip() or None,
+        website_url=(body.get("website_url") or "").strip() or None,
+    )
+    db.add(org)
+    await db.flush()
+    await _log_action(
+        db,
+        current_admin,
+        "create_organization",
+        "organization",
+        org.id,
+        details=f"Created organization: {name}",
+        request=request,
+    )
+    return {
+        "id": str(org.id),
+        "name": org.name,
+        "slug": org.slug,
+        "org_type": org.org_type,
+        "short_name": org.short_name,
+        "logo_url": org.logo_url,
+        "website_url": org.website_url,
+    }
+
+
+@router.get("/organizations/{org_id}", responses={404: {"description": _ORG_NOT_FOUND}})
+async def admin_get_organization(
+    org_id: uuid.UUID,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    admin: Annotated[Any, Depends(require_operator)],
+):
+    """Get a single organization by ID."""
+    org = (
+        await db.execute(select(Organization).where(Organization.id == org_id))
+    ).scalar_one_or_none()
+    if not org:
+        raise HTTPException(status_code=404, detail=_ORG_NOT_FOUND)
+    return {
+        "id": str(org.id),
+        "name": org.name,
+        "slug": org.slug,
+        "org_type": org.org_type,
+        "short_name": org.short_name,
+        "logo_url": org.logo_url,
+        "website_url": org.website_url,
+        "created_at": org.created_at.isoformat() if org.created_at else None,
+    }
+
+
+@router.put(
+    "/organizations/{org_id}",
+    responses={
+        404: {"description": _ORG_NOT_FOUND},
+        409: {"description": "Slug conflict"},
+        422: {"description": "Validation error"},
+    },
+)
+async def admin_update_organization(
+    org_id: uuid.UUID,
+    body: dict,
+    request: Request,
+    current_admin: Annotated[Any, Depends(require_operator)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Update an organization."""
+    org = (
+        await db.execute(select(Organization).where(Organization.id == org_id))
+    ).scalar_one_or_none()
+    if not org:
+        raise HTTPException(status_code=404, detail=_ORG_NOT_FOUND)
+    _apply_org_fields(org, body)
+    if "slug" in body:
+        new_slug = (body["slug"] or "").strip() or _slugify(org.name)
+        if new_slug != org.slug:
+            clash = (
+                await db.execute(
+                    select(Organization).where(
+                        Organization.slug == new_slug,
+                        Organization.id != org_id,
+                    )
+                )
+            ).scalar_one_or_none()
+            if clash:
+                raise HTTPException(
+                    status_code=409, detail=f"Slug '{new_slug}' already in use"
+                )
+            org.slug = new_slug
+    await _log_action(
+        db,
+        current_admin,
+        "update_organization",
+        "organization",
+        org.id,
+        details=f"Updated organization: {org.name}",
+        request=request,
+    )
+    return {
+        "id": str(org.id),
+        "name": org.name,
+        "slug": org.slug,
+        "org_type": org.org_type,
+        "short_name": org.short_name,
+        "logo_url": org.logo_url,
+        "website_url": org.website_url,
+    }
+
+
+@router.delete(
+    "/organizations/{org_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={404: {"description": _ORG_NOT_FOUND}},
+)
+async def admin_delete_organization(
+    org_id: uuid.UUID,
+    request: Request,
+    current_admin: Annotated[Any, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Delete an organization (admin only). Jobs linked will have organization_id set to NULL."""
+    org = (
+        await db.execute(select(Organization).where(Organization.id == org_id))
+    ).scalar_one_or_none()
+    if not org:
+        raise HTTPException(status_code=404, detail=_ORG_NOT_FOUND)
+    await _log_action(
+        db,
+        current_admin,
+        "delete_organization",
+        "organization",
+        org_id,
+        details=f"Deleted organization: {org.name}",
+        request=request,
+    )
+    await db.delete(org)

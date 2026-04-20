@@ -20,6 +20,12 @@ class Job(Base):
     job_title: Mapped[str] = mapped_column(String(500), nullable=False)
     slug: Mapped[str] = mapped_column(String(500), unique=True, nullable=False)
     organization: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    organization_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("organizations.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     department: Mapped[str | None] = mapped_column(String(255))
     employment_type: Mapped[str | None] = mapped_column(String(50), default="permanent")
     qualification_level: Mapped[str | None] = mapped_column(String(50), index=True)
@@ -53,11 +59,7 @@ class Job(Base):
     selection_process: Mapped[list] = mapped_column(
         JSONB, nullable=False, server_default="[]"
     )
-    fee_general: Mapped[int | None] = mapped_column(Integer)
-    fee_obc: Mapped[int | None] = mapped_column(Integer)
-    fee_sc_st: Mapped[int | None] = mapped_column(Integer)
-    fee_ews: Mapped[int | None] = mapped_column(Integer)
-    fee_female: Mapped[int | None] = mapped_column(Integer)
+    fee: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default="{}")
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="active")
     created_by: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("admin_users.id")
@@ -76,6 +78,9 @@ class Job(Base):
     )
 
     # Relationships
+    organization_ref = relationship(
+        "Organization", back_populates="jobs", foreign_keys=[organization_id]
+    )
     admit_cards = relationship(
         "AdmitCard",
         back_populates="job",

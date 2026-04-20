@@ -22,8 +22,8 @@ class UserTrack(Base):
         index=True,
     )
     entity_type: Mapped[str] = mapped_column(
-        String(10), nullable=False
-    )  # 'job' | 'admission'
+        String(12), nullable=False
+    )  # 'job' | 'admission' | 'organization'
     entity_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()

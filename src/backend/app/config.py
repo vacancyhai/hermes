@@ -40,19 +40,10 @@ class Settings(BaseSettings):
     # JWT
     JWT_SECRET_KEY: str = "change-me-jwt-secret"
     JWT_ACCESS_TOKEN_EXPIRES: int = 900  # 15 minutes
-
-    # Firebase (push notifications)
-    FIREBASE_CREDENTIALS_PATH: str = ""
     JWT_REFRESH_TOKEN_EXPIRES: int = 604800  # 7 days
 
-    # PDF / AI extraction
-    PDF_UPLOAD_DIR: str = "/app/uploads/pdfs"
-    PDF_MAX_SIZE_MB: int = 10
-    ANTHROPIC_API_KEY: str = ""
-    AI_MODEL: str = "claude-3-5-sonnet-20241022"
-    PDF_KEEP_AFTER_EXTRACTION: bool = (
-        False  # Set True to retain PDFs after AI extraction
-    )
+    # Firebase (push notifications — service account)
+    FIREBASE_CREDENTIALS_PATH: str = ""
 
     # Firebase Auth (frontend JS SDK config)
     FIREBASE_WEB_API_KEY: str = ""

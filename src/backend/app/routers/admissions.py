@@ -251,6 +251,7 @@ async def create_admission(
 
     admission = Admission(
         slug=slug,
+        organization_id=body.organization_id,
         admission_name=body.admission_name,
         conducting_body=body.conducting_body,
         counselling_body=body.counselling_body,
@@ -267,11 +268,7 @@ async def create_admission(
         exam_end=body.exam_end,
         result_date=body.result_date,
         counselling_start=body.counselling_start,
-        fee_general=body.fee_general,
-        fee_obc=body.fee_obc,
-        fee_sc_st=body.fee_sc_st,
-        fee_ews=body.fee_ews,
-        fee_female=body.fee_female,
+        fee=body.fee,
         description=body.description,
         short_description=body.short_description,
         source_url=body.source_url,

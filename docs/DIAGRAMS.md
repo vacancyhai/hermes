@@ -253,19 +253,9 @@ Admin/Operator → Admin Frontend (port 8081)
 └────┬─────────────────┘
      │
      ▼
-┌──────────────────────────────────────┐
-│ OPTIONAL: PDF Auto-Fill              │
-│                                      │
-│ 📄 Upload PDF notification           │
-│ → Click "Extract Data"               │
-│ → AI extracts fields (Claude API)    │
-│ → Form auto-filled instantly         │
-└────┬─────────────────────────────────┘
-     │
-     ▼
 ┌────────────────────────────────────────┐
-│ Fill/Review Job Details Form:          │◄──────┐
-│ (Manual entry OR review extracted data)│       │
+│ Fill in Job Details Form:              │◄──────┐
+│ (Manual entry)                         │       │
 │                                        │       │
 │ ┌───────────────────────────────────┐  │       │
 │ │ Basic Information                 │  │       │
@@ -1402,13 +1392,12 @@ document tables (`admit_cards`, `answer_keys`, `results`) are
   │  employment_type         │         │  stream (medical/engg/law)   │
   │  qualification_level     │         │  eligibility JSONB           │
   │  vacancy_breakdown JSONB │         │  admission_details JSONB          │
-  │  fee_general/obc/sc_st/  │         │  selection_process JSONB     │
-  │    ews/female (integers) │         │  seats_info JSONB            │
-  │  source (manual/         │         │  fee_* (5 columns)           │
-  │    pdf_upload)           │         │  status (upcoming/active/    │
-  │  status (upcoming/active/│         │    inactive/closed)          │
-  │    inactive/closed)      │         │  search_vector GENERATED     │
-  │  search_vector GENERATED │         │                              │
+  │  fee JSONB               │         │  selection_process JSONB     │
+  │  source (manual/         │         │  seats_info JSONB            │
+  │    pdf_upload)           │         │  fee JSONB                   │
+  │  status (upcoming/active/│         │  status (upcoming/active/    │
+  │    inactive/closed)      │         │    inactive/closed)          │
+  │  search_vector GENERATED │         │  search_vector GENERATED     │
   └──────────┬───────────────┘         └─────────────┬────────────────┘
              │                         │
              │          POLYMORPHIC DOCUMENT TABLES  │

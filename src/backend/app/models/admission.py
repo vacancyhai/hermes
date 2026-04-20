@@ -4,7 +4,7 @@ import uuid
 from datetime import date, datetime
 
 from app.models.base import Base
-from sqlalchemy import Date, DateTime, Integer, String, Text, func
+from sqlalchemy import Date, DateTime, ForeignKey, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -42,14 +42,16 @@ class Admission(Base):
     exam_end: Mapped[date | None] = mapped_column(Date, nullable=True)
     result_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     counselling_start: Mapped[date | None] = mapped_column(Date, nullable=True)
-    fee_general: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    fee_obc: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    fee_sc_st: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    fee_ews: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    fee_female: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    fee: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default="{}")
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     short_description: Mapped[str | None] = mapped_column(Text, nullable=True)
     source_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    organization_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("organizations.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="active")
     published_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
@@ -64,6 +66,11 @@ class Admission(Base):
         onupdate=func.now(),
     )
 
+    organization_ref = relationship(
+        "Organization",
+        back_populates="admissions",
+        foreign_keys=[organization_id],
+    )
     admit_cards = relationship(
         "AdmitCard",
         back_populates="admission",

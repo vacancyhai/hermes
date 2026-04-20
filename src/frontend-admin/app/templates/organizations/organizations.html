@@ -1,0 +1,81 @@
+{% extends "shared/base.html" %}
+{% block title %}Organizations — Hermes Admin{% endblock %}
+{% block content %}
+
+<div class="page-header">
+    <div>
+        <h1>&#127970; Organizations</h1>
+        <p style="color:#6b7280;font-size:.85rem;margin:.2rem 0 0">{{ total }} organization{{ 's' if total != 1 else '' }} registered</p>
+    </div>
+    <a href="/organizations/new" class="btn btn-primary">&#43; New Organization</a>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, message in messages %}
+        <div class="alert alert-{{ category }}">{{ message }}</div>
+    {% endfor %}
+{% endwith %}
+
+<div class="card" style="padding:0;overflow:hidden">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Type</th>
+                <th>Short Name</th>
+                <th>Website</th>
+                <th style="width:120px">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for org in organizations %}
+            <tr>
+                <td>
+                    <div style="font-weight:600;color:#111827">{{ org.name }}</div>
+                </td>
+                <td>
+                    {% if org.org_type == 'jobs' %}
+                        <span class="badge badge-info">Jobs</span>
+                    {% elif org.org_type == 'admissions' %}
+                        <span class="badge badge-success">Admissions</span>
+                    {% else %}
+                        <span class="badge">Both</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if org.short_name %}
+                        <span class="badge badge-info">{{ org.short_name }}</span>
+                    {% else %}
+                        <span style="color:#9ca3af;font-size:.78rem">—</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if org.website_url %}
+                        <a href="{{ org.website_url }}" target="_blank" style="font-size:.8rem">&#128279; Visit</a>
+                    {% else %}
+                        <span style="color:#9ca3af;font-size:.78rem">—</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <div style="display:flex;gap:.35rem">
+                        <a href="/organizations/{{ org.id }}/edit" class="btn btn-outline btn-sm">Edit</a>
+                        <form method="POST" action="/organizations/{{ org.id }}/delete" style="display:inline"
+                              onsubmit="return confirm('Delete {{ org.name }}? This cannot be undone.')">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                            <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="5" style="text-align:center;padding:2rem;color:#6b7280">
+                    No organizations yet. <a href="/organizations/new">Add the first one.</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% endblock %}
