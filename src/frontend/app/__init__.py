@@ -822,8 +822,8 @@ def track_organization(org_id):
         _uuid.UUID(org_id)
     except ValueError:
         return render_template(_TEMPLATE_404), 404
-    back = _safe_back("/jobs")
-    resp, authed = _try_with_refresh(
+    back = _safe_back(_API_JOBS)
+    _, authed = _try_with_refresh(
         lambda t: current_app.api_client.post(f"/organizations/{org_id}/track", token=t)
     )
     if not authed:
@@ -837,7 +837,7 @@ def untrack_organization(org_id):
         _uuid.UUID(org_id)
     except ValueError:
         return render_template(_TEMPLATE_404), 404
-    back = _safe_back("/jobs")
+    back = _safe_back(_API_JOBS)
     _, authed = _try_with_refresh(
         lambda t: current_app.api_client.delete(f"/organizations/{org_id}/track", token=t)
     )

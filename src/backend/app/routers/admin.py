@@ -837,7 +837,32 @@ async def admin_list_organizations(
     }
 
 
-@router.post("/organizations", status_code=status.HTTP_201_CREATED)
+_ORG_NOT_FOUND = "Organization not found"
+_ORG_TYPE_VALUES = ("jobs", "admissions", "both")
+_ORG_TYPE_ERR = "org_type must be 'jobs', 'admissions', or 'both'"
+
+
+def _apply_org_fields(org, body: dict) -> None:
+    """Apply simple scalar fields from body onto org in-place."""
+    for field in ("name", "short_name", "logo_url", "website_url", "org_type"):
+        if field not in body:
+            continue
+        val = (body[field] or "").strip() or None
+        if field in ("name", "org_type") and not val:
+            raise HTTPException(status_code=422, detail=f"{field} cannot be empty")
+        if field == "org_type" and val not in _ORG_TYPE_VALUES:
+            raise HTTPException(status_code=422, detail=_ORG_TYPE_ERR)
+        setattr(org, field, val)
+
+
+@router.post(
+    "/organizations",
+    status_code=status.HTTP_201_CREATED,
+    responses={
+        409: {"description": "Name or slug conflict"},
+        422: {"description": "Validation error"},
+    },
+)
 async def admin_create_organization(
     body: dict,
     request: Request,
@@ -862,10 +887,8 @@ async def admin_create_organization(
     if slug_exists:
         raise HTTPException(status_code=409, detail=f"Slug '{slug}' already in use")
     org_type = (body.get("org_type") or "both").strip()
-    if org_type not in ("jobs", "admissions", "both"):
-        raise HTTPException(
-            status_code=422, detail="org_type must be 'jobs', 'admissions', or 'both'"
-        )
+    if org_type not in _ORG_TYPE_VALUES:
+        raise HTTPException(status_code=422, detail=_ORG_TYPE_ERR)
     org = Organization(
         name=name,
         slug=slug,
@@ -896,7 +919,7 @@ async def admin_create_organization(
     }
 
 
-@router.get("/organizations/{org_id}")
+@router.get("/organizations/{org_id}", responses={404: {"description": _ORG_NOT_FOUND}})
 async def admin_get_organization(
     org_id: uuid.UUID,
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -907,7 +930,7 @@ async def admin_get_organization(
         await db.execute(select(Organization).where(Organization.id == org_id))
     ).scalar_one_or_none()
     if not org:
-        raise HTTPException(status_code=404, detail="Organization not found")
+        raise HTTPException(status_code=404, detail=_ORG_NOT_FOUND)
     return {
         "id": str(org.id),
         "name": org.name,
@@ -920,7 +943,14 @@ async def admin_get_organization(
     }
 
 
-@router.put("/organizations/{org_id}")
+@router.put(
+    "/organizations/{org_id}",
+    responses={
+        404: {"description": _ORG_NOT_FOUND},
+        409: {"description": "Slug conflict"},
+        422: {"description": "Validation error"},
+    },
+)
 async def admin_update_organization(
     org_id: uuid.UUID,
     body: dict,
@@ -933,18 +963,8 @@ async def admin_update_organization(
         await db.execute(select(Organization).where(Organization.id == org_id))
     ).scalar_one_or_none()
     if not org:
-        raise HTTPException(status_code=404, detail="Organization not found")
-    for field in ("name", "short_name", "logo_url", "website_url", "org_type"):
-        if field in body:
-            val = (body[field] or "").strip() or None
-            if field in ("name", "org_type") and not val:
-                raise HTTPException(status_code=422, detail=f"{field} cannot be empty")
-            if field == "org_type" and val not in ("jobs", "admissions", "both"):
-                raise HTTPException(
-                    status_code=422,
-                    detail="org_type must be 'jobs', 'admissions', or 'both'",
-                )
-            setattr(org, field, val)
+        raise HTTPException(status_code=404, detail=_ORG_NOT_FOUND)
+    _apply_org_fields(org, body)
     if "slug" in body:
         new_slug = (body["slug"] or "").strip() or _slugify(org.name)
         if new_slug != org.slug:
@@ -981,7 +1001,11 @@ async def admin_update_organization(
     }
 
 
-@router.delete("/organizations/{org_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/organizations/{org_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={404: {"description": _ORG_NOT_FOUND}},
+)
 async def admin_delete_organization(
     org_id: uuid.UUID,
     request: Request,
@@ -993,7 +1017,7 @@ async def admin_delete_organization(
         await db.execute(select(Organization).where(Organization.id == org_id))
     ).scalar_one_or_none()
     if not org:
-        raise HTTPException(status_code=404, detail="Organization not found")
+        raise HTTPException(status_code=404, detail=_ORG_NOT_FOUND)
     await _log_action(
         db,
         current_admin,

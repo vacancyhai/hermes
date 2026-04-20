@@ -71,6 +71,7 @@ _API_ADMIN_ANSWER_KEYS = "/admin/answer-keys"
 _API_ADMIN_RESULTS = "/admin/results"
 _API_ADMIN_ADMISSIONS = "/admin/admissions"
 _CONTENT_TYPE_JSON = "application/json"
+_TEMPLATE_JOB_CREATE = "jobs/job_create.html"
 _URL_USERS = "/users"
 _URL_ORGANIZATIONS = "/organizations"
 _API_ADMIN_ORGANIZATIONS = "/admin/organizations"
@@ -334,7 +335,7 @@ def new_job():
                     payload["application_details"] = {"important_links": parsed_links}
         except ValueError:
             flash("Invalid form data. Please try again.", "error")
-            return render_template("jobs/job_create.html", organizations=organizations)
+            return render_template(_TEMPLATE_JOB_CREATE, organizations=organizations)
         resp = current_app.api_client.post(_API_ADMIN_JOBS, token=token, json=payload)
         if resp.ok:
             job_id = resp.json().get("id")
@@ -342,9 +343,9 @@ def new_job():
             return redirect(f"/jobs/{job_id}/edit")
         detail = resp.json().get("detail", "Failed to create job") if resp.headers.get("content-type", "").startswith(_CONTENT_TYPE_JSON) else "Failed to create job"
         flash(detail, "error")
-        return render_template("jobs/job_create.html", organizations=organizations)
+        return render_template(_TEMPLATE_JOB_CREATE, organizations=organizations)
 
-    return render_template("jobs/job_create.html", organizations=organizations)
+    return render_template(_TEMPLATE_JOB_CREATE, organizations=organizations)
 
 
 @bp.route("/jobs/<job_id>/delete", methods=["POST"])
@@ -568,6 +569,37 @@ def admissions_list_partial():
     return render_template("admissions/_admission_rows.html", admissions=data["data"], pagination=data.get("pagination", {}))
 
 
+def _build_admission_payload(form):
+    """Build admission API payload from POST form data."""
+    payload = {}
+    _set_or_none(form, ["admission_name", "slug", "conducting_body", "counselling_body", "admission_type",
+                         "stream", "description", "short_description", "source_url", "status"], payload)
+    fee = {k: int(v) for k, v in {
+        "general": form.get("fee_general", ""),
+        "obc": form.get("fee_obc", ""),
+        "sc_st": form.get("fee_sc_st", ""),
+        "ews": form.get("fee_ews", ""),
+        "female": form.get("fee_female", ""),
+    }.items() if v.strip() != ""}
+    payload["fee"] = fee
+    _set_optional(form, ["application_start", "application_end", "admission_date",
+                          "exam_start", "exam_end", "result_date", "counselling_start"], payload)
+    for json_field, key in [("admission_details_json", "admission_details"),
+                              ("eligibility_json", "eligibility"),
+                              ("seats_info_json", "seats_info"),
+                              ("selection_process_json", "selection_process")]:
+        raw = form.get(json_field, "").strip()
+        if raw:
+            try:
+                payload[key] = json.loads(raw)
+            except Exception:
+                pass
+    if form.get("organization_id"):
+        payload["organization_id"] = form["organization_id"]
+    payload.setdefault("status", "active")
+    return payload
+
+
 @bp.route("/admissions/new", methods=["GET", "POST"])  # NOSONAR
 def new_admission():
     """Create a new admission."""
@@ -575,35 +607,7 @@ def new_admission():
     if not token:
         return redirect(_URL_LOGIN)
     if request.method == "POST":
-        form = request.form.to_dict()
-        payload = {}
-        _set_or_none(form, ["admission_name", "slug", "conducting_body", "counselling_body", "admission_type",
-                             "stream", "description", "short_description", "source_url", "status"], payload)
-        fee = {k: int(v) for k, v in {
-            "general": form.get("fee_general", ""),
-            "obc": form.get("fee_obc", ""),
-            "sc_st": form.get("fee_sc_st", ""),
-            "ews": form.get("fee_ews", ""),
-            "female": form.get("fee_female", ""),
-        }.items() if v.strip() != ""}
-        payload["fee"] = fee
-        _set_optional(form, ["application_start", "application_end", "admission_date",
-                              "exam_start", "exam_end",
-                              "result_date", "counselling_start"], payload)
-        import json as _json
-        for json_field, key in [("admission_details_json", "admission_details"),
-                                  ("eligibility_json", "eligibility"),
-                                  ("seats_info_json", "seats_info"),
-                                  ("selection_process_json", "selection_process")]:
-            raw = form.get(json_field, "").strip()
-            if raw:
-                try:
-                    payload[key] = _json.loads(raw)
-                except Exception:
-                    pass
-        if form.get("organization_id"):
-            payload["organization_id"] = form["organization_id"]
-        payload.setdefault("status", "active")
+        payload = _build_admission_payload(request.form.to_dict())
         resp = current_app.api_client.post(_API_ADMIN_ADMISSIONS, token=token, json=payload)
         if resp.ok:
             admission_id = resp.json().get("id")
