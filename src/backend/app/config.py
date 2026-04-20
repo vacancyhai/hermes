@@ -40,10 +40,10 @@ class Settings(BaseSettings):
     # JWT
     JWT_SECRET_KEY: str = "change-me-jwt-secret"
     JWT_ACCESS_TOKEN_EXPIRES: int = 900  # 15 minutes
-
-    # Firebase (push notifications)
-    FIREBASE_CREDENTIALS_PATH: str = ""
     JWT_REFRESH_TOKEN_EXPIRES: int = 604800  # 7 days
+
+    # Firebase (push notifications — service account)
+    FIREBASE_CREDENTIALS_PATH: str = ""
 
     # Firebase Auth (frontend JS SDK config)
     FIREBASE_WEB_API_KEY: str = ""
