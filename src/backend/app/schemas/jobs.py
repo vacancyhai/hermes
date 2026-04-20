@@ -45,11 +45,7 @@ class JobCreateRequest(BaseModel):
     links: list = Field(default_factory=list)
     salary: dict = Field(default_factory=dict)
     selection_process: list = Field(default_factory=list)
-    fee_general: int | None = None
-    fee_obc: int | None = None
-    fee_sc_st: int | None = None
-    fee_ews: int | None = None
-    fee_female: int | None = None
+    fee: dict = Field(default_factory=dict)
     status: JOB_STATUSES = "active"
 
     @model_validator(mode="after")
@@ -88,11 +84,7 @@ class JobUpdateRequest(BaseModel):
     links: list | None = None
     salary: dict | None = None
     selection_process: list | None = None
-    fee_general: int | None = None
-    fee_obc: int | None = None
-    fee_sc_st: int | None = None
-    fee_ews: int | None = None
-    fee_female: int | None = None
+    fee: dict | None = None
     status: JOB_STATUSES | None = None
 
     @model_validator(mode="after")
@@ -135,11 +127,7 @@ class JobResponse(BaseModel):
     links: list
     salary: dict
     selection_process: list
-    fee_general: int | None
-    fee_obc: int | None
-    fee_sc_st: int | None
-    fee_ews: int | None
-    fee_female: int | None
+    fee: dict
     status: str
     source: str
     source_pdf_path: str | None = None
@@ -164,11 +152,7 @@ class JobListItem(BaseModel):
     notification_date: date | None = None
     exam_start: date | None = None
     result_date: date | None = None
-    fee_general: int | None = None
-    fee_obc: int | None = None
-    fee_sc_st: int | None = None
-    fee_ews: int | None = None
-    fee_female: int | None = None
+    fee: dict = Field(default_factory=dict)
     status: str
     created_at: datetime
 

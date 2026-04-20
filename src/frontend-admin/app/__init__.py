@@ -325,8 +325,15 @@ def new_job():
                                   "description", "short_description", "source_url"], payload)
         if form.get("organization_id"):
             payload["organization_id"] = form["organization_id"]
-        _pick_int_fields(form, ["total_vacancies", "fee_general", "fee_obc", "fee_sc_st",
-                                 "fee_ews", "fee_female", "salary_initial", "salary_max"], payload)
+        _pick_int_fields(form, ["total_vacancies", "salary_initial", "salary_max"], payload)
+        fee = {k: int(v) for k, v in {
+            "general": form.get("fee_general", ""),
+            "obc": form.get("fee_obc", ""),
+            "sc_st": form.get("fee_sc_st", ""),
+            "ews": form.get("fee_ews", ""),
+            "female": form.get("fee_female", ""),
+        }.items() if v.strip() != ""}
+        payload["fee"] = fee
         _pick_date_fields(form, ["notification_date", "application_start", "application_end",
                                   "exam_start", "exam_end", "result_date"], payload)
         payload["status"] = form.get("status", "active")
@@ -396,8 +403,15 @@ def edit_job(job_id):
                                   "short_description", "source_url", "status"], update)
         if form.get("organization_id"):
             update["organization_id"] = form["organization_id"]
-        _pick_int_fields(form, ["total_vacancies", "fee_general", "fee_obc", "fee_sc_st",
-                                 "fee_ews", "fee_female", "salary_initial", "salary_max"], update)
+        _pick_int_fields(form, ["total_vacancies", "salary_initial", "salary_max"], update)
+        fee = {k: int(v) for k, v in {
+            "general": form.get("fee_general", ""),
+            "obc": form.get("fee_obc", ""),
+            "sc_st": form.get("fee_sc_st", ""),
+            "ews": form.get("fee_ews", ""),
+            "female": form.get("fee_female", ""),
+        }.items() if v.strip() != ""}
+        update["fee"] = fee
         _pick_date_fields(form, ["notification_date", "application_start",
                                   "application_end", "exam_start",
                                   "exam_end", "result_date"], update)
@@ -592,7 +606,14 @@ def new_admission():
         payload = {}
         _set_or_none(form, ["admission_name", "slug", "conducting_body", "counselling_body", "admission_type",
                              "stream", "description", "short_description", "source_url", "status"], payload)
-        _set_int_fields(form, ["fee_general", "fee_obc", "fee_sc_st", "fee_ews", "fee_female"], payload)
+        fee = {k: int(v) for k, v in {
+            "general": form.get("fee_general", ""),
+            "obc": form.get("fee_obc", ""),
+            "sc_st": form.get("fee_sc_st", ""),
+            "ews": form.get("fee_ews", ""),
+            "female": form.get("fee_female", ""),
+        }.items() if v.strip() != ""}
+        payload["fee"] = fee
         _set_optional(form, ["application_start", "application_end", "admission_date",
                               "exam_start", "exam_end",
                               "result_date", "counselling_start"], payload)
@@ -633,7 +654,14 @@ def edit_admission(admission_id):
         update = {}
         _pick_text_fields(form, ["admission_name", "slug", "conducting_body", "counselling_body", "admission_type",
                                   "stream", "description", "short_description", "source_url", "status"], update)
-        _set_int_fields(form, ["fee_general", "fee_obc", "fee_sc_st", "fee_ews", "fee_female"], update)
+        fee = {k: int(v) for k, v in {
+            "general": form.get("fee_general", ""),
+            "obc": form.get("fee_obc", ""),
+            "sc_st": form.get("fee_sc_st", ""),
+            "ews": form.get("fee_ews", ""),
+            "female": form.get("fee_female", ""),
+        }.items() if v.strip() != ""}
+        update["fee"] = fee
         _set_optional(form, ["application_start", "application_end", "admission_date",
                               "exam_start", "exam_end",
                               "result_date", "counselling_start"], update)

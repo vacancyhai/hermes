@@ -153,11 +153,11 @@
         <div class="section-body">
             <p class="subsection-label">Fee by Category (INR)</p>
             <div class="fee-grid">
-                {% for fname, flabel in [('fee_general','General / UR'),('fee_obc','OBC-NCL'),('fee_sc_st','SC / ST'),('fee_ews','EWS'),('fee_female','Female / PwBD')] %}
+                {% for fname, fkey, flabel in [('fee_general','general','General / UR'),('fee_obc','obc','OBC-NCL'),('fee_sc_st','sc_st','SC / ST'),('fee_ews','ews','EWS'),('fee_female','female','Female / PwBD')] %}
                 <div class="fee-cell">
                     <label>{{ flabel }}</label>
                     <input type="number" name="{{ fname }}" min="0"
-                           value="{{ job[fname] if job[fname] is not none else '' }}" placeholder="0">
+                           value="{{ job.fee.get(fkey, '') if job.fee else '' }}" placeholder="0">
                 </div>
                 {% endfor %}
             </div>

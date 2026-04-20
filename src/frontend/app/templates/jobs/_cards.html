@@ -17,8 +17,8 @@
             {% if job.application_end %}
             <span class="deadline">Deadline: {{ job.application_end }}</span>
             {% endif %}
-            {% if job.fee_general is not none %}
-            <span class="meta-pill pill-amber">Fee: {% if job.fee_general == 0 %}Free{% else %}₹{{ job.fee_general }}{% endif %}</span>
+            {% if job.fee and job.fee.get('general') is not none %}
+            <span class="meta-pill pill-amber">Fee: {% if job.fee.get('general') == 0 %}Free{% else %}₹{{ job.fee.get('general') }}{% endif %}</span>
             {% endif %}
         </div>
         <div style="display:flex;gap:.4rem;align-items:center">

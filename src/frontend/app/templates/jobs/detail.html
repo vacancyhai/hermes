@@ -487,15 +487,18 @@
 {% endif %}
 
 <!-- Application Fee -->
-{% if job.fee_general is not none %}
+{% if job.fee %}
 <div class="detail-section">
     <h2>💳 Application Fee</h2>
     <table class="fee-table">
         <thead><tr><th>Category</th><th>Fee</th></tr></thead>
         <tbody>
-            {% if job.fee_general is not none %}<tr><td>General / OBC / EWS</td><td>{% if job.fee_general == 0 %}Free{% else %}₹{{ job.fee_general }}{% endif %}</td></tr>{% endif %}
-            {% if job.fee_sc_st is not none %}<tr><td>SC / ST</td><td>{% if job.fee_sc_st == 0 %}Free{% else %}₹{{ job.fee_sc_st }}{% endif %}</td></tr>{% endif %}
-            {% if job.fee_female is not none %}<tr><td>Female (all categories)</td><td>{% if job.fee_female == 0 %}Free{% else %}₹{{ job.fee_female }}{% endif %}</td></tr>{% endif %}
+            {% set fee_labels = {'general': 'General / UR', 'obc': 'OBC-NCL', 'sc_st': 'SC / ST', 'ews': 'EWS', 'female': 'Female / PwBD'} %}
+            {% for key in ['general', 'obc', 'sc_st', 'ews', 'female'] %}
+            {% if key in job.fee %}
+            <tr><td>{{ fee_labels[key] }}</td><td>{% if job.fee[key] == 0 %}Free{% else %}₹{{ job.fee[key] }}{% endif %}</td></tr>
+            {% endif %}
+            {% endfor %}
         </tbody>
     </table>
     {% if job.application_details and job.application_details.get('fee_payment_mode') %}

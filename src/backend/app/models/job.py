@@ -59,11 +59,7 @@ class Job(Base):
     selection_process: Mapped[list] = mapped_column(
         JSONB, nullable=False, server_default="[]"
     )
-    fee_general: Mapped[int | None] = mapped_column(Integer)
-    fee_obc: Mapped[int | None] = mapped_column(Integer)
-    fee_sc_st: Mapped[int | None] = mapped_column(Integer)
-    fee_ews: Mapped[int | None] = mapped_column(Integer)
-    fee_female: Mapped[int | None] = mapped_column(Integer)
+    fee: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default="{}")
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="active")
     created_by: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("admin_users.id")
