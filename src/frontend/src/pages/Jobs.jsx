@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types';
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import api from '../api/client';
@@ -13,7 +14,7 @@ function JobCard({ job, trackedIds, onToggle }) {
       if (isTracking) await api.delete(`/jobs/${job.id}/track`);
       else await api.post(`/jobs/${job.id}/track`);
       onToggle(job.id);
-    } catch (_) {}
+    } catch { }
   };
 
   const statusColors = { active: '#22c55e', upcoming: '#f59e0b', closed: '#ef4444' };
@@ -54,6 +55,12 @@ function JobCard({ job, trackedIds, onToggle }) {
   );
 }
 
+JobCard.propTypes = {
+  job: PropTypes.object.isRequired,
+  trackedIds: PropTypes.instanceOf(Set).isRequired,
+  onToggle: PropTypes.func.isRequired,
+};
+
 export default function Jobs() {
   const { token } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -65,7 +72,7 @@ export default function Jobs() {
   const q = searchParams.get('q') || '';
   const qualification = searchParams.get('qualification_level') || '';
   const org = searchParams.get('organization') || '';
-  const offset = parseInt(searchParams.get('offset') || '0', 10);
+  const offset = Number.parseInt(searchParams.get('offset') || '0', 10);
   const limit = 20;
 
   const fetchJobs = useCallback(async () => {
@@ -78,7 +85,7 @@ export default function Jobs() {
       const res = await api.get('/jobs', { params });
       setJobs(res.data.data || []);
       setPagination(res.data.pagination || {});
-    } catch (_) {} finally { setLoading(false); }
+    } catch { } finally { setLoading(false); }
   }, [q, qualification, org, offset]);
 
   useEffect(() => { fetchJobs(); }, [fetchJobs]);
@@ -87,7 +94,7 @@ export default function Jobs() {
     if (!token) { setTrackedIds(new Set()); return; }
     api.get('/users/me/tracked').then((r) => {
       setTrackedIds(new Set((r.data.jobs || []).map((j) => String(j.id))));
-    }).catch(() => {});
+    }).catch(() => { });
   }, [token]);
 
   const toggleId = (id) => setTrackedIds((prev) => {

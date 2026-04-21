@@ -1,7 +1,49 @@
+import PropTypes from 'prop-types';
 import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import api from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
+
+function EligBanner({ token, profileComplete, eligibility, slug }) {
+  if (!token) return (
+    <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '0.5rem', padding: '1rem 1.25rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+      <span style={{ fontSize: '1.25rem' }}>🔍</span>
+      <div style={{ flex: 1 }}><div style={{ fontWeight: 600, fontSize: '0.9rem' }}>Check Your Eligibility</div><div style={{ fontSize: '0.8rem', color: '#64748b' }}>Login and complete your profile to see if you qualify.</div></div>
+      <Link to={`/login?next=/admissions/${slug}`} className="btn btn-primary btn-sm">Login to Check</Link>
+    </div>
+  );
+  if (!profileComplete) return (
+    <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '0.5rem', padding: '1rem 1.25rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+      <span style={{ fontSize: '1.25rem' }}>⚠️</span>
+      <div style={{ flex: 1 }}><div style={{ fontWeight: 600, fontSize: '0.9rem', color: '#92400e' }}>Profile Incomplete</div><div style={{ fontSize: '0.8rem', color: '#a16207' }}>Complete your profile to check eligibility.</div></div>
+      <Link to="/profile" className="btn btn-sm" style={{ background: '#fef3c7', color: '#92400e', border: '1px solid #fde68a' }}>Complete Profile</Link>
+    </div>
+  );
+  if (!eligibility) return null;
+  const cfg = {
+    eligible: { bg: '#f0fdf4', border: '#bbf7d0', icon: '✅', color: '#166534', label: 'You are Eligible' },
+    partially_eligible: { bg: '#fffbeb', border: '#fde68a', icon: '⚠️', color: '#92400e', label: 'Partially Eligible' },
+    not_eligible: { bg: '#fef2f2', border: '#fecaca', icon: '❌', color: '#991b1b', label: 'Not Eligible' },
+  }[eligibility.status];
+  if (!cfg) return null;
+  return (
+    <div style={{ background: cfg.bg, border: `1px solid ${cfg.border}`, borderRadius: '0.5rem', padding: '1rem 1.25rem', marginBottom: '1rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: eligibility.reasons?.length ? '0.6rem' : 0 }}>
+        <span style={{ fontSize: '1.25rem' }}>{cfg.icon}</span>
+        <span style={{ fontWeight: 700, fontSize: '0.95rem', color: cfg.color }}>{cfg.label}</span>
+      </div>
+      {eligibility.reasons?.length > 0 && <ul style={{ margin: 0, paddingLeft: '1.25rem' }}>{eligibility.reasons.map((r) => <li key={r} style={{ fontSize: '0.82rem', color: cfg.color }}>{r}</li>)}</ul>}
+    </div>
+  );
+}
+
+EligBanner.propTypes = {
+  token: PropTypes.string,
+  profileComplete: PropTypes.bool.isRequired,
+  eligibility: PropTypes.shape({ status: PropTypes.string, reasons: PropTypes.arrayOf(PropTypes.string) }),
+  slug: PropTypes.string.isRequired,
+};
+EligBanner.defaultProps = { token: null, eligibility: null };
 
 export default function AdmissionDetail() {
   const { slug } = useParams();
@@ -36,7 +78,7 @@ export default function AdmissionDetail() {
       if (tracking) await api.delete(`/admissions/${admission.id}/track`);
       else await api.post(`/admissions/${admission.id}/track`);
       setTracking(!tracking);
-    } catch (_) {}
+    } catch { }
   };
 
   if (loading) return <div style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>Loading...</div>;
@@ -47,39 +89,6 @@ export default function AdmissionDetail() {
   const hasResults = admission.results?.length > 0;
   const impLinks = admission.application_details?.important_links || [];
   const feeLabels = { general: 'General / UR', obc: 'OBC-NCL', sc_st: 'SC / ST', ews: 'EWS', female: 'Female / PwBD' };
-
-  const EligBanner = () => {
-    if (!token) return (
-      <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '0.5rem', padding: '1rem 1.25rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-        <span style={{ fontSize: '1.25rem' }}>🔍</span>
-        <div style={{ flex: 1 }}><div style={{ fontWeight: 600, fontSize: '0.9rem' }}>Check Your Eligibility</div><div style={{ fontSize: '0.8rem', color: '#64748b' }}>Login and complete your profile to see if you qualify.</div></div>
-        <Link to={`/login?next=/admissions/${slug}`} className="btn btn-primary btn-sm">Login to Check</Link>
-      </div>
-    );
-    if (!profileComplete) return (
-      <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '0.5rem', padding: '1rem 1.25rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-        <span style={{ fontSize: '1.25rem' }}>⚠️</span>
-        <div style={{ flex: 1 }}><div style={{ fontWeight: 600, fontSize: '0.9rem', color: '#92400e' }}>Profile Incomplete</div><div style={{ fontSize: '0.8rem', color: '#a16207' }}>Complete your profile to check eligibility.</div></div>
-        <Link to="/profile" className="btn btn-sm" style={{ background: '#fef3c7', color: '#92400e', border: '1px solid #fde68a' }}>Complete Profile</Link>
-      </div>
-    );
-    if (!eligibility) return null;
-    const cfg = {
-      eligible: { bg: '#f0fdf4', border: '#bbf7d0', icon: '✅', color: '#166534', label: 'You are Eligible' },
-      partially_eligible: { bg: '#fffbeb', border: '#fde68a', icon: '⚠️', color: '#92400e', label: 'Partially Eligible' },
-      not_eligible: { bg: '#fef2f2', border: '#fecaca', icon: '❌', color: '#991b1b', label: 'Not Eligible' },
-    }[eligibility.status];
-    if (!cfg) return null;
-    return (
-      <div style={{ background: cfg.bg, border: `1px solid ${cfg.border}`, borderRadius: '0.5rem', padding: '1rem 1.25rem', marginBottom: '1rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: eligibility.reasons?.length ? '0.6rem' : 0 }}>
-          <span style={{ fontSize: '1.25rem' }}>{cfg.icon}</span>
-          <span style={{ fontWeight: 700, fontSize: '0.95rem', color: cfg.color }}>{cfg.label}</span>
-        </div>
-        {eligibility.reasons?.length > 0 && <ul style={{ margin: 0, paddingLeft: '1.25rem' }}>{eligibility.reasons.map((r, i) => <li key={i} style={{ fontSize: '0.82rem', color: cfg.color }}>{r}</li>)}</ul>}
-      </div>
-    );
-  };
 
   return (
     <div>
@@ -104,7 +113,7 @@ export default function AdmissionDetail() {
         {admission.application_details?.application_link && <a href={admission.application_details.application_link} target="_blank" rel="noopener noreferrer" className="share-btn" style={{ background: '#7c3aed', color: '#fff', borderColor: '#7c3aed' }}>Apply Online →</a>}
       </div>
 
-      <EligBanner />
+      <EligBanner token={token} profileComplete={profileComplete} eligibility={eligibility} slug={slug} />
 
       {/* Key Dates */}
       <div className="detail-grid">
@@ -144,10 +153,10 @@ export default function AdmissionDetail() {
         <div className="detail-section">
           <h2>🔗 Important Links</h2>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-            {impLinks.filter((l) => (typeof l === 'object' ? l.url : l)).map((link, i) => {
+            {impLinks.filter((l) => (typeof l === 'object' ? l.url : l)).map((link) => {
               const url = typeof link === 'object' ? link.url : link;
               const text = typeof link === 'object' ? (link.text || url) : url;
-              return <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="share-btn">🔗 {text}</a>;
+              return <a key={url} href={url} target="_blank" rel="noopener noreferrer" className="share-btn">🔗 {text}</a>;
             })}
           </div>
         </div>

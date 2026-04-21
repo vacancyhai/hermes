@@ -13,7 +13,7 @@ function NotifBadge() {
       try {
         const res = await api.get('/notifications/count');
         setCount(res.data.count || 0);
-      } catch (err) { void err; }
+      } catch { }
     };
     fetch();
     const id = setInterval(fetch, 30000);
@@ -52,7 +52,7 @@ export default function Layout() {
   useEffect(() => { setMenuOpen(false); }, [location.pathname]);
 
   async function handleLogout() {
-    try { await api.post('/auth/logout'); } catch (err) { void err; }
+    try { await api.post('/auth/logout'); } catch { }
     logout();
     navigate('/login');
   };

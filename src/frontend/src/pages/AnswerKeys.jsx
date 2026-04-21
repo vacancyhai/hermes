@@ -11,7 +11,7 @@ export default function AnswerKeys() {
   const [trackedJobIds, setTrackedJobIds] = useState(new Set());
   const [trackedAdmIds, setTrackedAdmIds] = useState(new Set());
   const [loading, setLoading] = useState(false);
-  const offset = parseInt(searchParams.get('offset') || '0', 10);
+  const offset = Number.parseInt(searchParams.get('offset') || '0', 10);
   const limit = 20;
 
   const fetchKeys = useCallback(async () => {
@@ -20,7 +20,7 @@ export default function AnswerKeys() {
       const res = await api.get('/answer-keys', { params: { limit, offset } });
       setKeys(res.data.data || []);
       setPagination(res.data.pagination || {});
-    } catch (_) {} finally { setLoading(false); }
+    } catch { } finally { setLoading(false); }
   }, [offset]);
 
   useEffect(() => { fetchKeys(); }, [fetchKeys]);
@@ -30,7 +30,7 @@ export default function AnswerKeys() {
     api.get('/users/me/tracked').then((r) => {
       setTrackedJobIds(new Set((r.data.jobs || []).map((j) => String(j.id))));
       setTrackedAdmIds(new Set((r.data.admissions || []).map((a) => String(a.id))));
-    }).catch(() => {});
+    }).catch(() => { });
   }, [token]);
 
   const track = async (type, id) => {
@@ -41,7 +41,7 @@ export default function AnswerKeys() {
       if (isTracking) await api.delete(`/${type}s/${id}/track`);
       else await api.post(`/${type}s/${id}/track`);
       setFn((prev) => { const next = new Set(prev); if (isTracking) next.delete(String(id)); else next.add(String(id)); return next; });
-    } catch (_) {}
+    } catch { }
   };
 
   return (

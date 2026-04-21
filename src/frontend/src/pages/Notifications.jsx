@@ -15,14 +15,14 @@ export default function Notifications() {
       const items = res.data.data || [];
       setNotifications(append ? (prev) => [...prev, ...items] : items);
       setPagination(res.data.pagination || {});
-    } catch (_) {} finally { setLoading(false); }
+    } catch { } finally { setLoading(false); }
   };
 
   const fetchCount = async () => {
     try {
       const res = await api.get('/notifications/count');
       setUnreadCount(res.data.count || 0);
-    } catch (_) {}
+    } catch { }
   };
 
   useEffect(() => { fetchNotifications(0); fetchCount(); }, []);
@@ -32,7 +32,7 @@ export default function Notifications() {
       await api.put(`/notifications/${id}/read`);
       setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, is_read: true } : n));
       setUnreadCount((c) => Math.max(0, c - 1));
-    } catch (_) {}
+    } catch { }
   };
 
   const markAllRead = async () => {
@@ -40,7 +40,7 @@ export default function Notifications() {
       await api.put('/notifications/read-all');
       setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
       setUnreadCount(0);
-    } catch (_) {}
+    } catch { }
   };
 
   const deleteNotif = async (id) => {
@@ -51,7 +51,7 @@ export default function Notifications() {
         if (n && !n.is_read) setUnreadCount((c) => Math.max(0, c - 1));
         return prev.filter((n) => n.id !== id);
       });
-    } catch (_) {}
+    } catch { }
   };
 
   const loadMore = () => {

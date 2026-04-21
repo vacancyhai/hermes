@@ -31,7 +31,7 @@ export default function ResultDetail() {
       if (tracking) await api.delete(`/${type}s/${id}/track`);
       else await api.post(`/${type}s/${id}/track`);
       setTracking(!tracking);
-    } catch (_) {}
+    } catch { }
   };
 
   if (loading) return <div style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>Loading...</div>;

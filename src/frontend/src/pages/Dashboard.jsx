@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../api/client';
@@ -15,25 +16,46 @@ function MiniStatus({ status }) {
   return <span style={{ background: s.bg, color: s.color, fontSize: '0.65rem', fontWeight: 700, padding: '0.1rem 0.4rem', borderRadius: 9999, display: 'inline-block' }}>{s.label}</span>;
 }
 
+MiniStatus.propTypes = { status: PropTypes.string };
+MiniStatus.defaultProps = { status: '' };
+
+function ExamsDaysBadge({ days }) {
+  if (days == null) return null;
+  let bg, col;
+  if (days === 0) { bg = '#ef4444'; col = '#fff'; }
+  else if (days <= 7) { bg = '#fee2e2'; col = '#991b1b'; }
+  else if (days <= 30) { bg = '#fef9c3'; col = '#854d0e'; }
+  else { bg = '#eff6ff'; col = '#1d4ed8'; }
+  return <span style={{ background: bg, color: col, borderRadius: 9999, padding: '0.1rem 0.4rem', fontSize: '0.65rem' }}>{days === 0 ? 'Today!' : `${days}d left`}</span>;
+}
+
+ExamsDaysBadge.propTypes = { days: PropTypes.number };
+ExamsDaysBadge.defaultProps = { days: null };
+
 function MiniCard({ children, color, onClick }) {
   return (
-    <div onClick={onClick} style={{
+    <button type="button" onClick={onClick} style={{
       background: '#fff', border: `1px solid #e2e8f0`, borderLeft: `3px solid ${color}`,
       borderRadius: '0.5rem', padding: '0.9rem 1rem', width: 210, minWidth: 210, maxWidth: 210,
       height: 140, flexShrink: 0, display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
-      cursor: 'pointer', overflow: 'hidden', transition: 'box-shadow .15s, transform .15s',
+      cursor: 'pointer', overflow: 'hidden', transition: 'box-shadow .15s, transform .15s', textAlign: 'left',
     }}
     onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,.08)'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
     onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.transform = 'none'; }}
     >
       {children}
-    </div>
+    </button>
   );
 }
 
+MiniCard.propTypes = {
+  children: PropTypes.node.isRequired,
+  color: PropTypes.string.isRequired,
+  onClick: PropTypes.func.isRequired,
+};
+
 function TrackBtn({ type, id, slug, isTracking, onToggle }) {
   const { token } = useAuth();
-  const navigate = useNavigate();
   if (!token) {
     return <a href={`/login?next=/${type}s/${slug}`} onClick={(e) => { e.stopPropagation(); }} style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem', borderRadius: 9999, border: '1px solid #bfdbfe', background: '#eff6ff', color: '#1d4ed8', textDecoration: 'none' }}>☆</a>;
   }
@@ -43,7 +65,7 @@ function TrackBtn({ type, id, slug, isTracking, onToggle }) {
       if (isTracking) await api.delete(`/${type}s/${id}/track`);
       else await api.post(`/${type}s/${id}/track`);
       onToggle(id);
-    } catch (_) {}
+    } catch { }
   };
   return (
     <button onClick={track} className={isTracking ? 'btn-tracking btn btn-sm' : 'btn btn-outline btn-sm'} style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem' }}>
@@ -51,6 +73,14 @@ function TrackBtn({ type, id, slug, isTracking, onToggle }) {
     </button>
   );
 }
+
+TrackBtn.propTypes = {
+  type: PropTypes.string.isRequired,
+  id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+  slug: PropTypes.string.isRequired,
+  isTracking: PropTypes.bool.isRequired,
+  onToggle: PropTypes.func.isRequired,
+};
 
 function SectionRow({ title, href, children }) {
   return (
@@ -123,12 +153,6 @@ export default function Dashboard() {
     return { ...prev, admissionIds: next };
   });
 
-  const ExamsDaysBadge = ({ days }) => {
-    if (days == null) return null;
-    const [bg, col] = days === 0 ? ['#ef4444', '#fff'] : days <= 7 ? ['#fee2e2', '#991b1b'] : days <= 30 ? ['#fef9c3', '#854d0e'] : ['#eff6ff', '#1d4ed8'];
-    return <span style={{ background: bg, color: col, borderRadius: 9999, padding: '0.1rem 0.4rem', fontSize: '0.65rem' }}>{days === 0 ? 'Today!' : `${days}d left`}</span>;
-  };
-
   return (
     <div>
       {/* Hero */}
@@ -156,10 +180,10 @@ export default function Dashboard() {
                   if (isTracking) await api.delete(`/organizations/${org.id}/track`);
                   else await api.post(`/organizations/${org.id}/track`);
                   setTrackedOrgIds((prev) => { const next = new Set(prev); if (isTracking) next.delete(String(org.id)); else next.add(String(org.id)); return next; });
-                } catch (_) {}
+                } catch { }
               };
               return (
-                <div key={org.id} style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem', flexShrink: 0, width: 120, background: isTracking ? '#fffbeb' : '#f8fafc', border: `1.5px solid ${isTracking ? '#f59e0b' : '#e2e8f0'}`, borderRadius: '0.6rem', padding: '0.7rem 0.6rem 0.55rem', transition: 'border-color .15s' }}>
+                <div key={org.id} style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem', flexShrink: 0, width: 120, background: isTracking ? '#fffbeb' : '#f8fafc', border: `1.5px solid ${isTracking ? '#f59e0b' : '#e2e8f0'}`, borderRadius: '0.6rem', padding: '0.7rem 0.6rem 0.55rem', transition: 'border-color .15s', cursor: 'auto' }}>
                   {org.logo_url
                     ? <img src={org.logo_url} alt={displayName} style={{ width: 42, height: 42, borderRadius: '0.4rem', objectFit: 'cover' }} />
                     : <div style={{ width: 42, height: 42, borderRadius: '0.4rem', background: isTracking ? 'linear-gradient(135deg,#92400e,#f59e0b)' : 'linear-gradient(135deg,#1e3a5f,#2563eb)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem', fontWeight: 800 }}>{displayName[0]?.toUpperCase()}</div>
@@ -186,17 +210,15 @@ export default function Dashboard() {
               {data.exams.map((exam) => {
                 const isJob = exam.type === 'job' || exam.parent_type === 'job';
                 const url = isJob ? `/jobs/${exam.slug || exam.parent_slug}` : `/admissions/${exam.slug || exam.parent_slug}`;
-                const tId = exam.id || exam.parent_id;
-                const isTracking = isJob ? tracked.jobIds.has(String(tId)) : tracked.admissionIds.has(String(tId));
                 return (
-                  <div key={exam.id} onClick={() => navigate(url)} style={{ borderBottom: '1px solid #f1f5f9', padding: '0.6rem 0.85rem', cursor: 'pointer', transition: 'background .12s' }}
+                  <button type="button" key={exam.id} onClick={() => navigate(url)} style={{ display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none', borderBottom: '1px solid #f1f5f9', padding: '0.6rem 0.85rem', cursor: 'pointer', transition: 'background .12s' }}
                     onMouseEnter={(e) => { e.currentTarget.style.background = '#f8fafc'; }}
                     onMouseLeave={(e) => { e.currentTarget.style.background = ''; }}>
                     <div style={{ color: '#1e293b', fontWeight: 600, fontSize: '0.78rem', lineHeight: 1.35 }}>{exam.title}</div>
                     <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', color: '#64748b', fontSize: '0.7rem', fontWeight: 500, marginTop: '0.2rem' }}>
                       📅 {exam.exam_start || 'TBA'} <ExamsDaysBadge days={exam.days_remaining} />
                     </div>
-                  </div>
+                  </button>
                 );
               })}
             </div>

@@ -11,7 +11,7 @@ export default function Results() {
   const [trackedJobIds, setTrackedJobIds] = useState(new Set());
   const [trackedAdmIds, setTrackedAdmIds] = useState(new Set());
   const [loading, setLoading] = useState(false);
-  const offset = parseInt(searchParams.get('offset') || '0', 10);
+  const offset = Number.parseInt(searchParams.get('offset') || '0', 10);
   const limit = 20;
 
   const fetchResults = useCallback(async () => {
@@ -20,7 +20,7 @@ export default function Results() {
       const res = await api.get('/results', { params: { limit, offset } });
       setResults(res.data.data || []);
       setPagination(res.data.pagination || {});
-    } catch (_) {} finally { setLoading(false); }
+    } catch { } finally { setLoading(false); }
   }, [offset]);
 
   useEffect(() => { fetchResults(); }, [fetchResults]);
@@ -30,7 +30,7 @@ export default function Results() {
     api.get('/users/me/tracked').then((r) => {
       setTrackedJobIds(new Set((r.data.jobs || []).map((j) => String(j.id))));
       setTrackedAdmIds(new Set((r.data.admissions || []).map((a) => String(a.id))));
-    }).catch(() => {});
+    }).catch(() => { });
   }, [token]);
 
   const track = async (type, id) => {
@@ -41,7 +41,7 @@ export default function Results() {
       if (isTracking) await api.delete(`/${type}s/${id}/track`);
       else await api.post(`/${type}s/${id}/track`);
       setFn((prev) => { const next = new Set(prev); if (isTracking) next.delete(String(id)); else next.add(String(id)); return next; });
-    } catch (_) {}
+    } catch { }
   };
 
   return (

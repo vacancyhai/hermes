@@ -58,7 +58,7 @@ export default function Login() {
     try {
       const me = await api.get('/users/profile', { headers: { Authorization: `Bearer ${access_token}` } });
       name = me.data.full_name || name;
-    } catch (_) {}
+    } catch { }
     login(access_token, refresh_token, name);
     navigate(nextUrl, { replace: true });
   }
@@ -111,7 +111,7 @@ export default function Login() {
             setError('You signed up with Google. Please sign in with Google or add a password.');
             setTimeout(() => { addPwdState.current.email = email; addPwdState.current.password = password; setEmailView('addpwd'); setAddPwd(password); }, 1500);
           } else { setError('Incorrect password.'); }
-        } catch (_) { setError('Invalid email or password.'); }
+        } catch { setError('Invalid email or password.'); }
       } else { setError(firebaseErr(e)); }
     } finally { setLoading(false); }
   }
@@ -161,7 +161,7 @@ export default function Login() {
     try {
       await api.post('/auth/send-email-otp', { email: re, full_name: rn });
       setSuccess('A new code has been sent to your email.'); setOtpCode('');
-    } catch (_) { setError('Failed to resend code.'); }
+    } catch { setError('Failed to resend code.'); }
   }
 
   async function requestAddPassword() {
@@ -173,7 +173,7 @@ export default function Login() {
     try {
       await api.post('/auth/send-email-otp', { email: em, full_name: 'User' });
       setEmailView('addpwd-otp');
-    } catch (_) { setError('Failed to send verification code.'); }
+    } catch { setError('Failed to send verification code.'); }
     finally { setLoading(false); }
   }
 

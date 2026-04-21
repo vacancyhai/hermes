@@ -18,7 +18,7 @@ export default function Layout() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   async function handleLogout() {
-    try { await client.post('/auth/admin/logout'); } catch (err) { void err; }
+    try { await client.post('/auth/admin/logout'); } catch { }
     logout();
     navigate('/login');
   }

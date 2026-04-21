@@ -128,7 +128,7 @@ export default function Profile() {
         preferred_categories: preferredCategories,
       });
       showFlash('success', 'Profile updated.');
-    } catch (_) { showFlash('error', 'Failed to save profile.'); }
+    } catch { showFlash('error', 'Failed to save profile.'); }
     finally { setSaving(false); }
   };
 
@@ -137,7 +137,7 @@ export default function Profile() {
     try {
       await api.put('/users/me/notification-preferences', { email: emailNotif, push: pushNotif });
       showFlash('success', 'Notification preferences saved.');
-    } catch (_) { showFlash('error', 'Failed to save preferences.'); }
+    } catch { showFlash('error', 'Failed to save preferences.'); }
   };
 
   // ── Phone update ──────────────────────────────────────────────────────────
@@ -181,7 +181,7 @@ export default function Profile() {
 
   const closePhoneVerifyModal = () => {
     setPhoneVerifyModal(false);
-    if (recaptchaVerifier.current) { try { recaptchaVerifier.current.clear(); } catch (_) {} recaptchaVerifier.current = null; }
+    if (recaptchaVerifier.current) { try { recaptchaVerifier.current.clear(); } catch { } recaptchaVerifier.current = null; }
   };
 
   // ── Password ──────────────────────────────────────────────────────────────

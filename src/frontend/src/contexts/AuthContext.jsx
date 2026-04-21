@@ -21,7 +21,7 @@ export function AuthProvider({ children }) {
     if (t) {
       try {
         await api.post('/auth/logout');
-      } catch (err) { void err; }
+      } catch { }
     }
     localStorage.removeItem('token');
     localStorage.removeItem('refresh_token');

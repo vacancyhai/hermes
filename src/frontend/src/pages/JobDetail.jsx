@@ -1,9 +1,10 @@
+import PropTypes from 'prop-types';
 import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import api from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
 
-function EligibilityBanner({ eligibility, profileComplete, token, slug }) {
+function EligibilityBanner({ eligibility, profileComplete, token, slug }) { // eslint-disable-line
   if (!token) return (
     <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '0.5rem', padding: '1rem 1.25rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
       <span style={{ fontSize: '1.25rem' }}>🔍</span>
@@ -33,14 +34,25 @@ function EligibilityBanner({ eligibility, profileComplete, token, slug }) {
         <span style={{ fontWeight: 700, fontSize: '0.95rem', color: cfgs.color }}>{cfgs.label}</span>
       </div>
       {eligibility.reasons?.length > 0 && <ul style={{ margin: 0, paddingLeft: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-        {eligibility.reasons.map((r, i) => <li key={i} style={{ fontSize: '0.82rem', color: cfgs.color }}>{r}</li>)}
+        {eligibility.reasons.map((r) => <li key={r} style={{ fontSize: '0.82rem', color: cfgs.color }}>{r}</li>)}
       </ul>}
     </div>
   );
 }
 
+EligibilityBanner.propTypes = {
+  eligibility: PropTypes.shape({
+    status: PropTypes.string,
+    reasons: PropTypes.arrayOf(PropTypes.string),
+  }),
+  profileComplete: PropTypes.bool.isRequired,
+  token: PropTypes.string,
+  slug: PropTypes.string.isRequired,
+};
+EligibilityBanner.defaultProps = { eligibility: null, token: null };
+
 function PhaseCard({ step }) {
-  if (typeof step !== 'object') return <div style={{ border: '1px solid #bfdbfe', background: '#eff6ff', borderRadius: '0.5rem', padding: '0.7rem 1rem', marginBottom: '0.85rem' }}><span style={{ fontWeight: 700, fontSize: '0.9rem' }}>{step}</span></div>;
+  if (typeof step !== 'object') return <div style={{ border: '1px solid #bfdbfe', background: '#eff6ff', borderRadius: '0.5rem', padding: '0.7rem 1rem', marginBottom: '0.85rem' }}><span style={{ fontWeight: 700, fontSize: '0.9rem' }}>{String(step)}</span></div>;
   const stype = step.type || '';
   const isDoc = stype === 'document';
   return (
@@ -62,13 +74,17 @@ function PhaseCard({ step }) {
         <table className="fee-table" style={{ marginTop: '0.6rem' }}>
           <thead><tr><th>Subject</th><th style={{ textAlign: 'right' }}>Questions</th><th style={{ textAlign: 'right' }}>Marks</th></tr></thead>
           <tbody>
-            {step.subjects.map((sub, i) => <tr key={i}><td>{sub.name || '—'}</td><td style={{ textAlign: 'right' }}>{sub.questions || '—'}</td><td style={{ textAlign: 'right' }}>{sub.marks || '—'}</td></tr>)}
+            {step.subjects.map((sub) => <tr key={sub.name || sub.questions}><td>{sub.name || '—'}</td><td style={{ textAlign: 'right' }}>{sub.questions || '—'}</td><td style={{ textAlign: 'right' }}>{sub.marks || '—'}</td></tr>)}
           </tbody>
         </table>
       )}
     </div>
   );
 }
+
+PhaseCard.propTypes = {
+  step: PropTypes.oneOfType([PropTypes.object, PropTypes.string]).isRequired,
+};
 
 export default function JobDetail() {
   const { slug } = useParams();
@@ -103,7 +119,7 @@ export default function JobDetail() {
       if (tracking) await api.delete(`/jobs/${job.id}/track`);
       else await api.post(`/jobs/${job.id}/track`);
       setTracking(!tracking);
-    } catch (_) {}
+    } catch { }
   };
 
   if (loading) return <div style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>Loading...</div>;
@@ -252,7 +268,7 @@ export default function JobDetail() {
         <div className="detail-section">
           <h2>🔗 Important Links</h2>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-            {impLinks.filter((l) => (typeof l === 'object' ? l.url : l)).map((link, i) => {
+            {impLinks.filter((l) => (typeof l === 'object' ? l.url : l)).map((link) => {
               const url = typeof link === 'object' ? link.url : link;
               const text = typeof link === 'object' ? (link.text || url) : url;
               const ltype = typeof link === 'object' ? (link.type || '') : '';
@@ -263,7 +279,7 @@ export default function JobDetail() {
               };
               const icons = { apply_online: '✏️', download_notification: '📥', syllabus: '📚', official_website: '🌐' };
               return (
-                <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="share-btn" style={styles[ltype] || {}}>
+                <a key={url} href={url} target="_blank" rel="noopener noreferrer" className="share-btn" style={styles[ltype] || {}}>
                   {icons[ltype] || '🔗'} {text}
                 </a>
               );

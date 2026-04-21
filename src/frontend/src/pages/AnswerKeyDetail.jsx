@@ -31,7 +31,7 @@ export default function AnswerKeyDetail() {
       if (tracking) await api.delete(`/${type}s/${id}/track`);
       else await api.post(`/${type}s/${id}/track`);
       setTracking(!tracking);
-    } catch (_) {}
+    } catch { }
   };
 
   if (loading) return <div style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>Loading...</div>;
@@ -68,10 +68,10 @@ export default function AnswerKeyDetail() {
       {key.sets?.length > 0 && (
         <div className="detail-section">
           <h2>📄 Answer Key Sets</h2>
-          {key.sets.map((set, i) => (
-            <div key={i} style={{ border: '1px solid #fde68a', background: '#fefce8', borderRadius: '0.5rem', padding: '0.8rem 1rem', marginBottom: '0.65rem', display: 'flex', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          {key.sets.map((set) => (
+            <div key={set.set_name || set.download_url} style={{ border: '1px solid #fde68a', background: '#fefce8', borderRadius: '0.5rem', padding: '0.8rem 1rem', marginBottom: '0.65rem', display: 'flex', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
               <div>
-                <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{set.set_name || `Set ${i + 1}`}</div>
+                <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{set.set_name || 'Answer Key Set'}</div>
                 {set.subject && <div style={{ fontSize: '0.8rem', color: '#a16207' }}>{set.subject}</div>}
               </div>
               {set.download_url && <a href={set.download_url} target="_blank" rel="noopener noreferrer" style={{ background: '#d97706', color: '#fff', padding: '0.38rem 0.75rem', borderRadius: '0.5rem', fontSize: '0.78rem', fontWeight: 600, textDecoration: 'none' }}>Download →</a>}

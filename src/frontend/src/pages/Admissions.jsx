@@ -14,7 +14,7 @@ export default function Admissions() {
   const q = searchParams.get('q') || '';
   const stream = searchParams.get('stream') || '';
   const admission_type = searchParams.get('admission_type') || '';
-  const offset = parseInt(searchParams.get('offset') || '0', 10);
+  const offset = Number.parseInt(searchParams.get('offset') || '0', 10);
   const limit = 20;
 
   const fetchAdmissions = useCallback(async () => {
@@ -27,7 +27,7 @@ export default function Admissions() {
       const res = await api.get('/admissions', { params });
       setAdmissions(res.data.data || []);
       setPagination(res.data.pagination || {});
-    } catch (_) {} finally { setLoading(false); }
+    } catch { } finally { setLoading(false); }
   }, [q, stream, admission_type, offset]);
 
   useEffect(() => { fetchAdmissions(); }, [fetchAdmissions]);
@@ -36,7 +36,7 @@ export default function Admissions() {
     if (!token) { setTrackedIds(new Set()); return; }
     api.get('/users/me/tracked').then((r) => {
       setTrackedIds(new Set((r.data.admissions || []).map((a) => String(a.id))));
-    }).catch(() => {});
+    }).catch(() => { });
   }, [token]);
 
   const toggleId = (id) => setTrackedIds((prev) => {
@@ -51,7 +51,7 @@ export default function Admissions() {
       if (isTracking) await api.delete(`/admissions/${adm.id}/track`);
       else await api.post(`/admissions/${adm.id}/track`);
       toggleId(adm.id);
-    } catch (_) {}
+    } catch { }
   };
 
   const [search, setSearch] = useState(q);
