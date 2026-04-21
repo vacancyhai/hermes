@@ -72,8 +72,8 @@ export default function ResultDetail() {
             <table className="fee-table">
               <thead><tr><th>Category</th><th>Cut-off</th>{result.cutoffs[0]?.post && <th>Post</th>}</tr></thead>
               <tbody>
-                {result.cutoffs.map((c, i) => (
-                  <tr key={i}><td>{c.category || '—'}</td><td>{c.marks ?? c.cutoff ?? '—'}</td>{c.post && <td>{c.post}</td>}</tr>
+                {result.cutoffs.map((c) => (
+                  <tr key={`${c.category}-${c.post || ''}`}><td>{c.category || '—'}</td><td>{c.marks ?? c.cutoff ?? '—'}</td>{c.post && <td>{c.post}</td>}</tr>
                 ))}
               </tbody>
             </table>

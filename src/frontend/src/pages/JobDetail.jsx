@@ -159,7 +159,7 @@ export default function JobDetail() {
         </button>
         {job.source_url && <a href={job.source_url} target="_blank" rel="noopener noreferrer" className="share-btn">🔗 Official Website</a>}
         {job.application_details?.application_link && <a href={job.application_details.application_link} target="_blank" rel="noopener noreferrer" className="share-btn" style={{ background: '#2563eb', color: '#fff', borderColor: '#2563eb' }}>Apply Online →</a>}
-        <button onClick={() => navigator.share?.({ title: job.job_title, url: window.location.href }).catch(() => {})} className="share-btn">⬆ Share</button>
+        <button onClick={() => navigator.share?.({ title: job.job_title, url: globalThis.location.href }).catch(() => {})} className="share-btn">⬆ Share</button>
       </div>
 
       {/* Eligibility */}
@@ -216,7 +216,7 @@ export default function JobDetail() {
           {vbPosts.map((post, i) => {
             const pv = post.postwise_vacancy || {};
             return (
-              <div key={i} style={{ border: '1px solid #e2e8f0', borderRadius: '0.5rem', marginBottom: '0.85rem', overflow: 'hidden' }}>
+              <div key={post.post_name || i} style={{ border: '1px solid #e2e8f0', borderRadius: '0.5rem', marginBottom: '0.85rem', overflow: 'hidden' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.6rem 0.95rem', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', flexWrap: 'wrap', gap: '0.35rem' }}>
                   <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>{post.post_name}</span>
                   {pv.total && <span style={{ background: '#dbeafe', color: '#1e40af', fontSize: '0.78rem', fontWeight: 700, padding: '0.15rem 0.55rem', borderRadius: 9999 }}>{(pv.total).toLocaleString()} posts</span>}
@@ -232,7 +232,7 @@ export default function JobDetail() {
                       ))}
                     </div>
                   )}
-                  {post.selection_process?.map((step, si) => <PhaseCard key={si} step={step} />)}
+                  {post.selection_process?.map((step, si) => <PhaseCard key={typeof step === 'object' ? (step.name || si) : si} step={step} />)}
                 </div>
               </div>
             );
@@ -244,7 +244,7 @@ export default function JobDetail() {
       {vbPosts.length > 0 && !vbPosts[0]?.post_name && (
         <div className="detail-section">
           <h2>🎯 Selection Process</h2>
-          {vbPosts.map((step, i) => <PhaseCard key={i} step={step} />)}
+          {vbPosts.map((step, si) => <PhaseCard key={typeof step === 'object' ? (step.name || si) : si} step={step} />)}
         </div>
       )}
 
