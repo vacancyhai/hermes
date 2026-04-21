@@ -24,8 +24,8 @@ All services run from a single root `docker-compose.yml`. They communicate via H
                                       │
                              ┌────────▼─────────┐
                              │ Nginx (Optional) │
-                             │ /*   → Port 8080 │
-                             │ /admin/→ 8081    │
+                             │ /*   → Port 3000 │
+                             │ /admin/→ 4000    │
                              │ /api/  → 8000    │
                              └────────┬─────────┘
                                       │
@@ -37,22 +37,22 @@ All services run from a single root `docker-compose.yml`. They communicate via H
 │  src/frontend/      │  │  src/frontend-admin/│  │  src/backend/          │
 │                     │  │                     │  │                        │
 │  1 container        │  │  1 container        │  │  5 containers:         │
-│  Port: 8080         │  │  Port: 8081         │  │  1. PostgreSQL (5432)  │
-│  Flask/Jinja2       │  │  Flask/Jinja2       │  │  2. Redis (6379)       │
+│  Port: 3000         │  │  Port: 4000         │  │  1. PostgreSQL (5432)  │
+│  React+Vite SPA     │  │  React+Vite SPA     │  │  2. Redis (6379)       │
 │                     │  │                     │  │  3. Backend API (8000) │
 │  Public users:      │  │  Staff only:        │  │  4. hermes-worker      │
 │  - Register         │  │  - Admin login      │  │  5. hermes-scheduler   │
 │  - Login            │  │  - Operator login   │  │  JWT Auth + RBAC       │
 │  - Browse jobs      │  │  - Manage jobs      │  │  /api/v1/* endpoints   │
 │                     │  │  - Manage users     │  │                        │
-│  Calls backend via  │  │                     │  │  Persistent storage:   │
-│  BACKEND_API_URL    │  │  Calls backend via  │  │  PostgreSQL + Redis    │
-│                     │  │  BACKEND_API_URL    │  │  AOF persistence       │
-│  Network:           │  │                     │  └──────────┬─────────────┘
+│  Axios → /api/v1/*  │  │                     │  │  Persistent storage:   │
+│  JWT in localStorage│  │  Axios → /api/v1/*  │  │  PostgreSQL + Redis    │
+│                     │  │  JWT in localStorage│  │  AOF persistence       │
+│  Network:           │  │                     │  └──────────┓─────────────┘
 │  hermes_network     │  │  Network:           │             │
-│                     │  │  hermes_network     │             ▼
+│                     │  │  hermes_network     │             ↓
 └─────────────────────┘  │                     │  ┌──────────────────────┐
-                         │  Firewall port 8081 │  │  External Services   │
+                         │  Firewall port 4000 │  │  External Services   │
                          │  from public        │  │  - OCI Email Delivery│
                          │  internet!          │  │  - Firebase FCM      │
                          └─────────────────────┘  └──────────────────────┘
@@ -62,24 +62,24 @@ All services run from a single root `docker-compose.yml`. They communicate via H
 └──────────────────────────────────────────────────────────────────────────────┘
 
 Architecture properties:
-- Three services: User Frontend (8080), Admin Frontend (8081), Backend (8000)
+- Three services: User Frontend (3000), Admin Frontend (4000), Backend (8000)
 - All share one Docker network (hermes_network) defined in root docker-compose.yml
-- Both frontends call Backend via HTTP REST API
-- Admin Frontend at port 8081 — can be firewalled from public internet
-- Any frontend can be replaced (Flask → React → React Native) without touching Backend
+- Both frontends are React+Vite SPAs calling Backend via Axios REST API calls
+- Admin Frontend at port 4000 — can be firewalled from public internet
+- Any frontend can be replaced (React → React Native) without touching Backend
 
 Communication flow:
-Public User → User Frontend (port 8080)
-     → HTTP Request to Backend API (http://backend:8000/api/v1/*)
+Public User → User Frontend SPA (port 3000)
+     → Axios HTTP to Backend API (http://backend:8000/api/v1/*)
      → Backend processes request
      → Returns JSON response
-     → User Frontend renders result to user
+     → React renders response data into components
 
-Admin/Operator → Admin Frontend (port 8081)
-     → HTTP Request to Backend API (http://backend:8000/api/v1/*)
+Admin/Operator → Admin Frontend SPA (port 4000)
+     → Axios HTTP to Backend API (http://backend:8000/api/v1/*)
      → Backend processes request (RBAC role checks applied)
      → Returns JSON response
-     → Admin Frontend renders result
+     → React renders response data into components
 ```
 
 ## 2. User Sign-In & Profile Setup Flow (Firebase Auth)
@@ -152,8 +152,8 @@ Admin/Operator → Admin Frontend (port 8081)
      │
      ▼
 ┌──────────────────────────────────────┐
-│ POST /auth/firebase-callback         │
-│ (Flask frontend relay)               │
+│ POST /auth/verify-token              │
+│ (React frontend calls directly)      │
 │ { id_token, full_name? }             │
 └────┬─────────────────────────────────┘
      │
@@ -194,8 +194,8 @@ Admin/Operator → Admin Frontend (port 8081)
      │
      ▼
 ┌──────────────────────────────────────┐
-│ Flask stores tokens in session       │
-│ Redirect → /dashboard                │
+│ React stores tokens in localStorage  │
+│ Navigate → /dashboard                │
 └────┬─────────────────────────────────┘
      │
      ▼
@@ -226,7 +226,7 @@ Admin/Operator → Admin Frontend (port 8081)
      ▼
 ┌──────────────────────────────────────┐
 │ Admin logs in                        │
-│ via src/frontend-admin/ (port 8081)  │
+│ via src/frontend-admin/ (port 4000)  │
 │ (role: "admin")                      │
 └────┬─────────────────────────────────┘
      │
@@ -1160,10 +1160,10 @@ Firebase login (email OTP / Google / Phone) on client
          │
          ▼
 ┌──────────────────────┐
-│ Flask stores tokens  │
-│ in server-side       │
-│ session:             │
-│ • session["token"]   │
+│ React stores tokens  │
+│ in localStorage:     │
+│                      │
+│ • admin_token         │
 │ • session["refresh_  │
 │   token"]            │
 └──────────────────────┘
@@ -1261,12 +1261,12 @@ SECURITY BENEFITS:
    • Limits exposure window
 
 ✅ Automatic refresh
-   • Flask frontend auto-refreshes on 401
+   • Axios interceptor auto-refreshes on 401
    • No user interruption
 
 ✅ Long refresh token (7 days)
-   • Stored in Flask server-side session
-   • Not exposed in HTTP response body
+   • Stored in localStorage (admin_refresh_token)
+   • Sent only to /auth/admin/refresh endpoint
 
 ✅ Forced re-login after 7 days
    • Periodic authentication verification
@@ -1277,16 +1277,16 @@ SECURITY BENEFITS:
    • Old refresh JTI is blocklisted in Redis
 
 
-TOKEN STORAGE (Flask Frontend):
+TOKEN STORAGE (React Frontend):
 ═════════════════════════════
 
 ┌──────────────────────────────────┐
-│ TOKENS IN FLASK SESSION          │
-│ • session["token"]  (access)    │
-│ • session["refresh_token"]      │
-│ • Server-side session cookie    │
-│ • CSRF token also in session    │
-│   validated on every POST form  │
+│ TOKENS IN localStorage           │
+│ • admin_token       (access)    │
+│ • admin_refresh_token           │
+│ • admin_name, admin_role        │
+│ (no CSRF needed — JWT in header)│
+│                                 │
 └──────────────────────────────────┘
 
 
@@ -1486,130 +1486,61 @@ listing page, gradient hero colour, and detail page design.
   GET /jobs/<slug>                       GET /admissions/<slug>
         │                                       │
         ▼                                       ▼
-  Flask renders job_detail.html          Flask renders admission_detail.html
-  (type-aware hero: hero-job /           (hero-admission: purple gradient)
-   hero-admit / hero-answer /
-   hero-result)
+  React renders JobDetail.jsx            React renders AdmissionDetail.jsx
+  (type-aware hero: navy/blue            (hero: purple gradient)
+   gradient)
         │                                       │
         ▼                                       ▼
   Doc tabs section shown                 Doc tabs section shown
   if job_type == 'latest_job'            (always shown for admissions)
         │                                       │
         ▼                                       ▼
-  HTMX loads /partials/jobs/             HTMX loads /partials/admissions/
-  {job_id}/admit-cards                   {admission_id}/admit-cards
-  (on tab click)                         (on tab click)
+  React fetches /admin/admit-cards       React fetches /admin/admit-cards
+  ?job_id={id}                           ?admission_id={id}
+  (on tab mount)                         (on tab mount)
 ```
 
 ---
 
-## 15. HTMX Phase Document Tab Flow
+## 15. Phase Document Tab Flow
 
 Phase documents (admit cards, answer keys, results) are loaded on-demand
-via HTMX into tabbed panels on job and admission detail pages.
+via REST API calls into tabbed panels on job and admission edit pages.
 
 ```
-┌──────────────────────────────────────────────────────────────────────────┐
-│               HTMX PHASE DOCUMENT TAB FLOW                               │
-└──────────────────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────────┐
+│               REACT PHASE DOCUMENT TAB FLOW                               │
+└────────────────────────────────────────────────────────────────────────┘
 
-  TEMPLATE STRUCTURE (Alpine.js x-data controls active tab):
-  ──────────────────────────────────────────────────────────
+  COMPONENT STRUCTURE (React useState controls active tab):
+  ──────────────────────────────────────────────────────
 
-  <div x-data="{tab:'admit_cards'}">                 ← Alpine state
-    <div class="doc-tabs-bar">
-      <button @click="tab='admit_cards'"             ← Tab 1
-              :class="{'active':tab==='admit_cards'}">
-        📄 Admit Cards
-      </button>
-      <button @click="tab='answer_keys'">✏️ Answer Keys</button>
-      <button @click="tab='results'">🏆 Results</button>
-    </div>
+  const [activePhaseTab, setActivePhaseTab] = useState('admit_cards');
 
-    <!-- Panels are OUTSIDE the tab bar, INSIDE the x-data wrapper -->
+  // Tab buttons
+  {PHASE_TABS.map((tab) => (
+    <button onClick={() => setActivePhaseTab(tab.key)}>  ← Tab switch
+      {tab.label} ({phaseDocs[tab.key].length})
+    </button>
+  ))}
 
-    <div x-show="tab==='admit_cards'"                ← Panel 1
-         hx-get="/partials/jobs/{id}/admit-cards"    ← HTMX endpoint
-         hx-trigger="load"                           ← Load immediately
-         hx-swap="innerHTML">
-      Loading…
-    </div>
-    <div x-show="tab==='answer_keys'" x-cloak        ← Panel 2 (hidden initially)
-         hx-get="/partials/jobs/{id}/answer-keys"
-         hx-trigger="intersect once"                 ← Lazy load on intersection
-         hx-swap="innerHTML">
-      Loading…
-    </div>
-    <div x-show="tab==='results'" x-cloak
-         hx-get="/partials/jobs/{id}/results"
-         hx-trigger="intersect once"
-         hx-swap="innerHTML">
-      Loading…
-    </div>
-  </div>
+  // Panels — render active tab's docs from phaseDocs state
+  {phaseDocs[activePhaseTab].map((d) => (
+    <tr key={d.id}>
+      <td>{d.slug}</td><td>{d.title}</td>  ← From phaseDocs state
+    </tr>
+  ))}
 
-  REQUEST FLOW:
-  ─────────────
-  Browser loads job_detail page
-        │
-        ▼
-  Alpine.js initialises: tab = 'admit_cards'
-        │
-        ▼
-  HTMX fires GET /partials/jobs/{id}/admit-cards   ← hx-trigger="load"
-        │
-        ▼
-  Flask route: partials_admit_cards(job_id)
-        │
-        ▼
-  Calls Backend API: GET /api/v1/jobs/{id}/admit-cards
-        │
-        ▼
-  FastAPI queries job_admit_cards WHERE job_id={id}
-        │                 OR
-                    WHERE admission_id={id}  ← for admission_detail.html
-        │
-        ▼
-  Returns list of admit card rows (JSON)
-        │
-        ▼
-  Flask renders _admit_cards_panel.html partial
-        │
-        ▼
-  HTMX swaps innerHTML of the admit_cards panel div
+  ADD DOC FORM (same tab, below table):
+  ──────────────────────────────────
+  POST /admin/{admit-cards|answer-keys|results}
+  Body: { slug, title, job_id|admission_id, links: [],
+          exam_start/exam_end (admit cards) or
+          start_date/end_date (answer keys/results),
+          published_at }
 
-  USER CLICKS "Answer Keys" TAB:
-  ────────────────────────────────
-  @click sets tab = 'answer_keys'
-        │
-        ▼
-  Alpine.js hides admit_cards panel (x-show=false)
-  Alpine.js shows answer_keys panel (x-show=true)
-        │
-        ▼
-  HTMX fires GET /partials/jobs/{id}/answer-keys   ← hx-trigger="intersect once"
-  (fires only once — result cached in DOM)
-        │
-        ▼
-  Renders _answer_keys_panel.html
-    ├── Phase N pill (amber)
-    ├── Provisional / ✓ Final badge
-    ├── Per-file download buttons (amber)
-    └── Raise Objection button (if objection_url set)
-
-  PANEL CARD TYPES:
-  ──────────────────
-  _admit_cards_panel.html   → .doc-card-admit   (blue bg)
-  _answer_keys_panel.html   → .doc-card-answer  (amber bg)
-  _results_panel.html       → .doc-card-result  (green bg)
-
-  Each panel uses shared CSS classes from base.html:
-    .doc-card, .doc-card-body, .doc-card-actions
-    .doc-phase-pill (.phase-blue / .phase-amber / .phase-green)
-    .doc-title, .doc-meta, .doc-note, .doc-deadline
-    .doc-btn (.doc-btn-blue / .doc-btn-amber / .doc-btn-green / .doc-btn-outline)
-    .doc-cutoff + .doc-cutoff-row  ← for results cutoff marks table
-    .doc-empty                     ← empty state text
+  DELETE /admin/{admit-cards|answer-keys|results}/{id}
+  → setPhaseDocs removes doc from state (no page reload)
 ```
 
 ---
@@ -1619,4 +1550,4 @@ user registration, job creation, matching & notifications, application
 tracking, priority job updates, admin dashboard, database schema,
 Celery task scheduling, user journey map, RBAC enforcement, JWT token
 lifecycle, admission data model, 5-section frontend navigation,
-and HTMX phase document tab loading.*
+and React phase document tab loading.*
