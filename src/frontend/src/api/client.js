@@ -39,7 +39,7 @@ api.interceptors.response.use(
             originalRequest.headers.Authorization = `Bearer ${token}`;
             return api(originalRequest);
           })
-          .catch((err) => Promise.reject(err));
+          .catch((err) => { throw err; });
       }
 
       originalRequest._retry = true;
@@ -50,8 +50,8 @@ api.interceptors.response.use(
         isRefreshing = false;
         localStorage.removeItem('token');
         localStorage.removeItem('refresh_token');
-        window.dispatchEvent(new Event('auth:logout'));
-        return Promise.reject(error);
+        globalThis.dispatchEvent(new Event('auth:logout'));
+        throw error;
       }
 
       try {
@@ -70,14 +70,14 @@ api.interceptors.response.use(
         processQueue(refreshError, null);
         localStorage.removeItem('token');
         localStorage.removeItem('refresh_token');
-        window.dispatchEvent(new Event('auth:logout'));
-        return Promise.reject(refreshError);
+        globalThis.dispatchEvent(new Event('auth:logout'));
+        throw refreshError;
       } finally {
         isRefreshing = false;
       }
     }
 
-    return Promise.reject(error);
+    throw error;
   }
 );
 

@@ -18,7 +18,7 @@ export default function Layout() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   async function handleLogout() {
-    try { await client.post('/auth/admin/logout'); } catch (_) {}
+    try { await client.post('/auth/admin/logout'); } catch (err) { void err; }
     logout();
     navigate('/login');
   }
@@ -35,8 +35,7 @@ export default function Layout() {
         <div style={{ maxWidth: 1400, margin: '0 auto', padding: '0 1rem', display: 'flex', alignItems: 'center', gap: '1rem', height: 52 }}>
           {/* Brand */}
           <NavLink to="/" style={{ fontWeight: 800, fontSize: '1rem', color: '#fff', textDecoration: 'none', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '.4rem' }}>
-            <span style={{ background: '#fff', color: '#1e3a5f', borderRadius: '.25rem', padding: '.05rem .35rem', fontSize: '.75rem', fontWeight: 900 }}>V</span>
-            Admin
+            <span style={{ background: '#fff', color: '#1e3a5f', borderRadius: '.25rem', padding: '.05rem .35rem', fontSize: '.75rem', fontWeight: 900 }}>V</span>{' '}Admin
           </NavLink>
 
           {/* Desktop nav */}

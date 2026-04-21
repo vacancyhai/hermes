@@ -68,9 +68,10 @@ export default function Admissions() {
 
       {loading ? (
         <p style={{ color: '#64748b' }}>Loading…</p>
-      ) : items.length === 0 ? (
-        <p style={{ color: '#94a3b8' }}>No admissions found.</p>
       ) : (
+        items.length === 0 ? (
+          <p style={{ color: '#94a3b8' }}>No admissions found.</p>
+        ) : (
         <table className="data-table">
           <thead>
             <tr>
@@ -116,6 +117,7 @@ export default function Admissions() {
             ))}
           </tbody>
         </table>
+        )
       )}
 
       {totalPages > 1 && (

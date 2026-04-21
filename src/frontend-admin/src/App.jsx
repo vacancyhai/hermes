@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Layout from './components/Layout';
@@ -20,9 +21,13 @@ function ProtectedRoute({ children }) {
   return children;
 }
 
+ProtectedRoute.propTypes = { children: PropTypes.node.isRequired };
+
 function Guard({ children }) {
   return <ProtectedRoute>{children}</ProtectedRoute>;
 }
+
+Guard.propTypes = { children: PropTypes.node.isRequired };
 
 export default function App() {
   return (

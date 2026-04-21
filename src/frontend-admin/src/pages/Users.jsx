@@ -78,9 +78,10 @@ export default function Users() {
 
       {loading ? (
         <p style={{ color: '#64748b' }}>Loading…</p>
-      ) : users.length === 0 ? (
-        <p style={{ color: '#94a3b8' }}>No users found.</p>
       ) : (
+        users.length === 0 ? (
+          <p style={{ color: '#94a3b8' }}>No users found.</p>
+        ) : (
         <table className="data-table">
           <thead>
             <tr>
@@ -104,9 +105,10 @@ export default function Users() {
                 </td>
                 <td style={{ fontSize: '.85rem' }}>{u.phone || '—'}</td>
                 <td>
-                  <span className={`badge ${u.status === 'active' ? 'badge-active' : u.status === 'suspended' ? 'badge-suspended' : 'badge-warning'}`}>
-                    {u.status || 'unknown'}
-                  </span>
+                  {(() => {
+                    const sc = u.status === 'active' ? 'badge-active' : u.status === 'suspended' ? 'badge-suspended' : 'badge-warning';
+                    return <span className={`badge ${sc}`}>{u.status || 'unknown'}</span>;
+                  })()}
                 </td>
                 <td style={{ fontSize: '.82rem', color: '#475569' }}>{u.auth_provider || '—'}</td>
                 <td style={{ fontSize: '.8rem', color: '#475569' }}>{u.created_at ? new Date(u.created_at).toLocaleDateString() : '—'}</td>
@@ -117,7 +119,7 @@ export default function Users() {
                   <div style={{ display: 'flex', gap: '.3rem' }}>
                     <Link to={`/users/${u.id}`} className="btn btn-sm btn-outline">View</Link>
                     <button className="btn btn-sm btn-warning" onClick={() => handleSuspend(u)} disabled={acting === u.id}>
-                      {acting === u.id ? '…' : u.status === 'suspended' ? 'Activate' : 'Suspend'}
+                      {acting === u.id ? '…' : (u.status === 'suspended' ? 'Activate' : 'Suspend')}
                     </button>
                     <button className="btn btn-sm btn-danger" onClick={() => handleDelete(u)} disabled={acting === u.id}>Del</button>
                   </div>
@@ -126,6 +128,7 @@ export default function Users() {
             ))}
           </tbody>
         </table>
+        )
       )}
 
       {totalPages > 1 && (

@@ -72,9 +72,10 @@ export default function Jobs() {
 
       {loading ? (
         <p style={{ color: '#64748b' }}>Loading…</p>
-      ) : jobs.length === 0 ? (
-        <p style={{ color: '#94a3b8' }}>No jobs found.</p>
       ) : (
+        jobs.length === 0 ? (
+          <p style={{ color: '#94a3b8' }}>No jobs found.</p>
+        ) : (
         <table className="data-table">
           <thead>
             <tr>
@@ -117,6 +118,7 @@ export default function Jobs() {
             ))}
           </tbody>
         </table>
+        )
       )}
 
       {/* Pagination */}

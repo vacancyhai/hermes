@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types';
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import client from '../api/client';
@@ -9,6 +10,19 @@ function Row({ label, value }) {
       <td style={{ padding: '.45rem .75rem', fontSize: '.85rem', borderBottom: '1px solid #f1f5f9', color: '#1e293b' }}>{value ?? '—'}</td>
     </tr>
   );
+}
+
+Row.propTypes = {
+  label: PropTypes.string.isRequired,
+  value: PropTypes.node,
+};
+
+Row.defaultProps = { value: null };
+
+function statusBadgeClass(status) {
+  if (status === 'active') return 'badge-active';
+  if (status === 'suspended') return 'badge-suspended';
+  return 'badge-warning';
 }
 
 export default function UserDetail() {
@@ -93,7 +107,7 @@ export default function UserDetail() {
                 <Row label="Email" value={user.email} />
                 <Row label="Phone" value={user.phone} />
                 <Row label="Display Name" value={user.display_name} />
-                <Row label="Status" value={<span className={`badge ${user.status === 'active' ? 'badge-active' : user.status === 'suspended' ? 'badge-suspended' : 'badge-warning'}`}>{user.status}</span>} />
+                <Row label="Status" value={<span className={`badge ${statusBadgeClass(user.status)}`}>{user.status}</span>} />
                 <Row label="Auth Provider" value={user.auth_provider} />
                 <Row label="Firebase UID" value={user.firebase_uid} />
                 <Row label="Email Verified" value={user.email_verified ? '✅ Yes' : '❌ No'} />
@@ -122,7 +136,11 @@ export default function UserDetail() {
                   <Row label="Qualification" value={profile.qualification} />
                   <Row label="PWD" value={profile.is_pwd ? 'Yes' : 'No'} />
                   <Row label="Ex-Serviceman" value={profile.is_ex_serviceman ? 'Yes' : 'No'} />
-                  <Row label="Complete" value={<span className={`badge ${user.profile_complete ? 'badge-active' : 'badge-warning'}`}>{user.profile_complete ? 'Complete' : 'Incomplete'}</span>} />
+                  {(() => {
+                    const cls = user.profile_complete ? 'badge-active' : 'badge-warning';
+                    const lbl = user.profile_complete ? 'Complete' : 'Incomplete';
+                    return <Row label="Complete" value={<span className={`badge ${cls}`}>{lbl}</span>} />;
+                  })()}
                 </tbody>
               </table>
             ) : (

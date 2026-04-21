@@ -57,9 +57,10 @@ export default function Organizations() {
 
       {loading ? (
         <p style={{ color: '#64748b' }}>Loading…</p>
-      ) : orgs.length === 0 ? (
-        <p style={{ color: '#94a3b8' }}>No organizations found.</p>
       ) : (
+        orgs.length === 0 ? (
+          <p style={{ color: '#94a3b8' }}>No organizations found.</p>
+        ) : (
         <table className="data-table">
           <thead>
             <tr>
@@ -101,6 +102,7 @@ export default function Organizations() {
             ))}
           </tbody>
         </table>
+        )
       )}
 
       {totalPages > 1 && (

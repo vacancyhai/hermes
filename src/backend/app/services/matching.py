@@ -224,6 +224,30 @@ def _cats_from_eligibility(
     return cats
 
 
+def _check_min_percentage(
+    eligibility: dict,
+    profile,
+    passed: list,
+    failed: list,
+    reasons: list,
+) -> None:
+    """Check profile education percentage against eligibility.min_percentage (0 = skip)."""
+    min_pct = eligibility.get("min_percentage") or 0
+    if min_pct <= 0:
+        return
+    user_pct = None
+    if isinstance(profile.education, dict):
+        user_pct = profile.education.get("percentage")
+    if user_pct is None:
+        return
+    if float(user_pct) >= float(min_pct):
+        passed.append(True)
+        reasons.append(f"Your percentage ({user_pct}%) meets the minimum ({min_pct}%)")
+    else:
+        failed.append(True)
+        reasons.append(f"Minimum percentage required: {min_pct}% — yours: {user_pct}%")
+
+
 _UNKNOWN_PROFILE = {
     "status": "unknown",
     "reasons": ["Complete your profile to check eligibility"],
@@ -318,22 +342,7 @@ def check_admission_eligibility(admission, profile) -> dict:
     )
 
     # ── Min percentage — eligibility.min_percentage, 0 means no requirement ─────────────
-    min_pct = eligibility.get("min_percentage") or 0
-    if min_pct > 0:
-        user_pct = None
-        if isinstance(profile.education, dict):
-            user_pct = profile.education.get("percentage")
-        if user_pct is not None:
-            if float(user_pct) >= float(min_pct):
-                passed.append(True)
-                reasons.append(
-                    f"Your percentage ({user_pct}%) meets the minimum ({min_pct}%)"
-                )
-            else:
-                failed.append(True)
-                reasons.append(
-                    f"Minimum percentage required: {min_pct}% — yours: {user_pct}%"
-                )
+    _check_min_percentage(eligibility, profile, passed, failed, reasons)
 
     # ── Domicile ─────────────────────────────────────────────────────────────────────────
     _check_domicile(eligibility, profile, passed, failed, reasons, label="admission")

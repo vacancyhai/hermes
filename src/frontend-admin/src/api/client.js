@@ -36,7 +36,7 @@ client.interceptors.response.use(
             localStorage.removeItem('admin_refresh_token');
             localStorage.removeItem('admin_name');
             localStorage.removeItem('admin_role');
-            window.location.href = '/login';
+            globalThis.location.href = '/login';
             return null;
           })
           .finally(() => { refreshing = null; });
@@ -47,7 +47,7 @@ client.interceptors.response.use(
         return client(original);
       }
     }
-    return Promise.reject(err);
+    throw err;
   }
 );
 

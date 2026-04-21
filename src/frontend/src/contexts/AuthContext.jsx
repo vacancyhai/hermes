@@ -1,4 +1,5 @@
-import { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import PropTypes from 'prop-types';
+import { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
 import api from '../api/client';
 
 const AuthContext = createContext(null);
@@ -20,7 +21,7 @@ export function AuthProvider({ children }) {
     if (t) {
       try {
         await api.post('/auth/logout');
-      } catch (_) {}
+      } catch (err) { void err; }
     }
     localStorage.removeItem('token');
     localStorage.removeItem('refresh_token');
@@ -30,20 +31,20 @@ export function AuthProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    const handler = () => {
-      setToken(null);
-      setUserName('');
-    };
-    window.addEventListener('auth:logout', handler);
-    return () => window.removeEventListener('auth:logout', handler);
-  }, []);
+    globalThis.addEventListener('auth:logout', logout);
+    return () => globalThis.removeEventListener('auth:logout', logout);
+  }, [logout]);
+
+  const value = useMemo(() => ({ token, userName, login, logout }), [token, userName, login, logout]);
 
   return (
-    <AuthContext.Provider value={{ token, userName, login, logout }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );
 }
+
+AuthProvider.propTypes = { children: PropTypes.node.isRequired };
 
 export function useAuth() {
   return useContext(AuthContext);

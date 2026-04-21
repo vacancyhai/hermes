@@ -21,6 +21,12 @@ function safeJson(val, fallback = '') {
   catch { return typeof val === 'object' ? JSON.stringify(val, null, 2) : (val || fallback); }
 }
 
+function validateJson(val, setter, errSetter) {
+  setter(val);
+  try { JSON.parse(val); errSetter(''); }
+  catch (e) { errSetter(e.message); }
+}
+
 export default function JobForm() {
   const { jobId } = useParams();
   const isEdit = !!jobId;
@@ -126,20 +132,13 @@ export default function JobForm() {
   /* ── auto-slug ── */
   function handleTitleChange(v) {
     setJobTitle(v);
-    if (!isEdit) setSlug(v.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''));
+    if (!isEdit) setSlug(v.toLowerCase().replaceAll(/[^a-z0-9]+/g, '-').replaceAll(/^-|-$/g, ''));
   }
 
   /* ── links helpers ── */
   function updateLink(i, field, val) { setLinks((l) => l.map((x, idx) => idx === i ? { ...x, [field]: val } : x)); }
   function addLink() { setLinks((l) => [...l, { ...emptyLink }]); }
   function removeLink(i) { setLinks((l) => l.filter((_, idx) => idx !== i)); }
-
-  /* ── validate JSON ── */
-  function validateJson(val, setter, errSetter) {
-    setter(val);
-    try { JSON.parse(val); errSetter(''); }
-    catch (e) { errSetter(e.message); }
-  }
 
   /* ── submit ── */
   async function handleSubmit(e) {
@@ -165,8 +164,6 @@ export default function JobForm() {
     if (parsedZones.length) vacancyBreakdown.zonewise_vacancy = parsedZones;
     if (Object.keys(totalVacancy).length) vacancyBreakdown.total_vacancy = totalVacancy;
 
-    const validLinks = links.filter((l) => l.url);
-
     const payload = {
       job_title: jobTitle, slug,
       organization: organization || jobTitle,
@@ -179,7 +176,7 @@ export default function JobForm() {
       total_vacancies: vacancy.total !== '' ? Number(vacancy.total) : null,
       fee: feeObj,
       vacancy_breakdown: vacancyBreakdown,
-      application_details: validLinks.length ? { important_links: validLinks } : {},
+      application_details: links.filter((l) => l.url).length ? { important_links: links.filter((l) => l.url) } : {},
     };
 
     try {
@@ -203,13 +200,13 @@ export default function JobForm() {
   async function handleAddPhaseDoc(e) {
     e.preventDefault();
     setPhaseDocSaving(true);
-    let links = []; try { links = JSON.parse(newDoc.links_json || '[]'); } catch {}
+    let parsedLinks = []; try { parsedLinks = JSON.parse(newDoc.links_json || '[]'); } catch { parsedLinks = []; }
     const isAdmitCard = activePhaseTab === 'admit_cards';
     const docPayload = {
       slug: newDoc.slug,
       title: newDoc.title,
       [activeTab.parentKey]: jobId,
-      links,
+      links: parsedLinks,
       published_at: newDoc.published_at || null,
       ...(isAdmitCard
         ? { exam_start: newDoc.start || null, exam_end: newDoc.end || null }
@@ -252,7 +249,7 @@ export default function JobForm() {
         <div style={{ display: 'flex', gap: '.5rem' }}>
           <Link to="/jobs" className="btn btn-outline">Cancel</Link>
           <button className="btn btn-primary" form="job-form" type="submit" disabled={saving}>
-            {saving ? <><span className="spinner" /> Saving…</> : (isEdit ? 'Update Job' : 'Create Job')}
+            {saving ? <><span className="spinner" />{' '}Saving…</> : (isEdit ? 'Update Job' : 'Create Job')}
           </button>
         </div>
       </div>
@@ -375,20 +372,20 @@ export default function JobForm() {
           </div>
           <div className="section-body" style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
             {links.map((link, i) => (
-              <div key={i} style={{ display: 'grid', gridTemplateColumns: '180px 1fr 2fr auto', gap: '.5rem', alignItems: 'flex-end' }}>
+              <div key={`link-${link.type}-${i}`} style={{ display: 'grid', gridTemplateColumns: '180px 1fr 2fr auto', gap: '.5rem', alignItems: 'flex-end' }}>
                 <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label style={{ fontSize: '.7rem' }}>Type</label>
-                  <select value={link.type} onChange={(e) => updateLink(i, 'type', e.target.value)} style={{ padding: '.35rem .5rem', fontSize: '.82rem' }}>
+                  <label htmlFor={`link-type-${i}`} style={{ fontSize: '.7rem' }}>Type</label>
+                  <select id={`link-type-${i}`} value={link.type} onChange={(e) => updateLink(i, 'type', e.target.value)} style={{ padding: '.35rem .5rem', fontSize: '.82rem' }}>
                     {LINK_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
                   </select>
                 </div>
                 <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label style={{ fontSize: '.7rem' }}>Display Text</label>
-                  <input type="text" value={link.text} onChange={(e) => updateLink(i, 'text', e.target.value)} placeholder="Click here" style={{ padding: '.35rem .5rem', fontSize: '.82rem' }} />
+                  <label htmlFor={`link-text-${i}`} style={{ fontSize: '.7rem' }}>Display Text</label>
+                  <input id={`link-text-${i}`} type="text" value={link.text} onChange={(e) => updateLink(i, 'text', e.target.value)} placeholder="Click here" style={{ padding: '.35rem .5rem', fontSize: '.82rem' }} />
                 </div>
                 <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label style={{ fontSize: '.7rem' }}>URL</label>
-                  <input type="url" value={link.url} onChange={(e) => updateLink(i, 'url', e.target.value)} placeholder="https://…" style={{ padding: '.35rem .5rem', fontSize: '.82rem' }} />
+                  <label htmlFor={`link-url-${i}`} style={{ fontSize: '.7rem' }}>URL</label>
+                  <input id={`link-url-${i}`} type="url" value={link.url} onChange={(e) => updateLink(i, 'url', e.target.value)} placeholder="https://…" style={{ padding: '.35rem .5rem', fontSize: '.82rem' }} />
                 </div>
                 <button type="button" className="btn btn-sm btn-danger" onClick={() => removeLink(i)} style={{ marginBottom: 0 }}>✕</button>
               </div>
@@ -460,24 +457,24 @@ export default function JobForm() {
               <p style={{ fontWeight: 700, fontSize: '.83rem', marginBottom: '.5rem' }}>Add New Document</p>
               <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr 120px 120px 120px auto', gap: '.5rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
                 <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label style={{ fontSize: '.7rem' }}>Slug <span className="req">*</span></label>
-                  <input type="text" required value={newDoc.slug} onChange={(e) => setNewDoc((d) => ({ ...d, slug: e.target.value }))} placeholder="prelims-2024" style={{ fontSize: '.82rem', padding: '.35rem .5rem' }} />
+                  <label htmlFor="doc-slug" style={{ fontSize: '.7rem' }}>Slug <span className="req">*</span></label>
+                  <input id="doc-slug" type="text" required value={newDoc.slug} onChange={(e) => setNewDoc((d) => ({ ...d, slug: e.target.value }))} placeholder="prelims-2024" style={{ fontSize: '.82rem', padding: '.35rem .5rem' }} />
                 </div>
                 <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label style={{ fontSize: '.7rem' }}>Title <span className="req">*</span></label>
-                  <input type="text" required value={newDoc.title} onChange={(e) => setNewDoc((d) => ({ ...d, title: e.target.value }))} placeholder="Prelims Admit Card 2024" style={{ fontSize: '.82rem', padding: '.35rem .5rem' }} />
+                  <label htmlFor="doc-title" style={{ fontSize: '.7rem' }}>Title <span className="req">*</span></label>
+                  <input id="doc-title" type="text" required value={newDoc.title} onChange={(e) => setNewDoc((d) => ({ ...d, title: e.target.value }))} placeholder="Prelims Admit Card 2024" style={{ fontSize: '.82rem', padding: '.35rem .5rem' }} />
                 </div>
                 <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label style={{ fontSize: '.7rem' }}>{activePhaseTab === 'admit_cards' ? 'Exam Start' : 'Start Date'}</label>
-                  <input type="date" value={newDoc.start} onChange={(e) => setNewDoc((d) => ({ ...d, start: e.target.value }))} style={{ fontSize: '.82rem', padding: '.35rem .5rem' }} />
+                  <label htmlFor="doc-start" style={{ fontSize: '.7rem' }}>{activePhaseTab === 'admit_cards' ? 'Exam Start' : 'Start Date'}</label>
+                  <input id="doc-start" type="date" value={newDoc.start} onChange={(e) => setNewDoc((d) => ({ ...d, start: e.target.value }))} style={{ fontSize: '.82rem', padding: '.35rem .5rem' }} />
                 </div>
                 <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label style={{ fontSize: '.7rem' }}>{activePhaseTab === 'admit_cards' ? 'Exam End' : 'End Date'}</label>
-                  <input type="date" value={newDoc.end} onChange={(e) => setNewDoc((d) => ({ ...d, end: e.target.value }))} style={{ fontSize: '.82rem', padding: '.35rem .5rem' }} />
+                  <label htmlFor="doc-end" style={{ fontSize: '.7rem' }}>{activePhaseTab === 'admit_cards' ? 'Exam End' : 'End Date'}</label>
+                  <input id="doc-end" type="date" value={newDoc.end} onChange={(e) => setNewDoc((d) => ({ ...d, end: e.target.value }))} style={{ fontSize: '.82rem', padding: '.35rem .5rem' }} />
                 </div>
                 <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label style={{ fontSize: '.7rem' }}>Published At</label>
-                  <input type="date" value={newDoc.published_at} onChange={(e) => setNewDoc((d) => ({ ...d, published_at: e.target.value }))} style={{ fontSize: '.82rem', padding: '.35rem .5rem' }} />
+                  <label htmlFor="doc-published" style={{ fontSize: '.7rem' }}>Published At</label>
+                  <input id="doc-published" type="date" value={newDoc.published_at} onChange={(e) => setNewDoc((d) => ({ ...d, published_at: e.target.value }))} style={{ fontSize: '.82rem', padding: '.35rem .5rem' }} />
                 </div>
                 <button type="submit" className="btn btn-success btn-sm" disabled={phaseDocSaving}>
                   {phaseDocSaving ? '…' : '+ Add'}

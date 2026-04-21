@@ -37,7 +37,7 @@ export default function OrgForm() {
 
   function handleNameChange(v) {
     setName(v);
-    if (!isEdit) setSlug(v.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''));
+    if (!isEdit) setSlug(v.toLowerCase().replaceAll(/[^a-z0-9]+/g, '-').replaceAll(/^-|-$/g, ''));
   }
 
   async function handleSubmit(e) {
@@ -83,30 +83,30 @@ export default function OrgForm() {
           <div className="section-body">
             <div className="form-grid-2">
               <div className="form-group col-span-2">
-                <label>Name <span className="req">*</span></label>
-                <input type="text" value={name} onChange={(e) => handleNameChange(e.target.value)} required />
+                <label htmlFor="org-name">Name <span className="req">*</span></label>
+                <input id="org-name" type="text" value={name} onChange={(e) => handleNameChange(e.target.value)} required />
               </div>
               <div className="form-group">
-                <label>Slug <span className="req">*</span></label>
-                <input type="text" value={slug} onChange={(e) => setSlug(e.target.value)} required placeholder="url-friendly-name" />
+                <label htmlFor="org-slug">Slug <span className="req">*</span></label>
+                <input id="org-slug" type="text" value={slug} onChange={(e) => setSlug(e.target.value)} required placeholder="url-friendly-name" />
               </div>
               <div className="form-group">
-                <label>Short Name / Abbreviation</label>
-                <input type="text" value={shortName} onChange={(e) => setShortName(e.target.value)} placeholder="e.g. UPSC, ISRO" />
+                <label htmlFor="org-short-name">Short Name / Abbreviation</label>
+                <input id="org-short-name" type="text" value={shortName} onChange={(e) => setShortName(e.target.value)} placeholder="e.g. UPSC, ISRO" />
               </div>
               <div className="form-group">
-                <label>Type <span className="req">*</span></label>
-                <select value={orgType} onChange={(e) => setOrgType(e.target.value)} required>
+                <label htmlFor="org-type">Type <span className="req">*</span></label>
+                <select id="org-type" value={orgType} onChange={(e) => setOrgType(e.target.value)} required>
                   {ORG_TYPES.map((t) => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
                 </select>
               </div>
               <div className="form-group">
-                <label>Website URL</label>
-                <input type="url" value={websiteUrl} onChange={(e) => setWebsiteUrl(e.target.value)} placeholder="https://…" />
+                <label htmlFor="org-website">Website URL</label>
+                <input id="org-website" type="url" value={websiteUrl} onChange={(e) => setWebsiteUrl(e.target.value)} placeholder="https://…" />
               </div>
               <div className="form-group">
-                <label>Logo URL</label>
-                <input type="url" value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} placeholder="https://…/logo.png" />
+                <label htmlFor="org-logo">Logo URL</label>
+                <input id="org-logo" type="url" value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} placeholder="https://…/logo.png" />
               </div>
             </div>
             {logoUrl && (

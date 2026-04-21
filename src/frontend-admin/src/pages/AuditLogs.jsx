@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import client from '../api/client';
 
 const ACTION_COLORS = {
@@ -60,9 +60,10 @@ export default function AuditLogs() {
 
       {loading ? (
         <p style={{ color: '#64748b' }}>Loading…</p>
-      ) : logs.length === 0 ? (
-        <p style={{ color: '#94a3b8' }}>No logs found.</p>
       ) : (
+        logs.length === 0 ? (
+          <p style={{ color: '#94a3b8' }}>No logs found.</p>
+        ) : (
         <table className="data-table">
           <thead>
             <tr>
@@ -75,8 +76,8 @@ export default function AuditLogs() {
           </thead>
           <tbody>
             {logs.map((log) => (
-              <>
-                <tr key={log.id} style={{ cursor: log.changes ? 'pointer' : 'default' }} onClick={() => setExpanded(expanded === log.id ? null : log.id)}>
+              <Fragment key={log.id}>
+                <tr style={{ cursor: log.changes ? 'pointer' : 'default' }} onClick={() => setExpanded(expanded === log.id ? null : log.id)}>
                   <td style={{ color: '#475569', fontSize: '.8rem', whiteSpace: 'nowrap' }}>
                     {log.timestamp ? new Date(log.timestamp).toLocaleString() : '—'}
                   </td>
@@ -99,10 +100,11 @@ export default function AuditLogs() {
                     </td>
                   </tr>
                 )}
-              </>
+              </Fragment>
             ))}
           </tbody>
         </table>
+        )
       )}
 
       {totalPages > 1 && (
