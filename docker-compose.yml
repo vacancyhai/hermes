@@ -144,24 +144,20 @@ services:
     build:
       context: ./src/frontend
       dockerfile: Dockerfile
+      target: dev
     container_name: hermes_frontend
     restart: unless-stopped
     env_file:
       - ./config/development/.env.frontend
     ports:
-      - "${FRONTEND_PORT:-8080}:8080"
+      - "${FRONTEND_REACT_PORT:-3000}:3000"
     volumes:
-      - ./src/frontend/app:/app/app
+      - ./src/frontend:/app
+      - /app/node_modules
     depends_on:
       backend:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
-    command: flask run --host=0.0.0.0 --port=8080 --reload
+    command: npm run dev
     networks:
       - hermes_network
 
@@ -169,26 +165,23 @@ services:
     build:
       context: ./src/frontend-admin
       dockerfile: Dockerfile
+      target: dev
     container_name: hermes_frontend_admin
     restart: unless-stopped
     env_file:
       - ./config/development/.env.frontend-admin
     ports:
-      - "${FRONTEND_ADMIN_PORT:-8081}:8081"
+      - "${FRONTEND_ADMIN_REACT_PORT:-4000}:4000"
     volumes:
-      - ./src/frontend-admin/app:/app/app
+      - ./src/frontend-admin:/app
+      - /app/node_modules
     depends_on:
       backend:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
-    command: flask run --host=0.0.0.0 --port=8081 --reload
+    command: npm run dev
     networks:
       - hermes_network
+
 
 volumes:
   postgres_data:

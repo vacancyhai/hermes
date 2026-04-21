@@ -1,27 +1,41 @@
-# --- Frontend Dockerfile ---
-# Target: Python 3.12 on Debian slim
-# Used by: User frontend (Flask + Jinja2)
-
-FROM python:3.12-slim
-
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+# --- Frontend React Dockerfile ---
+# Stage 1: builder
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends curl && \
-    rm -rf /var/lib/apt/lists/*
-
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY package*.json ./
+RUN npm install
 
 COPY . .
 
-RUN adduser --disabled-password --gecos '' appuser && \
-    chown -R appuser:appuser /app
-USER appuser
+ARG VITE_BACKEND_API_URL
+ARG VITE_FIREBASE_API_KEY
+ARG VITE_FIREBASE_AUTH_DOMAIN
+ARG VITE_FIREBASE_PROJECT_ID
+ENV VITE_BACKEND_API_URL=$VITE_BACKEND_API_URL
+ENV VITE_FIREBASE_API_KEY=$VITE_FIREBASE_API_KEY
+ENV VITE_FIREBASE_AUTH_DOMAIN=$VITE_FIREBASE_AUTH_DOMAIN
+ENV VITE_FIREBASE_PROJECT_ID=$VITE_FIREBASE_PROJECT_ID
 
-EXPOSE 8080
+RUN npm run build
 
-CMD ["python", "-m", "flask", "run", "--host=0.0.0.0", "--port=8080"]
+# Stage 2: dev (for docker-compose dev server)
+FROM node:20-alpine AS dev
+
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+
+EXPOSE 3000
+CMD ["npm", "run", "dev"]
+
+# Stage 3: production nginx server
+FROM nginx:alpine AS production
+
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+EXPOSE 3000
+CMD ["nginx", "-g", "daemon off;"]
