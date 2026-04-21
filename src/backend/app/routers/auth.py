@@ -174,7 +174,7 @@ async def _register_new_firebase_user(
 
         send_email_notification.delay(
             email,
-            "Welcome to Hermes!",
+            "Welcome to Vacancy Hai!",
             "email/welcome.html",
             {
                 "name": name,
@@ -469,7 +469,7 @@ def _render_otp_email(otp: str) -> str:
 
 def _smtp_send_otp(to: str, otp: str) -> None:
     """Send a 6-digit OTP email synchronously. Runs in a thread executor."""
-    subject = "Your Hermes verification code"
+    subject = "Your Vacancy Hai verification code"
     html = _render_otp_email(otp)
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
@@ -732,7 +732,7 @@ async def complete_registration(
 
     send_email_notification.delay(
         body.email,
-        "Welcome to Hermes!",
+        "Welcome to Vacancy Hai!",
         "email/welcome.html",
         {
             "name": full_name or body.email,

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Hermes Admin{% endblock %}</title>
+    <title>{% block title %}Vacancy Hai Admin{% endblock %}</title>
     <script src="https://unpkg.com/htmx.org@2.0.0"></script>
     <script defer src="https://unpkg.com/alpinejs@3.14.0/dist/cdn.min.js"></script>
     <style>
@@ -82,7 +82,7 @@
 </head>
 <body>
     <header>
-        <a href="/">Hermes Admin</a>
+        <a href="/">Vacancy Hai Admin</a>
         <nav>
             {% if session.get('token') %}
                 <a href="/">Dashboard</a>
@@ -114,7 +114,7 @@
     </main>
 
     <footer>
-        <p>Hermes Admin Panel &copy; 2025</p>
+        <p>Vacancy Hai Admin Panel &copy; 2025</p>
     </footer>
 
     <meta name="csrf-token" content="{{ csrf_token }}">
