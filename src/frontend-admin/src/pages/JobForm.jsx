@@ -125,14 +125,15 @@ export default function JobForm() {
   }, []);
 
   useEffect(() => {
-    if (!isEdit) return;
-    client.get(`/admin/jobs/${jobId}`).then((r) => { populate(r.data); setLoading(false); }).catch(() => { setLoading(false); setFlash({ type: 'error', msg: 'Failed to load job' }); });
+    if (isEdit) {
+      client.get(`/admin/jobs/${jobId}`).then((r) => { populate(r.data); setLoading(false); }).catch(() => { setLoading(false); setFlash({ type: 'error', msg: 'Failed to load job' }); });
+    }
   }, [isEdit, jobId, populate]);
 
   /* ── auto-slug ── */
   function handleTitleChange(v) {
     setJobTitle(v);
-    if (!isEdit) setSlug(v.toLowerCase().replaceAll(/[^a-z0-9]+/g, '-').replaceAll(/^-|-$/g, ''));
+    if (isEdit === false) setSlug(v.toLowerCase().replaceAll(/[^a-z0-9]+/g, '-').replaceAll(/^-|-$/g, ''));
   }
 
   /* ── links helpers ── */
@@ -263,52 +264,52 @@ export default function JobForm() {
           <div className="section-body">
             <div className="form-grid-2">
               <div className="form-group col-span-2">
-                <label>Title <span className="req">*</span></label>
-                <input type="text" value={jobTitle} onChange={(e) => handleTitleChange(e.target.value)} required />
+                <label htmlFor="job-title">Title <span className="req">*</span></label>
+                <input id="job-title" type="text" value={jobTitle} onChange={(e) => handleTitleChange(e.target.value)} required />
               </div>
               <div className="form-group">
-                <label>Slug <span className="req">*</span></label>
-                <input type="text" value={slug} onChange={(e) => setSlug(e.target.value)} required />
+                <label htmlFor="job-slug">Slug <span className="req">*</span></label>
+                <input id="job-slug" type="text" value={slug} onChange={(e) => setSlug(e.target.value)} required />
               </div>
               <div className="form-group">
-                <label>Status</label>
-                <select value={status} onChange={(e) => setStatus(e.target.value)}>
+                <label htmlFor="job-status">Status</label>
+                <select id="job-status" value={status} onChange={(e) => setStatus(e.target.value)}>
                   {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
                 </select>
               </div>
               <div className="form-group">
-                <label>Organization Name <span className="req">*</span></label>
-                <input type="text" value={organization} onChange={(e) => setOrganization(e.target.value)} required placeholder="e.g. UPSC" />
+                <label htmlFor="job-org-name">Organization Name <span className="req">*</span></label>
+                <input id="job-org-name" type="text" value={organization} onChange={(e) => setOrganization(e.target.value)} required placeholder="e.g. UPSC" />
               </div>
               <div className="form-group">
-                <label>Organization (Link to record)</label>
-                <select value={orgId} onChange={(e) => setOrgId(e.target.value)}>
+                <label htmlFor="job-org-link">Organization (Link to record)</label>
+                <select id="job-org-link" value={orgId} onChange={(e) => setOrgId(e.target.value)}>
                   <option value="">— None —</option>
                   {orgs.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
                 </select>
               </div>
               <div className="form-group">
-                <label>Department</label>
-                <input type="text" value={department} onChange={(e) => setDepartment(e.target.value)} placeholder="e.g. UPSC, Railway Board" />
+                <label htmlFor="job-dept">Department</label>
+                <input id="job-dept" type="text" value={department} onChange={(e) => setDepartment(e.target.value)} placeholder="e.g. UPSC, Railway Board" />
               </div>
               <div className="form-group">
-                <label>Qualification Level</label>
-                <select value={qualification} onChange={(e) => setQualification(e.target.value)}>
+                <label htmlFor="job-qual">Qualification Level</label>
+                <select id="job-qual" value={qualification} onChange={(e) => setQualification(e.target.value)}>
                   <option value="">— Any —</option>
                   {QUALIFICATIONS.map((q) => <option key={q} value={q}>{q}</option>)}
                 </select>
               </div>
               <div className="form-group">
-                <label>Source URL</label>
-                <input type="url" value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)} placeholder="https://…" />
+                <label htmlFor="job-source">Source URL</label>
+                <input id="job-source" type="url" value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)} placeholder="https://…" />
               </div>
               <div className="form-group col-span-2">
-                <label>Short Description</label>
-                <input type="text" value={shortDesc} onChange={(e) => setShortDesc(e.target.value)} placeholder="One-line summary" />
+                <label htmlFor="job-shortdesc">Short Description</label>
+                <input id="job-shortdesc" type="text" value={shortDesc} onChange={(e) => setShortDesc(e.target.value)} placeholder="One-line summary" />
               </div>
               <div className="form-group col-span-2">
-                <label>Full Description (HTML/Markdown)</label>
-                <textarea rows={5} value={description} onChange={(e) => setDescription(e.target.value)} />
+                <label htmlFor="job-desc">Full Description (HTML/Markdown)</label>
+                <textarea id="job-desc" rows={5} value={description} onChange={(e) => setDescription(e.target.value)} />
               </div>
             </div>
           </div>
@@ -319,15 +320,15 @@ export default function JobForm() {
           <div className="section-header section-header--purple">Important Dates</div>
           <div className="section-body">
             <div className="form-grid-3">
-              {[['Notification Date', notifDate, setNotifDate],
-                ['Application Start', appStart, setAppStart],
-                ['Application End', appEnd, setAppEnd],
-                ['Exam Start', examStart, setExamStart],
-                ['Exam End', examEnd, setExamEnd],
-                ['Result Date', resultDate, setResultDate]].map(([label, val, setter]) => (
+              {[['Notification Date', notifDate, setNotifDate, 'job-notif'],
+                ['Application Start', appStart, setAppStart, 'job-app-start'],
+                ['Application End', appEnd, setAppEnd, 'job-app-end'],
+                ['Exam Start', examStart, setExamStart, 'job-exam-start'],
+                ['Exam End', examEnd, setExamEnd, 'job-exam-end'],
+                ['Result Date', resultDate, setResultDate, 'job-result']].map(([label, val, setter, id]) => (
                 <div className="form-group" key={label}>
-                  <label>{label}</label>
-                  <input type="date" value={val} onChange={(e) => setter(e.target.value)} />
+                  <label htmlFor={id}>{label}</label>
+                  <input id={id} type="date" value={val} onChange={(e) => setter(e.target.value)} />
                 </div>
               ))}
             </div>
@@ -341,8 +342,8 @@ export default function JobForm() {
             <div className="fee-grid">
               {Object.keys(emptyFee).map((k) => (
                 <div className="fee-cell" key={k}>
-                  <label>{k.toUpperCase().replace('_', '/')}</label>
-                  <input type="number" min="0" value={fee[k]} onChange={(e) => setFee((f) => ({ ...f, [k]: e.target.value }))} placeholder="0" />
+                  <label htmlFor={`job-fee-${k}`}>{k.toUpperCase().replaceAll('_', '/')}</label>
+                  <input id={`job-fee-${k}`} type="number" min="0" value={fee[k]} onChange={(e) => setFee((f) => ({ ...f, [k]: e.target.value }))} placeholder="0" />
                 </div>
               ))}
             </div>
@@ -356,8 +357,8 @@ export default function JobForm() {
             <div className="vacancy-grid">
               {Object.keys(emptyVacancy).map((k) => (
                 <div className="vacancy-cell" key={k}>
-                  <label>{k.toUpperCase()}</label>
-                  <input type="number" min="0" value={vacancy[k]} onChange={(e) => setVacancy((v) => ({ ...v, [k]: e.target.value }))} placeholder="0" />
+                  <label htmlFor={`job-vac-${k}`}>{k.toUpperCase()}</label>
+                  <input id={`job-vac-${k}`} type="number" min="0" value={vacancy[k]} onChange={(e) => setVacancy((v) => ({ ...v, [k]: e.target.value }))} placeholder="0" />
                 </div>
               ))}
             </div>

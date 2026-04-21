@@ -70,12 +70,15 @@ export default function OrgForm() {
         <div style={{ display: 'flex', gap: '.5rem' }}>
           <Link to="/organizations" className="btn btn-outline">Cancel</Link>
           <button className="btn btn-primary" form="org-form" type="submit" disabled={saving}>
-            {saving ? <><span className="spinner" /> Saving…</> : (isEdit ? 'Update' : 'Create')}
+            {saving ? <><span className="spinner" />{' '}Saving…</> : (isEdit ? 'Update' : 'Create')}
           </button>
         </div>
       </div>
 
-      {flash && <div className={flash.type === 'success' ? 'flash-success' : 'flash-error'}>{flash.msg}</div>}
+      {flash && (() => {
+        const fc = flash.type === 'success' ? 'flash-success' : 'flash-error';
+        return <div className={fc}>{flash.msg}</div>;
+      })()}
 
       <form id="org-form" onSubmit={handleSubmit}>
         <div className="section-card">

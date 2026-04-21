@@ -106,7 +106,7 @@ export default function AdmissionForm() {
     setCounsellingStart(toDateInput(a.counselling_start));
     const f = a.fee || {};
     setFee({ general: f.general ?? '', obc: f.obc ?? '', sc_st: f.sc_st ?? '', ews: f.ews ?? '', female: f.female ?? '' });
-    const appLinks = (a.application_details || {}).important_links;
+    const appLinks = a.application_details?.important_links;
     setLinks(Array.isArray(appLinks) && appLinks.length ? appLinks : [{ ...emptyLink }]);
     setEligibilityJson(safeJson(a.eligibility, '{}'));
     setSelectionJson(safeJson(a.selection_process, '{}'));
@@ -122,13 +122,14 @@ export default function AdmissionForm() {
   }, []);
 
   useEffect(() => {
-    if (!isEdit) return;
-    client.get(`/admin/admissions/${admissionId}`).then((r) => { populate(r.data); setLoading(false); }).catch(() => { setLoading(false); setFlash({ type: 'error', msg: 'Failed to load admission' }); });
+    if (isEdit) {
+      client.get(`/admin/admissions/${admissionId}`).then((r) => { populate(r.data); setLoading(false); }).catch(() => { setLoading(false); setFlash({ type: 'error', msg: 'Failed to load admission' }); });
+    }
   }, [isEdit, admissionId, populate]);
 
   function handleNameChange(v) {
     setAdmissionName(v);
-    if (!isEdit) setSlug(v.toLowerCase().replaceAll(/[^a-z0-9]+/g, '-').replaceAll(/^-|-$/g, ''));
+    if (isEdit === false) setSlug(v.toLowerCase().replaceAll(/[^a-z0-9]+/g, '-').replaceAll(/^-|-$/g, ''));
   }
 
   function updateLink(i, field, val) { setLinks((l) => l.map((x, idx) => idx === i ? { ...x, [field]: val } : x)); }
@@ -248,59 +249,59 @@ export default function AdmissionForm() {
           <div className="section-body">
             <div className="form-grid-2">
               <div className="form-group col-span-2">
-                <label>Admission Name <span className="req">*</span></label>
-                <input type="text" value={admissionName} onChange={(e) => handleNameChange(e.target.value)} required />
+                <label htmlFor="adm-name">Admission Name <span className="req">*</span></label>
+                <input id="adm-name" type="text" value={admissionName} onChange={(e) => handleNameChange(e.target.value)} required />
               </div>
               <div className="form-group">
-                <label>Slug <span className="req">*</span></label>
-                <input type="text" value={slug} onChange={(e) => setSlug(e.target.value)} required />
+                <label htmlFor="adm-slug">Slug <span className="req">*</span></label>
+                <input id="adm-slug" type="text" value={slug} onChange={(e) => setSlug(e.target.value)} required />
               </div>
               <div className="form-group">
-                <label>Status</label>
-                <select value={status} onChange={(e) => setStatus(e.target.value)}>
+                <label htmlFor="adm-status">Status</label>
+                <select id="adm-status" value={status} onChange={(e) => setStatus(e.target.value)}>
                   {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
                 </select>
               </div>
               <div className="form-group">
-                <label>Conducting Body</label>
-                <input type="text" value={conductingBody} onChange={(e) => setConductingBody(e.target.value)} placeholder="e.g. NTA, JoSAA" />
+                <label htmlFor="adm-conducting">Conducting Body</label>
+                <input id="adm-conducting" type="text" value={conductingBody} onChange={(e) => setConductingBody(e.target.value)} placeholder="e.g. NTA, JoSAA" />
               </div>
               <div className="form-group">
-                <label>Counselling Body</label>
-                <input type="text" value={counsellingBody} onChange={(e) => setCounsellingBody(e.target.value)} />
+                <label htmlFor="adm-counselling">Counselling Body</label>
+                <input id="adm-counselling" type="text" value={counsellingBody} onChange={(e) => setCounsellingBody(e.target.value)} />
               </div>
               <div className="form-group">
-                <label>Admission Type</label>
-                <select value={admissionType} onChange={(e) => setAdmissionType(e.target.value)}>
+                <label htmlFor="adm-type">Admission Type</label>
+                <select id="adm-type" value={admissionType} onChange={(e) => setAdmissionType(e.target.value)}>
                   <option value="">— Any —</option>
                   {TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
                 </select>
               </div>
               <div className="form-group">
-                <label>Stream</label>
-                <select value={stream} onChange={(e) => setStream(e.target.value)}>
+                <label htmlFor="adm-stream">Stream</label>
+                <select id="adm-stream" value={stream} onChange={(e) => setStream(e.target.value)}>
                   <option value="">— Any —</option>
                   {STREAMS.map((s) => <option key={s} value={s}>{s}</option>)}
                 </select>
               </div>
               <div className="form-group">
-                <label>Organization</label>
-                <select value={orgId} onChange={(e) => setOrgId(e.target.value)}>
+                <label htmlFor="adm-org">Organization</label>
+                <select id="adm-org" value={orgId} onChange={(e) => setOrgId(e.target.value)}>
                   <option value="">— None —</option>
                   {orgs.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
                 </select>
               </div>
               <div className="form-group">
-                <label>Source URL</label>
-                <input type="url" value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)} placeholder="https://…" />
+                <label htmlFor="adm-source">Source URL</label>
+                <input id="adm-source" type="url" value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)} placeholder="https://…" />
               </div>
               <div className="form-group col-span-2">
-                <label>Short Description</label>
-                <input type="text" value={shortDesc} onChange={(e) => setShortDesc(e.target.value)} />
+                <label htmlFor="adm-shortdesc">Short Description</label>
+                <input id="adm-shortdesc" type="text" value={shortDesc} onChange={(e) => setShortDesc(e.target.value)} />
               </div>
               <div className="form-group col-span-2">
-                <label>Full Description</label>
-                <textarea rows={4} value={description} onChange={(e) => setDescription(e.target.value)} />
+                <label htmlFor="adm-desc">Full Description</label>
+                <textarea id="adm-desc" rows={4} value={description} onChange={(e) => setDescription(e.target.value)} />
               </div>
             </div>
           </div>
@@ -311,16 +312,16 @@ export default function AdmissionForm() {
           <div className="section-header section-header--blue">Important Dates</div>
           <div className="section-body">
             <div className="form-grid-3">
-              {[['Notification Date', notifDate, setNotifDate],
-                ['Application Start', appStart, setAppStart],
-                ['Application End', appEnd, setAppEnd],
-                ['Exam Start', examStart, setExamStart],
-                ['Exam End', examEnd, setExamEnd],
-                ['Result Date', resultDate, setResultDate],
-                ['Counselling Start', counsellingStart, setCounsellingStart]].map(([label, val, setter]) => (
+              {[['Notification Date', notifDate, setNotifDate, 'adm-notif'],
+                ['Application Start', appStart, setAppStart, 'adm-app-start'],
+                ['Application End', appEnd, setAppEnd, 'adm-app-end'],
+                ['Exam Start', examStart, setExamStart, 'adm-exam-start'],
+                ['Exam End', examEnd, setExamEnd, 'adm-exam-end'],
+                ['Result Date', resultDate, setResultDate, 'adm-result'],
+                ['Counselling Start', counsellingStart, setCounsellingStart, 'adm-counsel-start']].map(([label, val, setter, id]) => (
                 <div className="form-group" key={label}>
-                  <label>{label}</label>
-                  <input type="date" value={val} onChange={(e) => setter(e.target.value)} />
+                  <label htmlFor={id}>{label}</label>
+                  <input id={id} type="date" value={val} onChange={(e) => setter(e.target.value)} />
                 </div>
               ))}
             </div>
@@ -334,8 +335,8 @@ export default function AdmissionForm() {
             <div className="fee-grid">
               {Object.keys(emptyFee).map((k) => (
                 <div className="fee-cell" key={k}>
-                  <label>{k.toUpperCase().replace('_', '/')}</label>
-                  <input type="number" min="0" value={fee[k]} onChange={(e) => setFee((f) => ({ ...f, [k]: e.target.value }))} placeholder="0" />
+                  <label htmlFor={`adm-fee-${k}`}>{k.toUpperCase().replaceAll('_', '/')}</label>
+                  <input id={`adm-fee-${k}`} type="number" min="0" value={fee[k]} onChange={(e) => setFee((f) => ({ ...f, [k]: e.target.value }))} placeholder="0" />
                 </div>
               ))}
             </div>

@@ -27,7 +27,7 @@ export default function Login() {
         });
         tokenData.name = me.data.full_name || me.data.email || email;
         tokenData.role = me.data.role || '';
-      } catch (_) {
+      } catch (err) { void err;
         tokenData.name = email;
       }
       login(tokenData);

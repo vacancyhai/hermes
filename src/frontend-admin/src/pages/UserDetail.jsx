@@ -25,6 +25,44 @@ function statusBadgeClass(status) {
   return 'badge-warning';
 }
 
+function TrackedJobs({ jobs }) {
+  if (jobs.length === 0) return <p style={{ padding: '1rem', color: '#94a3b8', fontSize: '.875rem' }}>None.</p>;
+  return (
+    <table className="data-table">
+      <thead><tr><th>Title</th><th>Status</th></tr></thead>
+      <tbody>
+        {jobs.map((j) => (
+          <tr key={j.id}>
+            <td style={{ fontSize: '.85rem' }}>{j.title}</td>
+            <td><span className="badge badge-info">{j.status}</span></td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+TrackedJobs.propTypes = { jobs: PropTypes.arrayOf(PropTypes.object).isRequired };
+
+function TrackedAdmissions({ admissions }) {
+  if (admissions.length === 0) return <p style={{ padding: '1rem', color: '#94a3b8', fontSize: '.875rem' }}>None.</p>;
+  return (
+    <table className="data-table">
+      <thead><tr><th>Name</th><th>Status</th></tr></thead>
+      <tbody>
+        {admissions.map((a) => (
+          <tr key={a.id}>
+            <td style={{ fontSize: '.85rem' }}>{a.name}</td>
+            <td><span className="badge badge-info">{a.status}</span></td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+TrackedAdmissions.propTypes = { admissions: PropTypes.arrayOf(PropTypes.object).isRequired };
+
 export default function UserDetail() {
   const { userId } = useParams();
   const navigate = useNavigate();
@@ -96,6 +134,7 @@ export default function UserDetail() {
 
       {flash && <div className={flash.type === 'success' ? 'flash-success' : 'flash-error'}>{flash.msg}</div>}
 
+
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
         {/* Account Info */}
         <div className="section-card">
@@ -155,41 +194,13 @@ export default function UserDetail() {
         <div className="section-card">
           <div className="section-header section-header--green">Tracked Jobs ({trackedJobs.length})</div>
           <div style={{ padding: 0, maxHeight: 280, overflowY: 'auto' }}>
-            {trackedJobs.length === 0 ? (
-              <p style={{ padding: '1rem', color: '#94a3b8', fontSize: '.875rem' }}>None.</p>
-            ) : (
-              <table className="data-table">
-                <thead><tr><th>Title</th><th>Status</th></tr></thead>
-                <tbody>
-                  {trackedJobs.map((j) => (
-                    <tr key={j.id}>
-                      <td style={{ fontSize: '.85rem' }}>{j.title}</td>
-                      <td><span className="badge badge-info">{j.status}</span></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
+            <TrackedJobs jobs={trackedJobs} />
           </div>
         </div>
         <div className="section-card">
           <div className="section-header section-header--indigo">Tracked Admissions ({trackedAdmissions.length})</div>
           <div style={{ padding: 0, maxHeight: 280, overflowY: 'auto' }}>
-            {trackedAdmissions.length === 0 ? (
-              <p style={{ padding: '1rem', color: '#94a3b8', fontSize: '.875rem' }}>None.</p>
-            ) : (
-              <table className="data-table">
-                <thead><tr><th>Name</th><th>Status</th></tr></thead>
-                <tbody>
-                  {trackedAdmissions.map((a) => (
-                    <tr key={a.id}>
-                      <td style={{ fontSize: '.85rem' }}>{a.name}</td>
-                      <td><span className="badge badge-info">{a.status}</span></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
+            <TrackedAdmissions admissions={trackedAdmissions} />
           </div>
         </div>
       </div>
