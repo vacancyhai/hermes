@@ -73,7 +73,7 @@ communicate via HTTP REST API.
 
 | Network           | Services                                                                         |
 | ----------------- | -------------------------------------------------------------------------------- |
-| `hermes_network`  | backend, hermes-worker, hermes-scheduler, postgresql, pgbouncer, redis, frontend, frontend-admin, mailpit |
+| `hermes_network`  | backend, hermes-worker, hermes-scheduler, postgresql, pgbouncer, redis, frontend, frontend-admin |
 
 Frontends **cannot** reach the database or Redis directly — all persistence goes
 through the backend REST API via `BACKEND_API_URL`.
@@ -92,7 +92,6 @@ All services are defined in the single root **`docker-compose.yml`**.
 | `hermes-scheduler`| local build        | —        | `config/development/.env.backend`        |
 | `frontend`       | local build        | `8080`   | `config/development/.env.frontend`       |
 | `frontend-admin` | local build        | `8081`   | `config/development/.env.frontend-admin` |
-| `mailpit`        | axllent/mailpit    | `1025/8025` | — (dev only)                     |
 
 
 ### Health Checks
@@ -646,7 +645,7 @@ RAM so builds are fast enough in production.
 | `DEBUG`  | `True`                                                 |
 | Database | Local PostgreSQL container (Docker volume)              |
 | Redis    | Local Redis container, no password (AOF enabled)        |
-| Mail     | Mailpit (`MAIL_ENABLED=false` in dev env)             |
+| Mail     | OCI Email Delivery (SMTP port 587, STARTTLS)           |
 | Nginx    | Not required; access services directly on exposed ports|
 | TLS      | None                                                   |
 | Volumes  | Hot-reload mounts for code                             |

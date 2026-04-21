@@ -190,16 +190,6 @@ services:
     networks:
       - hermes_network
 
-  mailpit:
-    image: axllent/mailpit:latest
-    container_name: hermes_mailpit
-    restart: unless-stopped
-    ports:
-      - "1025:1025"
-      - "8025:8025"
-    networks:
-      - hermes_network
-
 volumes:
   postgres_data:
   redis_data:

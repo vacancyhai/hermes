@@ -34,7 +34,7 @@ multi-channel notifications, and an admin panel.
 | Auth               | Firebase Auth (Email/Password, Google, Phone OTP), firebase-admin SDK, python-jose (internal JWT + Redis blocklist) |
 | Validation         | Pydantic v2 (FastAPI native)                |
 | Task Queue         | Celery 5.4 + Redis 7 broker                |
-| Email              | OCI Email Delivery (prod) / Mailpit (dev)   |
+| Email              | OCI Email Delivery (SMTP, port 587 STARTTLS) |
 | Push Notifications | Firebase Cloud Messaging                    |
 | WhatsApp (future) | WhatsApp Cloud API                           |
 | User Frontend      | Flask + Jinja2 + HTMX (port 8080)           |
@@ -107,7 +107,7 @@ PostgreSQL and Redis are isolated inside Docker networks — never exposed to th
 # FIREBASE_CREDENTIALS_PATH for your Firebase project.
 # (docker-compose.yml reads config/development/.env.* directly — no copying needed)
 
-# 2. Start all services (PostgreSQL, Redis, PgBouncer, FastAPI, hermes-worker, hermes-scheduler, Frontends, Mailpit)
+# 2. Start all services (PostgreSQL, Redis, PgBouncer, FastAPI, hermes-worker, hermes-scheduler, Frontends)
 docker compose up -d --build
 
 # 3. Run database migrations
@@ -137,7 +137,6 @@ with engine.connect() as conn:
 #   API Docs:       http://localhost:8000/api/v1/docs
 #   User Frontend:  http://localhost:8080
 #   Admin Frontend: http://localhost:8081  (login: admin@hermes.com / Admin@123)
-#   Mailpit UI:     http://localhost:8025
 ```
 
 ## Branching Strategy
@@ -176,7 +175,7 @@ See `.pre-commit-config.yaml` for full configuration.
 ```
 hermes/
 ├── docker-compose.yml            # Dev: all services (PostgreSQL, Redis, PgBouncer, Backend,
-│                                 #   hermes-worker, hermes-scheduler, Frontend, Admin Frontend, Mailpit)
+│                                 #   hermes-worker, hermes-scheduler, Frontend, Admin Frontend)
 ├── alembic.ini                   # Alembic config (URL overridden by env.py at runtime)
 ├── migrations/                   # Alembic migrations (0001_initial — consolidated)
 ├── src/

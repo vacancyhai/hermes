@@ -1,10 +1,9 @@
 """Notification-related Celery tasks.
 
-smart_notify                — Unified entry: routes to in-app + FCM + email + WhatsApp + Telegram
+smart_notify                — Unified entry: routes to in-app + FCM + email + WhatsApp
 send_deadline_reminders     — Daily Beat task: T-7, T-3, T-1 deadline reminders for tracked jobs + admissions
 notify_trackers_on_update   — Event: notify trackers when a job/admission is approved or updated
 send_email_notification     — Sync email via SMTP (retries 3x)
-deliver_delayed_telegram    — Delayed Telegram delivery for staggered mode (T+15min)
 """
 
 import os
@@ -141,7 +140,7 @@ def smart_notify(
     """Unified notification entry point.
 
     delivery_mode:
-      "instant"   — all 4 channels at T+0 (OTP, auth, welcome)
+      "instant"   — in-app + push + email at T+0 (OTP, auth, welcome)
       "staggered" — in-app + push T+0, email T+15min, whatsapp T+1hr
 
     All channels always deliver — staggered just adds a time gap.
@@ -206,25 +205,6 @@ def deliver_delayed_whatsapp(
         session.commit()
     logger.info(
         "delayed_whatsapp_sent", notification_id=notification_id, user_id=user_id
-    )
-
-
-@celery.task(name="app.tasks.notifications.deliver_delayed_telegram")
-def deliver_delayed_telegram(
-    notification_id: str, user_id: str, title: str, message: str
-):
-    """Delayed Telegram delivery for staggered mode. Fired T+15min after smart_notify."""
-    from app.services.notifications import NotificationService
-
-    redis_client = _get_sync_redis()
-    now = datetime.now(timezone.utc)
-
-    with Session(sync_engine) as session:
-        svc = NotificationService(session, redis_sync=redis_client)
-        svc._send_telegram(notification_id, user_id, title, message, now)
-        session.commit()
-    logger.info(
-        "delayed_telegram_sent", notification_id=notification_id, user_id=user_id
     )
 
 
