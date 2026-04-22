@@ -74,7 +74,7 @@ export default function Layout() {
   });
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', overflowX: 'hidden', maxWidth: '100vw' }}>
       {/* Header */}
       <header style={{
         background: 'linear-gradient(90deg, #0f2440 0%, #1e3a5f 100%)',
@@ -169,7 +169,7 @@ export default function Layout() {
       </header>
 
       {/* Main content */}
-      <main style={{ flex: 1, padding: '1.5rem', background: '#f0f4f8' }}>
+      <main style={{ flex: 1, padding: '1.5rem', background: '#f0f4f8', overflowX: 'hidden', minWidth: 0 }}>
         <div style={{ maxWidth: 1280, margin: '0 auto' }}>
           <Outlet />
         </div>

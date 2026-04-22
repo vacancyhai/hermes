@@ -111,7 +111,7 @@ function SectionRow({ title, href, accent, children }) {
         <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#0f172a', display: 'inline-flex', alignItems: 'center', gap: '0.45rem', paddingLeft: '0.6rem', borderLeft: `3px solid ${accent || '#2563eb'}` }}>{title}</div>
         <Link to={href} style={{ fontSize: '0.75rem', fontWeight: 600, color: accent || '#2563eb', whiteSpace: 'nowrap', padding: '0.25rem 0.65rem', border: `1px solid ${accent || '#2563eb'}22`, borderRadius: '0.375rem', background: `${accent || '#2563eb'}0d`, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.2rem', transition: 'background 0.15s' }}>View All →</Link>
       </div>
-      <div className="h-scroll">{children}</div>
+      <div className="h-scroll-wrap"><div className="h-scroll">{children}</div></div>
     </div>
   );
 }
