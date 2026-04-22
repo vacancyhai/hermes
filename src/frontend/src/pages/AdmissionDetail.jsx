@@ -57,18 +57,20 @@ export default function AdmissionDetail() {
   const [docTab, setDocTab] = useState('admit');
 
   useEffect(() => {
+    const fetchUserData = async (admId) => {
+      api.get(`/admissions/${admId}/track`).then((tr) => setTracking(tr.data.tracking)).catch(() => {});
+      try {
+        const pr = await api.get('/users/profile');
+        const p = pr.data.profile || {};
+        const done = Boolean(p.highest_qualification || p.category || p.date_of_birth);
+        setProfileComplete(done);
+        if (done) api.get(`/admissions/eligibility/${slug}`).then((er) => setEligibility(er.data)).catch(() => {});
+      } catch { }
+    };
     api.get(`/admissions/${slug}`).then((r) => {
       setAdmission(r.data);
       setLoading(false);
-      if (token) {
-        api.get(`/admissions/${r.data.id}/track`).then((tr) => setTracking(tr.data.tracking)).catch(() => {});
-        api.get('/users/profile').then((pr) => {
-          const p = pr.data.profile || {};
-          const done = Boolean(p.highest_qualification || p.category || p.date_of_birth);
-          setProfileComplete(done);
-          if (done) api.get(`/admissions/eligibility/${slug}`).then((er) => setEligibility(er.data)).catch(() => {});
-        }).catch(() => {});
-      }
+      if (token) { fetchUserData(r.data.id); }
     }).catch(() => setLoading(false));
   }, [slug, token]);
 

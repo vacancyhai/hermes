@@ -92,10 +92,14 @@ a:hover {
 
 /* Status pills */
 .status-pill { padding: 0.25rem 0.7rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.02em; display: inline-block; white-space: nowrap; }
-.status-active { background: #16a34a; color: #fff; }
-.status-upcoming { background: #f59e0b; color: #1c1917; }
+.status-active { background: #15803d; color: #fff; }
+.status-upcoming { background: #b45309; color: #fff; }
 .status-inactive { background: #64748b; color: #fff; }
-.status-closed { background: #ef4444; color: #fff; }
+.status-closed { background: #b91c1c; color: #fff; }
+
+/* Card hover */
+.job-card { transition: box-shadow .15s, border-color .15s; }
+.job-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.07); }
 
 /* Detail sections */
 .detail-hero { padding: 1.5rem 1.5rem 1.35rem; border-radius: var(--radius-lg); margin-bottom: 1.25rem; color: #fff; position: relative; overflow: hidden; }

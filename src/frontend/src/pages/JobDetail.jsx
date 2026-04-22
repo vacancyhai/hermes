@@ -4,7 +4,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import api from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
 
-function EligibilityBanner({ eligibility, profileComplete, token, slug }) { // eslint-disable-line
+function EligibilityBanner({ eligibility, profileComplete, token, slug }) {
   if (!token) return (
     <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '0.5rem', padding: '1rem 1.25rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
       <span style={{ fontSize: '1.25rem' }}>🔍</span>
@@ -98,18 +98,20 @@ export default function JobDetail() {
   const [docTab, setDocTab] = useState('admit');
 
   useEffect(() => {
+    const fetchUserData = async (jobId) => {
+      api.get(`/jobs/${jobId}/track`).then((tr) => setTracking(tr.data.tracking)).catch(() => {});
+      try {
+        const pr = await api.get('/users/profile');
+        const p = pr.data.profile || {};
+        const done = Boolean(p.highest_qualification || p.category || p.date_of_birth);
+        setProfileComplete(done);
+        if (done) api.get(`/jobs/eligibility/${slug}`).then((er) => setEligibility(er.data)).catch(() => {});
+      } catch { }
+    };
     api.get(`/jobs/${slug}`).then((r) => {
       setJob(r.data);
       setLoading(false);
-      if (token) {
-        api.get(`/jobs/${r.data.id}/track`).then((tr) => setTracking(tr.data.tracking)).catch(() => {});
-        api.get('/users/profile').then((pr) => {
-          const p = pr.data.profile || {};
-          const done = Boolean(p.highest_qualification || p.category || p.date_of_birth);
-          setProfileComplete(done);
-          if (done) api.get(`/jobs/eligibility/${slug}`).then((er) => setEligibility(er.data)).catch(() => {});
-        }).catch(() => {});
-      }
+      if (token) { fetchUserData(r.data.id); }
     }).catch(() => { setLoading(false); });
   }, [slug, token]);
 

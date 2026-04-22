@@ -58,12 +58,9 @@ export default function AuditLogs() {
         )}
       </form>
 
-      {loading ? (
-        <p style={{ color: '#64748b' }}>Loading…</p>
-      ) : (
-        logs.length === 0 ? (
-          <p style={{ color: '#94a3b8' }}>No logs found.</p>
-        ) : (
+      {loading && <p style={{ color: '#64748b' }}>Loading…</p>}
+      {!loading && logs.length === 0 && <p style={{ color: '#94a3b8' }}>No logs found.</p>}
+      {!loading && logs.length > 0 && (
         <table className="data-table">
           <thead>
             <tr>
@@ -104,7 +101,6 @@ export default function AuditLogs() {
             ))}
           </tbody>
         </table>
-        )
       )}
 
       {totalPages > 1 && (

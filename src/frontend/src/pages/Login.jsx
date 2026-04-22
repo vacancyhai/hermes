@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   GoogleAuthProvider,
   signInWithPopup,
@@ -12,6 +12,23 @@ import {
 import { auth } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../api/client';
+
+function firebaseErr(e) {
+  const map = {
+    'auth/user-not-found': 'No account found with this email.',
+    'auth/wrong-password': 'Incorrect password.', // pragma: allowlist secret
+    'auth/invalid-credential': 'Invalid email or password.',
+    'auth/email-already-in-use': 'An account with this email already exists.',
+    'auth/weak-password': 'Password must be at least 6 characters.', // pragma: allowlist secret
+    'auth/invalid-email': 'Please enter a valid email address.',
+    'auth/too-many-requests': 'Too many attempts. Please try again later.',
+    'auth/popup-closed-by-user': 'Google sign-in was cancelled.',
+    'auth/invalid-phone-number': 'Please enter a valid phone number (e.g. +91...).',
+    'auth/invalid-verification-code': 'Invalid OTP code. Please try again.',
+    'auth/code-expired': 'OTP expired. Please request a new one.',
+  };
+  return map[e.code] || e.message || 'Something went wrong.';
+}
 
 const FIREBASE_API_KEY = import.meta.env.VITE_FIREBASE_API_KEY || '';
 
@@ -61,23 +78,6 @@ export default function Login() {
     } catch { }
     login(access_token, refresh_token, name);
     navigate(nextUrl, { replace: true });
-  }
-
-  function firebaseErr(e) {
-    const map = {
-      'auth/user-not-found': 'No account found with this email.',
-      'auth/wrong-password': 'Incorrect password.', // pragma: allowlist secret
-      'auth/invalid-credential': 'Invalid email or password.',
-      'auth/email-already-in-use': 'An account with this email already exists.',
-      'auth/weak-password': 'Password must be at least 6 characters.', // pragma: allowlist secret
-      'auth/invalid-email': 'Please enter a valid email address.',
-      'auth/too-many-requests': 'Too many attempts. Please try again later.',
-      'auth/popup-closed-by-user': 'Google sign-in was cancelled.',
-      'auth/invalid-phone-number': 'Please enter a valid phone number (e.g. +91...).',
-      'auth/invalid-verification-code': 'Invalid OTP code. Please try again.',
-      'auth/code-expired': 'OTP expired. Please request a new one.',
-    };
-    return map[e.code] || e.message || 'Something went wrong.';
   }
 
   async function loginWithGoogle() {
@@ -135,7 +135,7 @@ export default function Login() {
   }
 
   async function verifyEmailOTP() {
-    if (!otpCode || otpCode.length !== 6) { setError('Please enter the 6-digit code.'); return; }
+    if (otpCode?.length !== 6) { setError('Please enter the 6-digit code.'); return; }
     const { email: re, password: rp, name: rn, phone: rph } = regState.current;
     if (!re || !rp) { setError('Session expired. Please register again.'); setEmailView('register'); return; }
     clearMsg(); setLoading(true);
@@ -178,7 +178,7 @@ export default function Login() {
   }
 
   async function verifyAndAddPassword() {
-    if (!addPwdOtp || addPwdOtp.length !== 6) { setError('Please enter the 6-digit code.'); return; }
+    if (addPwdOtp?.length !== 6) { setError('Please enter the 6-digit code.'); return; }
     const { email: em, password: pw } = addPwdState.current;
     if (!em || !pw) { setError('Session expired.'); setEmailView('signin'); return; }
     clearMsg(); setLoading(true);
@@ -279,10 +279,10 @@ export default function Login() {
               <>
                 {emailView === 'signin' && (
                   <div>
-                    <div style={{ marginBottom: '0.7rem' }}><label style={labelStyle}>Email address</label><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} style={inputStyle} placeholder="you@example.com" /></div>
-                    <div style={{ marginBottom: '0.7rem' }}><label style={labelStyle}>Password</label>
+                    <div style={{ marginBottom: '0.7rem' }}><label htmlFor="signin-email" style={labelStyle}>Email address</label><input id="signin-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} style={inputStyle} placeholder="you@example.com" /></div>
+                    <div style={{ marginBottom: '0.7rem' }}><label htmlFor="signin-password" style={labelStyle}>Password</label>
                       <div style={{ position: 'relative' }}>
-                        <input type={showPw ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} style={{ ...inputStyle, paddingRight: '2.5rem' }} placeholder="Your password" onKeyDown={(e) => e.key === 'Enter' && loginWithEmail()} />
+                        <input id="signin-password" type={showPw ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} style={{ ...inputStyle, paddingRight: '2.5rem' }} placeholder="Your password" onKeyDown={(e) => e.key === 'Enter' && loginWithEmail()} />
                         <button type="button" onClick={() => setShowPw(!showPw)} style={{ position: 'absolute', right: '0.6rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}>{showPw ? '🙈' : '👁'}</button>
                       </div>
                     </div>
@@ -298,12 +298,12 @@ export default function Login() {
 
                 {emailView === 'register' && (
                   <div>
-                    <div style={{ marginBottom: '0.7rem' }}><label style={labelStyle}>Full Name</label><input value={regName} onChange={(e) => setRegName(e.target.value)} style={inputStyle} placeholder="Your full name" /></div>
-                    <div style={{ marginBottom: '0.7rem' }}><label style={labelStyle}>Email address</label><input type="email" value={regEmail} onChange={(e) => setRegEmail(e.target.value)} style={inputStyle} placeholder="you@example.com" /></div>
-                    <div style={{ marginBottom: '0.7rem' }}><label style={labelStyle}>Phone <span style={{ color: '#94a3b8', fontWeight: 400 }}>(optional)</span></label><input type="tel" value={regPhone} onChange={(e) => setRegPhone(e.target.value)} style={inputStyle} placeholder="+91 98765 43210" /></div>
-                    <div style={{ marginBottom: '0.7rem' }}><label style={labelStyle}>Password <span style={{ color: '#94a3b8', fontWeight: 400 }}>(min 8 chars, 1 uppercase, 1 special)</span></label>
+                    <div style={{ marginBottom: '0.7rem' }}><label htmlFor="reg-name" style={labelStyle}>Full Name</label><input id="reg-name" value={regName} onChange={(e) => setRegName(e.target.value)} style={inputStyle} placeholder="Your full name" /></div>
+                    <div style={{ marginBottom: '0.7rem' }}><label htmlFor="reg-email" style={labelStyle}>Email address</label><input id="reg-email" type="email" value={regEmail} onChange={(e) => setRegEmail(e.target.value)} style={inputStyle} placeholder="you@example.com" /></div>
+                    <div style={{ marginBottom: '0.7rem' }}><label htmlFor="reg-phone" style={labelStyle}>Phone <span style={{ color: '#94a3b8', fontWeight: 400 }}>(optional)</span></label><input id="reg-phone" type="tel" value={regPhone} onChange={(e) => setRegPhone(e.target.value)} style={inputStyle} placeholder="+91 98765 43210" /></div>
+                    <div style={{ marginBottom: '0.7rem' }}><label htmlFor="reg-password" style={labelStyle}>Password <span style={{ color: '#94a3b8', fontWeight: 400 }}>(min 8 chars, 1 uppercase, 1 special)</span></label>
                       <div style={{ position: 'relative' }}>
-                        <input type={showRegPw ? 'text' : 'password'} value={regPassword} onChange={(e) => setRegPassword(e.target.value)} style={{ ...inputStyle, paddingRight: '2.5rem' }} placeholder="Choose a password" />
+                        <input id="reg-password" type={showRegPw ? 'text' : 'password'} value={regPassword} onChange={(e) => setRegPassword(e.target.value)} style={{ ...inputStyle, paddingRight: '2.5rem' }} placeholder="Choose a password" />
                         <button type="button" onClick={() => setShowRegPw(!showRegPw)} style={{ position: 'absolute', right: '0.6rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}>{showRegPw ? '🙈' : '👁'}</button>
                       </div>
                     </div>
@@ -322,7 +322,7 @@ export default function Login() {
                       We sent a 6-digit code to <strong>{regState.current.email}</strong><br />
                       <span style={{ fontSize: '0.8rem' }}>Check your inbox — expires in 5 minutes.</span>
                     </p>
-                    <div style={{ marginBottom: '0.7rem' }}><label style={labelStyle}>Verification Code</label><input value={otpCode} onChange={(e) => setOtpCode(e.target.value)} style={{ ...inputStyle, textAlign: 'center', fontSize: '1.1rem', letterSpacing: '0.25em' }} maxLength={6} placeholder="000000" /></div>
+                    <div style={{ marginBottom: '0.7rem' }}><label htmlFor="otp-code" style={labelStyle}>Verification Code</label><input id="otp-code" value={otpCode} onChange={(e) => setOtpCode(e.target.value)} style={{ ...inputStyle, textAlign: 'center', fontSize: '1.1rem', letterSpacing: '0.25em' }} maxLength={6} placeholder="000000" /></div>
                     <button onClick={verifyEmailOTP} disabled={loading} style={{ width: '100%', padding: '0.55rem', borderRadius: '0.4rem', background: '#2563eb', color: '#fff', fontSize: '0.875rem', fontWeight: 600, border: 'none', cursor: 'pointer', marginTop: '0.5rem' }}>
                       {loading ? <span className="spinner" /> : 'Verify & Continue'}
                     </button>
@@ -349,7 +349,7 @@ export default function Login() {
                     <p style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '1rem', textAlign: 'center' }}>
                       We sent a 6-digit code to <strong>{addPwdState.current.email}</strong>
                     </p>
-                    <div style={{ marginBottom: '0.7rem' }}><label style={labelStyle}>Verification Code</label><input value={addPwdOtp} onChange={(e) => setAddPwdOtp(e.target.value)} style={{ ...inputStyle, textAlign: 'center', fontSize: '1.1rem', letterSpacing: '0.25em' }} maxLength={6} placeholder="000000" /></div>
+                    <div style={{ marginBottom: '0.7rem' }}><label htmlFor="addpwd-otp" style={labelStyle}>Verification Code</label><input id="addpwd-otp" value={addPwdOtp} onChange={(e) => setAddPwdOtp(e.target.value)} style={{ ...inputStyle, textAlign: 'center', fontSize: '1.1rem', letterSpacing: '0.25em' }} maxLength={6} placeholder="000000" /></div>
                     <button onClick={verifyAndAddPassword} disabled={loading} style={{ width: '100%', padding: '0.55rem', borderRadius: '0.4rem', background: '#2563eb', color: '#fff', fontSize: '0.875rem', fontWeight: 600, border: 'none', cursor: 'pointer', marginTop: '0.5rem' }}>
                       {loading ? <span className="spinner" /> : 'Verify & Add Password'}
                     </button>

@@ -235,7 +235,7 @@ export default function AdmissionForm() {
         <div style={{ display: 'flex', gap: '.5rem' }}>
           <Link to="/admissions" className="btn btn-outline">Cancel</Link>
           <button className="btn btn-primary" form="admission-form" type="submit" disabled={saving}>
-            {saving ? <><span className="spinner" />{' '}Saving…</> : (isEdit ? 'Update' : 'Create')}
+            {saving ? <><span className="spinner" />{' '}Saving…</> : isEdit ? 'Update' : 'Create'}
           </button>
         </div>
       </div>
@@ -347,7 +347,7 @@ export default function AdmissionForm() {
         <div className="section-card">
           <div className="section-header section-header--indigo">
             Important Links
-            <button type="button" className="btn btn-sm" style={{ background: 'rgba(255,255,255,.2)', color: '#fff', border: '1px solid rgba(255,255,255,.4)' }} onClick={addLink}>+ Add</button>
+            <button type="button" className="btn btn-sm" style={{ background: 'rgba(255,255,255,.2)', color: '#fff', border: '1px solid rgba(255,255,255,.4)', marginLeft: '.5rem' }} onClick={addLink}>+ Add</button>
           </div>
           <div className="section-body" style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
             {links.map((link, i) => (

@@ -109,9 +109,7 @@ export default function Admissions() {
           {!loading && admissions.map((adm) => {
             const isTracking = trackedIds.has(String(adm.id));
             return (
-              <div key={adm.id} style={{ background: '#fff', border: '1px solid #e2e8f0', borderLeft: '4px solid #7c3aed', borderRadius: '0.5rem', padding: '1rem 1.1rem', marginBottom: '0.75rem', transition: 'box-shadow .15s' }}
-                onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,.07)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'none'; }}>
+              <div key={adm.id} className="job-card" style={{ background: '#fff', border: '1px solid #e2e8f0', borderLeft: '4px solid #7c3aed', borderRadius: '0.5rem', padding: '1rem 1.1rem', marginBottom: '0.75rem' }}>
                 <div style={{ marginBottom: '0.3rem' }}>
                   <h3 style={{ fontSize: '1rem', fontWeight: 700, lineHeight: 1.4, display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}>
                     <Link to={`/admissions/${adm.slug}`} style={{ color: '#1e293b', flex: 1 }}>{adm.admission_name}</Link>

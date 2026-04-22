@@ -174,7 +174,7 @@ export default function JobForm() {
       notification_date: notifDate || null,
       application_start: appStart || null, application_end: appEnd || null,
       exam_start: examStart || null, exam_end: examEnd || null, result_date: resultDate || null,
-      total_vacancies: vacancy.total !== '' ? Number(vacancy.total) : null,
+      total_vacancies: vacancy.total === '' ? null : Number(vacancy.total),
       fee: feeObj,
       vacancy_breakdown: vacancyBreakdown,
       application_details: links.filter((l) => l.url).length ? { important_links: links.filter((l) => l.url) } : {},
@@ -250,7 +250,7 @@ export default function JobForm() {
         <div style={{ display: 'flex', gap: '.5rem' }}>
           <Link to="/jobs" className="btn btn-outline">Cancel</Link>
           <button className="btn btn-primary" form="job-form" type="submit" disabled={saving}>
-            {saving ? <><span className="spinner" />{' '}Saving…</> : (isEdit ? 'Update Job' : 'Create Job')}
+            {saving ? <><span className="spinner" />{' '}Saving…</> : isEdit ? 'Update Job' : 'Create Job'}
           </button>
         </div>
       </div>
@@ -369,7 +369,7 @@ export default function JobForm() {
         <div className="section-card">
           <div className="section-header section-header--indigo">
             Important Links
-            <button type="button" className="btn btn-sm" style={{ background: 'rgba(255,255,255,.2)', color: '#fff', border: '1px solid rgba(255,255,255,.4)' }} onClick={addLink}>+ Add</button>
+            <button type="button" className="btn btn-sm" style={{ background: 'rgba(255,255,255,.2)', color: '#fff', border: '1px solid rgba(255,255,255,.4)', marginLeft: '.5rem' }} onClick={addLink}>+ Add</button>
           </div>
           <div className="section-body" style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
             {links.map((link, i) => (

@@ -95,7 +95,7 @@ export default function Layout() {
               <>
                 <Link to="/profile" style={{ color: 'rgba(255,255,255,.82)', fontSize: '0.875rem', fontWeight: 500, padding: '0.35rem 0.65rem', borderRadius: '0.35rem', textDecoration: 'none' }}>Profile</Link>
                 <Link to="/notifications" style={{ position: 'relative', color: 'rgba(255,255,255,.82)', fontSize: '0.875rem', padding: '0.35rem 0.65rem', textDecoration: 'none', display: 'inline-flex' }}>
-                  🔔{' '}<NotifBadge />
+                  🔔<NotifBadge />
                 </Link>
                 <button onClick={handleLogout} style={{ color: 'rgba(255,255,255,.82)', fontSize: '0.875rem', fontWeight: 500, padding: '0.35rem 0.65rem', borderRadius: '0.35rem', background: 'none', border: 'none', cursor: 'pointer' }}>Logout</button>
               </>

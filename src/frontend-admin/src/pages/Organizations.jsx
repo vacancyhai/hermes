@@ -55,12 +55,9 @@ export default function Organizations() {
         {q && <button type="button" className="btn btn-outline" onClick={() => { setQ(''); setPage(1); }}>Clear</button>}
       </form>
 
-      {loading ? (
-        <p style={{ color: '#64748b' }}>Loading…</p>
-      ) : (
-        orgs.length === 0 ? (
-          <p style={{ color: '#94a3b8' }}>No organizations found.</p>
-        ) : (
+      {loading && <p style={{ color: '#64748b' }}>Loading…</p>}
+      {!loading && orgs.length === 0 && <p style={{ color: '#94a3b8' }}>No organizations found.</p>}
+      {!loading && orgs.length > 0 && (
         <table className="data-table">
           <thead>
             <tr>
@@ -102,7 +99,6 @@ export default function Organizations() {
             ))}
           </tbody>
         </table>
-        )
       )}
 
       {totalPages > 1 && (

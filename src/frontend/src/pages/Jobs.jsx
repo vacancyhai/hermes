@@ -21,9 +21,7 @@ function JobCard({ job, trackedIds, onToggle }) {
   const statusLabels = { active: 'Active', upcoming: 'Upcoming', closed: 'Closed' };
 
   return (
-    <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderLeft: '4px solid #1e3a5f', borderRadius: '0.5rem', padding: '1rem 1.1rem', marginBottom: '0.75rem', transition: 'box-shadow .15s' }}
-      onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,.07)'; e.currentTarget.style.borderLeftColor = '#2563eb'; }}
-      onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderLeftColor = '#1e3a5f'; }}>
+    <div className="job-card" style={{ background: '#fff', border: '1px solid #e2e8f0', borderLeft: '4px solid #1e3a5f', borderRadius: '0.5rem', padding: '1rem 1.1rem', marginBottom: '0.75rem' }}>
       <div style={{ marginBottom: '0.3rem' }}>
         <h3 style={{ fontSize: '1rem', fontWeight: 700, lineHeight: 1.4, display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}>
           <Link to={`/jobs/${job.slug}`} style={{ color: '#1e293b', flex: 1 }}>{job.job_title}</Link>

@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types';
 import { useState, useEffect, useRef } from 'react';
 import {
   EmailAuthProvider,
@@ -18,20 +19,27 @@ const QUALIFICATIONS = [['10th','Class 10th'],['12th','Class 12th'],['diploma','
 function Modal({ title, open, onClose, children }) {
   if (!open) return null;
   return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-      <div onClick={(e) => e.stopPropagation()} style={{ background: '#fff', borderRadius: '0.5rem', padding: '1.5rem', maxWidth: 420, width: '100%' }}>
+    <button type="button" onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', border: 'none', cursor: 'default', width: '100%' }}>
+      <div role="presentation" onClick={(e) => e.stopPropagation()} style={{ background: '#fff', borderRadius: '0.5rem', padding: '1.5rem', maxWidth: 420, width: '100%' }}>
         <h3 style={{ margin: '0 0 1rem', color: '#1e3a5f' }}>{title}</h3>
         {children}
       </div>
-    </div>
+    </button>
   );
 }
+
+Modal.propTypes = {
+  title: PropTypes.string.isRequired,
+  open: PropTypes.bool.isRequired,
+  onClose: PropTypes.func.isRequired,
+  children: PropTypes.node.isRequired,
+};
 
 const inputStyle = { width: '100%', padding: '0.5rem 0.75rem', border: '1.5px solid #e2e8f0', borderRadius: '0.4rem', fontSize: '0.875rem', color: '#1e293b', background: '#f8fafc' };
 const labelStyle = { display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#374151', marginBottom: '0.3rem' };
 
 export default function Profile() {
-  const { token, logout } = useAuth();
+  const { logout } = useAuth();
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState({});
   const [loading, setLoading] = useState(true);
@@ -168,7 +176,7 @@ export default function Profile() {
   };
 
   const confirmPhoneOtp = async () => {
-    if (!phoneOtp || phoneOtp.length !== 6) { showFlash('error', 'Enter the 6-digit code.'); return; }
+    if (phoneOtp?.length !== 6) { showFlash('error', 'Enter the 6-digit code.'); return; }
     try {
       const cred = await confirmResult.current.confirm(phoneOtp);
       const idToken = await cred.user.getIdToken();
@@ -274,12 +282,12 @@ export default function Profile() {
             <h3 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '1rem', paddingBottom: '0.5rem', borderBottom: '1px solid #e2e8f0', color: '#1e3a5f' }}>Personal Information</h3>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
               <div>
-                <label style={labelStyle}>Full Name</label>
-                <input value={user?.full_name || ''} disabled style={{ ...inputStyle, background: '#f1f5f9', color: '#64748b' }} />
+                <label htmlFor="profile-name" style={labelStyle}>Full Name</label>
+                <input id="profile-name" value={user?.full_name || ''} disabled style={{ ...inputStyle, background: '#f1f5f9', color: '#64748b' }} />
               </div>
               <div>
-                <label style={labelStyle}>Email</label>
-                <input value={user?.email || ''} disabled style={{ ...inputStyle, background: '#f1f5f9', color: '#64748b' }} />
+                <label htmlFor="profile-email" style={labelStyle}>Email</label>
+                <input id="profile-email" value={user?.email || ''} disabled style={{ ...inputStyle, background: '#f1f5f9', color: '#64748b' }} />
               </div>
               <div>
                 <label style={labelStyle}>
@@ -290,7 +298,7 @@ export default function Profile() {
                       : <span style={{ marginLeft: '0.4rem', background: '#fee2e2', color: '#991b1b', padding: '0.1rem 0.4rem', borderRadius: 9999, fontSize: '0.72rem', fontWeight: 600 }}>⚠ Unverified</span>
                   )}
                 </label>
-                <input value={user?.phone || ''} disabled style={{ ...inputStyle, background: '#f1f5f9', color: '#64748b' }} placeholder="+91 98765 43210" />
+                <input id="profile-phone" value={user?.phone || ''} disabled style={{ ...inputStyle, background: '#f1f5f9', color: '#64748b' }} placeholder="+91 98765 43210" />
                 <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.4rem' }}>
                   <button type="button" onClick={() => { setNewPhone(user?.phone || ''); setPhoneModal(true); }} className="btn btn-outline btn-sm">Edit Phone</button>
                   {user?.phone && !user?.is_phone_verified && (
@@ -299,26 +307,26 @@ export default function Profile() {
                 </div>
               </div>
               <div>
-                <label style={labelStyle}>Gender</label>
-                <select value={gender} onChange={(e) => setGender(e.target.value)} style={inputStyle}>
+                <label htmlFor="profile-gender" style={labelStyle}>Gender</label>
+                <select id="profile-gender" value={gender} onChange={(e) => setGender(e.target.value)} style={inputStyle}>
                   <option value="">— Select —</option>
                   {['Male', 'Female', 'Other'].map((g) => <option key={g}>{g}</option>)}
                 </select>
               </div>
               <div>
-                <label style={labelStyle}>State</label>
-                <select value={state} onChange={(e) => setState(e.target.value)} style={inputStyle}>
+                <label htmlFor="profile-state" style={labelStyle}>State</label>
+                <select id="profile-state" value={state} onChange={(e) => setState(e.target.value)} style={inputStyle}>
                   <option value="">— Select —</option>
                   {STATES.map((s) => <option key={s}>{s}</option>)}
                 </select>
               </div>
               <div>
-                <label style={labelStyle}>City</label>
-                <input value={city} onChange={(e) => setCity(e.target.value)} style={inputStyle} placeholder="e.g. Lucknow" />
+                <label htmlFor="profile-city" style={labelStyle}>City</label>
+                <input id="profile-city" value={city} onChange={(e) => setCity(e.target.value)} style={inputStyle} placeholder="e.g. Lucknow" />
               </div>
               <div>
-                <label style={labelStyle}>Pincode</label>
-                <input value={pincode} onChange={(e) => setPincode(e.target.value)} style={inputStyle} placeholder="6-digit pincode" maxLength={6} />
+                <label htmlFor="profile-pincode" style={labelStyle}>Pincode</label>
+                <input id="profile-pincode" value={pincode} onChange={(e) => setPincode(e.target.value)} style={inputStyle} placeholder="6-digit pincode" maxLength={6} />
               </div>
             </div>
             <div style={{ display: 'flex', gap: '1.5rem', marginTop: '0.75rem', flexWrap: 'wrap' }}>
@@ -336,15 +344,15 @@ export default function Profile() {
               Job Preferences <span style={{ fontSize: '0.8rem', fontWeight: 400, color: '#64748b' }}>— Used for personalised recommendations</span>
             </h3>
             <div style={{ marginBottom: '0.75rem' }}>
-              <label style={labelStyle}>Highest Qualification</label>
-              <select value={qualification} onChange={(e) => setQualification(e.target.value)} style={inputStyle}>
+              <label htmlFor="profile-qual" style={labelStyle}>Highest Qualification</label>
+              <select id="profile-qual" value={qualification} onChange={(e) => setQualification(e.target.value)} style={inputStyle}>
                 <option value="">— Select —</option>
                 {QUALIFICATIONS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
               </select>
             </div>
             <div style={{ marginBottom: '0.75rem' }}>
-              <label style={labelStyle}>Preferred States <span style={{ color: '#94a3b8', fontWeight: 400 }}>(comma-separated)</span></label>
-              <input value={preferredStates} onChange={(e) => setPreferredStates(e.target.value)} style={inputStyle} placeholder="Delhi, Uttar Pradesh, Bihar" />
+              <label htmlFor="profile-states" style={labelStyle}>Preferred States <span style={{ color: '#94a3b8', fontWeight: 400 }}>(comma-separated)</span></label>
+              <input id="profile-states" value={preferredStates} onChange={(e) => setPreferredStates(e.target.value)} style={inputStyle} placeholder="Delhi, Uttar Pradesh, Bihar" />
             </div>
             <div>
               <label style={{ ...labelStyle, marginBottom: '0.4rem' }}>Preferred Categories</label>
@@ -436,8 +444,8 @@ export default function Profile() {
       {/* Edit phone */}
       <Modal title="Edit Phone Number" open={phoneModal} onClose={() => setPhoneModal(false)}>
         <div style={{ marginBottom: '0.7rem' }}>
-          <label style={labelStyle}>New Phone Number</label>
-          <input type="tel" value={newPhone} onChange={(e) => setNewPhone(e.target.value)} style={inputStyle} placeholder="+91 98765 43210" />
+          <label htmlFor="modal-new-phone" style={labelStyle}>New Phone Number</label>
+          <input id="modal-new-phone" type="tel" value={newPhone} onChange={(e) => setNewPhone(e.target.value)} style={inputStyle} placeholder="+91 98765 43210" />
         </div>
         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
           <button onClick={() => setPhoneModal(false)} className="btn btn-outline">Cancel</button>
@@ -460,8 +468,8 @@ export default function Profile() {
         {phoneVerifyStep === 'otp' && (
           <>
             <div style={{ marginBottom: '0.7rem' }}>
-              <label style={labelStyle}>Enter 6-digit code</label>
-              <input value={phoneOtp} onChange={(e) => setPhoneOtp(e.target.value)} style={{ ...inputStyle, textAlign: 'center', letterSpacing: '0.25em' }} maxLength={6} placeholder="000000" />
+              <label htmlFor="modal-phone-otp" style={labelStyle}>Enter 6-digit code</label>
+              <input id="modal-phone-otp" value={phoneOtp} onChange={(e) => setPhoneOtp(e.target.value)} style={{ ...inputStyle, textAlign: 'center', letterSpacing: '0.25em' }} maxLength={6} placeholder="000000" />
             </div>
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
               <button onClick={closePhoneVerifyModal} className="btn btn-outline">Cancel</button>
@@ -476,17 +484,17 @@ export default function Profile() {
         {pwdError && <div className="flash-error" style={{ marginBottom: '0.75rem' }}>{pwdError}</div>}
         {hasPassword && (
           <div style={{ marginBottom: '0.7rem' }}>
-            <label style={labelStyle}>Current Password</label>
-            <input type="password" value={currentPwd} onChange={(e) => setCurrentPwd(e.target.value)} style={inputStyle} placeholder="Enter current password" />
+            <label htmlFor="modal-current-pwd" style={labelStyle}>Current Password</label>
+            <input id="modal-current-pwd" type="password" value={currentPwd} onChange={(e) => setCurrentPwd(e.target.value)} style={inputStyle} placeholder="Enter current password" />
           </div>
         )}
         <div style={{ marginBottom: '0.7rem' }}>
-          <label style={labelStyle}>New Password <span style={{ color: '#94a3b8', fontWeight: 400 }}>(min 8 chars, 1 uppercase, 1 special)</span></label>
-          <input type="password" value={newPwd} onChange={(e) => setNewPwd(e.target.value)} style={inputStyle} placeholder="New password" />
+          <label htmlFor="modal-new-pwd" style={labelStyle}>New Password <span style={{ color: '#94a3b8', fontWeight: 400 }}>(min 8 chars, 1 uppercase, 1 special)</span></label>
+          <input id="modal-new-pwd" type="password" value={newPwd} onChange={(e) => setNewPwd(e.target.value)} style={inputStyle} placeholder="New password" />
         </div>
         <div style={{ marginBottom: '0.7rem' }}>
-          <label style={labelStyle}>Confirm New Password</label>
-          <input type="password" value={confirmPwd} onChange={(e) => setConfirmPwd(e.target.value)} style={inputStyle} placeholder="Re-enter password" />
+          <label htmlFor="modal-confirm-pwd" style={labelStyle}>Confirm New Password</label>
+          <input id="modal-confirm-pwd" type="password" value={confirmPwd} onChange={(e) => setConfirmPwd(e.target.value)} style={inputStyle} placeholder="Re-enter password" />
         </div>
         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
           <button onClick={() => setPwdModal(false)} className="btn btn-outline">Cancel</button>
@@ -500,16 +508,16 @@ export default function Profile() {
       <Modal title="Add Email & Password" open={linkEmailModal} onClose={() => setLinkEmailModal(false)}>
         <p style={{ fontSize: '0.9rem', color: '#64748b', marginBottom: '1rem' }}>Link an email address to enable email/password login.</p>
         <div style={{ marginBottom: '0.7rem' }}>
-          <label style={labelStyle}>Email Address</label>
-          <input type="email" value={linkEmail} onChange={(e) => setLinkEmail(e.target.value)} style={inputStyle} placeholder="your@email.com" />
+          <label htmlFor="modal-link-email" style={labelStyle}>Email Address</label>
+          <input id="modal-link-email" type="email" value={linkEmail} onChange={(e) => setLinkEmail(e.target.value)} style={inputStyle} placeholder="your@email.com" />
         </div>
         <div style={{ marginBottom: '0.7rem' }}>
-          <label style={labelStyle}>Password <span style={{ color: '#94a3b8', fontWeight: 400 }}>(min 8 chars, 1 uppercase, 1 special)</span></label>
-          <input type="password" value={linkPwd} onChange={(e) => setLinkPwd(e.target.value)} style={inputStyle} placeholder="Choose a password" />
+          <label htmlFor="modal-link-pwd" style={labelStyle}>Password <span style={{ color: '#94a3b8', fontWeight: 400 }}>(min 8 chars, 1 uppercase, 1 special)</span></label>
+          <input id="modal-link-pwd" type="password" value={linkPwd} onChange={(e) => setLinkPwd(e.target.value)} style={inputStyle} placeholder="Choose a password" />
         </div>
         <div style={{ marginBottom: '0.7rem' }}>
-          <label style={labelStyle}>Confirm Password</label>
-          <input type="password" value={linkConfirmPwd} onChange={(e) => setLinkConfirmPwd(e.target.value)} style={inputStyle} placeholder="Re-enter password" />
+          <label htmlFor="modal-link-confirm" style={labelStyle}>Confirm Password</label>
+          <input id="modal-link-confirm" type="password" value={linkConfirmPwd} onChange={(e) => setLinkConfirmPwd(e.target.value)} style={inputStyle} placeholder="Re-enter password" />
         </div>
         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
           <button onClick={() => setLinkEmailModal(false)} className="btn btn-outline">Cancel</button>

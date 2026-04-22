@@ -70,12 +70,9 @@ export default function Jobs() {
         {(q || status) && <button type="button" className="btn btn-outline" onClick={() => { setQ(''); setStatus(''); setPage(1); }}>Clear</button>}
       </form>
 
-      {loading ? (
-        <p style={{ color: '#64748b' }}>Loading…</p>
-      ) : (
-        jobs.length === 0 ? (
-          <p style={{ color: '#94a3b8' }}>No jobs found.</p>
-        ) : (
+      {loading && <p style={{ color: '#64748b' }}>Loading…</p>}
+      {!loading && jobs.length === 0 && <p style={{ color: '#94a3b8' }}>No jobs found.</p>}
+      {!loading && jobs.length > 0 && (
         <table className="data-table">
           <thead>
             <tr>
@@ -118,7 +115,6 @@ export default function Jobs() {
             ))}
           </tbody>
         </table>
-        )
       )}
 
       {/* Pagination */}

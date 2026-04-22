@@ -94,6 +94,12 @@ function SectionRow({ title, href, children }) {
   );
 }
 
+SectionRow.propTypes = {
+  title: PropTypes.string.isRequired,
+  href: PropTypes.string.isRequired,
+  children: PropTypes.node.isRequired,
+};
+
 export default function Dashboard() {
   const { token } = useAuth();
   const navigate = useNavigate();
@@ -152,6 +158,16 @@ export default function Dashboard() {
     if (next.has(String(id))) next.delete(String(id)); else next.add(String(id));
     return { ...prev, admissionIds: next };
   });
+  const untrackJob = (item) => {
+    api.delete(`/jobs/${item.id}/track`)
+      .then(() => setTracked((p) => ({ ...p, jobs: p.jobs.filter((j) => j.id !== item.id), jobIds: new Set([...p.jobIds].filter((x) => x !== String(item.id))) })))
+      .catch(() => {});
+  };
+  const untrackAdmission = (item) => {
+    api.delete(`/admissions/${item.id}/track`)
+      .then(() => setTracked((p) => ({ ...p, admissions: p.admissions.filter((a) => a.id !== item.id), admissionIds: new Set([...p.admissionIds].filter((x) => x !== String(item.id))) })))
+      .catch(() => {});
+  };
 
   return (
     <div>
@@ -177,8 +193,8 @@ export default function Dashboard() {
                 e.preventDefault();
                 if (!token) { navigate('/login?next=/'); return; }
                 try {
-                  if (isTracking) await api.delete(`/organizations/${org.id}/track`);
-                  else await api.post(`/organizations/${org.id}/track`);
+                  if (isTracking) { await api.delete(`/organizations/${org.id}/track`); }
+                  else { await api.post(`/organizations/${org.id}/track`); }
                   setTrackedOrgIds((prev) => { const next = new Set(prev); if (isTracking) next.delete(String(org.id)); else next.add(String(org.id)); return next; });
                 } catch { }
               };
@@ -361,7 +377,7 @@ export default function Dashboard() {
                       <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexShrink: 0, flexWrap: 'wrap' }}>
                         <span style={{ background: '#dbeafe', color: '#1e40af', padding: '0.15rem 0.5rem', borderRadius: 9999, fontSize: '0.7rem', fontWeight: 700 }}>Job</span>
                         <Link to={`/jobs/${item.slug}`} className="btn btn-outline btn-sm">View →</Link>
-                        <button onClick={() => { api.delete(`/jobs/${item.id}/track`).then(() => setTracked((p) => ({ ...p, jobs: p.jobs.filter((j) => j.id !== item.id), jobIds: new Set([...p.jobIds].filter((x) => x !== String(item.id))) }))).catch(() => {}); }} className="btn-tracking btn btn-sm">★ Untrack</button>
+                        <button onClick={() => untrackJob(item)} className="btn-tracking btn btn-sm">★ Untrack</button>
                       </div>
                     </div>
                   ))}
@@ -381,7 +397,7 @@ export default function Dashboard() {
                       <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexShrink: 0, flexWrap: 'wrap' }}>
                         <span style={{ background: '#d1fae5', color: '#065f46', padding: '0.15rem 0.5rem', borderRadius: 9999, fontSize: '0.7rem', fontWeight: 700 }}>Admission</span>
                         <Link to={`/admissions/${item.slug}`} className="btn btn-outline btn-sm">View →</Link>
-                        <button onClick={() => { api.delete(`/admissions/${item.id}/track`).then(() => setTracked((p) => ({ ...p, admissions: p.admissions.filter((a) => a.id !== item.id), admissionIds: new Set([...p.admissionIds].filter((x) => x !== String(item.id))) }))).catch(() => {}); }} className="btn-tracking btn btn-sm">★ Untrack</button>
+                        <button onClick={() => untrackAdmission(item)} className="btn-tracking btn btn-sm">★ Untrack</button>
                       </div>
                     </div>
                   ))}

@@ -10,5 +10,5 @@ ReactDOM.createRoot(document.getElementById('root')).render(
 );
 
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/sw.js').catch(() => {});
+  try { await navigator.serviceWorker.register('/sw.js'); } catch { }
 }
