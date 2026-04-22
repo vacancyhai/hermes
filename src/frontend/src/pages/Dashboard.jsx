@@ -142,13 +142,19 @@ SectionRow.defaultProps = { accent: null };
 
 function SkeletonMiniCard() {
   return (
-    <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderTop: '3px solid #e2e8f0', borderRadius: '0.6rem', padding: '0.95rem 1rem 0.8rem', width: 220, minWidth: 220, flexShrink: 0 }}>
-      <div className="skeleton" style={{ height: 14, width: '75%', borderRadius: '0.35rem', marginBottom: '0.5rem' }} />
-      <div className="skeleton" style={{ height: 14, width: '55%', borderRadius: '0.35rem', marginBottom: '0.4rem' }} />
-      <div className="skeleton" style={{ height: 12, width: '40%', borderRadius: '0.35rem', marginBottom: '0.65rem' }} />
-      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-        <div className="skeleton" style={{ height: 22, width: 70, borderRadius: '0.35rem' }} />
-        <div className="skeleton" style={{ height: 22, width: 52, borderRadius: '0.35rem' }} />
+    <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderTop: '3px solid #e2e8f0', borderRadius: '0.6rem', padding: '0.95rem 1rem 0.8rem', width: 220, minWidth: 220, maxWidth: 220, minHeight: 148, flexShrink: 0, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+      <div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.2rem' }}>
+          <div className="skeleton" style={{ height: 13, width: '65%', borderRadius: '0.3rem' }} />
+          <div className="skeleton" style={{ height: 16, width: 36, borderRadius: '9999px' }} />
+        </div>
+        <div className="skeleton" style={{ height: 13, width: '55%', borderRadius: '0.3rem', marginTop: '0.2rem', marginBottom: '0.2rem' }} />
+        <div className="skeleton" style={{ height: 11, width: '45%', borderRadius: '0.3rem', marginBottom: '0.2rem' }} />
+        <div className="skeleton" style={{ height: 11, width: '35%', borderRadius: '0.3rem' }} />
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '0.4rem' }}>
+        <div className="skeleton" style={{ height: 22, width: 68, borderRadius: '9999px' }} />
+        <div className="skeleton" style={{ height: 22, width: 26, borderRadius: '0.35rem' }} />
       </div>
     </div>
   );
@@ -261,15 +267,16 @@ export default function Dashboard() {
       {loading && (
         <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '0.85rem', padding: '1rem 1.25rem', marginBottom: '1.5rem', boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.85rem' }}>
-            <div className="skeleton" style={{ height: 14, width: 100, borderRadius: '0.35rem' }} />
-            <div className="skeleton" style={{ height: 14, width: 24, borderRadius: '9999px' }} />
+            <div className="skeleton" style={{ height: 13, width: 13, borderRadius: '0.2rem' }} />
+            <div className="skeleton" style={{ height: 13, width: 90, borderRadius: '0.3rem' }} />
+            <div className="skeleton" style={{ height: 13, width: 22, borderRadius: '9999px' }} />
           </div>
-          <div style={{ display: 'flex', gap: '0.65rem' }}>
+          <div style={{ display: 'flex', gap: '0.65rem', overflowX: 'hidden' }}>
             {Array.from({ length: 8 }).map((_, i) => (
               <div key={i} style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: '0.45rem', flexShrink: 0, width: 88 }}>
                 <div className="skeleton" style={{ width: 48, height: 48, borderRadius: '0.6rem' }} />
-                <div className="skeleton" style={{ height: 10, width: 64, borderRadius: '0.3rem' }} />
-                <div className="skeleton" style={{ height: 20, width: 88, borderRadius: '0.3rem' }} />
+                <div className="skeleton" style={{ height: 9, width: 60, borderRadius: '0.3rem' }} />
+                <div className="skeleton" style={{ height: 22, width: 88, borderRadius: '0.3rem' }} />
               </div>
             ))}
           </div>
@@ -325,9 +332,10 @@ export default function Dashboard() {
             <div>
               {loading && Array.from({ length: 5 }).map((_, i) => (
                 <div key={i} style={{ borderBottom: '1px solid #f8fafc', padding: '0.65rem 0.9rem' }}>
-                  <div className="skeleton" style={{ height: 12, width: '85%', borderRadius: '0.3rem', marginBottom: '0.4rem' }} />
-                  <div className="skeleton" style={{ height: 12, width: '55%', borderRadius: '0.3rem', marginBottom: '0.3rem' }} />
-                  <div className="skeleton" style={{ height: 18, width: 52, borderRadius: '9999px' }} />
+                  <div className="skeleton" style={{ height: 11, width: '88%', borderRadius: '0.3rem', marginBottom: '0.2rem' }} />
+                  <div className="skeleton" style={{ height: 11, width: '60%', borderRadius: '0.3rem', marginBottom: '0.3rem' }} />
+                  <div className="skeleton" style={{ height: 11, width: '45%', borderRadius: '0.3rem', marginBottom: '0.3rem' }} />
+                  <div className="skeleton" style={{ height: 17, width: 48, borderRadius: '9999px' }} />
                 </div>
               ))}
               {!loading && data.exams.length === 0 && <div style={{ padding: '1rem', textAlign: 'center', color: '#94a3b8', fontSize: '0.78rem' }}>No upcoming exams</div>}
