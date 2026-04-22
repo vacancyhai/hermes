@@ -164,7 +164,7 @@ export default function JobForm() {
         <div style={{ display: 'flex', gap: '.5rem' }}>
           <Link to="/jobs" className="btn btn-outline">Cancel</Link>
           <button className="btn btn-primary" form="job-form" type="submit" disabled={saving}>
-            {saving ? <><span className="spinner" />{' '}Saving…</> : isEdit ? 'Update Job' : 'Create Job'}
+            {saving ? <><span className="spinner" />{' '}Saving…</> : (isEdit ? 'Update Job' : 'Create Job')}
           </button>
         </div>
       </div>

@@ -336,7 +336,7 @@ export default function Login() {
                   <div>
                     <p style={{ fontSize: '0.9rem', color: '#1e3a5f', marginBottom: '1rem', textAlign: 'center', fontWeight: 500 }}>You signed up with Google</p>
                     <p style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '1rem', textAlign: 'center' }}>Add a password to also sign in with email/password.</p>
-                    <div style={{ marginBottom: '0.7rem' }}><label style={labelStyle}>New Password <span style={{ color: '#94a3b8', fontWeight: 400 }}>(min 6 chars)</span></label><input type="password" value={addPwd} onChange={(e) => setAddPwd(e.target.value)} style={inputStyle} placeholder="Choose a password" /></div>
+                    <div style={{ marginBottom: '0.7rem' }}><label htmlFor="add-pwd" style={labelStyle}>New Password <span style={{ color: '#94a3b8', fontWeight: 400 }}>(min 6 chars)</span></label><input id="add-pwd" type="password" value={addPwd} onChange={(e) => setAddPwd(e.target.value)} style={inputStyle} placeholder="Choose a password" /></div>
                     <button onClick={requestAddPassword} disabled={loading} style={{ width: '100%', padding: '0.55rem', borderRadius: '0.4rem', background: '#2563eb', color: '#fff', fontSize: '0.875rem', fontWeight: 600, border: 'none', cursor: 'pointer', marginTop: '0.5rem' }}>
                       {loading ? <span className="spinner" /> : 'Add Password'}
                     </button>
@@ -363,7 +363,7 @@ export default function Login() {
               <div>
                 {phoneStep === 'input' && (
                   <div>
-                    <div style={{ marginBottom: '0.7rem' }}><label style={labelStyle}>Phone Number</label><input type="tel" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} style={inputStyle} placeholder="+91 98765 43210" /></div>
+                    <div style={{ marginBottom: '0.7rem' }}><label htmlFor="phone-number" style={labelStyle}>Phone Number</label><input id="phone-number" type="tel" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} style={inputStyle} placeholder="+91 98765 43210" /></div>
                     <button onClick={sendPhoneOTP} disabled={loading} style={{ width: '100%', padding: '0.55rem', borderRadius: '0.4rem', background: '#059669', color: '#fff', fontSize: '0.875rem', fontWeight: 600, border: 'none', cursor: 'pointer', marginTop: '0.5rem' }}>
                       {loading ? <span className="spinner" /> : 'Send OTP'}
                     </button>

@@ -5,7 +5,7 @@ import { useAdminList } from '../hooks/useAdminList';
 const STATUS_COLORS = { active: 'badge-active', upcoming: 'badge-upcoming', closed: 'badge-closed', inactive: 'badge-inactive' };
 
 export default function Jobs() {
-  const { items: jobs, loading, q, setQ, status, setStatus, page, setPage, total, totalPages, deleting, flash, setFlash, load, handleSearch, handleDelete } = useAdminList('/admin/jobs');
+  const { items: jobs, loading, q, setQ, status, setStatus, page, setPage, total, totalPages, deleting, flash, handleSearch, handleDelete } = useAdminList('/admin/jobs');
 
   async function deleteJob(job) {
     await handleDelete(job.id, `Delete job "${job.job_title}"? This cannot be undone.`, 'Job deleted.', `/admin/jobs/${job.id}`);

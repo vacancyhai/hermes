@@ -38,7 +38,15 @@ export function useTrackedItems(endpoint, token) {
     try {
       if (isTracking) { await api.delete(`/${type}s/${id}/track`); }
       else { await api.post(`/${type}s/${id}/track`); }
-      setFn((prev) => { const next = new Set(prev); if (isTracking) next.delete(String(id)); else next.add(String(id)); return next; });
+      setFn((prev) => {
+        const next = new Set(prev);
+        if (isTracking) {
+          next.delete(String(id));
+        } else {
+          next.add(String(id));
+        }
+        return next;
+      });
     } catch { }
   };
 

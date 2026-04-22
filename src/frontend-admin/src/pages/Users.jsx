@@ -3,9 +3,13 @@ import { Link } from 'react-router-dom';
 import client from '../api/client';
 import AdminPagination from '../components/AdminPagination';
 
+function statusBadgeClass(s) {
+  if (s === 'active') return 'badge-active';
+  if (s === 'suspended') return 'badge-suspended';
+  return 'badge-warning';
+}
 function statusBadge(s) {
-  const sc = s === 'active' ? 'badge-active' : s === 'suspended' ? 'badge-suspended' : 'badge-warning';
-  return <span className={`badge ${sc}`}>{s || 'unknown'}</span>;
+  return <span className={`badge ${statusBadgeClass(s)}`}>{s || 'unknown'}</span>;
 }
 
 export default function Users() {
@@ -119,7 +123,7 @@ export default function Users() {
                   <div style={{ display: 'flex', gap: '.3rem' }}>
                     <Link to={`/users/${u.id}`} className="btn btn-sm btn-outline">View</Link>
                     <button className="btn btn-sm btn-warning" onClick={() => handleSuspend(u)} disabled={acting === u.id}>
-                      {acting === u.id ? '…' : u.status === 'suspended' ? 'Activate' : 'Suspend'}
+                      {acting === u.id ? '…' : (u.status === 'suspended' ? 'Activate' : 'Suspend')}
                     </button>
                     <button className="btn btn-sm btn-danger" onClick={() => handleDelete(u)} disabled={acting === u.id}>Del</button>
                   </div>

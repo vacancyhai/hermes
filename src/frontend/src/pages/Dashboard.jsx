@@ -150,23 +150,40 @@ export default function Dashboard() {
 
   const toggleJobId = (id) => setTracked((prev) => {
     const next = new Set(prev.jobIds);
-    if (next.has(String(id))) next.delete(String(id)); else next.add(String(id));
+    if (next.has(String(id))) {
+      next.delete(String(id));
+    } else {
+      next.add(String(id));
+    }
     return { ...prev, jobIds: next };
   });
   const toggleAdmId = (id) => setTracked((prev) => {
     const next = new Set(prev.admissionIds);
-    if (next.has(String(id))) next.delete(String(id)); else next.add(String(id));
+    if (next.has(String(id))) {
+      next.delete(String(id));
+    } else {
+      next.add(String(id));
+    }
     return { ...prev, admissionIds: next };
   });
-  const untrackJob = (item) => {
-    api.delete(`/jobs/${item.id}/track`)
-      .then(() => setTracked((p) => ({ ...p, jobs: p.jobs.filter((j) => j.id !== item.id), jobIds: new Set([...p.jobIds].filter((x) => x !== String(item.id))) })))
-      .catch(() => {});
+
+  function removeTrackedJob(p, item) {
+    return { ...p, jobs: p.jobs.filter((j) => j.id !== item.id), jobIds: new Set([...p.jobIds].filter((x) => x !== String(item.id))) };
+  }
+  function removeTrackedAdmission(p, item) {
+    return { ...p, admissions: p.admissions.filter((a) => a.id !== item.id), admissionIds: new Set([...p.admissionIds].filter((x) => x !== String(item.id))) };
+  }
+  const untrackJob = async (item) => {
+    try {
+      await api.delete(`/jobs/${item.id}/track`);
+      setTracked((p) => removeTrackedJob(p, item));
+    } catch { }
   };
-  const untrackAdmission = (item) => {
-    api.delete(`/admissions/${item.id}/track`)
-      .then(() => setTracked((p) => ({ ...p, admissions: p.admissions.filter((a) => a.id !== item.id), admissionIds: new Set([...p.admissionIds].filter((x) => x !== String(item.id))) })))
-      .catch(() => {});
+  const untrackAdmission = async (item) => {
+    try {
+      await api.delete(`/admissions/${item.id}/track`);
+      setTracked((p) => removeTrackedAdmission(p, item));
+    } catch { }
   };
 
   return (
@@ -195,7 +212,15 @@ export default function Dashboard() {
                 try {
                   if (isTracking) { await api.delete(`/organizations/${org.id}/track`); }
                   else { await api.post(`/organizations/${org.id}/track`); }
-                  setTrackedOrgIds((prev) => { const next = new Set(prev); if (isTracking) next.delete(String(org.id)); else next.add(String(org.id)); return next; });
+                  setTrackedOrgIds((prev) => {
+                    const next = new Set(prev);
+                    if (isTracking) {
+                      next.delete(String(org.id));
+                    } else {
+                      next.add(String(org.id));
+                    }
+                    return next;
+                  });
                 } catch { }
               };
               return (

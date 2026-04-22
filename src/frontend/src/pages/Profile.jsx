@@ -20,7 +20,7 @@ function Modal({ title, open, onClose, children }) {
   if (!open) return null;
   return (
     <button type="button" onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', border: 'none', cursor: 'default', width: '100%' }}>
-      <div role="presentation" onClick={(e) => e.stopPropagation()} style={{ background: '#fff', borderRadius: '0.5rem', padding: '1.5rem', maxWidth: 420, width: '100%' }}>
+      <div aria-hidden="true" onClick={(e) => e.stopPropagation()} style={{ background: '#fff', borderRadius: '0.5rem', padding: '1.5rem', maxWidth: 420, width: '100%' }}>
         <h3 style={{ margin: '0 0 1rem', color: '#1e3a5f' }}>{title}</h3>
         {children}
       </div>
@@ -355,13 +355,14 @@ export default function Profile() {
               <input id="profile-states" value={preferredStates} onChange={(e) => setPreferredStates(e.target.value)} style={inputStyle} placeholder="Delhi, Uttar Pradesh, Bihar" />
             </div>
             <div>
-              <label style={{ ...labelStyle, marginBottom: '0.4rem' }}>Preferred Categories</label>
-              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <div id="pref-cats-label" style={{ ...labelStyle, marginBottom: '0.4rem' }}>Preferred Categories</div>
+              <div role="group" aria-labelledby="pref-cats-label" style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                 {CATEGORIES.map((cat) => {
                   const active = preferredCategories.includes(cat);
+                  const catId = `pref-cat-${cat}`;
                   return (
-                    <label key={cat} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem', cursor: 'pointer', background: active ? '#dbeafe' : '#f1f5f9', padding: '0.3rem 0.6rem', borderRadius: '0.375rem', border: `1px solid ${active ? '#bfdbfe' : '#e2e8f0'}` }}>
-                      <input type="checkbox" checked={active} onChange={(e) => { if (e.target.checked) setPreferredCategories((p) => [...p, cat]); else setPreferredCategories((p) => p.filter((c) => c !== cat)); }} style={{ display: 'none' }} />
+                    <label key={cat} htmlFor={catId} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem', cursor: 'pointer', background: active ? '#dbeafe' : '#f1f5f9', padding: '0.3rem 0.6rem', borderRadius: '0.375rem', border: `1px solid ${active ? '#bfdbfe' : '#e2e8f0'}` }}>
+                      <input id={catId} type="checkbox" checked={active} onChange={(e) => { if (e.target.checked) { setPreferredCategories((p) => [...p, cat]); } else { setPreferredCategories((p) => p.filter((c) => c !== cat)); } }} style={{ display: 'none' }} />
                       {CATEGORY_LABELS[cat]}
                     </label>
                   );
@@ -384,12 +385,15 @@ export default function Profile() {
             {[
               { state: emailNotif, setter: setEmailNotif, icon: '📧', label: 'Email Notifications', hint: 'Deadline reminders, new job alerts' },
               { state: pushNotif, setter: setPushNotif, icon: '🔔', label: 'Push Notifications', hint: 'Mobile app alerts (requires app)' },
-            ].map(({ state: s, setter, icon, label, hint }) => (
-              <label key={label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem 1rem', background: '#f8fafc', borderRadius: '0.5rem', border: '1px solid #e2e8f0', cursor: 'pointer', marginBottom: '0.5rem' }}>
-                <div><div style={{ fontSize: '0.9rem', fontWeight: 600 }}>{icon} {label}</div><div style={{ fontSize: '0.78rem', color: '#64748b' }}>{hint}</div></div>
-                <input type="checkbox" checked={s} onChange={(e) => setter(e.target.checked)} style={{ accentColor: '#2563eb', width: 18, height: 18, cursor: 'pointer' }} />
-              </label>
-            ))}
+            ].map(({ state: s, setter, icon, label, hint }) => {
+              const notifId = `notif-${label.replaceAll(' ', '-').toLowerCase()}`;
+              return (
+                <label key={label} htmlFor={notifId} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem 1rem', background: '#f8fafc', borderRadius: '0.5rem', border: '1px solid #e2e8f0', cursor: 'pointer', marginBottom: '0.5rem' }}>
+                  <div><div style={{ fontSize: '0.9rem', fontWeight: 600 }}>{icon} {label}</div><div style={{ fontSize: '0.78rem', color: '#64748b' }}>{hint}</div></div>
+                  <input id={notifId} type="checkbox" checked={s} onChange={(e) => setter(e.target.checked)} aria-label={label} style={{ accentColor: '#2563eb', width: 18, height: 18, cursor: 'pointer' }} />
+                </label>
+              );
+            })}
           </div>
           <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '0.65rem' }}>💾 Save Preferences</button>
         </form>

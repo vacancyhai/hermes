@@ -5,7 +5,7 @@ export default function ImportantLinksEditor({ prefix, links, onUpdate, onAdd, o
   return (
     <div className="section-card">
       <div className="section-header section-header--indigo">
-        Important Links
+        Important Links{' '}
         <button type="button" className="btn btn-sm" style={{ background: 'rgba(255,255,255,.2)', color: '#fff', border: '1px solid rgba(255,255,255,.4)', marginLeft: '.5rem' }} onClick={onAdd}>+ Add</button>
       </div>
       <div className="section-body" style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>

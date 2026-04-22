@@ -74,7 +74,7 @@ export default function Layout() {
           {/* Brand */}
           <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 800, fontSize: '1.15rem', color: '#fff', flexShrink: 0, textDecoration: 'none' }}>
             <span style={{ width: 30, height: 30, background: 'rgba(255,255,255,.15)', borderRadius: '0.4rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.95rem' }}>🏛</span>
-            Vacancy Hai
+            {' '}Vacancy Hai
           </Link>
 
           {/* Center nav (desktop) */}
