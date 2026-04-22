@@ -266,16 +266,23 @@ export default function Dashboard() {
       {/* Org strip */}
       {loading && (
         <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '0.85rem', padding: '1rem 1.25rem', marginBottom: '1.5rem', boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.85rem' }}>
-            <div className="skeleton" style={{ height: 13, width: 13, borderRadius: '0.2rem' }} />
-            <div className="skeleton" style={{ height: 13, width: 90, borderRadius: '0.3rem' }} />
-            <div className="skeleton" style={{ height: 13, width: 22, borderRadius: '9999px' }} />
+          {/* header row — matches: <Landmark 13px> + "Organizations" (0.8rem) + count badge */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.85rem' }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+              <div className="skeleton" style={{ width: 13, height: 13, borderRadius: '0.2rem', flexShrink: 0 }} />
+              <div className="skeleton" style={{ height: 13, width: 88, borderRadius: '0.3rem' }} />
+              <div className="skeleton" style={{ height: 13, width: 20, borderRadius: '9999px' }} />
+            </div>
           </div>
-          <div style={{ display: 'flex', gap: '0.65rem', overflowX: 'hidden' }}>
+          {/* tiles row — matches real overflowX:auto, paddingBottom:0.2rem */}
+          <div style={{ display: 'flex', gap: '0.65rem', overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: '0.2rem' }}>
             {Array.from({ length: 8 }).map((_, i) => (
               <div key={i} style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: '0.45rem', flexShrink: 0, width: 88 }}>
+                {/* avatar: 48×48 with 2px border = 52px visual */}
                 <div className="skeleton" style={{ width: 48, height: 48, borderRadius: '0.6rem' }} />
-                <div className="skeleton" style={{ height: 9, width: 60, borderRadius: '0.3rem' }} />
+                {/* name: fontSize 0.65rem ≈ 10.4px + lineHeight 1.3 ≈ 13.5px */}
+                <div className="skeleton" style={{ height: 10, width: 72, borderRadius: '0.3rem' }} />
+                {/* follow button: padding 0.18rem 0.45rem + fontSize 0.6rem + Star 9px ≈ 22px tall, full width */}
                 <div className="skeleton" style={{ height: 22, width: 88, borderRadius: '0.3rem' }} />
               </div>
             ))}
