@@ -347,7 +347,7 @@ export default function Dashboard() {
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '0.4rem', flexWrap: 'wrap', gap: '0.3rem' }}>
                   {!token || !profileComplete
-                    ? <Link to="/profile" onClick={(e) => e.stopPropagation()} style={{ fontSize: '0.65rem', padding: '0.15rem 0.4rem', border: '1px solid #e2e8f0', borderRadius: '0.35rem', background: '#fff', color: '#64748b', textDecoration: 'none' }}><Search size={11} strokeWidth={2} /> Eligibility</Link>
+                    ? <Link to="/profile" onClick={(e) => e.stopPropagation()} style={{ fontSize: '0.65rem', padding: '0.15rem 0.5rem', border: '1px solid #e2e8f0', borderRadius: '9999px', background: '#f8fafc', color: '#64748b', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}><Search size={10} strokeWidth={2} />Eligibility</Link>
                     : <span style={{ fontSize: '0.65rem', color: '#94a3b8' }}>checking…</span>}
                   <TrackBtn type="job" id={job.id} slug={job.slug} isTracking={tracked.jobIds.has(String(job.id))} onToggle={toggleJobId} />
                 </div>
@@ -438,7 +438,7 @@ export default function Dashboard() {
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '0.4rem', flexWrap: 'wrap', gap: '0.3rem' }}>
                   {!token || !profileComplete
-                    ? <Link to="/profile" onClick={(e) => e.stopPropagation()} style={{ fontSize: '0.65rem', padding: '0.15rem 0.4rem', border: '1px solid #e2e8f0', borderRadius: '0.35rem', background: '#fff', color: '#64748b', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}><Search size={10} strokeWidth={2} />Eligibility</Link>
+                    ? <Link to="/profile" onClick={(e) => e.stopPropagation()} style={{ fontSize: '0.65rem', padding: '0.15rem 0.5rem', border: '1px solid #e2e8f0', borderRadius: '9999px', background: '#f8fafc', color: '#64748b', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}><Search size={10} strokeWidth={2} />Eligibility</Link>
                     : <span style={{ fontSize: '0.65rem', color: '#94a3b8' }}>checking…</span>}
                   <TrackBtn type="admission" id={adm.id} slug={adm.slug} isTracking={tracked.admissionIds.has(String(adm.id))} onToggle={toggleAdmId} />
                 </div>
