@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Outlet, NavLink, Link, useNavigate, useLocation } from 'react-router-dom';
+import { Home, Briefcase, CreditCard, FileText, Trophy, GraduationCap, Bell, User, LogOut, Menu, X, Landmark } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../api/client';
 
@@ -35,12 +36,12 @@ function NotifBadge() {
 }
 
 const navLinks = [
-  { to: '/', label: '🏠 Home', exact: true },
-  { to: '/jobs', label: '💼 Jobs' },
-  { to: '/admit-cards', label: '🪪 Admit Cards' },
-  { to: '/answer-keys', label: '📝 Answer Keys' },
-  { to: '/results', label: '🏆 Results' },
-  { to: '/admissions', label: '🎓 Admissions' },
+  { to: '/', icon: Home, label: 'Home', exact: true },
+  { to: '/jobs', icon: Briefcase, label: 'Jobs' },
+  { to: '/admit-cards', icon: CreditCard, label: 'Admit Cards' },
+  { to: '/answer-keys', icon: FileText, label: 'Answer Keys' },
+  { to: '/results', icon: Trophy, label: 'Results' },
+  { to: '/admissions', icon: GraduationCap, label: 'Admissions' },
 ];
 
 export default function Layout() {
@@ -73,17 +74,19 @@ export default function Layout() {
         <div style={{ width: '100%', padding: '1rem 1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
           {/* Brand */}
           <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 800, fontSize: '1.15rem', color: '#fff', flexShrink: 0, textDecoration: 'none' }}>
-            <span style={{ width: 30, height: 30, background: 'rgba(255,255,255,.15)', borderRadius: '0.4rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.95rem' }}>🏛</span>
+            <span style={{ width: 30, height: 30, background: 'rgba(255,255,255,.15)', borderRadius: '0.4rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Landmark size={16} strokeWidth={2.5} />
+            </span>
             {' '}Vacancy Hai
           </Link>
 
           {/* Center nav — desktop only */}
           <nav className="md:flex hidden" style={{ alignItems: 'center', gap: '0.1rem', flex: 1, justifyContent: 'center', overflowX: 'auto', scrollbarWidth: 'none' }}>
-            {navLinks.map(({ to, label, exact }) => (
+            {navLinks.map(({ to, icon: Icon, label, exact }) => (
               <NavLink key={to} to={to} end={exact} className={navLinkClass}
-                style={{ borderBottom: '2px solid transparent', padding: '0.65rem 0.85rem', textDecoration: 'none', color: 'rgba(255,255,255,0.75)', fontSize: '0.85rem', fontWeight: 500 }}
+                style={{ borderBottom: '2px solid transparent', padding: '0.65rem 0.75rem', textDecoration: 'none', color: 'rgba(255,255,255,0.75)', fontSize: '0.82rem', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
               >
-                {label}
+                <Icon size={14} strokeWidth={2} />{label}
               </NavLink>
             ))}
           </nav>
@@ -92,11 +95,11 @@ export default function Layout() {
           <nav className="md:flex hidden" style={{ alignItems: 'center', gap: '0.25rem' }}>
             {token ? (
               <>
-                <Link to="/profile" style={{ color: 'rgba(255,255,255,.82)', fontSize: '0.875rem', fontWeight: 500, padding: '0.35rem 0.65rem', borderRadius: '0.35rem', textDecoration: 'none' }}>Profile</Link>
-                <Link to="/notifications" style={{ position: 'relative', color: 'rgba(255,255,255,.82)', fontSize: '0.875rem', padding: '0.35rem 0.65rem', textDecoration: 'none', display: 'inline-flex' }}>
-                  🔔<NotifBadge />
+                <Link to="/profile" style={{ color: 'rgba(255,255,255,.82)', fontSize: '0.875rem', fontWeight: 500, padding: '0.35rem 0.65rem', borderRadius: '0.35rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}><User size={15} strokeWidth={2} />Profile</Link>
+                <Link to="/notifications" style={{ position: 'relative', color: 'rgba(255,255,255,.82)', fontSize: '0.875rem', padding: '0.35rem 0.65rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
+                  <Bell size={15} strokeWidth={2} /><NotifBadge />
                 </Link>
-                <button onClick={handleLogout} style={{ color: 'rgba(255,255,255,.82)', fontSize: '0.875rem', fontWeight: 500, padding: '0.35rem 0.65rem', borderRadius: '0.35rem', background: 'none', border: 'none', cursor: 'pointer' }}>Logout</button>
+                <button onClick={handleLogout} style={{ color: 'rgba(255,255,255,.82)', fontSize: '0.875rem', fontWeight: 500, padding: '0.35rem 0.65rem', borderRadius: '0.35rem', background: 'none', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}><LogOut size={15} strokeWidth={2} />Logout</button>
               </>
             ) : (
               <Link to="/login" style={{ background: 'rgba(255,255,255,.15)', color: '#fff', border: '1px solid rgba(255,255,255,.2)', fontSize: '0.875rem', fontWeight: 500, padding: '0.35rem 0.65rem', borderRadius: '0.35rem', textDecoration: 'none' }}>Login</Link>
@@ -107,28 +110,26 @@ export default function Layout() {
           <button
             onClick={() => setMenuOpen(!menuOpen)}
             className="md:hidden"
-            style={{ display: 'flex', flexDirection: 'column', gap: 4, cursor: 'pointer', padding: '0.4rem', border: 'none', background: 'transparent', borderRadius: '0.3rem' }}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: '0.4rem', border: 'none', background: 'transparent', borderRadius: '0.3rem', color: '#fff' }}
             aria-label="Toggle menu"
           >
-            <span style={{ display: 'block', width: 22, height: 2, background: '#fff', borderRadius: 2 }} />
-            <span style={{ display: 'block', width: 22, height: 2, background: '#fff', borderRadius: 2 }} />
-            <span style={{ display: 'block', width: 22, height: 2, background: '#fff', borderRadius: 2 }} />
+            {menuOpen ? <X size={22} strokeWidth={2} /> : <Menu size={22} strokeWidth={2} />}
           </button>
         </div>
 
         {/* Mobile dropdown menu */}
         {menuOpen && (
           <div className="md:hidden" style={{ background: '#162d4a', borderTop: '1px solid rgba(255,255,255,.08)' }}>
-            {navLinks.map(({ to, label }) => (
-              <Link key={to} to={to} style={{ display: 'block', color: 'rgba(255,255,255,.85)', fontSize: '0.9rem', padding: '0.65rem 1rem', borderBottom: '1px solid rgba(255,255,255,.06)', textDecoration: 'none' }}>
-                {label}
+            {navLinks.map(({ to, icon: Icon, label }) => (
+              <Link key={to} to={to} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'rgba(255,255,255,.85)', fontSize: '0.9rem', padding: '0.65rem 1rem', borderBottom: '1px solid rgba(255,255,255,.06)', textDecoration: 'none' }}>
+                <Icon size={16} strokeWidth={2} />{label}
               </Link>
             ))}
             {token ? (
               <>
-                <Link to="/profile" style={{ display: 'block', color: 'rgba(255,255,255,.85)', fontSize: '0.9rem', padding: '0.65rem 1rem', borderBottom: '1px solid rgba(255,255,255,.06)', textDecoration: 'none' }}>Profile</Link>
-                <Link to="/notifications" style={{ display: 'block', color: 'rgba(255,255,255,.85)', fontSize: '0.9rem', padding: '0.65rem 1rem', borderBottom: '1px solid rgba(255,255,255,.06)', textDecoration: 'none' }}>Notifications 🔔</Link>
-                <button onClick={handleLogout} style={{ display: 'block', width: '100%', textAlign: 'left', color: 'rgba(255,255,255,.85)', fontSize: '0.9rem', padding: '0.65rem 1rem', background: 'none', border: 'none', cursor: 'pointer' }}>Logout</button>
+                <Link to="/profile" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'rgba(255,255,255,.85)', fontSize: '0.9rem', padding: '0.65rem 1rem', borderBottom: '1px solid rgba(255,255,255,.06)', textDecoration: 'none' }}><User size={16} strokeWidth={2} />Profile</Link>
+                <Link to="/notifications" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'rgba(255,255,255,.85)', fontSize: '0.9rem', padding: '0.65rem 1rem', borderBottom: '1px solid rgba(255,255,255,.06)', textDecoration: 'none' }}><Bell size={16} strokeWidth={2} />Notifications</Link>
+                <button onClick={handleLogout} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%', textAlign: 'left', color: 'rgba(255,255,255,.85)', fontSize: '0.9rem', padding: '0.65rem 1rem', background: 'none', border: 'none', cursor: 'pointer' }}><LogOut size={16} strokeWidth={2} />Logout</button>
               </>
             ) : (
               <Link to="/login" style={{ display: 'block', color: 'rgba(255,255,255,.85)', fontSize: '0.9rem', padding: '0.65rem 1rem', textDecoration: 'none' }}>Login</Link>
