@@ -235,7 +235,7 @@ export default function Login() {
       <div style={{ display: 'flex', width: '100%', maxWidth: 860, borderRadius: '0.85rem', overflow: 'hidden', boxShadow: '0 24px 80px rgba(0,0,0,.4)' }}>
 
         {/* Left branding */}
-        <div style={{ flex: '0 0 300px', background: 'linear-gradient(160deg,#0f172a 0%,#1e3a5f 60%,#2563eb 100%)', padding: '2.5rem 2rem', display: 'flex', flexDirection: 'column', justifyContent: 'center', color: '#fff' }} className="hidden sm:flex">
+        <div style={{ flex: '0 0 300px', background: 'linear-gradient(160deg,#0f172a 0%,#1e3a5f 60%,#2563eb 100%)', padding: '2.5rem 2rem', display: 'flex', flexDirection: 'column', justifyContent: 'center', color: '#fff' }}>
           <div style={{ width: 52, height: 52, background: 'rgba(255,255,255,.15)', borderRadius: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.25rem', fontSize: '1.5rem' }}>🏛</div>
           <h1 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.4rem' }}>Vacancy Hai</h1>
           <p style={{ fontSize: '0.85rem', opacity: 0.8, lineHeight: 1.6, marginBottom: '1.75rem' }}>Your one-stop platform for government jobs &amp; admission notifications.</p>
