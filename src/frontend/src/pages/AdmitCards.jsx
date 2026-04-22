@@ -1,48 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
-import api from '../api/client';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useTrackedItems } from '../hooks/useTrackedItems';
 
 export default function AdmitCards() {
   const { token } = useAuth();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const [cards, setCards] = useState([]);
-  const [pagination, setPagination] = useState({});
-  const [trackedJobIds, setTrackedJobIds] = useState(new Set());
-  const [trackedAdmIds, setTrackedAdmIds] = useState(new Set());
-  const [loading, setLoading] = useState(false);
-  const offset = Number.parseInt(searchParams.get('offset') || '0', 10);
-  const limit = 20;
-
-  const fetchCards = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await api.get('/admit-cards', { params: { limit, offset } });
-      setCards(res.data.data || []);
-      setPagination(res.data.pagination || {});
-    } catch { } finally { setLoading(false); }
-  }, [offset]);
-
-  useEffect(() => { fetchCards(); }, [fetchCards]);
-
-  useEffect(() => {
-    if (!token) return;
-    api.get('/users/me/tracked').then((r) => {
-      setTrackedJobIds(new Set((r.data.jobs || []).map((j) => String(j.id))));
-      setTrackedAdmIds(new Set((r.data.admissions || []).map((a) => String(a.id))));
-    }).catch(() => { });
-  }, [token]);
-
-  const track = async (type, id) => {
-    const set = type === 'job' ? trackedJobIds : trackedAdmIds;
-    const setFn = type === 'job' ? setTrackedJobIds : setTrackedAdmIds;
-    const isTracking = set.has(String(id));
-    try {
-      if (isTracking) { await api.delete(`/${type}s/${id}/track`); }
-      else { await api.post(`/${type}s/${id}/track`); }
-      setFn((prev) => { const next = new Set(prev); if (isTracking) next.delete(String(id)); else next.add(String(id)); return next; });
-    } catch { }
-  };
+  const { items: cards, pagination, loading, offset, limit, trackedJobIds, trackedAdmIds, track, setSearchParams } = useTrackedItems('/admit-cards', token);
 
   return (
     <div>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import client from '../api/client';
+import AdminPagination from '../components/AdminPagination';
 
 function statusBadge(s) {
   const sc = s === 'active' ? 'badge-active' : s === 'suspended' ? 'badge-suspended' : 'badge-warning';
@@ -129,13 +130,7 @@ export default function Users() {
         </table>
       )}
 
-      {totalPages > 1 && (
-        <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center', marginTop: '1rem', flexWrap: 'wrap' }}>
-          <button className="btn btn-sm btn-outline" disabled={page === 1} onClick={() => setPage(page - 1)}>← Prev</button>
-          <span style={{ fontSize: '.85rem', color: '#475569' }}>Page {page} of {totalPages}</span>
-          <button className="btn btn-sm btn-outline" disabled={page === totalPages} onClick={() => setPage(page + 1)}>Next →</button>
-        </div>
-      )}
+      <AdminPagination page={page} totalPages={totalPages} onPage={setPage} />
     </div>
   );
 }

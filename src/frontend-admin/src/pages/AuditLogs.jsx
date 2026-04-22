@@ -1,4 +1,5 @@
-import { Fragment, useEffect, useState } from 'react';
+import { useEffect, useState, Fragment } from 'react';
+import AdminPagination from '../components/AdminPagination';
 import client from '../api/client';
 
 const ACTION_COLORS = {
@@ -103,13 +104,7 @@ export default function AuditLogs() {
         </table>
       )}
 
-      {totalPages > 1 && (
-        <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center', marginTop: '1rem', flexWrap: 'wrap' }}>
-          <button className="btn btn-sm btn-outline" disabled={page === 1} onClick={() => setPage(page - 1)}>← Prev</button>
-          <span style={{ fontSize: '.85rem', color: '#475569' }}>Page {page} of {totalPages}</span>
-          <button className="btn btn-sm btn-outline" disabled={page === totalPages} onClick={() => setPage(page + 1)}>Next →</button>
-        </div>
-      )}
+      <AdminPagination page={page} totalPages={totalPages} onPage={setPage} />
     </div>
   );
 }

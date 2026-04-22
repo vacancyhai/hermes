@@ -1,30 +1,11 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import client from '../api/client';
+import PhaseDocsPanel from '../components/PhaseDocsPanel';
+import { STATUSES, LINK_TYPES, emptyFee, emptyLink, safeJson, validateJson, buildFeeObj, toDateInput, makeSlug } from '../lib/formUtils';
 
-const STATUSES = ['active', 'upcoming', 'closed', 'inactive'];
 const TYPES = ['undergraduate', 'postgraduate', 'diploma', 'phd', 'certificate', 'other'];
 const STREAMS = ['engineering', 'medical', 'law', 'management', 'arts', 'science', 'commerce', 'other'];
-const LINK_TYPES = ['official_notification', 'apply_online', 'admit_card', 'answer_key', 'result', 'syllabus', 'other'];
-const PHASE_TABS = [
-  { key: 'admit_cards', label: 'Admit Cards', color: '#1d4ed8', api: 'admit-cards', parentKey: 'admission_id' },
-  { key: 'answer_keys', label: 'Answer Keys', color: '#6d28d9', api: 'answer-keys', parentKey: 'admission_id' },
-  { key: 'results', label: 'Results', color: '#15803d', api: 'results', parentKey: 'admission_id' },
-];
-
-const emptyFee = { general: '', obc: '', sc_st: '', ews: '', female: '' };
-const emptyLink = { type: 'official_notification', text: '', url: '' };
-const emptyDoc = { slug: '', title: '', start: '', end: '', published_at: '' };
-
-function safeJson(val, fallback = '{}') {
-  try { return JSON.stringify(JSON.parse(typeof val === 'string' ? val : JSON.stringify(val)), null, 2); }
-  catch { return typeof val === 'object' ? JSON.stringify(val, null, 2) : (val || fallback); }
-}
-
-function validateJson(val, setter, errSetter) {
-  setter(val);
-  try { JSON.parse(val); errSetter(''); } catch (e) { errSetter(e.message); }
-}
 
 export default function AdmissionForm() {
   const { admissionId } = useParams();
@@ -34,8 +15,6 @@ export default function AdmissionForm() {
   const [loading, setLoading] = useState(isEdit);
   const [saving, setSaving] = useState(false);
   const [flash, setFlash] = useState(null);
-  const [activePhaseTab, setActivePhaseTab] = useState('admit_cards');
-  const [phaseDocSaving, setPhaseDocSaving] = useState(false);
 
   /* ── basic fields ── */
   const [admissionName, setAdmissionName] = useState('');
@@ -75,15 +54,9 @@ export default function AdmissionForm() {
   const [seatsJson, setSeatsJson] = useState('{}');
   const [seatsErr, setSeatsErr] = useState('');
 
-  /* ── phase docs ── */
-  const [phaseDocs, setPhaseDocs] = useState({ admit_cards: [], answer_keys: [], results: [] });
-  const [newDoc, setNewDoc] = useState({ ...emptyDoc });
-
   useEffect(() => {
     client.get('/admin/organizations', { params: { limit: 200 } }).then((r) => setOrgs(r.data.data || [])).catch(() => {});
   }, []);
-
-  const toDateInput = (v) => (v ? v.split('T')[0] : '');
 
   const populate = useCallback((a) => {
     setAdmissionName(a.admission_name || '');
@@ -112,13 +85,6 @@ export default function AdmissionForm() {
     setSelectionJson(safeJson(a.selection_process, '{}'));
     setAdmDetailsJson(safeJson(a.admission_details, '{}'));
     setSeatsJson(safeJson(a.seats_info, '{}'));
-    if (a.id) {
-      Promise.all([
-        client.get(`/admin/admit-cards?admission_id=${a.id}&limit=100`).catch(() => ({ data: { data: [] } })),
-        client.get(`/admin/answer-keys?admission_id=${a.id}&limit=100`).catch(() => ({ data: { data: [] } })),
-        client.get(`/admin/results?admission_id=${a.id}&limit=100`).catch(() => ({ data: { data: [] } })),
-      ]).then(([ac, ak, rs]) => setPhaseDocs({ admit_cards: ac.data.data || [], answer_keys: ak.data.data || [], results: rs.data.data || [] }));
-    }
   }, []);
 
   useEffect(() => {
@@ -129,7 +95,7 @@ export default function AdmissionForm() {
 
   function handleNameChange(v) {
     setAdmissionName(v);
-    if (isEdit === false) setSlug(v.toLowerCase().replaceAll(/[^a-z0-9]+/g, '-').replaceAll(/^-|-$/g, ''));
+    if (isEdit === false) setSlug(makeSlug(v));
   }
 
   function updateLink(i, field, val) { setLinks((l) => l.map((x, idx) => idx === i ? { ...x, [field]: val } : x)); }
@@ -148,12 +114,7 @@ export default function AdmissionForm() {
     let admissionDetails = {}; try { admissionDetails = JSON.parse(admDetailsJson); } catch {}
     let seatsInfo = {}; try { seatsInfo = JSON.parse(seatsJson); } catch {}
 
-    const feeObj = {};
-    if (fee.general !== '') feeObj.general = Number(fee.general);
-    if (fee.obc !== '') feeObj.obc = Number(fee.obc);
-    if (fee.sc_st !== '') feeObj.sc_st = Number(fee.sc_st);
-    if (fee.ews !== '') feeObj.ews = Number(fee.ews);
-    if (fee.female !== '') feeObj.female = Number(fee.female);
+    const feeObj = buildFeeObj(fee);
 
     const payload = {
       admission_name: admissionName, slug, organization_id: orgId || null,
@@ -181,46 +142,6 @@ export default function AdmissionForm() {
     } catch (err) {
       setFlash({ type: 'error', msg: err.response?.data?.detail || 'Save failed' });
     } finally { setSaving(false); }
-  }
-
-  const activeTab = PHASE_TABS.find((t) => t.key === activePhaseTab);
-
-  async function handleAddPhaseDoc(e) {
-    e.preventDefault(); setPhaseDocSaving(true);
-    const isAdmitCard = activePhaseTab === 'admit_cards';
-    const docPayload = {
-      slug: newDoc.slug,
-      title: newDoc.title,
-      [activeTab.parentKey]: admissionId,
-      links: [],
-      published_at: newDoc.published_at || null,
-      ...(isAdmitCard
-        ? { exam_start: newDoc.start || null, exam_end: newDoc.end || null }
-        : { start_date: newDoc.start || null, end_date: newDoc.end || null }),
-    };
-    try {
-      await client.post(`/admin/${activeTab.api}`, docPayload);
-      setNewDoc({ ...emptyDoc });
-      const [ac, ak, rs] = await Promise.all([
-        client.get(`/admin/admit-cards?admission_id=${admissionId}&limit=100`).catch(() => ({ data: { data: [] } })),
-        client.get(`/admin/answer-keys?admission_id=${admissionId}&limit=100`).catch(() => ({ data: { data: [] } })),
-        client.get(`/admin/results?admission_id=${admissionId}&limit=100`).catch(() => ({ data: { data: [] } })),
-      ]);
-      setPhaseDocs({ admit_cards: ac.data.data || [], answer_keys: ak.data.data || [], results: rs.data.data || [] });
-      setFlash({ type: 'success', msg: 'Document added.' });
-    } catch (err) {
-      setFlash({ type: 'error', msg: err.response?.data?.detail || 'Failed' });
-    } finally { setPhaseDocSaving(false); }
-  }
-
-  async function handleDeletePhaseDoc(docId) {
-    if (!confirm('Delete this document?')) return;
-    try {
-      await client.delete(`/admin/${activeTab.api}/${docId}`);
-      setPhaseDocs((prev) => ({ ...prev, [activePhaseTab]: prev[activePhaseTab].filter((d) => d.id !== docId) }));
-    } catch (err) {
-      setFlash({ type: 'error', msg: err.response?.data?.detail || 'Delete failed' });
-    }
   }
 
   if (loading) return <p style={{ color: '#64748b' }}>Loading…</p>;
@@ -391,66 +312,7 @@ export default function AdmissionForm() {
         ))}
       </form>
 
-      {/* Phase Documents (edit only) */}
-      {isEdit && (
-        <div className="section-card" style={{ marginTop: '1.5rem' }}>
-          <div className="section-header section-header--slate">Phase Documents</div>
-          <div style={{ borderBottom: '1px solid #e2e8f0', display: 'flex', gap: 0 }}>
-            {PHASE_TABS.map((tab) => (
-              <button key={tab.key} type="button" onClick={() => setActivePhaseTab(tab.key)}
-                style={{ padding: '.6rem 1.25rem', border: 'none', background: activePhaseTab === tab.key ? '#fff' : '#f8fafc', borderBottom: activePhaseTab === tab.key ? '2px solid ' + tab.color : '2px solid transparent', color: activePhaseTab === tab.key ? tab.color : '#64748b', fontWeight: activePhaseTab === tab.key ? 700 : 400, cursor: 'pointer', fontSize: '.83rem' }}>
-                {tab.label} <span style={{ background: '#e2e8f0', borderRadius: 9999, padding: '0 6px', fontSize: '.7rem' }}>{phaseDocs[tab.key]?.length || 0}</span>
-              </button>
-            ))}
-          </div>
-          <div className="section-body">
-            {phaseDocs[activePhaseTab]?.length > 0 ? (
-              <table className="data-table" style={{ marginBottom: '1rem' }}>
-                <thead><tr><th>Slug</th><th>Title</th><th>Start</th><th>End</th><th>Published</th><th></th></tr></thead>
-                <tbody>
-                  {phaseDocs[activePhaseTab].map((d) => (
-                    <tr key={d.id}>
-                      <td style={{ fontSize: '.82rem' }}>{d.slug}</td>
-                      <td style={{ fontSize: '.85rem' }}>{d.title || '—'}</td>
-                      <td style={{ fontSize: '.8rem' }}>{d.exam_start || d.start_date || '—'}</td>
-                      <td style={{ fontSize: '.8rem' }}>{d.exam_end || d.end_date || '—'}</td>
-                      <td style={{ fontSize: '.8rem' }}>{d.published_at ? new Date(d.published_at).toLocaleDateString() : '—'}</td>
-                      <td><button className="btn btn-sm btn-danger" onClick={() => handleDeletePhaseDoc(d.id)}>Del</button></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            ) : <p style={{ color: '#94a3b8', fontSize: '.875rem', marginBottom: '1rem' }}>No documents yet.</p>}
-
-            <form onSubmit={handleAddPhaseDoc}>
-              <p style={{ fontWeight: 700, fontSize: '.83rem', marginBottom: '.5rem' }}>Add New Document</p>
-              <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr 120px 120px 120px auto', gap: '.5rem', alignItems: 'flex-end' }}>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label htmlFor="adoc-slug" style={{ fontSize: '.7rem' }}>Slug <span className="req">*</span></label>
-                  <input id="adoc-slug" type="text" required value={newDoc.slug} onChange={(e) => setNewDoc((d) => ({ ...d, slug: e.target.value }))} placeholder="jee-main-2024-ac" style={{ fontSize: '.82rem', padding: '.35rem .5rem' }} />
-                </div>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label htmlFor="adoc-title" style={{ fontSize: '.7rem' }}>Title <span className="req">*</span></label>
-                  <input id="adoc-title" type="text" required value={newDoc.title} onChange={(e) => setNewDoc((d) => ({ ...d, title: e.target.value }))} placeholder="JEE Main Admit Card 2024" style={{ fontSize: '.82rem', padding: '.35rem .5rem' }} />
-                </div>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label htmlFor="adoc-start" style={{ fontSize: '.7rem' }}>{activePhaseTab === 'admit_cards' ? 'Exam Start' : 'Start Date'}</label>
-                  <input id="adoc-start" type="date" value={newDoc.start} onChange={(e) => setNewDoc((d) => ({ ...d, start: e.target.value }))} style={{ fontSize: '.82rem', padding: '.35rem .5rem' }} />
-                </div>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label htmlFor="adoc-end" style={{ fontSize: '.7rem' }}>{activePhaseTab === 'admit_cards' ? 'Exam End' : 'End Date'}</label>
-                  <input id="adoc-end" type="date" value={newDoc.end} onChange={(e) => setNewDoc((d) => ({ ...d, end: e.target.value }))} style={{ fontSize: '.82rem', padding: '.35rem .5rem' }} />
-                </div>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label htmlFor="adoc-published" style={{ fontSize: '.7rem' }}>Published At</label>
-                  <input id="adoc-published" type="date" value={newDoc.published_at} onChange={(e) => setNewDoc((d) => ({ ...d, published_at: e.target.value }))} style={{ fontSize: '.82rem', padding: '.35rem .5rem' }} />
-                </div>
-                <button type="submit" className="btn btn-success btn-sm" disabled={phaseDocSaving}>{phaseDocSaving ? '…' : '+ Add'}</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {isEdit && <PhaseDocsPanel parentKey="admission_id" parentId={admissionId} onFlash={setFlash} />}
     </div>
   );
 }
