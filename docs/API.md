@@ -72,13 +72,13 @@ If `refresh_token` is provided, its JTI is also added to the Redis blocklist so 
 | POST | `/users/me/change-password` | User | Change password (requires re-authentication client-side before calling) |
 | POST | `/users/me/link-email-password` | User | Link email+password to phone-only account |
 
-**Profile preference fields** (used for job matching):
+**Profile preference fields** (used for eligibility checking):
 - `preferred_states` — JSON array of state names, e.g. `["Delhi", "Uttar Pradesh"]`
 - `preferred_categories` — JSON array of reservation categories the user wants to see, e.g. `["General", "OBC"]`
-- `category` — User's actual reservation category: `General`, `OBC`, `SC`, `ST`, `EWS`, or `EBC`. Used for eligibility scoring in recommendations.
+- `category` — User's actual reservation category: `General`, `OBC`, `SC`, `ST`, `EWS`, or `EBC`. Used for per-job/admission eligibility checks.
 - `highest_qualification` — Enum: `10th`, `12th`, `diploma`, `graduate`, `postgraduate`, `phd`
 - `gender` — Enum: `Male`, `Female`, `Other`
-- `date_of_birth` — Used to compute age for age-range eligibility matching in recommendations
+- `date_of_birth` — Used to compute age for age-range eligibility matching in per-job/admission eligibility checks
 
 **Note:** The profile response does not include `fcm_tokens` (sensitive device tokens). Register/unregister tokens via the FCM token endpoints.
 
@@ -118,7 +118,7 @@ Users can track specific jobs or admissions to receive automatic notifications.
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
 | GET | `/jobs` | Public | List active jobs (filtered, paginated, FTS) |
-| GET | `/jobs/recommended` | User JWT | Personalized recommendations by profile match |
+| GET | `/jobs/eligibility/:slug` | User JWT | Per-job eligibility check against user profile |
 | GET | `/jobs/:slug` | Public | Job detail by slug |
 
 **Query Parameters for `GET /jobs`:**
@@ -258,7 +258,7 @@ All notification endpoints require a user JWT.
 
 **Notification Types:** `deadline_reminder_7d`, `deadline_reminder_3d`, `deadline_reminder_1d`, `new_job_from_followed_org`, `priority_job_update`, `welcome`
 
-**Email Notifications:** When creating in-app notifications, the system also queues email via Celery if the user's `notification_preferences.email` is not explicitly `false`. Dev environment uses Mailpit (SMTP port 1025, Web UI port 8025).
+**Email Notifications:** When creating in-app notifications, the system also queues email via Celery if the user's `notification_preferences.email` is not explicitly `false`. Email is sent via OCI Email Delivery (SMTP port 587, STARTTLS).
 
 **Push Notifications:** FCM push notification is sent if `FIREBASE_CREDENTIALS_PATH` is configured and the user has registered FCM tokens with `notification_preferences.push` not set to `false`.
 
@@ -351,14 +351,20 @@ GET /api/v1/jobs?q=SSC+CGL&qualification_level=graduate&limit=10
 → 200 { "data": [...], "pagination": { "total": 1, "has_more": false, ... } }
 ```
 
-### Get Recommended Jobs
+### Check Job Eligibility
 ```
-GET /api/v1/jobs/recommended?limit=20&offset=0
+GET /api/v1/jobs/eligibility/ssc-cgl-2026
 Authorization: Bearer <user_token>
-→ 200 { "data": [...], "pagination": { "total": 5, ... } }
+→ 200 {
+    "status": "eligible" | "partially_eligible" | "not_eligible" | "unknown",
+    "reasons": [
+      "Your qualification (graduate) meets the requirement (graduate)",
+      "Age 26 is within the eligible range",
+      "Your category (OBC) is eligible"
+    ]
+  }
 ```
-Scoring: category match (+4), state match (+3), preferred categories (+2), education match (+2), age range match (+2), recency <7d (+1).
-Fallback: returns latest active jobs if user has no preferences set.
+`unknown` is returned when the user's profile has insufficient data — frontend prompts them to complete their profile.
 
 ### List Notifications
 ```

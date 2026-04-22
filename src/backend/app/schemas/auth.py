@@ -168,6 +168,14 @@ class AdminLoginRequest(BaseModel):
     password: str
 
 
+class AdminUserUpdateRequest(BaseModel):
+    full_name: str | None = Field(None, min_length=1, max_length=255)
+    phone: str | None = None
+    department: str | None = None
+    role: str | None = None
+    status: str | None = None
+
+
 class AdminUserResponse(BaseModel):
     id: uuid.UUID
     email: str

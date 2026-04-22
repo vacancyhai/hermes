@@ -1,8 +1,8 @@
 """Job vacancy endpoints (public).
 
-GET    /api/v1/jobs              — List (filterable, paginated, full-text search)
-GET    /api/v1/jobs/recommended  — Personalized recommendations based on profile
-GET    /api/v1/jobs/:id          — Detail by ID
+GET    /api/v1/jobs                    — List (filterable, paginated, full-text search)
+GET    /api/v1/jobs/eligibility/{slug} — Per-job eligibility check for logged-in user
+GET    /api/v1/jobs/:id                — Detail by ID
 """
 
 from typing import Annotated, Any
@@ -12,6 +12,7 @@ from app.models.admit_card import AdmitCard
 from app.models.answer_key import AnswerKey
 from app.models.job import Job
 from app.models.result import Result
+from app.models.user_profile import UserProfile
 from app.schemas.jobs import (
     AdmitCardResponse,
     AnswerKeyResponse,
@@ -19,7 +20,7 @@ from app.schemas.jobs import (
     JobResponse,
     ResultResponse,
 )
-from app.services.matching import get_recommended_jobs
+from app.services.matching import check_job_eligibility
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -90,26 +91,45 @@ async def list_jobs(
     }
 
 
-@router.get("/recommended")
-async def recommended_jobs(
+@router.get("/eligibility/{slug}")
+async def job_eligibility(
+    slug: str,
     current_user: Annotated[Any, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-    limit: Annotated[int, Query(ge=1, le=100)] = 20,
-    offset: Annotated[int, Query(ge=0)] = 0,
 ):
-    """Personalized job recommendations based on user profile preferences."""
-    user, _ = current_user
-    jobs, total = await get_recommended_jobs(user.id, db, limit=limit, offset=offset)
+    """Return eligibility status for the current user against a specific job.
 
-    return {
-        "data": [JobListItem.model_validate(j).model_dump() for j in jobs],
-        "pagination": {
-            "limit": limit,
-            "offset": offset,
-            "total": total,
-            "has_more": (offset + limit) < total,
-        },
-    }
+    Response: {"status": "eligible" | "partially_eligible" | "not_eligible", "reasons": [...]}
+    """
+    job_result = await db.execute(
+        select(Job).where(Job.slug == slug, Job.status != "inactive")
+    )
+    job = job_result.scalar_one_or_none()
+    if not job:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Job not found"
+        )
+
+    user, _ = current_user
+    profile_result = await db.execute(
+        select(UserProfile).where(UserProfile.user_id == user.id)
+    )
+    profile = profile_result.scalar_one_or_none()
+
+    from app.models.user_eligibility import UserJobEligibility
+
+    cached = (
+        await db.execute(
+            select(UserJobEligibility).where(
+                UserJobEligibility.user_id == user.id,
+                UserJobEligibility.job_id == job.id,
+            )
+        )
+    ).scalar_one_or_none()
+    if cached:
+        return {"status": cached.status, "reasons": cached.reasons}
+
+    return check_job_eligibility(job, profile)
 
 
 @router.get("/{slug}")

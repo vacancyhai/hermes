@@ -38,7 +38,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Hermes API",
+    title="Vacancy Hai API",
     description="Government Job Vacancy Portal — Backend API",
     version="0.1.0",
     docs_url="/api/v1/docs" if settings.APP_ENV == "development" else None,

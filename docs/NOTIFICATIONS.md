@@ -51,14 +51,15 @@ Email settings in `config/development/.env.backend`:
 
 ```env
 MAIL_ENABLED=true
-MAIL_SERVER=mailpit           # Use mailpit for development
-MAIL_PORT=1025
-MAIL_USE_TLS=false
+MAIL_SERVER=smtp.email.ap-mumbai-1.oci.oraclecloud.com
+MAIL_PORT=587
+MAIL_USE_TLS=true
+MAIL_USERNAME=                  # OCI SMTP username
+MAIL_PASSWORD=                  # OCI SMTP auth token
 MAIL_DEFAULT_SENDER=noreply@hermes.com
 ```
 
-- **Development:** Emails captured by Mailpit (web UI at `http://localhost:8025`)
-- **Production:** OCI Email Delivery (SMTP port 587, TLS enabled)
+- **All environments:** OCI Email Delivery (SMTP port 587, STARTTLS)
 
 ---
 

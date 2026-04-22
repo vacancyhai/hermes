@@ -93,6 +93,11 @@ async def update_profile(
         "profile_updated",
         extra={"user_id": str(user.id), "fields": list(update_data.keys())},
     )
+
+    from app.tasks.eligibility import recompute_eligibility_for_user
+
+    recompute_eligibility_for_user.delay(str(user.id))
+
     return ProfileResponse.model_validate(profile).model_dump()
 
 
@@ -612,19 +617,8 @@ async def update_notification_preferences(
     prefs = dict(profile.notification_preferences or {})
     update_data = body.model_dump(exclude_unset=True)
 
-    # telegram_chat_id is stored nested inside prefs["telegram"] dict
-    chat_id = update_data.pop("telegram_chat_id", None)
-    if chat_id is not None:
-        tg = prefs.get("telegram") if isinstance(prefs.get("telegram"), dict) else {}
-        tg["chat_id"] = chat_id
-        prefs["telegram"] = tg
-
     for key, value in update_data.items():
-        if key == "telegram" and isinstance(prefs.get("telegram"), dict):
-            # Preserve existing chat_id when only toggling enabled/disabled
-            prefs["telegram"]["enabled"] = value
-        else:
-            prefs[key] = value
+        prefs[key] = value
 
     profile.notification_preferences = prefs
     logger.info(
@@ -632,3 +626,26 @@ async def update_notification_preferences(
         extra={"user_id": str(user.id), "channels": list(update_data.keys())},
     )
     return {"message": "Preferences updated", "notification_preferences": prefs}
+
+
+@router.delete(
+    "/api/v1/users/me/notification-preferences", status_code=status.HTTP_200_OK
+)
+async def reset_notification_preferences(
+    current_user: Annotated[Any, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Reset notification preferences to defaults (empty — all channels enabled by app defaults)."""
+    user, _ = current_user
+    result = await db.execute(select(UserProfile).where(UserProfile.user_id == user.id))
+    profile = result.scalar_one_or_none()
+    if not profile:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=_PROFILE_NOT_FOUND
+        )
+    profile.notification_preferences = {}
+    logger.info("notification_preferences_reset", extra={"user_id": str(user.id)})
+    return {
+        "message": "Notification preferences reset to defaults",
+        "notification_preferences": {},
+    }

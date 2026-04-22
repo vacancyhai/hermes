@@ -47,17 +47,17 @@ communicate via HTTP REST API.
 │         - Security Headers                                 │
 └────┬─────────────────────────┬──────────────────┬──────────┘
      │                         │                  │
-     │ /api/* → backend:8000   │ /* → user:8080   │ admin.* → admin:8081
+     │ /api/* → backend:8000   │ /* → user:3000   │ admin.* → admin:4000
      ↓                         ↓                  ↓
 ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐
 │ Backend Container│  │  User Frontend   │  │  Admin Frontend  │
-│(FastAPI REST API)│  │  (Flask+Jinja2)  │  │  (Flask+Jinja2)  │
+│(FastAPI REST API)│  │ (React+Vite SPA) │  │ (React+Vite SPA) │
 │                  │  │                  │  │                  │
 │ - JWT Auth       │◄─│ - Register/Login │  │ - Admin Login    │
 │ - Business Logic │  │ - Job browsing   │◄─│ - Dashboard      │
 │ - Job Matching   │  │ - User profile   │  │ - Job mgmt       │
 │ - Notifications  │  │ - Notifications  │  │ - User mgmt      │
-│ Port: 8000       │  │ Port: 8080       │  │ Port: 8081       │
+│ Port: 8000       │  │ Port: 3000       │  │ Port: 4000       │
 └────────┬─────────┘  └──────────────────┘  └──────────────────┘
          │
          ├──────────────┬──────────────┬──────────────┐
@@ -73,7 +73,7 @@ communicate via HTTP REST API.
 
 | Network           | Services                                                                         |
 | ----------------- | -------------------------------------------------------------------------------- |
-| `hermes_network`  | backend, hermes-worker, hermes-scheduler, postgresql, pgbouncer, redis, frontend, frontend-admin, mailpit |
+| `hermes_network`  | backend, hermes-worker, hermes-scheduler, postgresql, pgbouncer, redis, frontend, frontend-admin |
 
 Frontends **cannot** reach the database or Redis directly — all persistence goes
 through the backend REST API via `BACKEND_API_URL`.
@@ -90,10 +90,8 @@ All services are defined in the single root **`docker-compose.yml`**.
 | `backend`        | local build        | `8000`   | `config/development/.env.backend`        |
 | `hermes-worker`  | local build        | —        | `config/development/.env.backend`        |
 | `hermes-scheduler`| local build        | —        | `config/development/.env.backend`        |
-| `frontend`       | local build        | `8080`   | `config/development/.env.frontend`       |
-| `frontend-admin` | local build        | `8081`   | `config/development/.env.frontend-admin` |
-| `mailpit`        | axllent/mailpit    | `1025/8025` | — (dev only)                     |
-
+| `frontend`       | local build        | `3000`   | `config/development/.env.frontend`       |
+| `frontend-admin` | local build        | `4000`   | `config/development/.env.frontend-admin` |
 
 ### Health Checks
 
@@ -103,8 +101,8 @@ All services are defined in the single root **`docker-compose.yml`**.
 | PgBouncer      | 10s      | `psql -h postgresql` connection check       |
 | Redis          | 10s      | `redis-cli ping`                            |
 | Backend        | 30s/15s  | `GET /api/v1/health` (port 8000)            |
-| User Frontend  | 30s/15s  | `GET /health` (port 8080)                   |
-| Admin Frontend | 30s/15s  | `GET /health` (port 8081)                   |
+| User Frontend  | —        | Vite dev server (port 3000), no healthcheck |
+| Admin Frontend | —        | Vite dev server (port 4000), no healthcheck |
 | Nginx          | 30s      | `GET /health`                               |
 
 **Startup order:** PostgreSQL → Redis → Backend → Frontends → Nginx.
@@ -112,52 +110,41 @@ All containers use `restart: unless-stopped`.
 
 ### Frontend–Backend Communication
 
-Both frontends are server-rendered Flask+Jinja2 apps enhanced with **HTMX** for
-dynamic interactions (live search, infinite scroll, real-time notifications) and
-**Alpine.js** for lightweight UI state (dropdowns, modals, toggles). They call
-the backend REST API via an `api_client.py` utility using the `BACKEND_API_URL`
-env var. No frontend ever connects to PostgreSQL or Redis directly.
+Both frontends are **React 18 single-page applications** (SPA) built with Vite
+and styled with TailwindCSS. They communicate exclusively with the FastAPI
+backend via REST API calls using Axios. No frontend ever connects to PostgreSQL
+or Redis directly.
 
-#### HTMX Integration
-
-HTMX (~14 KB) replaces the need for a JavaScript framework by making HTML
-responses from the server drive UI updates:
-
-| Feature | HTMX Approach | JS Required |
-| ------- | ------------- | ----------- |
-| Infinite scroll (job listings) | `hx-get="/jobs?page=2" hx-trigger="revealed" hx-swap="afterend"` | None |
-| Live search | `hx-get="/jobs/search" hx-trigger="keyup changed delay:300ms"` | None |
-| Mark notification read | `hx-put="/notifications/123/read" hx-swap="outerHTML"` | None |
-| Delete confirmation modal | Alpine.js `x-show` + `x-on:click` | None |
-| Notification badge count | `hx-get="/notifications/count" hx-trigger="every 30s"` | None |
-| Deadline countdown on job cards | Jinja2 `{{ (job.application_end - today).days }} days left` | None |
-| Application fee | Jinja2 iterates `job.fee` / `admission.fee` JSONB dict → shows all categories (General, OBC, SC/ST, EWS, Female) | None |
-| Share job / admission / card | `navigator.share({title, url})` (Web Share API); clipboard fallback on desktop | Inline `onclick` |
-
-The backend returns **HTML partials** (Jinja2 fragments) for HTMX requests
-(detected via `HX-Request` header) and **full pages** for normal requests.
-The FastAPI backend is not involved — HTMX requests go to the Flask frontend
-which calls the API and renders the partial.
+| Feature | Approach |
+| ------- | -------- |
+| Auth (user) | Firebase JS SDK (Email/Password, Google, Phone OTP) → verify-token endpoint → internal JWT |
+| Auth (admin) | POST `/auth/admin/login` → JWT stored in `localStorage` |
+| Token refresh | Axios response interceptor — auto-retries 401s with refresh token |
+| Routing | React Router v6 (`BrowserRouter`) |
+| State management | React `useState`/`useContext` — no Redux |
+| Pagination | `limit`/`offset` query params; `has_more` flag from backend |
+| Phase doc tabs | Per-tab API calls (`GET /admin/admit-cards?job_id=…`) on tab switch |
+| Share button | Web Share API + clipboard fallback |
 
 ```
-User Browser
+User Browser (SPA)
     ↓ HTTP
-Frontend (port 8080 or 8081)
-    ├─ Receives page request
-    ├─ Calls Backend via HTTP: GET http://<BACKEND_API_URL>/jobs?limit=20
-    │    Headers: Authorization: Bearer <JWT>, X-Request-ID: <uuid>
-    │    (Backend runs on port 8000 via Uvicorn)
-    ├─ Receives JSON response
-    ├─ Renders Jinja2 template with data
-    └─ Returns HTML to browser
+Vite dev server (port 3000 or 4000)
+    ├─ Serves index.html + React bundle
+    └─ Proxies /api/v1/* → backend:8000
+
+React app
+    ├─ Axios GET /api/v1/jobs?limit=20&offset=0
+    │    Header: Authorization: Bearer <JWT>
+    └─ Renders response data into React components
 ```
 
-This means any frontend can be replaced (e.g. Flask → React, or a React Native
-mobile app) with zero backend changes — only the HTTP client layer changes.
+Any frontend can be replaced (React → React Native, etc.) with zero backend
+changes — only the HTTP client layer changes.
 
 ### PWA (Progressive Web App) — Implemented
 
-The Flask user frontend is a full PWA. The following are already in `src/frontend/app/static/`:
+The React user frontend is a full PWA. The following are in `src/frontend/public/`:
 
 - **`manifest.json`** — Add-to-home-screen on Android, app icon, splash screen
 - **`sw.js`** — Service worker: caches job pages for offline access, serves `offline.html` fallback
@@ -192,7 +179,7 @@ All endpoints versioned under `/api/v1/`. List responses: `{ "data": [...], "pag
 |--------|--------|-------------|
 | `auth.py` | `/api/v1/auth` | Firebase verify-token, logout, refresh; admin login/logout/refresh; email OTP registration |
 | `users.py` | `/api/v1/users` | Profile CRUD, FCM tokens, phone, password management |
-| `jobs.py` | `/api/v1/jobs` | Public listing (FTS + filters), recommended, detail by slug |
+| `jobs.py` | `/api/v1/jobs` | Public listing (FTS + filters), per-job eligibility check, detail by slug |
 | `tracks.py` | `/api/v1/jobs/{id}/track`, `/api/v1/admissions/{id}/track` | Track/untrack jobs and admissions; list tracked |
 | `notifications.py` | `/api/v1/notifications` | List, count, mark read, delete |
 | `admin.py` | `/api/v1/admin` | Job CRUD + approve, user mgmt, stats, audit logs, admin-user creation |
@@ -382,7 +369,7 @@ Console after deployment.
 
 ### Meta Tags (per job page)
 
-Each job detail page renders SEO-critical tags in the Jinja2 `<head>`:
+Each job detail page renders SEO-critical tags in the `<head>` (set via React):
 
 ```html
 <title>{{ job.job_title }} — {{ job.organization }} | Hermes</title>
@@ -416,7 +403,7 @@ jobs appear in Google's job search widget. Added as JSON-LD in each job page:
 </script>
 ```
 
-This costs zero infrastructure — only Jinja2 template changes.
+This costs zero infrastructure — only React component changes.
 
 ### Notification Channels
 
@@ -501,7 +488,7 @@ page includes a single **Share** button using the Web Share API.
 **Behaviour:**
 - **Mobile** (Android/iOS): triggers native OS share sheet (`navigator.share`)
 - **Desktop fallback**: copies URL to clipboard, button text changes to `✓ Copied` for 1.8 s
-- URL and title passed via `data-*` attributes to avoid Jinja2-inside-JS escaping issues
+- URL and title passed directly from React component props
 
 **WhatsApp and Telegram share links have been removed.** The Web Share API is
 more universal — it lets users choose their preferred app (WhatsApp, Telegram,
@@ -559,15 +546,16 @@ Both jobs and admissions share the same detail page template structure with type
 - **Jobs**: Navy/Blue gradient, employment-focused sections (salary, eligibility, selection process)
 - **Admissions**: Purple gradient, education-focused sections (admission pattern, counselling, seats)
 
-### HTMX Document Tabs
+### Phase Document Tabs
 
-Detail pages include dynamic tabbed panels for per-phase documents:
+Detail pages include tabbed panels for per-phase documents. On tab switch, React
+calls the backend directly:
 
-```html
-<!-- Admit Cards Tab -->
-<div id="admit-cards-panel" hx-get="/jobs/{id}/admit-cards" hx-trigger="load">
-  <!-- Loaded via HTMX -->
-</div>
+```js
+// JobForm.jsx — on tab mount
+client.get(`/admin/admit-cards?job_id=${jobId}&limit=100`)
+client.get(`/admin/answer-keys?job_id=${jobId}&limit=100`)
+client.get(`/admin/results?job_id=${jobId}&limit=100`)
 ```
 
 These work for both jobs and admissions using the same backend endpoints.
@@ -646,7 +634,7 @@ RAM so builds are fast enough in production.
 | `DEBUG`  | `True`                                                 |
 | Database | Local PostgreSQL container (Docker volume)              |
 | Redis    | Local Redis container, no password (AOF enabled)        |
-| Mail     | Mailpit (`MAIL_ENABLED=false` in dev env)             |
+| Mail     | OCI Email Delivery (SMTP port 587, STARTTLS)           |
 | Nginx    | Not required; access services directly on exposed ports|
 | TLS      | None                                                   |
 | Volumes  | Hot-reload mounts for code                             |

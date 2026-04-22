@@ -28,9 +28,9 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from typing import Annotated, Any
 
+import jwt
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from jinja2 import Environment, FileSystemLoader
-from jose import JWTError, jwt
 from passlib.context import CryptContext
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -84,7 +84,9 @@ def _create_token(data: dict, expires_delta: timedelta) -> str:
     to_encode["jti"] = str(uuid.uuid4())
     to_encode["exp"] = datetime.now(timezone.utc) + expires_delta
     to_encode["iat"] = datetime.now(timezone.utc)
-    return jwt.encode(to_encode, settings.JWT_SECRET_KEY, algorithm=ALGORITHM)
+    return jwt.encode(
+        to_encode, settings.JWT_SECRET_KEY, algorithm=ALGORITHM
+    )  # PyJWT returns str
 
 
 def create_access_token(user_id: str, user_type: str, role: str | None = None) -> str:
@@ -172,7 +174,7 @@ async def _register_new_firebase_user(
 
         send_email_notification.delay(
             email,
-            "Welcome to Hermes!",
+            "Welcome to Vacancy Hai!",
             "email/welcome.html",
             {
                 "name": name,
@@ -249,14 +251,11 @@ async def logout(
             rt_payload = jwt.decode(
                 body.refresh_token, settings.JWT_SECRET_KEY, algorithms=[ALGORITHM]
             )
-            if (
-                rt_payload.get("type") == "refresh"
-                and rt_payload.get("user_type") == "user"
-            ):
+            if rt_payload.get("jti") and rt_payload.get("exp"):
                 await _blocklist_jti(
                     redis, rt_payload.get("jti"), rt_payload.get("exp", 0)
                 )
-        except JWTError:
+        except jwt.PyJWTError:
             pass  # Malformed refresh token — ignore; access token already blocklisted
 
     logger.info("logout", extra={"user_id": str(user.id)})
@@ -273,7 +272,7 @@ async def refresh(
         payload = jwt.decode(
             body.refresh_token, settings.JWT_SECRET_KEY, algorithms=[ALGORITHM]
         )
-    except JWTError:
+    except jwt.PyJWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token"
         )
@@ -327,7 +326,7 @@ async def check_user_providers(request: Request, body: CheckUserProvidersRequest
 
         # Extract provider IDs
         providers = [p.provider_id for p in user_record.provider_data]
-        has_password = "password" in providers
+        has_password = "password" in providers  # pragma: allowlist secret
 
         # Can add password if account exists with only social providers
         can_add_password = len(providers) > 0 and not has_password
@@ -389,14 +388,14 @@ async def add_password(
             body.verification_token, settings.JWT_SECRET_KEY, algorithms=["HS256"]
         )
         if (
-            payload.get("purpose") != "email_verified"
+            payload.get("purpose") != "add_password"
             or payload.get("email") != body.email
         ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid verification token",
             )
-    except JWTError:
+    except jwt.PyJWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired verification token",
@@ -470,7 +469,7 @@ def _render_otp_email(otp: str) -> str:
 
 def _smtp_send_otp(to: str, otp: str) -> None:
     """Send a 6-digit OTP email synchronously. Runs in a thread executor."""
-    subject = "Your Hermes verification code"
+    subject = "Your Vacancy Hai verification code"
     html = _render_otp_email(otp)
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
@@ -525,6 +524,56 @@ async def send_email_otp(
         )
     logger.info("email_otp_sent", extra={"email": body.email})
     return MessageResponse(message="OTP sent to your email")
+
+
+@router.post("/resend-verification", response_model=MessageResponse)
+@limiter.limit("3/minute")
+async def resend_verification(
+    request: Request,
+    current_user: Annotated[Any, Depends(get_current_user)],
+    redis: Annotated[Any, Depends(get_redis)],
+):
+    """Resend email OTP verification to the authenticated user's email address.
+
+    Only applicable for users who registered via email/password and whose
+    email is not yet verified (`is_email_verified=False`).
+    """
+    user, _ = current_user
+    if user.is_email_verified:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email is already verified",
+        )
+    if not user.email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No email address associated with this account",
+        )
+    if not settings.MAIL_ENABLED:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Email service not configured",
+        )
+
+    otp = f"{secrets.randbelow(1000000):06d}"
+    otp_key = f"{settings.REDIS_KEY_PREFIX}:email_otp:{user.email.lower()}"
+    await redis.setex(otp_key, 300, otp)
+
+    try:
+        await asyncio.to_thread(_smtp_send_otp, user.email, otp)
+    except Exception as exc:
+        logger.error(
+            "resend_verification_failed",
+            extra={"user_id": str(user.id), "error": str(exc)},
+        )
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Failed to send email. Please try again.",
+        )
+    logger.info(
+        "resend_verification_sent", extra={"user_id": str(user.id), "email": user.email}
+    )
+    return MessageResponse(message="Verification OTP sent to your email")
 
 
 @router.post("/verify-email-otp", response_model=OTPVerifiedResponse)
@@ -607,8 +656,8 @@ async def complete_registration(
             payload.get("purpose") != "email_verified"
             or payload.get("email") != body.email.lower()
         ):
-            raise JWTError("Invalid token purpose or email mismatch")
-    except JWTError:
+            raise jwt.PyJWTError("Invalid token purpose or email mismatch")
+    except jwt.PyJWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired verification token",
@@ -683,7 +732,7 @@ async def complete_registration(
 
     send_email_notification.delay(
         body.email,
-        "Welcome to Hermes!",
+        "Welcome to Vacancy Hai!",
         "email/welcome.html",
         {
             "name": full_name or body.email,
@@ -781,7 +830,7 @@ async def admin_logout(
                 await _blocklist_jti(
                     redis, rt_payload.get("jti"), rt_payload.get("exp", 0)
                 )
-        except JWTError:
+        except jwt.PyJWTError:
             pass
 
     logger.info("admin_logout", extra={"admin_id": str(admin.id)})
@@ -810,7 +859,7 @@ async def admin_refresh(
         payload = jwt.decode(
             body.refresh_token, settings.JWT_SECRET_KEY, algorithms=[ALGORITHM]
         )
-    except JWTError:
+    except jwt.PyJWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token"
         )

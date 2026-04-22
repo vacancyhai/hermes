@@ -1,0 +1,130 @@
+import { useEffect, useState, useCallback } from 'react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import client from '../api/client';
+import { makeSlug } from '../lib/formUtils';
+
+const ORG_TYPES = ['jobs', 'admissions', 'both'];
+
+export default function OrgForm() {
+  const { orgId } = useParams();
+  const isEdit = !!orgId;
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(isEdit);
+  const [saving, setSaving] = useState(false);
+  const [flash, setFlash] = useState(null);
+
+  const [name, setName] = useState('');
+  const [slug, setSlug] = useState('');
+  const [shortName, setShortName] = useState('');
+  const [orgType, setOrgType] = useState('both');
+  const [websiteUrl, setWebsiteUrl] = useState('');
+  const [logoUrl, setLogoUrl] = useState('');
+  const [logoError, setLogoError] = useState(false);
+
+  useEffect(() => {
+    if (!isEdit) return;
+    client.get(`/admin/organizations/${orgId}`)
+      .then((r) => {
+        const o = r.data;
+        setName(o.name || '');
+        setSlug(o.slug || '');
+        setShortName(o.short_name || '');
+        setOrgType(o.org_type || 'both');
+        setWebsiteUrl(o.website_url || '');
+        setLogoUrl(o.logo_url || '');
+        setLogoError(false);
+        setLoading(false);
+      })
+      .catch(() => { setLoading(false); setFlash({ type: 'error', msg: 'Failed to load organization' }); });
+  }, [isEdit, orgId]);
+
+  const handleLogoUrlChange = useCallback((v) => { setLogoUrl(v); setLogoError(false); }, []);
+
+  function handleNameChange(v) {
+    setName(v);
+    if (!isEdit) setSlug(makeSlug(v));
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setSaving(true); setFlash(null);
+    const payload = { name, slug, short_name: shortName || null, org_type: orgType || 'both', website_url: websiteUrl || null, logo_url: logoUrl || null };
+    try {
+      if (isEdit) {
+        await client.put(`/admin/organizations/${orgId}`, payload);
+        setFlash({ type: 'success', msg: 'Organization updated.' });
+      } else {
+        const res = await client.post('/admin/organizations', payload);
+        setFlash({ type: 'success', msg: 'Organization created.' });
+        navigate(`/organizations/${res.data.id}/edit`, { replace: true });
+      }
+    } catch (err) {
+      setFlash({ type: 'error', msg: err.response?.data?.detail || 'Save failed' });
+    } finally { setSaving(false); }
+  }
+
+  if (loading) return <p style={{ color: '#64748b' }}>Loading…</p>;
+
+  const saveBtnLabel = isEdit ? 'Update' : 'Create';
+
+  return (
+    <div>
+      <div className="page-header">
+        <div>
+          <Link to="/organizations" style={{ color: '#64748b', fontSize: '.82rem' }}>← Organizations</Link>
+          <h1 style={{ marginTop: '.25rem' }}>{isEdit ? 'Edit Organization' : 'New Organization'}</h1>
+        </div>
+        <div style={{ display: 'flex', gap: '.5rem' }}>
+          <Link to="/organizations" className="btn btn-outline">Cancel</Link>
+          <button className="btn btn-primary" form="org-form" type="submit" disabled={saving}>
+            {saving ? <><span className="spinner" />{' '}Saving…</> : saveBtnLabel}
+          </button>
+        </div>
+      </div>
+
+      {flash && <div className={flash.type === 'success' ? 'flash-success' : 'flash-error'}>{flash.msg}</div>}
+
+      <form id="org-form" onSubmit={handleSubmit}>
+        <div className="section-card">
+          <div className="section-header section-header--green">Organization Details</div>
+          <div className="section-body">
+            <div className="form-grid-2">
+              <div className="form-group col-span-2">
+                <label htmlFor="org-name">Name <span className="req">*</span></label>
+                <input id="org-name" type="text" value={name} onChange={(e) => handleNameChange(e.target.value)} required />
+              </div>
+              <div className="form-group">
+                <label htmlFor="org-slug">Slug <span className="req">*</span></label>
+                <input id="org-slug" type="text" value={slug} onChange={(e) => setSlug(e.target.value)} required placeholder="url-friendly-name" />
+              </div>
+              <div className="form-group">
+                <label htmlFor="org-short-name">Short Name / Abbreviation</label>
+                <input id="org-short-name" type="text" value={shortName} onChange={(e) => setShortName(e.target.value)} placeholder="e.g. UPSC, ISRO" />
+              </div>
+              <div className="form-group">
+                <label htmlFor="org-type">Type <span className="req">*</span></label>
+                <select id="org-type" value={orgType} onChange={(e) => setOrgType(e.target.value)} required>
+                  {ORG_TYPES.map((t) => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
+                </select>
+              </div>
+              <div className="form-group">
+                <label htmlFor="org-website">Website URL</label>
+                <input id="org-website" type="url" value={websiteUrl} onChange={(e) => setWebsiteUrl(e.target.value)} placeholder="https://…" />
+              </div>
+              <div className="form-group">
+                <label htmlFor="org-logo">Logo URL</label>
+                <input id="org-logo" type="url" value={logoUrl} onChange={(e) => handleLogoUrlChange(e.target.value)} placeholder="https://…/logo.png" />
+              </div>
+            </div>
+            {logoUrl && !logoError && (
+              <div style={{ marginTop: '.5rem' }}>
+                <p style={{ fontSize: '.78rem', color: '#64748b', marginBottom: '.25rem' }}>Logo preview:</p>
+                <img src={logoUrl} alt="Logo preview" style={{ maxWidth: 80, maxHeight: 80, objectFit: 'contain', border: '1px solid #e2e8f0', borderRadius: '.375rem', padding: '.25rem' }} onError={() => setLogoError(true)} />
+              </div>
+            )}
+          </div>
+        </div>
+      </form>
+    </div>
+  );
+}

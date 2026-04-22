@@ -1,10 +1,9 @@
 """Notification-related Celery tasks.
 
-smart_notify                — Unified entry: routes to in-app + FCM + email + WhatsApp + Telegram
+smart_notify                — Unified entry: routes to in-app + FCM + email + WhatsApp
 send_deadline_reminders     — Daily Beat task: T-7, T-3, T-1 deadline reminders for tracked jobs + admissions
 notify_trackers_on_update   — Event: notify trackers when a job/admission is approved or updated
 send_email_notification     — Sync email via SMTP (retries 3x)
-deliver_delayed_telegram    — Delayed Telegram delivery for staggered mode (T+15min)
 """
 
 import os
@@ -26,15 +25,24 @@ logger = structlog.get_logger()
 REMINDER_DAYS = [7, 3, 1]  # T-7, T-3, T-1
 BASE_URL = settings.FRONTEND_URL
 
-# Jinja2 env for email templates
-_template_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "templates")
-_jinja_env = Environment(loader=FileSystemLoader(_template_dir), autoescape=True)
+# Jinja2 env — lazily initialised on first use to avoid startup crash if templates dir is missing
+_jinja_env: Environment | None = None
+
+
+def _get_jinja_env() -> Environment:
+    global _jinja_env
+    if _jinja_env is None:
+        template_dir = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)), "templates"
+        )
+        _jinja_env = Environment(loader=FileSystemLoader(template_dir), autoescape=True)
+    return _jinja_env
 
 
 def _render_email(template_name: str, context: dict) -> str:
     """Render a Jinja2 email template to HTML string."""
     context.setdefault("base_url", BASE_URL)
-    template = _jinja_env.get_template(f"email/{template_name}")
+    template = _get_jinja_env().get_template(f"email/{template_name}")
     return template.render(**context)
 
 
@@ -92,6 +100,15 @@ def send_email_notification(
         html = _render_email(template_name, context)
         _send_smtp(to, subject, html)
     except Exception as exc:
+        if self.request.retries >= self.max_retries:
+            logger.error(
+                "email_failed_permanently",
+                to=to,
+                subject=subject,
+                error=str(exc),
+                retries=self.request.retries,
+            )
+            return
         countdown = 2**self.request.retries * 30
         logger.warning(
             "email_retry",
@@ -123,7 +140,7 @@ def smart_notify(
     """Unified notification entry point.
 
     delivery_mode:
-      "instant"   — all 4 channels at T+0 (OTP, auth, welcome)
+      "instant"   — in-app + push + email at T+0 (OTP, auth, welcome)
       "staggered" — in-app + push T+0, email T+15min, whatsapp T+1hr
 
     All channels always deliver — staggered just adds a time gap.
@@ -188,25 +205,6 @@ def deliver_delayed_whatsapp(
         session.commit()
     logger.info(
         "delayed_whatsapp_sent", notification_id=notification_id, user_id=user_id
-    )
-
-
-@celery.task(name="app.tasks.notifications.deliver_delayed_telegram")
-def deliver_delayed_telegram(
-    notification_id: str, user_id: str, title: str, message: str
-):
-    """Delayed Telegram delivery for staggered mode. Fired T+15min after smart_notify."""
-    from app.services.notifications import NotificationService
-
-    redis_client = _get_sync_redis()
-    now = datetime.now(timezone.utc)
-
-    with Session(sync_engine) as session:
-        svc = NotificationService(session, redis_sync=redis_client)
-        svc._send_telegram(notification_id, user_id, title, message, now)
-        session.commit()
-    logger.info(
-        "delayed_telegram_sent", notification_id=notification_id, user_id=user_id
     )
 
 

@@ -1,7 +1,13 @@
-# Environment files
+# Environment files — never commit real credentials
 .env
 *.env
+.env.*
+!*.env.example
 !*.env.test
+config/development/
+config/staging/
+config/production/
+config/test/
 
 # Python
 __pycache__/

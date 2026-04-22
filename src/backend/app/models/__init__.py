@@ -13,5 +13,9 @@ from app.models.organization import Organization  # noqa: F401
 from app.models.result import Result  # noqa: F401
 from app.models.user import User  # noqa: F401
 from app.models.user_device import UserDevice  # noqa: F401
+from app.models.user_eligibility import (  # noqa: F401
+    UserAdmissionEligibility,
+    UserJobEligibility,
+)
 from app.models.user_profile import UserProfile  # noqa: F401
 from app.models.user_track import UserTrack  # noqa: F401

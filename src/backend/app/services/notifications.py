@@ -51,9 +51,8 @@ class NotificationService:
         """Create notification and deliver to channels.
 
         delivery_mode:
-          "instant"   — all 5 channels at T+0 (OTP, auth, welcome)
-          "staggered" — in-app + push at T+0, email T+15min, whatsapp T+1hr,
-                          telegram T+15min
+          "instant"   — all 4 channels at T+0 (OTP, auth, welcome)
+          "staggered" — in-app + push at T+0, email T+15min, whatsapp T+1hr
 
         Returns the notification ID (str).
         """
@@ -107,21 +106,6 @@ class NotificationService:
                 self._send_whatsapp(notification_id, user_id, title, message, now)
             else:
                 self._schedule_delayed_whatsapp(
-                    notification_id, user_id, title, message
-                )
-
-        # 5. Telegram
-        tg_prefs = prefs.get("telegram")
-        tg_enabled = (
-            tg_prefs.get("enabled", True)
-            if isinstance(tg_prefs, dict)
-            else (tg_prefs is not False)
-        )
-        if tg_enabled:
-            if delivery_mode == "instant":
-                self._send_telegram(notification_id, user_id, title, message, now)
-            else:
-                self._schedule_delayed_telegram(
                     notification_id, user_id, title, message
                 )
 
@@ -393,102 +377,6 @@ class NotificationService:
         """Send via WhatsApp Cloud API. Placeholder until configured."""
         logger.info("whatsapp_not_configured", phone=phone[:6] + "***", title=title)
         return False
-
-    # ─── 5. Telegram ───────────────────────────────────────────────
-
-    def _send_telegram(self, notification_id, user_id, title, message, now):
-        """Send Telegram message immediately (instant mode)."""
-        row = self.session.execute(
-            text(
-                "SELECT notification_preferences FROM user_profiles WHERE user_id = :uid"
-            ),
-            {"uid": user_id},
-        ).fetchone()
-
-        if not row:
-            self._log_delivery(
-                notification_id, user_id, "telegram", "skipped", now, error="no_profile"
-            )
-            return
-
-        prefs = row[0] or {}
-        tg_config = prefs.get("telegram", {})
-        if not isinstance(tg_config, dict):
-            self._log_delivery(
-                notification_id, user_id, "telegram", "skipped", now, error="no_chat_id"
-            )
-            return
-
-        chat_id = tg_config.get("chat_id")
-        if not chat_id:
-            self._log_delivery(
-                notification_id, user_id, "telegram", "skipped", now, error="no_chat_id"
-            )
-            return
-
-        success = self._send_telegram_message(chat_id, title, message)
-        status = "sent" if success else "failed"
-        self._log_delivery(
-            notification_id,
-            user_id,
-            "telegram",
-            status,
-            now,
-            delivered_at=now if success else None,
-            error=None if success else "send_failed",
-        )
-        if success:
-            self._append_sent_via(notification_id, "telegram")
-
-    def _schedule_delayed_telegram(self, notification_id, user_id, title, message):
-        """Schedule Telegram after NOTIFY_TELEGRAM_DELAY seconds (staggered mode)."""
-        from app.tasks.notifications import deliver_delayed_telegram
-
-        deliver_delayed_telegram.apply_async(
-            args=[notification_id, user_id, title, message],
-            countdown=settings.NOTIFY_TELEGRAM_DELAY,
-        )
-
-    def _send_telegram_message(self, chat_id: str, title: str, message: str) -> bool:
-        """Send message via Telegram Bot API.
-
-        Requires TELEGRAM_BOT_TOKEN to be set. Users must first start a
-        conversation with the bot and save their chat_id via
-        PUT /api/v1/users/me/notification-preferences {"telegram_chat_id": "..."}.
-        """
-        if not settings.TELEGRAM_BOT_TOKEN:
-            logger.info("telegram_not_configured", chat_id=chat_id[:6] + "***")
-            return False
-
-        import json
-        import urllib.error
-        import urllib.request
-
-        try:
-            payload = json.dumps(
-                {
-                    "chat_id": chat_id,
-                    "text": f"*{title}*\n\n{message}",
-                    "parse_mode": "Markdown",
-                }
-            ).encode()
-            req = urllib.request.Request(
-                f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}/sendMessage",
-                data=payload,
-                headers={"Content-Type": "application/json"},
-            )
-            with urllib.request.urlopen(req, timeout=10) as resp:
-                success = resp.status == 200
-                logger.info("telegram_sent", chat_id=chat_id[:6] + "***")
-                return success
-        except urllib.error.HTTPError as exc:
-            logger.error(
-                "telegram_failed", error=f"HTTP {exc.code}", chat_id=chat_id[:6] + "***"
-            )
-            return False
-        except Exception as exc:
-            logger.error("telegram_failed", error=str(exc), chat_id=chat_id[:6] + "***")
-            return False
 
     # ─── Helpers ───────────────────────────────────────────────────────
 

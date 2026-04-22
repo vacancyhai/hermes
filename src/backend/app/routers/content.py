@@ -25,11 +25,12 @@ Admin endpoints:
   GET    /api/v1/admin/results         — List all results (any status)
 """
 
+import json
 import uuid
 from datetime import date
 from typing import Annotated, Any
 
-from app.dependencies import get_current_user, get_db, require_operator
+from app.dependencies import get_db, get_redis, require_admin, require_operator
 from app.models.admission import Admission
 from app.models.admit_card import AdmitCard
 from app.models.answer_key import AnswerKey
@@ -45,11 +46,6 @@ from app.schemas.jobs import (
     ResultCreateRequest,
     ResultResponse,
     ResultUpdateRequest,
-)
-from app.services.matching import (
-    get_recommended_admit_cards,
-    get_recommended_answer_keys,
-    get_recommended_results,
 )
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
@@ -191,21 +187,6 @@ async def list_admit_cards(
     return _paginated_response(cards, AdmitCardResponse, limit, offset, total)
 
 
-@admit_cards_router.get("/recommended")
-async def recommended_admit_cards(
-    current_user: Annotated[Any, Depends(get_current_user)],
-    db: Annotated[AsyncSession, Depends(get_db)],
-    limit: Annotated[int, Query(ge=1, le=100)] = 20,
-    offset: Annotated[int, Query(ge=0)] = 0,
-):
-    """Personalized admit card recommendations based on user profile."""
-    user, _ = current_user
-    cards, total = await get_recommended_admit_cards(
-        user.id, db, limit=limit, offset=offset
-    )
-    return _paginated_response(cards, AdmitCardResponse, limit, offset, total)
-
-
 @admit_cards_router.get("/{slug}")
 async def get_admit_card(
     slug: str,
@@ -249,21 +230,6 @@ async def list_answer_keys(
     return _paginated_response(keys, AnswerKeyResponse, limit, offset, total)
 
 
-@answer_keys_router.get("/recommended")
-async def recommended_answer_keys(
-    current_user: Annotated[Any, Depends(get_current_user)],
-    db: Annotated[AsyncSession, Depends(get_db)],
-    limit: Annotated[int, Query(ge=1, le=100)] = 20,
-    offset: Annotated[int, Query(ge=0)] = 0,
-):
-    """Personalized answer key recommendations based on user profile."""
-    user, _ = current_user
-    keys, total = await get_recommended_answer_keys(
-        user.id, db, limit=limit, offset=offset
-    )
-    return _paginated_response(keys, AnswerKeyResponse, limit, offset, total)
-
-
 @answer_keys_router.get("/{slug}")
 async def get_answer_key(
     slug: str,
@@ -302,21 +268,6 @@ async def list_results(
     total = (await db.execute(count_query)).scalar()
     result = await db.execute(query.offset(offset).limit(limit))
     results_list = result.scalars().all()
-    return _paginated_response(results_list, ResultResponse, limit, offset, total)
-
-
-@results_router.get("/recommended")
-async def recommended_results(
-    current_user: Annotated[Any, Depends(get_current_user)],
-    db: Annotated[AsyncSession, Depends(get_db)],
-    limit: Annotated[int, Query(ge=1, le=100)] = 20,
-    offset: Annotated[int, Query(ge=0)] = 0,
-):
-    """Personalized result recommendations based on user profile."""
-    user, _ = current_user
-    results_list, total = await get_recommended_results(
-        user.id, db, limit=limit, offset=offset
-    )
     return _paginated_response(results_list, ResultResponse, limit, offset, total)
 
 
@@ -423,7 +374,7 @@ async def admin_update_admit_card(
 @admit_cards_admin_router.delete("/{card_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def admin_delete_admit_card(
     card_id: uuid.UUID,
-    admin: Annotated[Any, Depends(require_operator)],
+    admin: Annotated[Any, Depends(require_admin)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Delete an admit card."""
@@ -508,7 +459,7 @@ async def admin_update_answer_key(
 @answer_keys_admin_router.delete("/{key_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def admin_delete_answer_key(
     key_id: uuid.UUID,
-    admin: Annotated[Any, Depends(require_operator)],
+    admin: Annotated[Any, Depends(require_admin)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Delete an answer key."""
@@ -591,7 +542,7 @@ async def admin_update_result(
 @results_admin_router.delete("/{result_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def admin_delete_result(
     result_id: uuid.UUID,
-    admin: Annotated[Any, Depends(require_operator)],
+    admin: Annotated[Any, Depends(require_admin)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Delete a result."""
@@ -700,9 +651,14 @@ def _build_admit_card_exam_items(rows, today: date):
     return items
 
 
+_EXAM_REMINDERS_CACHE_KEY = "exam_reminders:v1"
+_EXAM_REMINDERS_TTL = 300  # 5 minutes
+
+
 @exam_reminders_router.get("")
 async def list_exam_reminders(
     db: Annotated[AsyncSession, Depends(get_db)],
+    redis: Annotated[Any, Depends(get_redis)],
 ):
     """Return upcoming exams sorted by exam_start.
 
@@ -710,6 +666,10 @@ async def list_exam_reminders(
     - Jobs/Admissions with no linked admit cards → use their own exam dates.
     - Admit cards → always shown individually (covers parent exam dates).
     """
+    cached = await redis.get(_EXAM_REMINDERS_CACHE_KEY)
+    if cached:
+        return json.loads(cached)
+
     today = date.today()
     job_rows = await _query_job_exam_rows(db, today)
     admission_rows = await _query_admission_exam_rows(db, today)
@@ -722,4 +682,8 @@ async def list_exam_reminders(
     )
     all_items.sort(key=lambda x: x["exam_start"] or "9999-99-99")
 
-    return {"data": all_items, "total": len(all_items)}
+    result = {"data": all_items, "total": len(all_items)}
+    await redis.setex(
+        _EXAM_REMINDERS_CACHE_KEY, _EXAM_REMINDERS_TTL, json.dumps(result)
+    )
+    return result

@@ -1,32 +1,44 @@
-"""Job matching engine — scores jobs against user profile preferences."""
+"""Eligibility checking engine — determines if a user is eligible for a job or admission.
 
-from datetime import date, timedelta
+check_job_eligibility(job, profile)       -> {"status": ..., "reasons": [...]}
+check_admission_eligibility(adm, profile) -> {"status": ..., "reasons": [...]}
 
-from app.models.admission import Admission
-from app.models.admit_card import AdmitCard
-from app.models.answer_key import AnswerKey
-from app.models.job import Job
-from app.models.result import Result
-from app.models.user_profile import UserProfile
-from sqlalchemy import func, or_, select
-from sqlalchemy.ext.asyncio import AsyncSession
+Status values:
+  "eligible"           — all available criteria pass
+  "partially_eligible" — at least one criterion passes, at least one fails
+  "not_eligible"       — every checked criterion fails
+  "unknown"            — profile has no data to evaluate against (prompt user to complete profile)
 
-# Maximum candidates fetched from DB before in-memory scoring (avoids loading all jobs)
-# NOTE: Users whose preferences best match jobs created beyond this window may not see
-# those jobs in recommendations. This is a known trade-off to avoid loading all rows.
-CANDIDATE_LIMIT = 500
+Job criteria  (eligibility JSONB keys: age_min, age_max, age_relaxation, qualification):
+  1. Education     — profile.highest_qualification vs job.qualification_level (structured level)
+  2. Age           — profile.date_of_birth vs eligibility.age_min / age_max
+                     + relaxation from eligibility.age_relaxation
+                     (DB keys: OBC, SC_ST, PwBD, PwD_UR, Ex_Serviceman)
+  3. Category      — profile.category vs vacancy_breakdown.total_vacancy keys (SC/ST/OBC/EWS/UR)
+  4. Domicile      — profile.state vs eligibility.domicile_required
 
-# Scoring weights
-STATE_MATCH = 3
-CATEGORY_ELIGIBILITY_MATCH = 4  # user's actual reservation category is eligible
-CATEGORY_PREF_MATCH = 2  # user's preferred categories include a job category
-EDUCATION_MATCH = 2
-AGE_MATCH = 2  # user's age is within job's eligibility range
-RECENCY_BONUS = 1
-RECENCY_DAYS = 7
+Admission criteria  (eligibility JSONB keys: qualification, age_limit, min_percentage):
+  1. Education     — admission_type proxy (ug→12th, pg→graduate) vs profile.highest_qualification
+  2. Age           — profile.date_of_birth vs eligibility.age_limit.{min,max}  (0 = no limit)
+                     NO age_relaxation dict on admissions — relaxation is in notes text only
+  3. Min %         — profile.education.percentage vs eligibility.min_percentage (skip if 0)
+  4. Domicile      — profile.state vs eligibility.domicile_required
+"""
+
+from datetime import date
 
 # Education level hierarchy (higher index = higher qualification)
 EDUCATION_LEVELS = ["10th", "12th", "diploma", "graduate", "postgraduate", "phd"]
+
+# Map profile.category values → age_relaxation dict keys used in real DB data
+_CATEGORY_TO_RELAX_KEY: dict[str, str] = {
+    "obc": "OBC",
+    "sc": "SC_ST",
+    "st": "SC_ST",
+    "ews": "EWS",
+    "ebc": "OBC",
+    "general": "UR",
+}
 
 
 def _education_rank(level: str | None) -> int:
@@ -38,388 +50,301 @@ def _education_rank(level: str | None) -> int:
         return -1
 
 
-def _user_age(date_of_birth: date | None) -> int | None:
-    """Return user's age in years, or None if date_of_birth is unset."""
-    if not date_of_birth:
+def _user_age(dob: date | None) -> int | None:
+    if not dob:
         return None
     today = date.today()
-    return (
-        today.year
-        - date_of_birth.year
-        - ((today.month, today.day) < (date_of_birth.month, date_of_birth.day))
-    )
+    return today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
 
 
-async def get_recommended_jobs(
-    user_id,
-    db: AsyncSession,
-    limit: int = 20,
-    offset: int = 0,
-) -> tuple[list[dict], int]:
-    """Return jobs ranked by profile match score.
-
-    Scoring criteria (descending priority):
-      - User's reservation category (profile.category) is eligible: +4
-      - State match:                                                   +3
-      - User's preferred categories intersect job categories:          +2
-      - Education level qualifies:                                     +2
-      - Age within job's eligibility range:                            +2
-      - Job posted within last 7 days:                                 +1
-
-    Returns (scored_jobs, total_count).
-    """
-    # Load profile
-    result = await db.execute(select(UserProfile).where(UserProfile.user_id == user_id))
-    profile = result.scalar_one_or_none()
-
-    # Base query: active jobs with future (or null) deadlines
-    today = date.today()
-    base_filter = (
-        Job.status == "active",
-        (Job.application_end >= today) | (Job.application_end.is_(None)),
-    )
-
-    has_prefs = profile and (
-        profile.preferred_states
-        or profile.preferred_categories
-        or profile.highest_qualification
+def _profile_complete(profile) -> bool:
+    """Return True if the profile has enough data to evaluate eligibility."""
+    if not profile:
+        return False
+    return bool(
+        profile.highest_qualification
         or profile.category
         or profile.date_of_birth
+        or profile.preferred_states
     )
 
-    if not has_prefs:
-        # No preferences — return newest active jobs using DB-level pagination
-        total = (
-            await db.execute(select(func.count(Job.id)).where(*base_filter))
-        ).scalar() or 0
-        result = await db.execute(
-            select(Job)
-            .where(*base_filter)
-            .order_by(Job.created_at.desc())
-            .offset(offset)
-            .limit(limit)
+
+def _resolve_status(passed: list[bool], failed: list[bool]) -> str:
+    """Given lists of passed/failed criteria, return the eligibility status string."""
+    n_pass = sum(passed)
+    n_fail = sum(failed)
+    if n_pass == 0 and n_fail == 0:
+        return "unknown"
+    if n_fail == 0:
+        return "eligible"
+    if n_pass == 0:
+        return "not_eligible"
+    return "partially_eligible"
+
+
+def _check_education(
+    req_level: str | None,
+    user_level: str | None,
+    passed: list,
+    failed: list,
+    reasons: list,
+) -> None:
+    req_rank = _education_rank(req_level)
+    user_rank = _education_rank(user_level)
+    if req_rank < 0 or user_rank < 0:
+        return
+    if user_rank >= req_rank:
+        passed.append(True)
+        reasons.append(
+            f"Your qualification ({user_level}) meets the requirement ({req_level})"
         )
-        return list(result.scalars().all()), total
-
-    result = await db.execute(
-        select(Job)
-        .where(*base_filter)
-        .order_by(Job.created_at.desc())
-        .limit(CANDIDATE_LIMIT)
-    )
-    jobs = result.scalars().all()
-
-    # Pre-compute user attributes for scoring
-    pref_states = {s.lower() for s in (profile.preferred_states or [])}
-    pref_cats = {c.lower() for c in (profile.preferred_categories or [])}
-    user_category = profile.category.lower() if profile.category else None
-    user_edu_rank = _education_rank(profile.highest_qualification)
-    user_age = _user_age(profile.date_of_birth)
-    recency_cutoff = today - timedelta(days=RECENCY_DAYS)
-
-    scored: list[tuple[int, date | None, Job]] = []
-    for job in jobs:
-        score = 0
-
-        # Build job's eligible category set from vacancy_breakdown keys + eligibility.category
-        job_cats = set()
-        if job.vacancy_breakdown and isinstance(job.vacancy_breakdown, dict):
-            job_cats = {k.lower() for k in job.vacancy_breakdown}
-        if job.eligibility and isinstance(job.eligibility, dict):
-            cat_val = job.eligibility.get("category")
-            if isinstance(cat_val, list):
-                job_cats.update(c.lower() for c in cat_val)
-            elif isinstance(cat_val, str):
-                job_cats.add(cat_val.lower())
-
-        # Category eligibility: user's actual reservation category is in the job's categories
-        if user_category and (not job_cats or user_category in job_cats):
-            score += CATEGORY_ELIGIBILITY_MATCH
-
-        # State match via eligibility or vacancy_breakdown
-        job_states = set()
-        if job.eligibility and isinstance(job.eligibility, dict):
-            for key in ("states", "state", "location"):
-                val = job.eligibility.get(key)
-                if isinstance(val, list):
-                    job_states.update(s.lower() for s in val)
-                elif isinstance(val, str):
-                    job_states.add(val.lower())
-        if pref_states and (not job_states or pref_states & job_states):
-            score += STATE_MATCH
-
-        # Preferred categories: user's opted-in categories intersect job categories
-        if pref_cats & job_cats:
-            score += CATEGORY_PREF_MATCH
-
-        # Education match: user qualifies if their rank >= job's requirement
-        job_edu_rank = _education_rank(job.qualification_level)
-        if user_edu_rank >= 0 and job_edu_rank >= 0 and user_edu_rank >= job_edu_rank:
-            score += EDUCATION_MATCH
-
-        # Age match: user's age is within the job's eligibility range
-        if (
-            user_age is not None
-            and job.eligibility
-            and isinstance(job.eligibility, dict)
-        ):
-            age_min = job.eligibility.get("age_min")
-            age_max = job.eligibility.get("age_max")
-            if age_min is not None or age_max is not None:
-                age_ok = True
-                if age_min is not None:
-                    age_ok = age_ok and user_age >= int(age_min)
-                if age_max is not None:
-                    age_ok = age_ok and user_age <= int(age_max)
-                if age_ok:
-                    score += AGE_MATCH
-
-        # Recency bonus
-        if job.created_at and job.created_at.date() >= recency_cutoff:
-            score += RECENCY_BONUS
-
-        scored.append((score, job.application_end, job))
-
-    # Sort: score DESC, then deadline ASC (None deadlines last)
-    far_future = date(9999, 12, 31)
-    scored.sort(key=lambda t: (-t[0], t[1] or far_future))
-
-    total = len(scored)
-    page = scored[offset : offset + limit]
-    return [t[2] for t in page], total
+    else:
+        failed.append(True)
+        reasons.append(f"Required qualification: {req_level} — yours: {user_level}")
 
 
-async def _get_tracked_ids(user_id, db: AsyncSession) -> tuple[list, list]:
-    """Return (tracked_job_ids, tracked_admission_ids) for a user."""
-    from app.models.user_track import UserTrack
+def _age_relaxation(profile, eligibility: dict) -> int:
+    """Return age relaxation years for this user from eligibility.age_relaxation.
 
-    result = await db.execute(
-        select(UserTrack.entity_type, UserTrack.entity_id).where(
-            UserTrack.user_id == user_id
-        )
-    )
-    rows = result.all()
-    job_ids = [r.entity_id for r in rows if r.entity_type == "job"]
-    admission_ids = [r.entity_id for r in rows if r.entity_type == "admission"]
-    return job_ids, admission_ids
-
-
-async def get_recommended_admit_cards(
-    user_id,
-    db: AsyncSession,
-    limit: int = 20,
-    offset: int = 0,
-) -> tuple[list, int]:
-    """Return admit cards for jobs/admissions the user is tracking."""
-    job_ids, admission_ids = await _get_tracked_ids(user_id, db)
-    if not job_ids and not admission_ids:
-        return [], 0
-    predicate = or_(
-        AdmitCard.job_id.in_(job_ids) if job_ids else False,
-        AdmitCard.admission_id.in_(admission_ids) if admission_ids else False,
-    )
-    total = (
-        await db.execute(select(func.count(AdmitCard.id)).where(predicate))
-    ).scalar() or 0
-    result = await db.execute(
-        select(AdmitCard)
-        .where(predicate)
-        .order_by(AdmitCard.published_at.desc())
-        .offset(offset)
-        .limit(limit)
-    )
-    return list(result.scalars().all()), total
-
-
-async def get_recommended_answer_keys(
-    user_id,
-    db: AsyncSession,
-    limit: int = 20,
-    offset: int = 0,
-) -> tuple[list, int]:
-    """Return answer keys for jobs/admissions the user is tracking."""
-    job_ids, admission_ids = await _get_tracked_ids(user_id, db)
-    if not job_ids and not admission_ids:
-        return [], 0
-    predicate = or_(
-        AnswerKey.job_id.in_(job_ids) if job_ids else False,
-        AnswerKey.admission_id.in_(admission_ids) if admission_ids else False,
-    )
-    total = (
-        await db.execute(select(func.count(AnswerKey.id)).where(predicate))
-    ).scalar() or 0
-    result = await db.execute(
-        select(AnswerKey)
-        .where(predicate)
-        .order_by(AnswerKey.published_at.desc())
-        .offset(offset)
-        .limit(limit)
-    )
-    return list(result.scalars().all()), total
-
-
-async def get_recommended_results(
-    user_id,
-    db: AsyncSession,
-    limit: int = 20,
-    offset: int = 0,
-) -> tuple[list, int]:
-    """Return results for jobs/admissions the user is tracking."""
-    job_ids, admission_ids = await _get_tracked_ids(user_id, db)
-    if not job_ids and not admission_ids:
-        return [], 0
-    predicate = or_(
-        Result.job_id.in_(job_ids) if job_ids else False,
-        Result.admission_id.in_(admission_ids) if admission_ids else False,
-    )
-    total = (
-        await db.execute(select(func.count(Result.id)).where(predicate))
-    ).scalar() or 0
-    result = await db.execute(
-        select(Result)
-        .where(predicate)
-        .order_by(Result.published_at.desc())
-        .offset(offset)
-        .limit(limit)
-    )
-    return list(result.scalars().all()), total
-
-
-async def get_recommended_admissions(
-    user_id,
-    db: AsyncSession,
-    limit: int = 20,
-    offset: int = 0,
-) -> tuple[list[dict], int]:
-    """Return admissions ranked by profile match score.
-
-    Scoring criteria (descending priority):
-      - User's reservation category is eligible:                +4
-      - State match:                                             +3
-      - Education level qualifies:                               +2
-      - Age within admission's eligibility range:                     +2
-      - Admission posted within last 7 days:                     +1
-
-    Returns (scored_admissions, total_count).
+    DB key format: {"OBC": 3, "SC_ST": 5, "PwBD": 10, "Ex_Serviceman": 3}
+    Maps profile.category → the matching key, picks PwBD if is_pwd=True.
+    Returns 0 if no age_relaxation dict on the job.
     """
-    # Load profile
-    result = await db.execute(select(UserProfile).where(UserProfile.user_id == user_id))
-    profile = result.scalar_one_or_none()
+    job_relax: dict = eligibility.get("age_relaxation") or {}
+    if not job_relax:
+        return 0
+    relaxation = 0
+    user_cat = profile.category.lower() if (profile and profile.category) else None
+    if user_cat:
+        relax_key = _CATEGORY_TO_RELAX_KEY.get(user_cat)
+        if relax_key and relax_key in job_relax:
+            relaxation = int(job_relax[relax_key])
+    if getattr(profile, "is_pwd", False):
+        pwd_extra = int(job_relax.get("PwBD", job_relax.get("PwD_UR", 0)))
+        relaxation = max(relaxation, pwd_extra)
+    if getattr(profile, "is_ex_serviceman", False):
+        esm_extra = int(job_relax.get("Ex_Serviceman", 0))
+        relaxation = max(relaxation, esm_extra)
+    return relaxation
 
-    # Base query: active admissions with future (or null) exam dates
-    today = date.today()
-    base_filter = (
-        Admission.status == "active",
-        (Admission.admission_date >= today) | (Admission.admission_date.is_(None)),
-    )
 
-    has_prefs = profile and (
-        profile.preferred_states
-        or profile.highest_qualification
-        or profile.category
-        or profile.date_of_birth
-    )
+def _check_age(
+    age_min,
+    age_max,
+    user_age: int | None,
+    passed: list,
+    failed: list,
+    reasons: list,
+    relaxation: int = 0,
+) -> None:
+    if user_age is None or (age_min is None and age_max is None):
+        return
+    effective_max = (int(age_max) + relaxation) if age_max is not None else None
+    msg_parts = []
+    if age_min is not None and user_age < int(age_min):
+        msg_parts.append(f"minimum age is {age_min}")
+    if effective_max is not None and user_age > effective_max:
+        relax_note = f" (including {relaxation}yr relaxation)" if relaxation else ""
+        msg_parts.append(f"maximum age is {effective_max}{relax_note}")
+    if not msg_parts:
+        relax_note = f" (with {relaxation}yr relaxation)" if relaxation else ""
+        passed.append(True)
+        reasons.append(f"Age {user_age} is within the eligible range{relax_note}")
+    else:
+        failed.append(True)
+        reasons.append(f"Age {user_age} does not meet criteria: {', '.join(msg_parts)}")
 
-    if not has_prefs:
-        # No preferences — return newest active admissions using DB-level pagination
-        total = (
-            await db.execute(select(func.count(Admission.id)).where(*base_filter))
-        ).scalar() or 0
-        result = await db.execute(
-            select(Admission)
-            .where(*base_filter)
-            .order_by(Admission.created_at.desc())
-            .offset(offset)
-            .limit(limit)
+
+def _check_category(
+    allowed_cats: set[str],
+    user_category: str | None,
+    passed: list,
+    failed: list,
+    reasons: list,
+) -> None:
+    if not allowed_cats or not user_category:
+        return
+    user_cat = user_category.lower()
+    if user_cat in allowed_cats:
+        passed.append(True)
+        reasons.append(f"Your category ({user_category}) is eligible")
+    else:
+        failed.append(True)
+        reasons.append(f"Your category ({user_category}) is not in the eligible list")
+
+
+def _check_domicile(
+    eligibility: dict,
+    profile,
+    passed: list,
+    failed: list,
+    reasons: list,
+    label: str = "vacancy",
+) -> None:
+    domicile_required = eligibility.get("domicile_required")
+    if not domicile_required:
+        return
+    user_state = getattr(profile, "state", None)
+    if not user_state:
+        return
+    if user_state.lower() == domicile_required.lower():
+        passed.append(True)
+        reasons.append(f"Your state ({user_state}) matches the required domicile")
+    else:
+        failed.append(True)
+        reasons.append(
+            f"This {label} requires domicile of {domicile_required} — yours: {user_state}"
         )
-        return list(result.scalars().all()), total
 
-    result = await db.execute(
-        select(Admission)
-        .where(*base_filter)
-        .order_by(Admission.created_at.desc())
-        .limit(CANDIDATE_LIMIT)
+
+# Vacancy breakdown keys that represent reservation categories
+_VACANCY_CAT_KEYS = {"sc", "st", "obc", "ews", "ebc", "ur", "general", "pwd"}
+
+
+def _cats_from_eligibility(
+    eligibility: dict, vacancy_breakdown: dict | None = None
+) -> set[str]:
+    """Build a set of lowercase category strings from eligibility + vacancy_breakdown.
+
+    vacancy_breakdown real structure: {"total_vacancy": {"SC": n, "ST": n, "OBC": n, ...}, ...}
+    Maps UR → general so it matches profile.category == "General".
+    """
+    cats: set[str] = set()
+    cat_val = eligibility.get("category")
+    if isinstance(cat_val, list):
+        cats = {c.lower() for c in cat_val}
+    elif isinstance(cat_val, str):
+        cats.add(cat_val.lower())
+    if isinstance(vacancy_breakdown, dict):
+        total_vac = vacancy_breakdown.get("total_vacancy") or {}
+        for k, v in total_vac.items():
+            key = k.lower()
+            if key in _VACANCY_CAT_KEYS and isinstance(v, int) and v > 0:
+                cats.add("general" if key == "ur" else key)
+    return cats
+
+
+def _check_min_percentage(
+    eligibility: dict,
+    profile,
+    passed: list,
+    failed: list,
+    reasons: list,
+) -> None:
+    """Check profile education percentage against eligibility.min_percentage (0 = skip)."""
+    min_pct = eligibility.get("min_percentage") or 0
+    if min_pct <= 0:
+        return
+    user_pct = None
+    if isinstance(profile.education, dict):
+        user_pct = profile.education.get("percentage")
+    if user_pct is None:
+        return
+    if float(user_pct) >= float(min_pct):
+        passed.append(True)
+        reasons.append(f"Your percentage ({user_pct}%) meets the minimum ({min_pct}%)")
+    else:
+        failed.append(True)
+        reasons.append(f"Minimum percentage required: {min_pct}% — yours: {user_pct}%")
+
+
+_UNKNOWN_PROFILE = {
+    "status": "unknown",
+    "reasons": ["Complete your profile to check eligibility"],
+}
+
+
+def check_job_eligibility(job, profile) -> dict:
+    """Check whether a user's profile meets the eligibility criteria for a job.
+
+    Returns {"status": str, "reasons": list[str]}
+    """
+    if not _profile_complete(profile):
+        return _UNKNOWN_PROFILE
+
+    reasons: list[str] = []
+    passed: list[bool] = []
+    failed: list[bool] = []
+
+    eligibility = job.eligibility if isinstance(job.eligibility, dict) else {}
+
+    _check_education(
+        job.qualification_level,
+        profile.highest_qualification,
+        passed,
+        failed,
+        reasons,
     )
-    admissions = result.scalars().all()
+    _check_age(
+        eligibility.get("age_min"),
+        eligibility.get("age_max"),
+        _user_age(profile.date_of_birth),
+        passed,
+        failed,
+        reasons,
+        relaxation=_age_relaxation(profile, eligibility),
+    )
+    _check_category(
+        _cats_from_eligibility(eligibility, job.vacancy_breakdown),
+        profile.category,
+        passed,
+        failed,
+        reasons,
+    )
+    _check_domicile(eligibility, profile, passed, failed, reasons, label="vacancy")
 
-    # Pre-compute user attributes for scoring
-    pref_states = {s.lower() for s in (profile.preferred_states or [])}
-    user_category = profile.category.lower() if profile.category else None
-    user_edu_rank = _education_rank(profile.highest_qualification)
-    user_age = _user_age(profile.date_of_birth)
-    recency_cutoff = today - timedelta(days=RECENCY_DAYS)
+    return {"status": _resolve_status(passed, failed), "reasons": reasons}
 
-    scored: list[tuple[int, date | None, Admission]] = []
-    for admission in admissions:
-        score = 0
 
-        # Build admission's eligible category set from eligibility dict
-        admission_cats = set()
-        if admission.eligibility and isinstance(admission.eligibility, dict):
-            cat_val = admission.eligibility.get("category")
-            if isinstance(cat_val, list):
-                admission_cats = {c.lower() for c in cat_val}
-            elif isinstance(cat_val, str):
-                admission_cats.add(cat_val.lower())
+def check_admission_eligibility(admission, profile) -> dict:
+    """Check whether a user's profile meets the eligibility criteria for an admission.
 
-        # Category eligibility: user's actual reservation category is in the admission's categories
-        if user_category and (not admission_cats or user_category in admission_cats):
-            score += CATEGORY_ELIGIBILITY_MATCH
+    Returns {"status": str, "reasons": list[str]}
 
-        # State match via eligibility dict
-        admission_states = set()
-        if admission.eligibility and isinstance(admission.eligibility, dict):
-            for key in ("states", "state", "location", "conducting_states"):
-                val = admission.eligibility.get(key)
-                if isinstance(val, list):
-                    admission_states.update(s.lower() for s in val)
-                elif isinstance(val, str):
-                    admission_states.add(val.lower())
-        if pref_states and (not admission_states or pref_states & admission_states):
-            score += STATE_MATCH
+    Admission eligibility DB structure:
+      eligibility.qualification    — free-text string (e.g. "B.E./B.Tech...")
+      eligibility.age_limit.min/max — integers, 0 means no limit
+      eligibility.min_percentage   — integer, 0 means no requirement
+      admission.admission_type     — "ug" or "pg" used as education proxy
+    """
+    if not _profile_complete(profile):
+        return _UNKNOWN_PROFILE
 
-        # Education match: extract qualification from eligibility dict
-        exam_edu_rank = -1
-        if admission.eligibility and isinstance(admission.eligibility, dict):
-            qual = admission.eligibility.get(
-                "qualification"
-            ) or admission.eligibility.get("min_qualification")
-            if qual:
-                exam_edu_rank = _education_rank(qual)
-        if user_edu_rank >= 0 and exam_edu_rank >= 0 and user_edu_rank >= exam_edu_rank:
-            score += EDUCATION_MATCH
+    reasons: list[str] = []
+    passed: list[bool] = []
+    failed: list[bool] = []
 
-        # Age match: user's age is within the admission's eligibility range
-        if (
-            user_age is not None
-            and admission.eligibility
-            and isinstance(admission.eligibility, dict)
-        ):
-            age_min = admission.eligibility.get("age_min") or admission.eligibility.get(
-                "min_age"
-            )
-            age_max = admission.eligibility.get("age_max") or admission.eligibility.get(
-                "max_age"
-            )
-            if age_min is not None or age_max is not None:
-                age_ok = True
-                if age_min is not None:
-                    age_ok = age_ok and user_age >= int(age_min)
-                if age_max is not None:
-                    age_ok = age_ok and user_age <= int(age_max)
-                if age_ok:
-                    score += AGE_MATCH
+    eligibility = (
+        admission.eligibility if isinstance(admission.eligibility, dict) else {}
+    )
 
-        # Recency bonus
-        if admission.created_at and admission.created_at.date() >= recency_cutoff:
-            score += RECENCY_BONUS
+    # ── Education — use admission_type as structured proxy (qualification is free-text) ──
+    type_map = {"ug": "12th", "pg": "graduate"}
+    req_level = type_map.get((admission.admission_type or "").lower())
+    _check_education(req_level, profile.highest_qualification, passed, failed, reasons)
 
-        scored.append((score, admission.admission_date, admission))
+    # ── Age — eligibility.age_limit.{min,max}, 0 means no limit ─────────────────────────
+    age_limit = eligibility.get("age_limit") or {}
+    age_min = age_limit.get("min") if isinstance(age_limit, dict) else None
+    age_max = age_limit.get("max") if isinstance(age_limit, dict) else None
+    if age_min == 0:
+        age_min = None
+    if age_max == 0:
+        age_max = None
+    # admissions have no structured age_relaxation dict — skip relaxation
+    _check_age(
+        age_min,
+        age_max,
+        _user_age(profile.date_of_birth),
+        passed,
+        failed,
+        reasons,
+    )
 
-    # Sort: score DESC, then admission_date ASC (None exam_dates last)
-    far_future = date(9999, 12, 31)
-    scored.sort(key=lambda t: (-t[0], t[1] or far_future))
+    # ── Min percentage — eligibility.min_percentage, 0 means no requirement ─────────────
+    _check_min_percentage(eligibility, profile, passed, failed, reasons)
 
-    total = len(scored)
-    page = scored[offset : offset + limit]
-    return [t[2] for t in page], total
+    # ── Domicile ─────────────────────────────────────────────────────────────────────────
+    _check_domicile(eligibility, profile, passed, failed, reasons, label="admission")
+
+    return {"status": _resolve_status(passed, failed), "reasons": reasons}
