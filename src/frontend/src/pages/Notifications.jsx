@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Briefcase, GraduationCap, CreditCard, FileText, Trophy, Bell, Check, CheckCheck, Trash2 } from 'lucide-react';
 import api from '../api/client';
 
 export default function Notifications() {
@@ -61,12 +62,12 @@ export default function Notifications() {
   };
 
   const typeColors = {
-    job_deadline: { bg: '#dbeafe', color: '#1e40af', icon: '💼' },
-    admission_deadline: { bg: '#ede9fe', color: '#5b21b6', icon: '🎓' },
-    admit_card: { bg: '#eff6ff', color: '#1d4ed8', icon: '🪪' },
-    answer_key: { bg: '#fef3c7', color: '#92400e', icon: '📝' },
-    result: { bg: '#dcfce7', color: '#166534', icon: '🏆' },
-    system: { bg: '#f1f5f9', color: '#475569', icon: '🔔' },
+    job_deadline: { bg: '#dbeafe', color: '#1e40af', icon: Briefcase },
+    admission_deadline: { bg: '#ede9fe', color: '#5b21b6', icon: GraduationCap },
+    admit_card: { bg: '#eff6ff', color: '#1d4ed8', icon: CreditCard },
+    answer_key: { bg: '#fef3c7', color: '#92400e', icon: FileText },
+    result: { bg: '#dcfce7', color: '#166534', icon: Trophy },
+    system: { bg: '#f1f5f9', color: '#475569', icon: Bell },
   };
 
   if (loading) return <div style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>Loading...</div>;
@@ -76,17 +77,17 @@ export default function Notifications() {
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.5rem' }}>
         <div>
-          <h1 style={{ fontSize: '1.3rem', fontWeight: 800 }}>🔔 Notifications</h1>
+          <h1 style={{ fontSize: '1.3rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Bell size={18} strokeWidth={2.5} />Notifications</h1>
           {unreadCount > 0 && <span style={{ background: '#fee2e2', color: '#991b1b', padding: '0.15rem 0.55rem', borderRadius: 9999, fontSize: '0.75rem', fontWeight: 700 }}>{unreadCount} unread</span>}
         </div>
         {unreadCount > 0 && (
-          <button onClick={markAllRead} className="btn btn-outline btn-sm">✓ Mark all as read</button>
+          <button onClick={markAllRead} className="btn btn-outline btn-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}><CheckCheck size={14} strokeWidth={2} />Mark all as read</button>
         )}
       </div>
 
       {notifications.length === 0 && (
         <div style={{ textAlign: 'center', padding: '3rem', color: '#64748b', background: '#f8fafc', borderRadius: '0.75rem', border: '1px dashed #e2e8f0' }}>
-          <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>🔔</div>
+          <div style={{ marginBottom: '0.5rem' }}><Bell size={40} strokeWidth={1.5} color="#94a3b8" /></div>
           <p style={{ fontWeight: 600, color: '#1e293b' }}>No notifications yet.</p>
           <p style={{ fontSize: '0.875rem' }}>You'll receive alerts for tracked jobs and deadlines.</p>
         </div>
@@ -103,8 +104,8 @@ export default function Notifications() {
             display: 'flex', alignItems: 'flex-start', gap: '0.75rem',
           }}>
             {/* Icon */}
-            <div style={{ background: typeConf.bg, color: typeConf.color, width: 36, height: 36, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', flexShrink: 0 }}>
-              {typeConf.icon}
+            <div style={{ background: typeConf.bg, color: typeConf.color, width: 36, height: 36, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              {(() => { const Icon = typeConf.icon; return <Icon size={16} strokeWidth={2} />; })()}
             </div>
 
             {/* Content */}
@@ -117,9 +118,9 @@ export default function Notifications() {
             {/* Actions */}
             <div style={{ display: 'flex', gap: '0.35rem', flexShrink: 0, flexDirection: 'column', alignItems: 'flex-end' }}>
               {!notif.is_read && (
-                <button onClick={() => markRead(notif.id)} style={{ fontSize: '0.72rem', padding: '0.2rem 0.5rem', borderRadius: '0.35rem', background: '#dbeafe', color: '#1e40af', border: 'none', cursor: 'pointer', fontWeight: 600, whiteSpace: 'nowrap' }}>Mark read</button>
+                <button onClick={() => markRead(notif.id)} style={{ fontSize: '0.72rem', padding: '0.2rem 0.5rem', borderRadius: '0.35rem', background: '#dbeafe', color: '#1e40af', border: 'none', cursor: 'pointer', fontWeight: 600, whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}><Check size={11} strokeWidth={2.5} />Mark read</button>
               )}
-              <button onClick={() => deleteNotif(notif.id)} style={{ fontSize: '0.72rem', padding: '0.2rem 0.5rem', borderRadius: '0.35rem', background: '#fee2e2', color: '#991b1b', border: 'none', cursor: 'pointer', fontWeight: 600 }}>Delete</button>
+              <button onClick={() => deleteNotif(notif.id)} style={{ fontSize: '0.72rem', padding: '0.2rem 0.5rem', borderRadius: '0.35rem', background: '#fee2e2', color: '#991b1b', border: 'none', cursor: 'pointer', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}><Trash2 size={11} strokeWidth={2} />Delete</button>
             </div>
           </div>
         );

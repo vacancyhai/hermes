@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
+import { Briefcase, GraduationCap, Download, Link2, BookOpen, Globe, Star, ClipboardList } from 'lucide-react';
 import api from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -43,18 +44,18 @@ export default function AdmitCardDetail() {
 
       <div className="detail-hero hero-admit">
         <h1>{card.title}</h1>
-        {card.job && <div style={{ fontSize: '0.875rem', opacity: 0.88 }}>💼 {card.job.job_title} — {card.job.organization}</div>}
-        {card.admission && <div style={{ fontSize: '0.875rem', opacity: 0.88 }}>🎓 {card.admission.admission_name}</div>}
+        {card.job && <div style={{ fontSize: '0.875rem', opacity: 0.88, marginTop: '0.3rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Briefcase size={14} strokeWidth={2} />{card.job.job_title} — {card.job.organization}</div>}
+        {card.admission && <div style={{ fontSize: '0.875rem', opacity: 0.88, marginTop: '0.3rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}><GraduationCap size={14} strokeWidth={2} />{card.admission.admission_name}</div>}
       </div>
 
       <div className="action-bar">
         {(card.job || card.admission) && (
           <button onClick={toggleTrack} className="share-btn" style={tracking ? { background: '#fef3c7', color: '#92400e', borderColor: '#fde68a' } : { background: '#dbeafe', color: '#1e40af', borderColor: '#bfdbfe' }}>
-            {tracking ? '★ Tracking — Remove' : '☆ Track for Reminders'}
+            {tracking ? <><Star size={14} strokeWidth={2} fill="currentColor" /> Tracking — Remove</> : <><Star size={14} strokeWidth={2} /> Track for Reminders</>}
           </button>
         )}
-        {card.download_url && <a href={card.download_url} target="_blank" rel="noopener noreferrer" className="share-btn" style={{ background: '#2563eb', color: '#fff', borderColor: '#2563eb' }}>📥 Download Admit Card</a>}
-        {card.source_url && <a href={card.source_url} target="_blank" rel="noopener noreferrer" className="share-btn">🔗 Official Website</a>}
+        {card.download_url && <a href={card.download_url} target="_blank" rel="noopener noreferrer" className="share-btn" style={{ background: '#2563eb', color: '#fff', borderColor: '#2563eb', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}><Download size={13} strokeWidth={2} />Download Admit Card</a>}
+        {card.source_url && <a href={card.source_url} target="_blank" rel="noopener noreferrer" className="share-btn" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}><Globe size={13} strokeWidth={2} />Official Website</a>}
       </div>
 
       <div className="detail-grid">
@@ -63,11 +64,11 @@ export default function AdmitCardDetail() {
         ))}
       </div>
 
-      {card.notes && <div className="detail-section"><h2>📋 Notes</h2><div style={{ fontSize: '0.9rem', color: '#334155', lineHeight: 1.65 }} dangerouslySetInnerHTML={{ __html: card.notes }} /></div>}
+      {card.notes && <div className="detail-section"><h2 style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><ClipboardList size={16} strokeWidth={2} />Notes</h2><div style={{ fontSize: '0.9rem', color: '#334155', lineHeight: 1.65 }} dangerouslySetInnerHTML={{ __html: card.notes }} /></div>}
 
       {card.instructions && (
         <div className="detail-section">
-          <h2>📋 Instructions</h2>
+          <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><ClipboardList size={16} strokeWidth={2} />Instructions</h2>
           <div style={{ fontSize: '0.9rem', color: '#334155', lineHeight: 1.65 }} dangerouslySetInnerHTML={{ __html: card.instructions }} />
         </div>
       )}

@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { FileText, Star } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTrackedItems } from '../hooks/useTrackedItems';
 
@@ -9,7 +10,7 @@ export default function AnswerKeys() {
   return (
     <div>
       <div style={{ background: 'linear-gradient(135deg,#92400e 0%,#d97706 100%)', color: '#fff', padding: '1.75rem 1.5rem 1.5rem', borderRadius: '0.75rem', marginBottom: '1.25rem' }}>
-        <h1 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '0.3rem' }}>📝 Answer Keys</h1>
+        <h1 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '0.3rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><FileText size={20} strokeWidth={2.5} />Answer Keys</h1>
         <p style={{ fontSize: '0.875rem', opacity: 0.85 }}>Official answer keys for government and entrance examinations</p>
       </div>
 
@@ -32,11 +33,11 @@ export default function AnswerKeys() {
               <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
                 <Link to={`/answer-keys/${key.slug}`} className="btn btn-sm" style={{ background: '#d97706', color: '#fff', border: 'none' }}>View →</Link>
                 {tid && (token ? (
-                  <button onClick={() => track(type, tid)} className={isTracking ? 'btn-tracking btn btn-sm' : 'btn btn-outline btn-sm'}>
-                    {isTracking ? '★' : '☆'}
+                  <button onClick={() => track(type, tid)} className={isTracking ? 'btn-tracking btn btn-sm' : 'btn btn-outline btn-sm'} style={{ display: 'inline-flex', alignItems: 'center' }}>
+                    <Star size={13} strokeWidth={2} fill={isTracking ? 'currentColor' : 'none'} />
                   </button>
                 ) : (
-                  <Link to={`/login?next=/answer-keys/${key.slug}`} className="btn btn-outline btn-sm">☆</Link>
+                  <Link to={`/login?next=/answer-keys/${key.slug}`} className="btn btn-outline btn-sm" style={{ display: 'inline-flex', alignItems: 'center' }}><Star size={13} strokeWidth={2} /></Link>
                 ))}
               </div>
             </div>

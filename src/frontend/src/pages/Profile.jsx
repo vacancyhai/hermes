@@ -1,5 +1,6 @@
 import PropTypes from 'prop-types';
 import { useState, useEffect, useRef } from 'react';
+import { User, Bell, Landmark, Lock, Mail, CheckCircle, AlertTriangle } from 'lucide-react';
 import {
   EmailAuthProvider,
   reauthenticateWithCredential,
@@ -258,14 +259,14 @@ export default function Profile() {
     <div style={{ maxWidth: 720, margin: '0 auto' }}>
       {/* Hero */}
       <div style={{ background: 'linear-gradient(135deg,#1e3a5f 0%,#2563eb 100%)', color: '#fff', padding: '1.5rem', borderRadius: '0.75rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-        <div style={{ width: 60, height: 60, background: 'rgba(255,255,255,.2)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', flexShrink: 0 }}>👤</div>
+        <div style={{ width: 60, height: 60, background: 'rgba(255,255,255,.2)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><User size={28} strokeWidth={2} /></div>
         <div>
           <div style={{ fontSize: '1.1rem', fontWeight: 800 }}>{user?.full_name || 'User'}</div>
           <div style={{ fontSize: '0.85rem', opacity: 0.8 }}>{user?.email || user?.phone || ''}</div>
         </div>
       </div>
 
-      {flash.msg && <div className={flash.type === 'success' ? 'flash-success' : 'flash-error'}>{flash.type === 'success' ? '✅' : '❌'} {flash.msg}</div>}
+      {flash.msg && <div className={flash.type === 'success' ? 'flash-success' : 'flash-error'} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>{flash.type === 'success' ? <CheckCircle size={15} strokeWidth={2} /> : <AlertTriangle size={15} strokeWidth={2} />} {flash.msg}</div>}
 
       {!profile?.gender && !profile?.highest_qualification && (
         <div style={{ background: '#fef3c7', border: '1px solid #fde68a', color: '#92400e', padding: '0.75rem 1rem', borderRadius: '0.375rem', marginBottom: '1.5rem', fontSize: '0.875rem' }}>
@@ -275,9 +276,9 @@ export default function Profile() {
 
       {/* Tabs */}
       <div style={{ display: 'flex', borderBottom: '2px solid #e2e8f0', marginBottom: '1.5rem', overflowX: 'auto' }}>
-        {[['profile', '👤 Profile'], ['notifications', '🔔 Notifications'], ['account', '🏦 Account'], ['security', '🔒 Security']].map(([t, label]) => (
-          <button key={t} onClick={() => setTab(t)} style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', fontWeight: tab === t ? 700 : 500, cursor: 'pointer', background: 'none', border: 'none', borderBottom: tab === t ? '2px solid #2563eb' : '2px solid transparent', marginBottom: -2, color: tab === t ? '#2563eb' : '#64748b', whiteSpace: 'nowrap' }}>
-            {label}
+        {[['profile', 'Profile', User], ['notifications', 'Notifications', Bell], ['account', 'Account', Landmark], ['security', 'Security', Lock]].map(([t, label, Icon]) => (
+          <button key={t} onClick={() => setTab(t)} style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', fontWeight: tab === t ? 700 : 500, cursor: 'pointer', background: 'none', border: 'none', borderBottom: tab === t ? '2px solid #2563eb' : '2px solid transparent', marginBottom: -2, color: tab === t ? '#2563eb' : '#64748b', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+            <Icon size={14} strokeWidth={2} />{label}
           </button>
         ))}
       </div>
@@ -301,8 +302,8 @@ export default function Profile() {
                   Phone Number
                   {user?.phone && (
                     user?.is_phone_verified
-                      ? <span style={{ marginLeft: '0.4rem', background: '#d1fae5', color: '#065f46', padding: '0.1rem 0.4rem', borderRadius: 9999, fontSize: '0.72rem', fontWeight: 600 }}>✓ Verified</span>
-                      : <span style={{ marginLeft: '0.4rem', background: '#fee2e2', color: '#991b1b', padding: '0.1rem 0.4rem', borderRadius: 9999, fontSize: '0.72rem', fontWeight: 600 }}>⚠ Unverified</span>
+                      ? <span style={{ marginLeft: '0.4rem', background: '#d1fae5', color: '#065f46', padding: '0.1rem 0.4rem', borderRadius: 9999, fontSize: '0.72rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}><CheckCircle size={10} strokeWidth={2.5} />Verified</span>
+                      : <span style={{ marginLeft: '0.4rem', background: '#fee2e2', color: '#991b1b', padding: '0.1rem 0.4rem', borderRadius: 9999, fontSize: '0.72rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}><AlertTriangle size={10} strokeWidth={2.5} />Unverified</span>
                   )}
                 </label>
                 <input id="profile-phone" value={user?.phone || ''} disabled style={{ ...inputStyle, background: '#f1f5f9', color: '#64748b' }} placeholder="+91 98765 43210" />
@@ -379,7 +380,7 @@ export default function Profile() {
           </div>
 
           <button type="submit" disabled={saving} className="btn btn-primary" style={{ width: '100%', padding: '0.65rem' }}>
-            {saving ? 'Saving...' : '💾 Save Profile'}
+            {saving ? 'Saving...' : 'Save Profile'}
           </button>
         </form>
       )}
@@ -390,19 +391,19 @@ export default function Profile() {
           <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '0.75rem', padding: '1.5rem', marginBottom: '1rem' }}>
             <h3 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '1rem', paddingBottom: '0.5rem', borderBottom: '1px solid #e2e8f0', color: '#1e3a5f' }}>Notification Preferences</h3>
             {[
-              { state: emailNotif, setter: setEmailNotif, icon: '📧', label: 'Email Notifications', hint: 'Deadline reminders, new job alerts' },
-              { state: pushNotif, setter: setPushNotif, icon: '🔔', label: 'Push Notifications', hint: 'Mobile app alerts (requires app)' },
-            ].map(({ state: s, setter, icon, label, hint }) => {
+              { state: emailNotif, setter: setEmailNotif, Icon: Mail, label: 'Email Notifications', hint: 'Deadline reminders, new job alerts' },
+              { state: pushNotif, setter: setPushNotif, Icon: Bell, label: 'Push Notifications', hint: 'Mobile app alerts (requires app)' },
+            ].map(({ state: s, setter, Icon, label, hint }) => {
               const notifId = `notif-${label.replaceAll(' ', '-').toLowerCase()}`;
               return (
                 <label key={label} htmlFor={notifId} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem 1rem', background: '#f8fafc', borderRadius: '0.5rem', border: '1px solid #e2e8f0', cursor: 'pointer', marginBottom: '0.5rem' }}>
-                  <div><div style={{ fontSize: '0.9rem', fontWeight: 600 }}>{icon} {label}</div><div style={{ fontSize: '0.78rem', color: '#64748b' }}>{hint}</div></div>
+                  <div><div style={{ fontSize: '0.9rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Icon size={16} strokeWidth={2} color="#2563eb" />{label}</div><div style={{ fontSize: '0.78rem', color: '#64748b' }}>{hint}</div></div>
                   <input id={notifId} type="checkbox" checked={s} onChange={(e) => setter(e.target.checked)} aria-label={label} style={{ accentColor: '#2563eb', width: 18, height: 18, cursor: 'pointer' }} />
                 </label>
               );
             })}
           </div>
-          <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '0.65rem' }}>💾 Save Preferences</button>
+          <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '0.65rem' }}>Save Preferences</button>
         </form>
       )}
 

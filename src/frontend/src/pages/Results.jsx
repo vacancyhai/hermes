@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { Trophy, Star } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTrackedItems } from '../hooks/useTrackedItems';
 
@@ -9,7 +10,7 @@ export default function Results() {
   return (
     <div>
       <div style={{ background: 'linear-gradient(135deg,#14532d 0%,#16a34a 100%)', color: '#fff', padding: '1.75rem 1.5rem 1.5rem', borderRadius: '0.75rem', marginBottom: '1.25rem' }}>
-        <h1 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '0.3rem' }}>🏆 Results</h1>
+        <h1 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '0.3rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Trophy size={20} strokeWidth={2.5} />Results</h1>
         <p style={{ fontSize: '0.875rem', opacity: 0.85 }}>Official results for government and entrance examinations</p>
       </div>
 
@@ -32,11 +33,11 @@ export default function Results() {
               <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
                 <Link to={`/results/${res.slug}`} className="btn btn-sm" style={{ background: '#16a34a', color: '#fff', border: 'none' }}>View →</Link>
                 {tid && (token ? (
-                  <button onClick={() => track(type, tid)} className={isTracking ? 'btn-tracking btn btn-sm' : 'btn btn-outline btn-sm'}>
-                    {isTracking ? '★' : '☆'}
+                  <button onClick={() => track(type, tid)} className={isTracking ? 'btn-tracking btn btn-sm' : 'btn btn-outline btn-sm'} style={{ display: 'inline-flex', alignItems: 'center' }}>
+                    <Star size={13} strokeWidth={2} fill={isTracking ? 'currentColor' : 'none'} />
                   </button>
                 ) : (
-                  <Link to={`/login?next=/results/${res.slug}`} className="btn btn-outline btn-sm">☆</Link>
+                  <Link to={`/login?next=/results/${res.slug}`} className="btn btn-outline btn-sm" style={{ display: 'inline-flex', alignItems: 'center' }}><Star size={13} strokeWidth={2} /></Link>
                 ))}
               </div>
             </div>

@@ -1,6 +1,7 @@
 import PropTypes from 'prop-types';
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
+import { CheckCircle, XCircle } from 'lucide-react';
 import client from '../api/client';
 
 function Row({ label, value }) {
@@ -149,8 +150,8 @@ export default function UserDetail() {
                 <Row label="Status" value={<span className={`badge ${statusBadgeClass(user.status)}`}>{user.status}</span>} />
                 <Row label="Auth Provider" value={user.auth_provider} />
                 <Row label="Firebase UID" value={user.firebase_uid} />
-                <Row label="Email Verified" value={user.email_verified ? '✅ Yes' : '❌ No'} />
-                <Row label="Phone Verified" value={user.phone_verified ? '✅ Yes' : '❌ No'} />
+                <Row label="Email Verified" value={user.email_verified ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', color: '#16a34a' }}><CheckCircle size={13} strokeWidth={2} />Yes</span> : <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', color: '#dc2626' }}><XCircle size={13} strokeWidth={2} />No</span>} />
+                <Row label="Phone Verified" value={user.phone_verified ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', color: '#16a34a' }}><CheckCircle size={13} strokeWidth={2} />Yes</span> : <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', color: '#dc2626' }}><XCircle size={13} strokeWidth={2} />No</span>} />
                 <Row label="Joined" value={user.created_at ? new Date(user.created_at).toLocaleString() : '—'} />
                 <Row label="Last Login" value={user.last_login_at ? new Date(user.last_login_at).toLocaleString() : '—'} />
               </tbody>

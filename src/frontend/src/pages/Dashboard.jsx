@@ -1,6 +1,7 @@
 import PropTypes from 'prop-types';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { LayoutDashboard, Briefcase, CreditCard, FileText, Trophy, GraduationCap, Landmark, Clock, Star, Search, CalendarDays, Users } from 'lucide-react';
 import api from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -57,7 +58,7 @@ MiniCard.propTypes = {
 function TrackBtn({ type, id, slug, isTracking, onToggle }) {
   const { token } = useAuth();
   if (!token) {
-    return <a href={`/login?next=/${type}s/${slug}`} onClick={(e) => { e.stopPropagation(); }} style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem', borderRadius: 9999, border: '1px solid #bfdbfe', background: '#eff6ff', color: '#1d4ed8', textDecoration: 'none' }}>☆</a>;
+    return <a href={`/login?next=/${type}s/${slug}`} onClick={(e) => { e.stopPropagation(); }} style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem', borderRadius: 9999, border: '1px solid #bfdbfe', background: '#eff6ff', color: '#1d4ed8', textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}><Star size={11} strokeWidth={2} /></a>;
   }
   const track = async (e) => {
     e.stopPropagation();
@@ -68,8 +69,8 @@ function TrackBtn({ type, id, slug, isTracking, onToggle }) {
     } catch { }
   };
   return (
-    <button onClick={track} className={isTracking ? 'btn-tracking btn btn-sm' : 'btn btn-outline btn-sm'} style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem' }}>
-      {isTracking ? '★' : '☆'}
+    <button onClick={track} className={isTracking ? 'btn-tracking btn btn-sm' : 'btn btn-outline btn-sm'} style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem', display: 'inline-flex', alignItems: 'center' }}>
+      <Star size={11} strokeWidth={2} fill={isTracking ? 'currentColor' : 'none'} />
     </button>
   );
 }
@@ -95,7 +96,7 @@ function SectionRow({ title, href, children }) {
 }
 
 SectionRow.propTypes = {
-  title: PropTypes.string.isRequired,
+  title: PropTypes.oneOfType([PropTypes.string, PropTypes.node]).isRequired,
   href: PropTypes.string.isRequired,
   children: PropTypes.node.isRequired,
 };
@@ -191,7 +192,7 @@ export default function Dashboard() {
       {/* Hero */}
       <div style={{ background: 'linear-gradient(135deg,#1e3a5f 0%,#2563eb 100%)', color: '#fff', padding: '1.5rem 1.5rem 1.3rem', borderRadius: '0.75rem', marginBottom: '1.5rem', position: 'relative', overflow: 'hidden' }}>
         <div style={{ position: 'absolute', top: -30, right: -30, width: 180, height: 180, background: 'rgba(255,255,255,.05)', borderRadius: '50%', pointerEvents: 'none' }} />
-        <h1 style={{ fontSize: '1.4rem', fontWeight: 800, marginBottom: '0.2rem' }}>📊 Dashboard</h1>
+        <h1 style={{ fontSize: '1.4rem', fontWeight: 800, marginBottom: '0.2rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><LayoutDashboard size={22} strokeWidth={2.5} />Dashboard</h1>
         <p style={{ fontSize: '0.875rem', opacity: 0.85 }}>Latest government jobs, admissions, admit cards, answer keys and results</p>
       </div>
 
@@ -199,7 +200,7 @@ export default function Dashboard() {
       {orgs.length > 0 && (
         <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '0.75rem', padding: '0.8rem 1rem', marginBottom: '1.5rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.7rem' }}>
-            <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.07em' }}>🏛 Organizations</span>
+            <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.07em', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}><Landmark size={12} strokeWidth={2} />Organizations</span>
             <span style={{ fontSize: '0.68rem', fontWeight: 700, background: '#f1f5f9', color: '#64748b', borderRadius: 9999, padding: '0.1rem 0.45rem' }}>{orgs.length}</span>
           </div>
           <div style={{ display: 'flex', gap: '0.55rem', overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: '0.15rem' }}>
@@ -231,7 +232,7 @@ export default function Dashboard() {
                   }
                   <span style={{ fontSize: '0.7rem', fontWeight: 600, color: '#334155', textAlign: 'center', lineHeight: 1.3, width: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={org.name}>{displayName}</span>
                   <button onClick={toggleOrg} style={{ fontSize: '0.6rem', fontWeight: 700, borderRadius: '0.35rem', padding: '0.2rem 0.5rem', border: `1px solid ${isTracking ? '#f59e0b' : '#e2e8f0'}`, background: isTracking ? '#fef3c7' : '#fff', color: isTracking ? '#92400e' : '#64748b', cursor: 'pointer', whiteSpace: 'nowrap', width: '100%' }}>
-                    {isTracking ? '★ Following' : '☆ Follow'}
+                    {isTracking ? <><Star size={10} strokeWidth={2} fill="currentColor" /> Following</> : <><Star size={10} strokeWidth={2} /> Follow</>}
                   </button>
                 </div>
               );
@@ -245,7 +246,7 @@ export default function Dashboard() {
         {/* Upcoming Exams Sidebar */}
         <aside style={{ position: 'sticky', top: '5rem' }}>
           <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '0.75rem', overflow: 'hidden' }}>
-            <div style={{ background: '#1e3a5f', color: '#fff', padding: '0.7rem 1rem', fontSize: '0.875rem', fontWeight: 700 }}>⏰ Upcoming Exams</div>
+            <div style={{ background: '#1e3a5f', color: '#fff', padding: '0.7rem 1rem', fontSize: '0.875rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem' }}><CalendarDays size={14} strokeWidth={2} />Upcoming Exams</div>
             <div>
               {data.exams.length === 0 && <div style={{ padding: '0.75rem', textAlign: 'center', color: '#94a3b8', fontSize: '0.78rem' }}>No upcoming exams</div>}
               {data.exams.map((exam) => {
@@ -257,7 +258,7 @@ export default function Dashboard() {
                     onMouseLeave={(e) => { e.currentTarget.style.background = ''; }}>
                     <div style={{ color: '#1e293b', fontWeight: 600, fontSize: '0.78rem', lineHeight: 1.35 }}>{exam.title}</div>
                     <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', color: '#64748b', fontSize: '0.7rem', fontWeight: 500, marginTop: '0.2rem' }}>
-                      📅 {exam.exam_start || 'TBA'} <ExamsDaysBadge days={exam.days_remaining} />
+                      <CalendarDays size={11} strokeWidth={2} />{exam.exam_start || 'TBA'} <ExamsDaysBadge days={exam.days_remaining} />
                     </div>
                   </button>
                 );
@@ -269,7 +270,7 @@ export default function Dashboard() {
         {/* Main content */}
         <div>
           {/* Jobs */}
-          <SectionRow title="💼 Latest Jobs" href="/jobs">
+          <SectionRow title={<span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}><Briefcase size={15} strokeWidth={2} />Latest Jobs</span>} href="/jobs">
             {data.jobs.length === 0 && <p style={{ color: '#94a3b8', fontSize: '0.875rem' }}>No jobs available.</p>}
             {data.jobs.map((job) => (
               <MiniCard key={job.id} color="#1e3a5f" onClick={() => navigate(`/jobs/${job.slug}`)}>
@@ -278,13 +279,13 @@ export default function Dashboard() {
                     <div style={{ fontSize: '0.85rem', fontWeight: 700, lineHeight: 1.35, flex: 1, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{job.job_title}</div>
                     <MiniStatus status={job.status} />
                   </div>
-                  <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.2rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>🏛 {job.organization}</div>
-                  {job.application_end && <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>⏰ {job.application_end}</div>}
+                  <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.2rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '0.25rem' }}><Landmark size={11} strokeWidth={2} />{job.organization}</div>
+                  {job.application_end && <div style={{ fontSize: '0.72rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '0.2rem' }}><Clock size={10} strokeWidth={2} />{job.application_end}</div>}
                   {job.total_vacancies && <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>{job.total_vacancies.toLocaleString()} vacancies</div>}
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '0.4rem', flexWrap: 'wrap', gap: '0.3rem' }}>
                   {!token || !profileComplete
-                    ? <Link to="/profile" onClick={(e) => e.stopPropagation()} style={{ fontSize: '0.65rem', padding: '0.15rem 0.4rem', border: '1px solid #e2e8f0', borderRadius: '0.35rem', background: '#fff', color: '#64748b', textDecoration: 'none' }}>🔍 Eligibility</Link>
+                    ? <Link to="/profile" onClick={(e) => e.stopPropagation()} style={{ fontSize: '0.65rem', padding: '0.15rem 0.4rem', border: '1px solid #e2e8f0', borderRadius: '0.35rem', background: '#fff', color: '#64748b', textDecoration: 'none' }}><Search size={11} strokeWidth={2} /> Eligibility</Link>
                     : <span style={{ fontSize: '0.65rem', color: '#94a3b8' }}>checking…</span>}
                   <TrackBtn type="job" id={job.id} slug={job.slug} isTracking={tracked.jobIds.has(String(job.id))} onToggle={toggleJobId} />
                 </div>
@@ -293,7 +294,7 @@ export default function Dashboard() {
           </SectionRow>
 
           {/* Admit Cards */}
-          <SectionRow title="🪪 Latest Admit Cards" href="/admit-cards">
+          <SectionRow title={<span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}><CreditCard size={15} strokeWidth={2} />Latest Admit Cards</span>} href="/admit-cards">
             {data.admit_cards.length === 0 && <p style={{ color: '#94a3b8', fontSize: '0.875rem' }}>No admit cards available.</p>}
             {data.admit_cards.map((card) => (
               <MiniCard key={card.id} color="#2563eb" onClick={() => navigate(`/admit-cards/${card.slug}`)}>
@@ -318,7 +319,7 @@ export default function Dashboard() {
           </SectionRow>
 
           {/* Answer Keys */}
-          <SectionRow title="📝 Latest Answer Keys" href="/answer-keys">
+          <SectionRow title={<span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}><FileText size={15} strokeWidth={2} />Latest Answer Keys</span>} href="/answer-keys">
             {data.answer_keys.length === 0 && <p style={{ color: '#94a3b8', fontSize: '0.875rem' }}>No answer keys available.</p>}
             {data.answer_keys.map((key) => (
               <MiniCard key={key.id} color="#d97706" onClick={() => navigate(`/answer-keys/${key.slug}`)}>
@@ -336,7 +337,7 @@ export default function Dashboard() {
           </SectionRow>
 
           {/* Results */}
-          <SectionRow title="🏆 Latest Results" href="/results">
+          <SectionRow title={<span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}><Trophy size={15} strokeWidth={2} />Latest Results</span>} href="/results">
             {data.results.length === 0 && <p style={{ color: '#94a3b8', fontSize: '0.875rem' }}>No results available.</p>}
             {data.results.map((res) => (
               <MiniCard key={res.id} color="#16a34a" onClick={() => navigate(`/results/${res.slug}`)}>
@@ -354,7 +355,7 @@ export default function Dashboard() {
           </SectionRow>
 
           {/* Admissions */}
-          <SectionRow title="🎓 Latest Admissions" href="/admissions">
+          <SectionRow title={<span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}><GraduationCap size={15} strokeWidth={2} />Latest Admissions</span>} href="/admissions">
             {data.admissions.length === 0 && <p style={{ color: '#94a3b8', fontSize: '0.875rem' }}>No admissions available.</p>}
             {data.admissions.map((adm) => (
               <MiniCard key={adm.id} color="#7c3aed" onClick={() => navigate(`/admissions/${adm.slug}`)}>
@@ -363,13 +364,13 @@ export default function Dashboard() {
                     <div style={{ fontSize: '0.85rem', fontWeight: 700, lineHeight: 1.35, flex: 1, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{adm.admission_name}</div>
                     <MiniStatus status={adm.status} />
                   </div>
-                  <div style={{ fontSize: '0.75rem', color: '#64748b' }}>🏛 {adm.conducting_body}</div>
-                  {adm.application_end && <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>⏰ {adm.application_end}</div>}
+                  <div style={{ fontSize: '0.75rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '0.25rem' }}><Landmark size={11} strokeWidth={2} />{adm.conducting_body}</div>
+                  {adm.application_end && <div style={{ fontSize: '0.72rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '0.2rem' }}><Clock size={10} strokeWidth={2} />{adm.application_end}</div>}
                   {adm.admission_type && <span style={{ background: '#ede9fe', color: '#5b21b6', padding: '0.1rem 0.4rem', borderRadius: 9999, fontSize: '0.68rem', fontWeight: 700 }}>{adm.admission_type.toUpperCase()}</span>}
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '0.4rem', flexWrap: 'wrap', gap: '0.3rem' }}>
                   {!token || !profileComplete
-                    ? <Link to="/profile" onClick={(e) => e.stopPropagation()} style={{ fontSize: '0.65rem', padding: '0.15rem 0.4rem', border: '1px solid #e2e8f0', borderRadius: '0.35rem', background: '#fff', color: '#64748b', textDecoration: 'none' }}>🔍 Eligibility</Link>
+                    ? <Link to="/profile" onClick={(e) => e.stopPropagation()} style={{ fontSize: '0.65rem', padding: '0.15rem 0.4rem', border: '1px solid #e2e8f0', borderRadius: '0.35rem', background: '#fff', color: '#64748b', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}><Search size={10} strokeWidth={2} />Eligibility</Link>
                     : <span style={{ fontSize: '0.65rem', color: '#94a3b8' }}>checking…</span>}
                   <TrackBtn type="admission" id={adm.id} slug={adm.slug} isTracking={tracked.admissionIds.has(String(adm.id))} onToggle={toggleAdmId} />
                 </div>
@@ -391,18 +392,18 @@ export default function Dashboard() {
 
               {tracked.jobs.length > 0 && (
                 <>
-                  <div style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>💼 Tracked Jobs</div>
+                  <div style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Briefcase size={15} strokeWidth={2} />Tracked Jobs</div>
                   {tracked.jobs.map((item) => (
                     <div key={item.id} style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '0.5rem', padding: '0.85rem 1rem', marginBottom: '0.6rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem' }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <h3 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.15rem' }}><Link to={`/jobs/${item.slug}`} style={{ color: '#1e293b' }}>{item.job_title}</Link></h3>
                         <div style={{ color: '#64748b', fontSize: '0.8rem' }}>{item.organization}</div>
-                        {item.application_end && <div style={{ fontSize: '0.77rem', color: '#b45309', fontWeight: 600, marginTop: '0.2rem' }}>⏰ {item.application_end}</div>}
+                        {item.application_end && <div style={{ fontSize: '0.77rem', color: '#b45309', fontWeight: 600, marginTop: '0.2rem', display: 'flex', alignItems: 'center', gap: '0.2rem' }}><Clock size={11} strokeWidth={2} />{item.application_end}</div>}
                       </div>
                       <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexShrink: 0, flexWrap: 'wrap' }}>
                         <span style={{ background: '#dbeafe', color: '#1e40af', padding: '0.15rem 0.5rem', borderRadius: 9999, fontSize: '0.7rem', fontWeight: 700 }}>Job</span>
                         <Link to={`/jobs/${item.slug}`} className="btn btn-outline btn-sm">View →</Link>
-                        <button onClick={() => untrackJob(item)} className="btn-tracking btn btn-sm">★ Untrack</button>
+                        <button onClick={() => untrackJob(item)} className="btn-tracking btn btn-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}><Star size={12} strokeWidth={2} fill="currentColor" />Untrack</button>
                       </div>
                     </div>
                   ))}
@@ -411,18 +412,18 @@ export default function Dashboard() {
 
               {tracked.admissions.length > 0 && (
                 <>
-                  <div style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>🎓 Tracked Admissions</div>
+                  <div style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}><GraduationCap size={15} strokeWidth={2} />Tracked Admissions</div>
                   {tracked.admissions.map((item) => (
                     <div key={item.id} style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '0.5rem', padding: '0.85rem 1rem', marginBottom: '0.6rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem' }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <h3 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.15rem' }}><Link to={`/admissions/${item.slug}`} style={{ color: '#1e293b' }}>{item.admission_name}</Link></h3>
                         <div style={{ color: '#64748b', fontSize: '0.8rem' }}>{item.conducting_body}</div>
-                        {item.application_end && <div style={{ fontSize: '0.77rem', color: '#b45309', fontWeight: 600, marginTop: '0.2rem' }}>⏰ {item.application_end}</div>}
+                        {item.application_end && <div style={{ fontSize: '0.77rem', color: '#b45309', fontWeight: 600, marginTop: '0.2rem', display: 'flex', alignItems: 'center', gap: '0.2rem' }}><Clock size={11} strokeWidth={2} />{item.application_end}</div>}
                       </div>
                       <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexShrink: 0, flexWrap: 'wrap' }}>
                         <span style={{ background: '#d1fae5', color: '#065f46', padding: '0.15rem 0.5rem', borderRadius: 9999, fontSize: '0.7rem', fontWeight: 700 }}>Admission</span>
                         <Link to={`/admissions/${item.slug}`} className="btn btn-outline btn-sm">View →</Link>
-                        <button onClick={() => untrackAdmission(item)} className="btn-tracking btn btn-sm">★ Untrack</button>
+                        <button onClick={() => untrackAdmission(item)} className="btn-tracking btn btn-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}><Star size={12} strokeWidth={2} fill="currentColor" />Untrack</button>
                       </div>
                     </div>
                   ))}
@@ -431,7 +432,7 @@ export default function Dashboard() {
 
               {tracked.jobs.length === 0 && tracked.admissions.length === 0 && (
                 <div style={{ textAlign: 'center', padding: '2.5rem 1rem', color: '#64748b', background: '#f8fafc', borderRadius: '0.75rem', border: '1px dashed #e2e8f0' }}>
-                  <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>👀</div>
+                  <div style={{ marginBottom: '0.5rem' }}><Users size={40} strokeWidth={1.5} color="#94a3b8" /></div>
                   <p style={{ fontSize: '0.975rem', fontWeight: 600, color: '#1e293b', marginBottom: '0.3rem' }}>No items tracked yet.</p>
                   <p style={{ fontSize: '0.875rem', marginBottom: '1.1rem' }}>Track jobs and admissions to get deadline reminders.</p>
                   <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap' }}>

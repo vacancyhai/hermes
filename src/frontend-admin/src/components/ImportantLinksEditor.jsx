@@ -25,7 +25,7 @@ export default function ImportantLinksEditor({ prefix, links, onUpdate, onAdd, o
               <label htmlFor={`${prefix}-url-${i}`} style={{ fontSize: '.7rem' }}>URL</label>
               <input id={`${prefix}-url-${i}`} type="url" value={link.url} onChange={(e) => onUpdate(i, 'url', e.target.value)} placeholder="https://…" style={{ padding: '.35rem .5rem', fontSize: '.82rem' }} />
             </div>
-            <button type="button" className="btn btn-sm btn-danger" onClick={() => onRemove(i)} style={{ marginBottom: 0 }}>✕</button>
+            <button type="button" className="btn btn-sm btn-danger" onClick={() => onRemove(i)} style={{ marginBottom: 0 }}>Remove</button>
           </div>
         ))}
       </div>

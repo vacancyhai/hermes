@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { Landmark, Eye, EyeOff } from 'lucide-react';
 import {
   GoogleAuthProvider,
   signInWithPopup,
@@ -236,7 +237,7 @@ export default function Login() {
 
         {/* Left branding */}
         <div style={{ flex: '0 0 300px', background: 'linear-gradient(160deg,#0f172a 0%,#1e3a5f 60%,#2563eb 100%)', padding: '2.5rem 2rem', display: 'flex', flexDirection: 'column', justifyContent: 'center', color: '#fff' }}>
-          <div style={{ width: 52, height: 52, background: 'rgba(255,255,255,.15)', borderRadius: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.25rem', fontSize: '1.5rem' }}>🏛</div>
+          <div style={{ width: 52, height: 52, background: 'rgba(255,255,255,.15)', borderRadius: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.25rem' }}><Landmark size={26} strokeWidth={2} /></div>
           <h1 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.4rem' }}>Vacancy Hai</h1>
           <p style={{ fontSize: '0.85rem', opacity: 0.8, lineHeight: 1.6, marginBottom: '1.75rem' }}>Your one-stop platform for government jobs &amp; admission notifications.</p>
           {['Latest central &amp; state govt jobs', 'NEET, JEE, GATE, CAT &amp; more', 'Admit cards, answer keys &amp; results', 'Personalised job &amp; admission alerts'].map((f) => (
@@ -283,7 +284,7 @@ export default function Login() {
                     <div style={{ marginBottom: '0.7rem' }}><label htmlFor="signin-password" style={labelStyle}>Password</label>
                       <div style={{ position: 'relative' }}>
                         <input id="signin-password" type={showPw ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} style={{ ...inputStyle, paddingRight: '2.5rem' }} placeholder="Your password" onKeyDown={(e) => e.key === 'Enter' && loginWithEmail()} />
-                        <button type="button" onClick={() => setShowPw(!showPw)} style={{ position: 'absolute', right: '0.6rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}>{showPw ? '🙈' : '👁'}</button>
+                        <button type="button" onClick={() => setShowPw(!showPw)} style={{ position: 'absolute', right: '0.6rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}>{showPw ? <EyeOff size={16} strokeWidth={2} /> : <Eye size={16} strokeWidth={2} />}</button>
                       </div>
                     </div>
                     <button onClick={loginWithEmail} disabled={loading} style={{ width: '100%', padding: '0.55rem', borderRadius: '0.4rem', background: 'linear-gradient(135deg,#1e3a5f,#2563eb)', color: '#fff', fontSize: '0.875rem', fontWeight: 600, border: 'none', cursor: 'pointer' }}>
@@ -304,7 +305,7 @@ export default function Login() {
                     <div style={{ marginBottom: '0.7rem' }}><label htmlFor="reg-password" style={labelStyle}>Password <span style={{ color: '#94a3b8', fontWeight: 400 }}>(min 8 chars, 1 uppercase, 1 special)</span></label>
                       <div style={{ position: 'relative' }}>
                         <input id="reg-password" type={showRegPw ? 'text' : 'password'} value={regPassword} onChange={(e) => setRegPassword(e.target.value)} style={{ ...inputStyle, paddingRight: '2.5rem' }} placeholder="Choose a password" />
-                        <button type="button" onClick={() => setShowRegPw(!showRegPw)} style={{ position: 'absolute', right: '0.6rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}>{showRegPw ? '🙈' : '👁'}</button>
+                        <button type="button" onClick={() => setShowRegPw(!showRegPw)} style={{ position: 'absolute', right: '0.6rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}>{showRegPw ? <EyeOff size={16} strokeWidth={2} /> : <Eye size={16} strokeWidth={2} />}</button>
                       </div>
                     </div>
                     <button onClick={registerWithEmail} disabled={loading} style={{ width: '100%', padding: '0.55rem', borderRadius: '0.4rem', background: 'linear-gradient(135deg,#1e3a5f,#2563eb)', color: '#fff', fontSize: '0.875rem', fontWeight: 600, border: 'none', cursor: 'pointer' }}>

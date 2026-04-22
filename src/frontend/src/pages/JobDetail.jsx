@@ -1,20 +1,21 @@
 import PropTypes from 'prop-types';
 import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
+import { Search, AlertTriangle, CheckCircle, XCircle, Landmark, Users, Link2, Download, BookOpen, Globe, Share2, Folder, Star } from 'lucide-react';
 import api from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
 
 function EligibilityBanner({ eligibility, profileComplete, token, slug }) {
   if (!token) return (
     <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '0.5rem', padding: '1rem 1.25rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-      <span style={{ fontSize: '1.25rem' }}>🔍</span>
+      <Search size={18} strokeWidth={2} />
       <div style={{ flex: 1 }}><div style={{ fontWeight: 600, fontSize: '0.9rem' }}>Check Your Eligibility</div><div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.15rem' }}>Login and complete your profile to see if you qualify.</div></div>
       <Link to={`/login?next=/jobs/${slug}`} className="btn btn-primary btn-sm">Login to Check</Link>
     </div>
   );
   if (!profileComplete) return (
     <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '0.5rem', padding: '1rem 1.25rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-      <span style={{ fontSize: '1.25rem' }}>⚠️</span>
+      <AlertTriangle size={18} strokeWidth={2} color="#92400e" />
       <div style={{ flex: 1 }}><div style={{ fontWeight: 600, fontSize: '0.9rem', color: '#92400e' }}>Profile Incomplete</div><div style={{ fontSize: '0.8rem', color: '#a16207', marginTop: '0.15rem' }}>Complete your profile to check eligibility.</div></div>
       <Link to="/profile" className="btn btn-sm" style={{ background: '#fef3c7', color: '#92400e', border: '1px solid #fde68a' }}>Complete Profile</Link>
     </div>
@@ -22,15 +23,15 @@ function EligibilityBanner({ eligibility, profileComplete, token, slug }) {
   if (!eligibility) return null;
   const s = eligibility.status;
   const cfgs = {
-    eligible: { bg: '#f0fdf4', border: '#bbf7d0', icon: '✅', color: '#166534', label: 'You are Eligible' },
-    partially_eligible: { bg: '#fffbeb', border: '#fde68a', icon: '⚠️', color: '#92400e', label: 'Partially Eligible' },
-    not_eligible: { bg: '#fef2f2', border: '#fecaca', icon: '❌', color: '#991b1b', label: 'Not Eligible' },
+    eligible: { bg: '#f0fdf4', border: '#bbf7d0', Icon: CheckCircle, color: '#166534', label: 'You are Eligible' },
+    partially_eligible: { bg: '#fffbeb', border: '#fde68a', Icon: AlertTriangle, color: '#92400e', label: 'Partially Eligible' },
+    not_eligible: { bg: '#fef2f2', border: '#fecaca', Icon: XCircle, color: '#991b1b', label: 'Not Eligible' },
   }[s];
   if (!cfgs) return null;
   return (
     <div style={{ background: cfgs.bg, border: `1px solid ${cfgs.border}`, borderRadius: '0.5rem', padding: '1rem 1.25rem', marginBottom: '1rem' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: eligibility.reasons?.length ? '0.6rem' : 0 }}>
-        <span style={{ fontSize: '1.25rem' }}>{cfgs.icon}</span>
+        {(() => { const Icon = cfgs.Icon; return <Icon size={18} strokeWidth={2} color={cfgs.color} />; })()}
         <span style={{ fontWeight: 700, fontSize: '0.95rem', color: cfgs.color }}>{cfgs.label}</span>
       </div>
       {eligibility.reasons?.length > 0 && <ul style={{ margin: 0, paddingLeft: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
@@ -145,7 +146,7 @@ export default function JobDetail() {
           <div style={{ flex: 1, minWidth: 0 }}>
             {job.qualification_level && <span style={{ background: 'rgba(255,255,255,.2)', color: '#fff', padding: '0.15rem 0.55rem', borderRadius: 9999, fontSize: '0.75rem', fontWeight: 600, display: 'inline-block', marginBottom: '0.5rem' }}>{job.qualification_level}</span>}
             <h1>{job.job_title}</h1>
-            <div style={{ fontSize: '0.875rem', opacity: 0.88 }}>🏛 {job.organization}{job.department && job.department !== job.organization ? ` · ${job.department}` : ''}</div>
+            <div style={{ fontSize: '0.875rem', opacity: 0.88, display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Landmark size={14} strokeWidth={2} />{job.organization}{job.department && job.department !== job.organization ? ` · ${job.department}` : ''}</div>
             {job.total_vacancies && <div style={{ marginTop: '0.4rem', fontSize: '0.875rem', opacity: 0.9 }}>{job.total_vacancies.toLocaleString()} vacancies</div>}
           </div>
           <div>
@@ -157,11 +158,11 @@ export default function JobDetail() {
       {/* Action bar */}
       <div className="action-bar">
         <button onClick={toggleTrack} className="share-btn" style={tracking ? { background: '#fef3c7', color: '#92400e', borderColor: '#fde68a' } : { background: '#dbeafe', color: '#1e40af', borderColor: '#bfdbfe' }}>
-          {tracking ? '★ Tracking — Remove' : '☆ Track for Reminders'}
+          {tracking ? <><Star size={14} strokeWidth={2} fill="currentColor" /> Tracking — Remove</> : <><Star size={14} strokeWidth={2} /> Track for Reminders</>}
         </button>
-        {job.source_url && <a href={job.source_url} target="_blank" rel="noopener noreferrer" className="share-btn">🔗 Official Website</a>}
+        {job.source_url && <a href={job.source_url} target="_blank" rel="noopener noreferrer" className="share-btn" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}><Globe size={13} strokeWidth={2} />Official Website</a>}
         {job.application_details?.application_link && <a href={job.application_details.application_link} target="_blank" rel="noopener noreferrer" className="share-btn" style={{ background: '#2563eb', color: '#fff', borderColor: '#2563eb' }}>Apply Online →</a>}
-        <button onClick={() => navigator.share?.({ title: job.job_title, url: globalThis.location.href }).catch(() => {})} className="share-btn">⬆ Share</button>
+        <button onClick={() => navigator.share?.({ title: job.job_title, url: globalThis.location.href }).catch(() => {})} className="share-btn" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}><Share2 size={13} strokeWidth={2} />Share</button>
       </div>
 
       {/* Eligibility */}
@@ -184,12 +185,12 @@ export default function JobDetail() {
       </div>
 
       {/* Description */}
-      {job.description && <div className="detail-section"><h2>📋 About This Recruitment</h2><div dangerouslySetInnerHTML={{ __html: job.description }} style={{ fontSize: '0.9rem', color: '#334155', lineHeight: 1.65 }} /></div>}
+      {job.description && <div className="detail-section"><h2 style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><BookOpen size={16} strokeWidth={2} />About This Recruitment</h2><div dangerouslySetInnerHTML={{ __html: job.description }} style={{ fontSize: '0.9rem', color: '#334155', lineHeight: 1.65 }} /></div>}
 
       {/* Eligibility criteria */}
       {job.eligibility && (job.eligibility.min_qualification || job.eligibility.age_limit || job.eligibility.qualification_details) && (
         <div className="detail-section">
-          <h2>✅ Eligibility Criteria</h2>
+          <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><CheckCircle size={16} strokeWidth={2} />Eligibility Criteria</h2>
           {job.eligibility.min_qualification && <p><strong>Minimum Qualification:</strong> {job.eligibility.min_qualification}</p>}
           {job.eligibility.age_limit && (() => { const a = job.eligibility.age_limit; return <p style={{ marginTop: '0.4rem' }}><strong>Age Limit:</strong> {a.min && a.max ? `${a.min} – ${a.max} years` : ''}{a.cutoff_date ? ` (as on ${a.cutoff_date})` : ''}</p>; })()}
           {job.eligibility.qualification_details && <p style={{ marginTop: '0.4rem' }}>{job.eligibility.qualification_details}</p>}
@@ -199,7 +200,7 @@ export default function JobDetail() {
       {/* Vacancy Breakdown */}
       {(vb.total || vb.UR || vb.SC) && (
         <div className="detail-section">
-          <h2>👥 Vacancy Breakdown</h2>
+          <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Users size={16} strokeWidth={2} />Vacancy Breakdown</h2>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginBottom: '0.5rem' }}>
             {['total', 'UR', 'OBC', 'EWS', 'SC', 'ST', 'PWD', 'male', 'female'].filter((c) => vb[c]).map((cat) => (
               <div key={cat} style={{ background: cat === 'total' ? '#dbeafe' : '#f1f5f9', borderRadius: '0.35rem', padding: '0.35rem 0.65rem', textAlign: 'center', minWidth: 54 }}>
@@ -214,7 +215,7 @@ export default function JobDetail() {
       {/* Posts */}
       {vbPosts.length > 0 && vbPosts[0]?.post_name && (
         <div className="detail-section">
-          <h2>👥 Posts &amp; Vacancies</h2>
+          <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Users size={16} strokeWidth={2} />Posts &amp; Vacancies</h2>
           {vbPosts.map((post, i) => {
             const pv = post.postwise_vacancy || {};
             return (
@@ -245,7 +246,7 @@ export default function JobDetail() {
       {/* Selection Process (if no post_name in posts) */}
       {vbPosts.length > 0 && !vbPosts[0]?.post_name && (
         <div className="detail-section">
-          <h2>🎯 Selection Process</h2>
+          <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><CheckCircle size={16} strokeWidth={2} />Selection Process</h2>
           {vbPosts.map((step, si) => <PhaseCard key={typeof step === 'object' ? (step.name || si) : si} step={step} />)}
         </div>
       )}
@@ -253,7 +254,7 @@ export default function JobDetail() {
       {/* Application Fee */}
       {job.fee && Object.keys(job.fee).length > 0 && (
         <div className="detail-section">
-          <h2>💳 Application Fee</h2>
+          <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Star size={16} strokeWidth={2} />Application Fee</h2>
           <table className="fee-table">
             <thead><tr><th>Category</th><th>Fee</th></tr></thead>
             <tbody>
@@ -268,7 +269,7 @@ export default function JobDetail() {
       {/* Important Links */}
       {impLinks.length > 0 && (
         <div className="detail-section">
-          <h2>🔗 Important Links</h2>
+          <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Link2 size={16} strokeWidth={2} />Important Links</h2>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
             {impLinks.filter((l) => (typeof l === 'object' ? l.url : l)).map((link) => {
               const url = typeof link === 'object' ? link.url : link;
@@ -279,10 +280,10 @@ export default function JobDetail() {
                 download_notification: { background: '#7c3aed', color: '#fff', borderColor: '#7c3aed' },
                 syllabus: { background: '#0891b2', color: '#fff', borderColor: '#0891b2' },
               };
-              const icons = { apply_online: '✏️', download_notification: '📥', syllabus: '📚', official_website: '🌐' };
+              const icons = { apply_online: <BookOpen size={13} strokeWidth={2} />, download_notification: <Download size={13} strokeWidth={2} />, syllabus: <BookOpen size={13} strokeWidth={2} />, official_website: <Globe size={13} strokeWidth={2} /> };
               return (
-                <a key={url} href={url} target="_blank" rel="noopener noreferrer" className="share-btn" style={styles[ltype] || {}}>
-                  {icons[ltype] || '🔗'} {text}
+                <a key={url} href={url} target="_blank" rel="noopener noreferrer" className="share-btn" style={{ ...styles[ltype] || {}, display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                  {icons[ltype] || <Link2 size={13} strokeWidth={2} />} {text}
                 </a>
               );
             })}
@@ -293,7 +294,7 @@ export default function JobDetail() {
       {/* Phase Documents */}
       {(hasAdmitCards || hasAnswerKeys || hasResults) && (
         <div className="detail-section">
-          <h2>📂 Phase Documents</h2>
+          <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Folder size={16} strokeWidth={2} />Phase Documents</h2>
           <div className="doc-tabs-bar">
             {hasAdmitCards && <button className={`doc-tab-btn${docTab === 'admit' ? ' active' : ''}`} onClick={() => setDocTab('admit')}>Admit Cards ({job.admit_cards.length})</button>}
             {hasAnswerKeys && <button className={`doc-tab-btn${docTab === 'answer' ? ' active' : ''}`} onClick={() => setDocTab('answer')}>Answer Keys ({job.answer_keys.length})</button>}

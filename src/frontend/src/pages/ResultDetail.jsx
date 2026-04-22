@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
+import { Briefcase, GraduationCap, Download, Globe, Star, ClipboardList, BarChart2 } from 'lucide-react';
 import api from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -43,18 +44,18 @@ export default function ResultDetail() {
 
       <div className="detail-hero hero-result">
         <h1>{result.title}</h1>
-        {result.job && <div style={{ fontSize: '0.875rem', opacity: 0.88 }}>💼 {result.job.job_title} — {result.job.organization}</div>}
-        {result.admission && <div style={{ fontSize: '0.875rem', opacity: 0.88 }}>🎓 {result.admission.admission_name}</div>}
+        {result.job && <div style={{ fontSize: '0.875rem', opacity: 0.88, marginTop: '0.3rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Briefcase size={14} strokeWidth={2} />{result.job.job_title} — {result.job.organization}</div>}
+        {result.admission && <div style={{ fontSize: '0.875rem', opacity: 0.88, marginTop: '0.3rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}><GraduationCap size={14} strokeWidth={2} />{result.admission.admission_name}</div>}
       </div>
 
       <div className="action-bar">
         {(result.job || result.admission) && (
           <button onClick={toggleTrack} className="share-btn" style={tracking ? { background: '#fef3c7', color: '#92400e', borderColor: '#fde68a' } : { background: '#dcfce7', color: '#166534', borderColor: '#bbf7d0' }}>
-            {tracking ? '★ Tracking — Remove' : '☆ Track'}
+            {tracking ? <><Star size={14} strokeWidth={2} fill="currentColor" /> Tracking — Remove</> : <><Star size={14} strokeWidth={2} /> Track Parent</>}
           </button>
         )}
-        {result.download_url && <a href={result.download_url} target="_blank" rel="noopener noreferrer" className="share-btn" style={{ background: '#16a34a', color: '#fff', borderColor: '#16a34a' }}>📥 Download Result</a>}
-        {result.source_url && <a href={result.source_url} target="_blank" rel="noopener noreferrer" className="share-btn">🔗 Official Website</a>}
+        {result.download_url && <a href={result.download_url} target="_blank" rel="noopener noreferrer" className="share-btn" style={{ background: '#16a34a', color: '#fff', borderColor: '#16a34a', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}><Download size={13} strokeWidth={2} />Download</a>}
+        {result.source_url && <a href={result.source_url} target="_blank" rel="noopener noreferrer" className="share-btn" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}><Globe size={13} strokeWidth={2} />Official Website</a>}
       </div>
 
       <div className="detail-grid">
@@ -63,11 +64,11 @@ export default function ResultDetail() {
         ))}
       </div>
 
-      {result.notes && <div className="detail-section"><h2>📋 Notes</h2><p>{result.notes}</p></div>}
+      {result.notes && <div className="detail-section"><h2 style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><ClipboardList size={16} strokeWidth={2} />Notes</h2><p>{result.notes}</p></div>}
 
       {result.cutoffs?.length > 0 && (
         <div className="detail-section">
-          <h2>📊 Cut-off Marks</h2>
+          <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><BarChart2 size={16} strokeWidth={2} />Cut-Off Marks</h2>
           <div style={{ overflowX: 'auto' }}>
             <table className="fee-table">
               <thead><tr><th>Category</th><th>Cut-off</th>{result.cutoffs[0]?.post && <th>Post</th>}</tr></thead>
