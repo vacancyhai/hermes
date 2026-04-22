@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Outlet, NavLink, Link, useNavigate, useLocation } from 'react-router-dom';
+import { Outlet, NavLink, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../api/client';
 
@@ -45,11 +45,7 @@ const navLinks = [
 
 export default function Layout() {
   const { token, logout } = useAuth();
-  const [menuOpen, setMenuOpen] = useState(false);
   const navigate = useNavigate();
-  const location = useLocation();
-
-  useEffect(() => { setMenuOpen(false); }, [location.pathname]);
 
   async function handleLogout() {
     try { await api.post('/auth/logout'); } catch { }
@@ -77,9 +73,8 @@ export default function Layout() {
             {' '}Vacancy Hai
           </Link>
 
-          {/* Center nav (desktop) */}
-          <nav style={{ display: 'flex', alignItems: 'center', gap: '0.1rem', flex: 1, justifyContent: 'center', overflowX: 'auto', scrollbarWidth: 'none' }}
-            className="hidden md:flex">
+          {/* Center nav */}
+          <nav style={{ display: 'flex', alignItems: 'center', gap: '0.1rem', flex: 1, justifyContent: 'center', overflowX: 'auto', scrollbarWidth: 'none' }}>
             {navLinks.map(({ to, label, exact }) => (
               <NavLink key={to} to={to} end={exact} className={navLinkClass}
                 style={{ borderBottom: '2px solid transparent', padding: '0.65rem 0.85rem', textDecoration: 'none', color: 'rgba(255,255,255,0.75)', fontSize: '0.85rem', fontWeight: 500 }}
@@ -89,8 +84,8 @@ export default function Layout() {
             ))}
           </nav>
 
-          {/* Right nav (desktop) */}
-          <nav style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }} className="hidden sm:flex">
+          {/* Right nav */}
+          <nav style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
             {token ? (
               <>
                 <Link to="/profile" style={{ color: 'rgba(255,255,255,.82)', fontSize: '0.875rem', fontWeight: 500, padding: '0.35rem 0.65rem', borderRadius: '0.35rem', textDecoration: 'none' }}>Profile</Link>
@@ -104,54 +99,8 @@ export default function Layout() {
             )}
           </nav>
 
-          {/* Hamburger */}
-          <button
-            onClick={() => setMenuOpen(!menuOpen)}
-            style={{ display: 'flex', flexDirection: 'column', gap: 4, cursor: 'pointer', padding: '0.4rem', border: 'none', background: 'transparent', borderRadius: '0.3rem' }}
-            className="sm:hidden"
-            aria-label="Toggle menu"
-          >
-            <span style={{ display: 'block', width: 20, height: 2, background: '#fff', borderRadius: 2 }} />
-            <span style={{ display: 'block', width: 20, height: 2, background: '#fff', borderRadius: 2 }} />
-            <span style={{ display: 'block', width: 20, height: 2, background: '#fff', borderRadius: 2 }} />
-          </button>
         </div>
-
-        {/* Mobile nav */}
-        {menuOpen && (
-          <div style={{ background: '#162d4a', borderTop: '1px solid rgba(255,255,255,.08)' }}>
-            {navLinks.map(({ to, label }) => (
-              <Link key={to} to={to} style={{ display: 'block', color: 'rgba(255,255,255,.85)', fontSize: '0.9rem', padding: '0.65rem 1rem', borderBottom: '1px solid rgba(255,255,255,.06)', textDecoration: 'none' }}>
-                {label}
-              </Link>
-            ))}
-            {token ? (
-              <>
-                <Link to="/profile" style={{ display: 'block', color: 'rgba(255,255,255,.85)', fontSize: '0.9rem', padding: '0.65rem 1rem', borderBottom: '1px solid rgba(255,255,255,.06)', textDecoration: 'none' }}>Profile</Link>
-                <Link to="/notifications" style={{ display: 'block', color: 'rgba(255,255,255,.85)', fontSize: '0.9rem', padding: '0.65rem 1rem', borderBottom: '1px solid rgba(255,255,255,.06)', textDecoration: 'none' }}>Notifications 🔔</Link>
-                <button onClick={handleLogout} style={{ display: 'block', width: '100%', textAlign: 'left', color: 'rgba(255,255,255,.85)', fontSize: '0.9rem', padding: '0.65rem 1rem', background: 'none', border: 'none', cursor: 'pointer', borderBottom: '1px solid rgba(255,255,255,.06)' }}>Logout</button>
-              </>
-            ) : (
-              <Link to="/login" style={{ display: 'block', color: 'rgba(255,255,255,.85)', fontSize: '0.9rem', padding: '0.65rem 1rem', textDecoration: 'none' }}>Login</Link>
-            )}
-          </div>
-        )}
       </header>
-
-      {/* Mobile secondary nav (scrollable) */}
-      <nav style={{ background: '#162d4a', borderBottom: '1px solid rgba(255,255,255,.08)', overflowX: 'auto', whiteSpace: 'nowrap', display: 'flex', scrollbarWidth: 'none' }} className="md:hidden">
-        {navLinks.map(({ to, label, exact }) => (
-          <NavLink key={to} to={to} end={exact} style={({ isActive }) => ({
-            padding: '0.5rem 0.85rem', fontSize: '0.8rem', whiteSpace: 'nowrap',
-            color: isActive ? '#fff' : 'rgba(147,175,197,.85)',
-            borderBottom: isActive ? '2px solid #60a5fa' : '2px solid transparent',
-            fontWeight: isActive ? 700 : 500, textDecoration: 'none', display: 'inline-block',
-            flexShrink: 0,
-          })}>
-            {label}
-          </NavLink>
-        ))}
-      </nav>
 
       {/* Main content */}
       <main style={{ width: '100%', padding: '1.25rem 1.5rem 2rem', flex: 1 }}>
