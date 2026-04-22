@@ -2,7 +2,9 @@ import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import client from '../api/client';
 import PhaseDocsPanel from '../components/PhaseDocsPanel';
-import { STATUSES, LINK_TYPES, emptyFee, emptyLink, safeJson, validateJson, buildFeeObj, toDateInput, makeSlug } from '../lib/formUtils';
+import ImportantLinksEditor from '../components/ImportantLinksEditor';
+import FeeGrid from '../components/FeeGrid';
+import { STATUSES, emptyFee, emptyLink, safeJson, validateJson, buildFeeObj, toDateInput, makeSlug } from '../lib/formUtils';
 
 const TYPES = ['undergraduate', 'postgraduate', 'diploma', 'phd', 'certificate', 'other'];
 const STREAMS = ['engineering', 'medical', 'law', 'management', 'arts', 'science', 'commerce', 'other'];
@@ -249,49 +251,9 @@ export default function AdmissionForm() {
           </div>
         </div>
 
-        {/* Fee */}
-        <div className="section-card">
-          <div className="section-header section-header--orange">Application Fee (₹)</div>
-          <div className="section-body">
-            <div className="fee-grid">
-              {Object.keys(emptyFee).map((k) => (
-                <div className="fee-cell" key={k}>
-                  <label htmlFor={`adm-fee-${k}`}>{k.toUpperCase().replaceAll('_', '/')}</label>
-                  <input id={`adm-fee-${k}`} type="number" min="0" value={fee[k]} onChange={(e) => setFee((f) => ({ ...f, [k]: e.target.value }))} placeholder="0" />
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+        <FeeGrid prefix="adm" fee={fee} onChange={(k, v) => setFee((f) => ({ ...f, [k]: v }))} />
 
-        {/* Important Links */}
-        <div className="section-card">
-          <div className="section-header section-header--indigo">
-            Important Links
-            <button type="button" className="btn btn-sm" style={{ background: 'rgba(255,255,255,.2)', color: '#fff', border: '1px solid rgba(255,255,255,.4)', marginLeft: '.5rem' }} onClick={addLink}>+ Add</button>
-          </div>
-          <div className="section-body" style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
-            {links.map((link, i) => (
-              <div key={`link-${link.type}-${i}`} style={{ display: 'grid', gridTemplateColumns: '180px 1fr 2fr auto', gap: '.5rem', alignItems: 'flex-end' }}>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label htmlFor={`alink-type-${i}`} style={{ fontSize: '.7rem' }}>Type</label>
-                  <select id={`alink-type-${i}`} value={link.type} onChange={(e) => updateLink(i, 'type', e.target.value)} style={{ padding: '.35rem .5rem', fontSize: '.82rem' }}>
-                    {LINK_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-                  </select>
-                </div>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label htmlFor={`alink-text-${i}`} style={{ fontSize: '.7rem' }}>Display Text</label>
-                  <input id={`alink-text-${i}`} type="text" value={link.text} onChange={(e) => updateLink(i, 'text', e.target.value)} placeholder="Click here" style={{ padding: '.35rem .5rem', fontSize: '.82rem' }} />
-                </div>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label htmlFor={`alink-url-${i}`} style={{ fontSize: '.7rem' }}>URL</label>
-                  <input id={`alink-url-${i}`} type="url" value={link.url} onChange={(e) => updateLink(i, 'url', e.target.value)} placeholder="https://…" style={{ padding: '.35rem .5rem', fontSize: '.82rem' }} />
-                </div>
-                <button type="button" className="btn btn-sm btn-danger" onClick={() => removeLink(i)}>✕</button>
-              </div>
-            ))}
-          </div>
-        </div>
+        <ImportantLinksEditor prefix="alink" links={links} onUpdate={updateLink} onAdd={addLink} onRemove={removeLink} />
 
         {/* JSON fields */}
         {[

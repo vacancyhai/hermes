@@ -1,49 +1,17 @@
-import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import client from '../api/client';
 import AdminPagination from '../components/AdminPagination';
+import { useAdminList } from '../hooks/useAdminList';
 
 const STATUS_COLORS = { active: 'badge-active', upcoming: 'badge-upcoming', closed: 'badge-closed', inactive: 'badge-inactive' };
 
 export default function Admissions() {
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [q, setQ] = useState('');
-  const [status, setStatus] = useState('');
-  const [page, setPage] = useState(1);
-  const [total, setTotal] = useState(0);
-  const [deleting, setDeleting] = useState(null);
-  const [flash, setFlash] = useState(null);
+  const { items, loading, q, setQ, status, setStatus, page, setPage, total, totalPages, deleting, flash, handleSearch, handleDelete } = useAdminList('/admin/admissions');
+
+  async function deleteAdmission(item) {
+    await handleDelete(item.id, `Delete admission "${item.admission_name}"?`, 'Admission deleted.', `/admin/admissions/${item.id}`);
+  }
+
   const PER = 20;
-
-  function load() {
-    setLoading(true);
-    const params = { limit: PER, offset: (page - 1) * PER };
-    if (q) params.q = q;
-    if (status) params.status = status;
-    client.get('/admin/admissions', { params })
-      .then((r) => { setItems(r.data.data || []); setTotal(r.data.pagination?.total || 0); })
-      .catch(() => setFlash({ type: 'error', msg: 'Failed to load admissions' }))
-      .finally(() => setLoading(false));
-  }
-
-  useEffect(() => { load(); }, [page, status]);
-
-  function handleSearch(e) { e.preventDefault(); setPage(1); load(); }
-
-  async function handleDelete(item) {
-    if (!confirm(`Delete admission "${item.admission_name}"?`)) return;
-    setDeleting(item.id);
-    try {
-      await client.delete(`/admin/admissions/${item.id}`);
-      setFlash({ type: 'success', msg: 'Admission deleted.' });
-      load();
-    } catch (err) {
-      setFlash({ type: 'error', msg: err.response?.data?.detail || 'Delete failed' });
-    } finally { setDeleting(null); }
-  }
-
-  const totalPages = Math.ceil(total / PER);
 
   return (
     <div>
@@ -106,7 +74,7 @@ export default function Admissions() {
                 <td>
                   <div style={{ display: 'flex', gap: '.35rem' }}>
                     <Link to={`/admissions/${a.id}/edit`} className="btn btn-sm btn-outline">Edit</Link>
-                    <button className="btn btn-sm btn-danger" onClick={() => handleDelete(a)} disabled={deleting === a.id}>
+                    <button className="btn btn-sm btn-danger" onClick={() => deleteAdmission(a)} disabled={deleting === a.id}>
                       {deleting === a.id ? '…' : 'Del'}
                     </button>
                   </div>

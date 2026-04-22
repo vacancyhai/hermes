@@ -1,53 +1,17 @@
-import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import client from '../api/client';
 import AdminPagination from '../components/AdminPagination';
+import { useAdminList } from '../hooks/useAdminList';
 
 const STATUS_COLORS = { active: 'badge-active', upcoming: 'badge-upcoming', closed: 'badge-closed', inactive: 'badge-inactive' };
 
 export default function Jobs() {
-  const [jobs, setJobs] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [q, setQ] = useState('');
-  const [status, setStatus] = useState('');
-  const [page, setPage] = useState(1);
-  const [total, setTotal] = useState(0);
-  const [deleting, setDeleting] = useState(null);
-  const [flash, setFlash] = useState(null);
+  const { items: jobs, loading, q, setQ, status, setStatus, page, setPage, total, totalPages, deleting, flash, setFlash, load, handleSearch, handleDelete } = useAdminList('/admin/jobs');
+
+  async function deleteJob(job) {
+    await handleDelete(job.id, `Delete job "${job.job_title}"? This cannot be undone.`, 'Job deleted.', `/admin/jobs/${job.id}`);
+  }
+
   const PER = 20;
-
-  function load() {
-    setLoading(true);
-    const params = { limit: PER, offset: (page - 1) * PER };
-    if (q) params.q = q;
-    if (status) params.status = status;
-    client.get('/admin/jobs', { params })
-      .then((r) => { setJobs(r.data.data || []); setTotal(r.data.pagination?.total || 0); })
-      .catch(() => setFlash({ type: 'error', msg: 'Failed to load jobs' }))
-      .finally(() => setLoading(false));
-  }
-
-  useEffect(() => { load(); }, [page, status]);
-
-  function handleSearch(e) {
-    e.preventDefault();
-    setPage(1);
-    load();
-  }
-
-  async function handleDelete(job) {
-    if (!confirm(`Delete job "${job.title}"? This cannot be undone.`)) return;
-    setDeleting(job.id);
-    try {
-      await client.delete(`/admin/jobs/${job.id}`);
-      setFlash({ type: 'success', msg: 'Job deleted.' });
-      load();
-    } catch (err) {
-      setFlash({ type: 'error', msg: err.response?.data?.detail || 'Delete failed' });
-    } finally { setDeleting(null); }
-  }
-
-  const totalPages = Math.ceil(total / PER);
 
   return (
     <div>
@@ -107,7 +71,7 @@ export default function Jobs() {
                 <td>
                   <div style={{ display: 'flex', gap: '.35rem' }}>
                     <Link to={`/jobs/${j.id}/edit`} className="btn btn-sm btn-outline">Edit</Link>
-                    <button className="btn btn-sm btn-danger" onClick={() => handleDelete(j)} disabled={deleting === j.id}>
+                    <button className="btn btn-sm btn-danger" onClick={() => deleteJob(j)} disabled={deleting === j.id}>
                       {deleting === j.id ? '…' : 'Del'}
                     </button>
                   </div>

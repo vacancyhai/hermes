@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import client from '../api/client';
+import { makeSlug } from '../lib/formUtils';
 
 const ORG_TYPES = ['jobs', 'admissions', 'both'];
 
@@ -37,7 +38,7 @@ export default function OrgForm() {
 
   function handleNameChange(v) {
     setName(v);
-    if (!isEdit) setSlug(v.toLowerCase().replaceAll(/[^a-z0-9]+/g, '-').replaceAll(/^-|-$/g, ''));
+    if (!isEdit) setSlug(makeSlug(v));
   }
 
   async function handleSubmit(e) {
@@ -75,10 +76,7 @@ export default function OrgForm() {
         </div>
       </div>
 
-      {flash && (() => {
-        const fc = flash.type === 'success' ? 'flash-success' : 'flash-error';
-        return <div className={fc}>{flash.msg}</div>;
-      })()}
+      {flash && <div className={flash.type === 'success' ? 'flash-success' : 'flash-error'}>{flash.msg}</div>}
 
       <form id="org-form" onSubmit={handleSubmit}>
         <div className="section-card">
