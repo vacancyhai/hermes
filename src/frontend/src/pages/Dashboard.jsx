@@ -292,9 +292,13 @@ export default function Dashboard() {
       {!loading && orgs.length > 0 && (
         <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '0.85rem', padding: '1rem 1.25rem', marginBottom: '1.5rem', boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.85rem' }}>
-            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#0f172a', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}><Landmark size={13} strokeWidth={2} />Organizations <span style={{ fontSize: '0.68rem', fontWeight: 700, background: '#f1f5f9', color: '#64748b', borderRadius: 9999, padding: '0.1rem 0.5rem' }}>{orgs.length}</span></span>
-            {token && trackedOrgIds.size > 0 && <span style={{ fontSize: '0.72rem', color: '#64748b' }}>{trackedOrgIds.size} followed</span>}
+            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#0f172a', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}><Landmark size={13} strokeWidth={2} />Organizations <span style={{ fontSize: '0.68rem', fontWeight: 700, background: '#f1f5f9', color: '#64748b', borderRadius: '9999px', padding: '0.1rem 0.5rem' }}>{orgs.length}</span></span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+              {token && trackedOrgIds.size > 0 && <span style={{ fontSize: '0.72rem', color: '#64748b' }}>{trackedOrgIds.size} followed</span>}
+              {orgs.length > 8 && <span style={{ fontSize: '0.7rem', color: '#94a3b8', display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}>scroll for more →</span>}
+            </div>
           </div>
+          <div style={{ position: 'relative' }}>
           <div style={{ display: 'flex', gap: '0.65rem', overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: '0.2rem' }}>
             {orgs.map((org) => {
               const isTracking = trackedOrgIds.has(String(org.id));
@@ -327,6 +331,7 @@ export default function Dashboard() {
               );
             })}
           </div>
+          </div>{/* end position:relative wrapper */}
         </div>
       )}
 
