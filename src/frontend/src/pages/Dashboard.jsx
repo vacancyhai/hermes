@@ -258,7 +258,24 @@ export default function Dashboard() {
       </div>
 
       {/* Org strip */}
-      {orgs.length > 0 && (
+      {loading && (
+        <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '0.85rem', padding: '1rem 1.25rem', marginBottom: '1.5rem', boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.85rem' }}>
+            <div className="skeleton" style={{ height: 14, width: 100, borderRadius: '0.35rem' }} />
+            <div className="skeleton" style={{ height: 14, width: 24, borderRadius: '9999px' }} />
+          </div>
+          <div style={{ display: 'flex', gap: '0.65rem' }}>
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: '0.45rem', flexShrink: 0, width: 88 }}>
+                <div className="skeleton" style={{ width: 48, height: 48, borderRadius: '0.6rem' }} />
+                <div className="skeleton" style={{ height: 10, width: 64, borderRadius: '0.3rem' }} />
+                <div className="skeleton" style={{ height: 20, width: 88, borderRadius: '0.3rem' }} />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {!loading && orgs.length > 0 && (
         <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '0.85rem', padding: '1rem 1.25rem', marginBottom: '1.5rem', boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.85rem' }}>
             <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#0f172a', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}><Landmark size={13} strokeWidth={2} />Organizations <span style={{ fontSize: '0.68rem', fontWeight: 700, background: '#f1f5f9', color: '#64748b', borderRadius: 9999, padding: '0.1rem 0.5rem' }}>{orgs.length}</span></span>
@@ -306,8 +323,15 @@ export default function Dashboard() {
           <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '0.85rem', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
             <div style={{ background: 'linear-gradient(90deg, #0f2440, #1e3a5f)', color: '#fff', padding: '0.75rem 1rem', fontSize: '0.78rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem', letterSpacing: '0.02em' }}><CalendarDays size={13} strokeWidth={2} />Upcoming Exams</div>
             <div>
-              {data.exams.length === 0 && <div style={{ padding: '1rem', textAlign: 'center', color: '#94a3b8', fontSize: '0.78rem' }}>No upcoming exams</div>}
-              {data.exams.map((exam) => {
+              {loading && Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} style={{ borderBottom: '1px solid #f8fafc', padding: '0.65rem 0.9rem' }}>
+                  <div className="skeleton" style={{ height: 12, width: '85%', borderRadius: '0.3rem', marginBottom: '0.4rem' }} />
+                  <div className="skeleton" style={{ height: 12, width: '55%', borderRadius: '0.3rem', marginBottom: '0.3rem' }} />
+                  <div className="skeleton" style={{ height: 18, width: 52, borderRadius: '9999px' }} />
+                </div>
+              ))}
+              {!loading && data.exams.length === 0 && <div style={{ padding: '1rem', textAlign: 'center', color: '#94a3b8', fontSize: '0.78rem' }}>No upcoming exams</div>}
+              {!loading && data.exams.map((exam) => {
                 const isJob = exam.type === 'job' || exam.parent_type === 'job';
                 const url = isJob ? `/jobs/${exam.slug || exam.parent_slug}` : `/admissions/${exam.slug || exam.parent_slug}`;
                 return (
