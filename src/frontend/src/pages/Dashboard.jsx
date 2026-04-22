@@ -6,15 +6,31 @@ import api from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
 
 const STATUS_COLORS = {
-  active: { bg: '#dcfce7', color: '#166534', label: 'Active' },
-  upcoming: { bg: '#fef3c7', color: '#92400e', label: 'Soon' },
-  closed: { bg: '#fee2e2', color: '#991b1b', label: 'Closed' },
+  active: { bg: '#dcfce7', color: '#15803d', border: '#bbf7d0', label: 'Active' },
+  upcoming: { bg: '#fef3c7', color: '#b45309', border: '#fde68a', label: 'Soon' },
+  closed: { bg: '#fee2e2', color: '#b91c1c', border: '#fecaca', label: 'Closed' },
 };
 
 function MiniStatus({ status }) {
   const s = STATUS_COLORS[status];
   if (!s) return null;
-  return <span style={{ background: s.bg, color: s.color, fontSize: '0.65rem', fontWeight: 700, padding: '0.1rem 0.4rem', borderRadius: 9999, display: 'inline-block' }}>{s.label}</span>;
+  return (
+    <span style={{
+      background: s.bg,
+      color: s.color,
+      border: `1px solid ${s.border}`,
+      fontSize: '0.6rem',
+      fontWeight: 700,
+      padding: '0.15rem 0.5rem',
+      borderRadius: '9999px',
+      display: 'inline-flex',
+      alignItems: 'center',
+      whiteSpace: 'nowrap',
+      letterSpacing: '0.02em',
+      lineHeight: 1.4,
+      flexShrink: 0,
+    }}>{s.label}</span>
+  );
 }
 
 MiniStatus.propTypes = { status: PropTypes.string };
@@ -393,7 +409,7 @@ export default function Dashboard() {
                   </div>
                   <div style={{ fontSize: '0.75rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '0.25rem' }}><Landmark size={11} strokeWidth={2} />{adm.conducting_body}</div>
                   {adm.application_end && <div style={{ fontSize: '0.72rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '0.2rem' }}><Clock size={10} strokeWidth={2} />{adm.application_end}</div>}
-                  {adm.admission_type && <span style={{ background: '#ede9fe', color: '#5b21b6', padding: '0.1rem 0.4rem', borderRadius: 9999, fontSize: '0.68rem', fontWeight: 700 }}>{adm.admission_type.toUpperCase()}</span>}
+                  {adm.admission_type && <span style={{ background: '#ede9fe', color: '#5b21b6', border: '1px solid #ddd6fe', padding: '0.15rem 0.5rem', borderRadius: '9999px', fontSize: '0.6rem', fontWeight: 700, display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap', lineHeight: 1.4 }}>{adm.admission_type.toUpperCase()}</span>}
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '0.4rem', flexWrap: 'wrap', gap: '0.3rem' }}>
                   {!token || !profileComplete
