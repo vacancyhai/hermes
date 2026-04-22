@@ -8,6 +8,10 @@ function statusBadgeClass(s) {
   if (s === 'suspended') return 'badge-suspended';
   return 'badge-warning';
 }
+function suspendBtnLabel(acting, userId, status) {
+  if (acting === userId) return '…';
+  return status === 'suspended' ? 'Activate' : 'Suspend';
+}
 function statusBadge(s) {
   return <span className={`badge ${statusBadgeClass(s)}`}>{s || 'unknown'}</span>;
 }
@@ -123,7 +127,7 @@ export default function Users() {
                   <div style={{ display: 'flex', gap: '.3rem' }}>
                     <Link to={`/users/${u.id}`} className="btn btn-sm btn-outline">View</Link>
                     <button className="btn btn-sm btn-warning" onClick={() => handleSuspend(u)} disabled={acting === u.id}>
-                      {acting === u.id ? '…' : (u.status === 'suspended' ? 'Activate' : 'Suspend')}
+                      {suspendBtnLabel(acting, u.id, u.status)}
                     </button>
                     <button className="btn btn-sm btn-danger" onClick={() => handleDelete(u)} disabled={acting === u.id}>Del</button>
                   </div>

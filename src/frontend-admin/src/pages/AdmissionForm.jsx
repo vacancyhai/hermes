@@ -148,6 +148,8 @@ export default function AdmissionForm() {
 
   if (loading) return <p style={{ color: '#64748b' }}>Loading…</p>;
 
+  const saveBtnLabel = isEdit ? 'Update' : 'Create';
+
   return (
     <div>
       <div className="page-header">
@@ -158,7 +160,7 @@ export default function AdmissionForm() {
         <div style={{ display: 'flex', gap: '.5rem' }}>
           <Link to="/admissions" className="btn btn-outline">Cancel</Link>
           <button className="btn btn-primary" form="admission-form" type="submit" disabled={saving}>
-            {saving ? <><span className="spinner" />{' '}Saving…</> : (isEdit ? 'Update' : 'Create')}
+            {saving ? <><span className="spinner" />{' '}Saving…</> : saveBtnLabel}
           </button>
         </div>
       </div>

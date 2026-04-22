@@ -65,6 +65,8 @@ export default function OrgForm() {
 
   if (loading) return <p style={{ color: '#64748b' }}>Loading…</p>;
 
+  const saveBtnLabel = isEdit ? 'Update' : 'Create';
+
   return (
     <div>
       <div className="page-header">
@@ -75,7 +77,7 @@ export default function OrgForm() {
         <div style={{ display: 'flex', gap: '.5rem' }}>
           <Link to="/organizations" className="btn btn-outline">Cancel</Link>
           <button className="btn btn-primary" form="org-form" type="submit" disabled={saving}>
-            {saving ? <><span className="spinner" />{' '}Saving…</> : (isEdit ? 'Update' : 'Create')}
+            {saving ? <><span className="spinner" />{' '}Saving…</> : saveBtnLabel}
           </button>
         </div>
       </div>

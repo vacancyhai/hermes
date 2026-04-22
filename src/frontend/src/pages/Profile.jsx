@@ -125,6 +125,13 @@ export default function Profile() {
     }).catch(() => setLoading(false));
   }, []);
 
+  const toggleCategory = (cat) => {
+    setPreferredCategories((prev) => {
+      if (prev.includes(cat)) return prev.filter((c) => c !== cat);
+      return [...prev, cat];
+    });
+  };
+
   const saveProfile = async (e) => {
     e.preventDefault(); setSaving(true);
     try {
@@ -354,21 +361,21 @@ export default function Profile() {
               <label htmlFor="profile-states" style={labelStyle}>Preferred States <span style={{ color: '#94a3b8', fontWeight: 400 }}>(comma-separated)</span></label>
               <input id="profile-states" value={preferredStates} onChange={(e) => setPreferredStates(e.target.value)} style={inputStyle} placeholder="Delhi, Uttar Pradesh, Bihar" />
             </div>
-            <div>
-              <div id="pref-cats-label" style={{ ...labelStyle, marginBottom: '0.4rem' }}>Preferred Categories</div>
-              <div role="group" aria-labelledby="pref-cats-label" style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <fieldset style={{ border: 'none', padding: 0, margin: 0 }}>
+              <legend style={{ ...labelStyle, marginBottom: '0.4rem', float: 'left', width: '100%' }}>Preferred Categories</legend>
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', clear: 'both' }}>
                 {CATEGORIES.map((cat) => {
                   const active = preferredCategories.includes(cat);
                   const catId = `pref-cat-${cat}`;
                   return (
                     <label key={cat} htmlFor={catId} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem', cursor: 'pointer', background: active ? '#dbeafe' : '#f1f5f9', padding: '0.3rem 0.6rem', borderRadius: '0.375rem', border: `1px solid ${active ? '#bfdbfe' : '#e2e8f0'}` }}>
-                      <input id={catId} type="checkbox" checked={active} onChange={(e) => { if (e.target.checked) { setPreferredCategories((p) => [...p, cat]); } else { setPreferredCategories((p) => p.filter((c) => c !== cat)); } }} style={{ display: 'none' }} />
+                      <input id={catId} type="checkbox" checked={active} onChange={() => toggleCategory(cat)} style={{ display: 'none' }} />
                       {CATEGORY_LABELS[cat]}
                     </label>
                   );
                 })}
               </div>
-            </div>
+            </fieldset>
           </div>
 
           <button type="submit" disabled={saving} className="btn btn-primary" style={{ width: '100%', padding: '0.65rem' }}>
