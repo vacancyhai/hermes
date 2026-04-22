@@ -56,7 +56,9 @@ a:hover { text-decoration: underline; }
   display: flex;
   gap: 0.75rem;
   overflow-x: auto;
-  padding-bottom: 0.5rem;
+  overflow-y: visible;
+  padding-bottom: 0.75rem;
+  padding-top: 0.25rem;
   scrollbar-width: thin;
   scrollbar-color: var(--slate-300) transparent;
   -webkit-overflow-scrolling: touch;
