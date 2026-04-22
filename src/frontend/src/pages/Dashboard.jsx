@@ -276,7 +276,7 @@ export default function Dashboard() {
           </div>
           {/* tiles row — matches real overflowX:auto, paddingBottom:0.2rem */}
           <div style={{ display: 'flex', gap: '0.65rem', overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: '0.2rem' }}>
-            {Array.from({ length: 8 }).map((_, i) => (
+            {Array.from({ length: 12 }).map((_, i) => (
               <div key={i} style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: '0.45rem', flexShrink: 0, width: 88 }}>
                 {/* avatar: 48×48 with 2px border = 52px visual */}
                 <div className="skeleton" style={{ width: 48, height: 48, borderRadius: '0.6rem' }} />
