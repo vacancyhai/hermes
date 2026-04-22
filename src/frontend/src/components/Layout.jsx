@@ -136,7 +136,7 @@ export default function Layout() {
           <button
             onClick={() => setMenuOpen(!menuOpen)}
             className="md:hidden"
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: '0.4rem', border: '1px solid rgba(255,255,255,.15)', background: 'rgba(255,255,255,.08)', borderRadius: '0.4rem', color: '#fff', transition: 'background 0.15s' }}
+            style={{ alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: '0.4rem', border: '1px solid rgba(255,255,255,.15)', background: 'rgba(255,255,255,.08)', borderRadius: '0.4rem', color: '#fff', transition: 'background 0.15s' }}
             aria-label="Toggle menu"
           >
             {menuOpen ? <X size={20} strokeWidth={2} /> : <Menu size={20} strokeWidth={2} />}
