@@ -179,7 +179,7 @@ export default function Dashboard() {
       api.get('/answer-keys', { params }).catch(() => ({ data: { data: [] } })),
       api.get('/results', { params }).catch(() => ({ data: { data: [] } })),
       api.get('/exam-reminders').catch(() => ({ data: { data: [] } })),
-      api.get('/organizations', { params: { limit: 50 } }).catch(() => ({ data: { data: [] } })),
+      api.get('/organizations', { params: { limit: 100 } }).catch(() => ({ data: { data: [] } })),
     ]).then(([j, a, ac, ak, r, ex, og]) => {
       setData({
         jobs: j.data.data || [],
