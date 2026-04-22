@@ -1,7 +1,14 @@
 import { useState } from 'react';
-import { Outlet, NavLink, useNavigate } from 'react-router-dom';
+import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 import client from '../api/client';
+
+const pageVariants = {
+  initial: { opacity: 0, y: 10 },
+  animate: { opacity: 1, y: 0, transition: { duration: 0.22, ease: [0.16, 1, 0.3, 1] } },
+  exit:    { opacity: 0, y: -6,  transition: { duration: 0.14, ease: 'easeIn' } },
+};
 
 const navItems = [
   { to: '/', label: 'Dashboard', exact: true },
@@ -15,6 +22,7 @@ const navItems = [
 export default function Layout() {
   const { adminName, adminRole, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
 
   async function handleLogout() {
@@ -24,18 +32,26 @@ export default function Layout() {
   }
 
   const linkClass = ({ isActive }) =>
-    `px-3 py-1.5 rounded text-sm font-medium transition-colors ${isActive
-      ? 'bg-white/20 text-white'
-      : 'text-blue-100 hover:bg-white/10 hover:text-white'}`;
+    `px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-150 ${isActive
+      ? 'bg-white/[.15] text-white shadow-sm ring-1 ring-white/10'
+      : 'text-blue-100/80 hover:bg-white/[.08] hover:text-white'}` ;
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       {/* ── Top navbar ── */}
-      <header style={{ background: 'linear-gradient(90deg,#1e3a5f,#2563eb)', boxShadow: '0 2px 8px rgba(0,0,0,.25)', zIndex: 10, position: 'sticky', top: 0 }}>
-        <div style={{ maxWidth: 1400, margin: '0 auto', padding: '0 1rem', display: 'flex', alignItems: 'center', gap: '1rem', height: 52 }}>
+      <header style={{
+        background: 'linear-gradient(90deg, rgba(15,36,64,.97) 0%, rgba(30,58,95,.97) 60%, rgba(37,99,235,.95) 100%)',
+        backdropFilter: 'blur(20px) saturate(180%)',
+        WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+        boxShadow: '0 1px 0 rgba(255,255,255,.06), 0 4px 24px rgba(0,0,0,.28)',
+        borderBottom: '1px solid rgba(255,255,255,.08)',
+        zIndex: 10, position: 'sticky', top: 0,
+      }}>
+        <div style={{ maxWidth: 1400, margin: '0 auto', padding: '0 1.25rem', display: 'flex', alignItems: 'center', gap: '1rem', height: 58 }}>
           {/* Brand */}
-          <NavLink to="/" style={{ fontWeight: 800, fontSize: '1rem', color: '#fff', textDecoration: 'none', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '.4rem' }}>
-            <span style={{ background: '#fff', color: '#1e3a5f', borderRadius: '.25rem', padding: '.05rem .35rem', fontSize: '.75rem', fontWeight: 900 }}>V</span>{' '}Admin
+          <NavLink to="/" style={{ fontWeight: 800, fontSize: '1rem', color: '#fff', textDecoration: 'none', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '.5rem', letterSpacing: '-0.02em' }}>
+            <span style={{ width: 30, height: 30, background: 'linear-gradient(135deg, #60a5fa, #2563eb, #1d4ed8)', borderRadius: '.45rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '.75rem', fontWeight: 900, color: '#fff', boxShadow: '0 2px 8px rgba(37,99,235,.5), inset 0 1px 0 rgba(255,255,255,.2)', flexShrink: 0 }}>V</span>
+            <span style={{ background: 'linear-gradient(135deg,#fff,rgba(255,255,255,.8))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>Admin</span>
           </NavLink>
 
           {/* Desktop nav */}
@@ -81,11 +97,15 @@ export default function Layout() {
       </header>
 
       {/* ── Main content ── */}
-      <main style={{ flex: 1, maxWidth: 1400, margin: '0 auto', width: '100%', padding: '1.25rem 1rem' }}>
-        <Outlet />
+      <main style={{ flex: 1, maxWidth: 1400, margin: '0 auto', width: '100%', padding: '1.5rem 1.25rem' }}>
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div key={location.pathname} variants={pageVariants} initial="initial" animate="animate" exit="exit">
+            <Outlet />
+          </motion.div>
+        </AnimatePresence>
       </main>
 
-      <footer style={{ textAlign: 'center', color: '#94a3b8', fontSize: '.75rem', padding: '.75rem', borderTop: '1px solid #e2e8f0', background: '#fff' }}>
+      <footer style={{ textAlign: 'center', color: '#94a3b8', fontSize: '.75rem', padding: '.875rem', borderTop: '1px solid #e2e8f0', background: 'linear-gradient(180deg,#fff,#f8fafc)', fontWeight: 500 }}>
         Vacancy Hai Admin Panel &copy; {new Date().getFullYear()}
       </footer>
     </div>
