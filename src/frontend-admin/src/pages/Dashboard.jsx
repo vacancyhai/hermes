@@ -56,7 +56,14 @@ export default function Dashboard() {
 
       {/* Stats */}
       {loading ? (
-        <p style={{ color: '#64748b' }}>Loading stats…</p>
+        <div className="stats-grid">
+          {Array.from({ length: 10 }).map((_, i) => (
+            <div key={i} className="stat-card">
+              <div className="skeleton" style={{ width: 60, height: 28, borderRadius: 6, margin: '0 auto 8px' }} />
+              <div className="skeleton" style={{ width: 90, height: 11, borderRadius: 4, margin: '0 auto' }} />
+            </div>
+          ))}
+        </div>
       ) : (
         <div className="stats-grid">
           {statItems.map((s) => (
@@ -76,7 +83,21 @@ export default function Dashboard() {
           <Link to="/logs" style={{ color: '#fff', fontSize: '.75rem', opacity: .8 }}>View all →</Link>
         </div>
         <div style={{ padding: 0 }}>
-          {recentLogs.length === 0 ? (
+          {loading ? (
+            <table className="data-table">
+              <thead><tr><th>Admin</th><th>Action</th><th>Entity</th><th>Time</th></tr></thead>
+              <tbody>
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <tr key={i} className="skeleton-row">
+                    <td><span className="skeleton" style={{ width: 70, height: 12 }} /></td>
+                    <td><span className="skeleton" style={{ width: 52, height: 20, borderRadius: 9999 }} /></td>
+                    <td><span className="skeleton" style={{ width: 100, height: 12 }} /></td>
+                    <td><span className="skeleton" style={{ width: 120, height: 12 }} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : recentLogs.length === 0 ? (
             <p style={{ color: '#94a3b8', fontSize: '.875rem', padding: '1rem' }}>No recent activity</p>
           ) : (
             <table className="data-table">

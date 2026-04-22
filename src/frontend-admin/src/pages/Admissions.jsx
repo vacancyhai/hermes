@@ -35,7 +35,25 @@ export default function Admissions() {
         {(q || status) && <button type="button" className="btn btn-outline" onClick={() => { setQ(''); setStatus(''); setPage(1); }}>Clear</button>}
       </form>
 
-      {loading && <p style={{ color: '#64748b' }}>Loading…</p>}
+      {loading && (
+        <table className="data-table">
+          <thead><tr><th>#</th><th>Name</th><th>Conducting Body</th><th>Type / Stream</th><th>Status</th><th>App Deadline</th><th>Docs</th><th>Actions</th></tr></thead>
+          <tbody>
+            {Array.from({ length: 8 }).map((_, i) => (
+              <tr key={i} className="skeleton-row">
+                <td><span className="skeleton" style={{ width: 18, height: 12 }} /></td>
+                <td><div className="skeleton" style={{ width: 190, height: 13, marginBottom: 4 }} /><div className="skeleton" style={{ width: 130, height: 10 }} /></td>
+                <td><span className="skeleton" style={{ width: 120, height: 13 }} /></td>
+                <td><span className="skeleton" style={{ width: 64, height: 20, borderRadius: 9999 }} /></td>
+                <td><span className="skeleton" style={{ width: 52, height: 20, borderRadius: 9999 }} /></td>
+                <td><span className="skeleton" style={{ width: 80, height: 13 }} /></td>
+                <td><span className="skeleton" style={{ width: 60, height: 18, borderRadius: 4 }} /></td>
+                <td><div style={{ display: 'flex', gap: 4 }}><span className="skeleton" style={{ width: 36, height: 26, borderRadius: 4 }} /><span className="skeleton" style={{ width: 28, height: 26, borderRadius: 4 }} /></div></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
       {!loading && items.length === 0 && <p style={{ color: '#94a3b8' }}>No admissions found.</p>}
       {!loading && items.length > 0 && (
         <table className="data-table">

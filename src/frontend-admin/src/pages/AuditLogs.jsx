@@ -59,7 +59,22 @@ export default function AuditLogs() {
         )}
       </form>
 
-      {loading && <p style={{ color: '#64748b' }}>Loading…</p>}
+      {loading && (
+        <table className="data-table">
+          <thead><tr><th>Time</th><th>Admin</th><th>Action</th><th>Entity</th><th>Details</th></tr></thead>
+          <tbody>
+            {Array.from({ length: 10 }).map((_, i) => (
+              <tr key={i} className="skeleton-row">
+                <td><span className="skeleton" style={{ width: 130, height: 12 }} /></td>
+                <td><span className="skeleton" style={{ width: 70, height: 12 }} /></td>
+                <td><span className="skeleton" style={{ width: 52, height: 20, borderRadius: 9999 }} /></td>
+                <td><span className="skeleton" style={{ width: 80, height: 12 }} /></td>
+                <td><span className="skeleton" style={{ width: 160, height: 12 }} /></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
       {!loading && logs.length === 0 && <p style={{ color: '#94a3b8' }}>No logs found.</p>}
       {!loading && logs.length > 0 && (
         <table className="data-table">

@@ -56,7 +56,24 @@ export default function Organizations() {
         {q && <button type="button" className="btn btn-outline" onClick={() => { setQ(''); setPage(1); }}>Clear</button>}
       </form>
 
-      {loading && <p style={{ color: '#64748b' }}>Loading…</p>}
+      {loading && (
+        <table className="data-table">
+          <thead><tr><th>#</th><th>Name</th><th>Short Name</th><th>Type</th><th>Jobs</th><th>Followers</th><th>Actions</th></tr></thead>
+          <tbody>
+            {Array.from({ length: 8 }).map((_, i) => (
+              <tr key={i} className="skeleton-row">
+                <td><span className="skeleton" style={{ width: 18, height: 12 }} /></td>
+                <td><div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span className="skeleton" style={{ width: 24, height: 24, borderRadius: 4 }} /><div><div className="skeleton" style={{ width: 150, height: 13, marginBottom: 4 }} /><div className="skeleton" style={{ width: 100, height: 10 }} /></div></div></td>
+                <td><span className="skeleton" style={{ width: 70, height: 13 }} /></td>
+                <td><span className="skeleton" style={{ width: 60, height: 13 }} /></td>
+                <td style={{ textAlign: 'center' }}><span className="skeleton" style={{ width: 24, height: 13 }} /></td>
+                <td style={{ textAlign: 'center' }}><span className="skeleton" style={{ width: 24, height: 13 }} /></td>
+                <td><div style={{ display: 'flex', gap: 4 }}><span className="skeleton" style={{ width: 36, height: 26, borderRadius: 4 }} /><span className="skeleton" style={{ width: 28, height: 26, borderRadius: 4 }} /></div></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
       {!loading && orgs.length === 0 && <p style={{ color: '#94a3b8' }}>No organizations found.</p>}
       {!loading && orgs.length > 0 && (
         <table className="data-table">

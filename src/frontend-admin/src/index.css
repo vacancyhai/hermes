@@ -101,6 +101,12 @@ a:hover { text-decoration: underline; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,.4); border-top-color: #fff; border-radius: 50%; animation: spin .6s linear infinite; }
 
+/* ── Skeleton loading ── */
+@keyframes skeleton-pulse { 0%,100% { opacity: 1; } 50% { opacity: .45; } }
+.skeleton { background: #e2e8f0; border-radius: .375rem; animation: skeleton-pulse 1.4s ease-in-out infinite; display: inline-block; }
+.skeleton-row td { padding: .55rem .75rem; border-bottom: 1px solid #f1f5f9; }
+.skeleton-row:last-child td { border-bottom: none; }
+
 /* ── Filters bar ── */
 .filters { display: flex; gap: .75rem; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; }
 .filters input[type="text"], .filters input[type="search"] { padding: .4rem .75rem; border: 1px solid #cbd5e1; border-radius: .375rem; font-size: .85rem; }

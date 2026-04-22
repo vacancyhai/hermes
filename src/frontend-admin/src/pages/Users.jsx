@@ -90,7 +90,25 @@ export default function Users() {
         {(q || statusFilter) && <button type="button" className="btn btn-outline" onClick={() => { setQ(''); setStatusFilter(''); setPage(1); }}>Clear</button>}
       </form>
 
-      {loading && <p style={{ color: '#64748b' }}>Loading…</p>}
+      {loading && (
+        <table className="data-table">
+          <thead><tr><th>#</th><th>User</th><th>Phone</th><th>Status</th><th>Auth Provider</th><th>Joined</th><th>Profile</th><th>Actions</th></tr></thead>
+          <tbody>
+            {Array.from({ length: 10 }).map((_, i) => (
+              <tr key={i} className="skeleton-row">
+                <td><span className="skeleton" style={{ width: 18, height: 12 }} /></td>
+                <td><div className="skeleton" style={{ width: 160, height: 13, marginBottom: 4 }} /><div className="skeleton" style={{ width: 100, height: 10 }} /></td>
+                <td><span className="skeleton" style={{ width: 90, height: 13 }} /></td>
+                <td><span className="skeleton" style={{ width: 52, height: 20, borderRadius: 9999 }} /></td>
+                <td><span className="skeleton" style={{ width: 60, height: 13 }} /></td>
+                <td><span className="skeleton" style={{ width: 75, height: 13 }} /></td>
+                <td style={{ textAlign: 'center' }}><span className="skeleton" style={{ width: 64, height: 20, borderRadius: 9999 }} /></td>
+                <td><div style={{ display: 'flex', gap: 4 }}><span className="skeleton" style={{ width: 36, height: 26, borderRadius: 4 }} /><span className="skeleton" style={{ width: 52, height: 26, borderRadius: 4 }} /><span className="skeleton" style={{ width: 28, height: 26, borderRadius: 4 }} /></div></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
       {!loading && users.length === 0 && <p style={{ color: '#94a3b8' }}>No users found.</p>}
       {!loading && users.length > 0 && (
         <table className="data-table">
