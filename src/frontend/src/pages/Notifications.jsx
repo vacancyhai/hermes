@@ -75,10 +75,10 @@ export default function Notifications() {
   return (
     <div style={{ maxWidth: 720, margin: '0 auto' }}>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-        <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
           <h1 style={{ fontSize: '1.3rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Bell size={18} strokeWidth={2.5} />Notifications</h1>
-          {unreadCount > 0 && <span style={{ background: '#fee2e2', color: '#991b1b', padding: '0.15rem 0.55rem', borderRadius: 9999, fontSize: '0.75rem', fontWeight: 700 }}>{unreadCount} unread</span>}
+          {unreadCount > 0 && <span style={{ background: '#fee2e2', color: '#b91c1c', border: '1px solid #fecaca', padding: '0.15rem 0.6rem', borderRadius: '9999px', fontSize: '0.7rem', fontWeight: 700, display: 'inline-flex', alignItems: 'center', lineHeight: 1.4 }}>{unreadCount} unread</span>}
         </div>
         {unreadCount > 0 && (
           <button onClick={markAllRead} className="btn btn-outline btn-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}><CheckCheck size={14} strokeWidth={2} />Mark all as read</button>
@@ -97,12 +97,16 @@ export default function Notifications() {
         const typeConf = typeColors[notif.type] || typeColors.system;
         return (
           <div key={notif.id} style={{
-            background: notif.is_read ? '#fff' : '#eff6ff',
+            background: notif.is_read ? '#fff' : '#f0f7ff',
             border: `1px solid ${notif.is_read ? '#e2e8f0' : '#bfdbfe'}`,
-            borderLeft: `4px solid ${notif.is_read ? '#e2e8f0' : '#2563eb'}`,
-            borderRadius: '0.5rem', padding: '0.85rem 1rem', marginBottom: '0.5rem',
+            borderLeft: `3px solid ${notif.is_read ? '#cbd5e1' : '#2563eb'}`,
+            borderRadius: '0.65rem', padding: '0.85rem 1rem', marginBottom: '0.5rem',
             display: 'flex', alignItems: 'flex-start', gap: '0.75rem',
-          }}>
+            boxShadow: '0 1px 3px rgba(0,0,0,.04)', transition: 'box-shadow .15s',
+          }}
+            onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,.07)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,.04)'; }}
+          >
             {/* Icon */}
             <div style={{ background: typeConf.bg, color: typeConf.color, width: 36, height: 36, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               {(() => { const Icon = typeConf.icon; return <Icon size={16} strokeWidth={2} />; })()}

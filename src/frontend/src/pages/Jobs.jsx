@@ -18,35 +18,42 @@ function JobCard({ job, trackedIds, onToggle }) {
     } catch { }
   };
 
-  const statusColors = { active: '#22c55e', upcoming: '#f59e0b', closed: '#ef4444' };
-  const statusLabels = { active: 'Active', upcoming: 'Upcoming', closed: 'Closed' };
+  const statusMap = {
+    active:   { bg: '#dcfce7', color: '#15803d', border: '#bbf7d0', label: 'Active' },
+    upcoming: { bg: '#fef3c7', color: '#b45309', border: '#fde68a', label: 'Upcoming' },
+    closed:   { bg: '#fee2e2', color: '#b91c1c', border: '#fecaca', label: 'Closed' },
+  };
 
+  const s = statusMap[job.status];
   return (
-    <div className="job-card" style={{ background: '#fff', border: '1px solid #e2e8f0', borderLeft: '4px solid #1e3a5f', borderRadius: '0.5rem', padding: '1rem 1.1rem', marginBottom: '0.75rem' }}>
-      <div style={{ marginBottom: '0.3rem' }}>
-        <h3 style={{ fontSize: '1rem', fontWeight: 700, lineHeight: 1.4, display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}>
-          <Link to={`/jobs/${job.slug}`} style={{ color: '#1e293b', flex: 1 }}>{job.job_title}</Link>
-          {job.status && <span style={{ background: statusColors[job.status] || '#94a3b8', color: '#fff', fontSize: '0.7rem', fontWeight: 700, padding: '0.15rem 0.5rem', borderRadius: 9999, whiteSpace: 'nowrap' }}>{statusLabels[job.status] || job.status}</span>}
+    <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderLeft: '3px solid #1e3a5f', borderRadius: '0.65rem', padding: '1rem 1.1rem', marginBottom: '0.6rem', boxShadow: '0 1px 3px rgba(0,0,0,.04)', transition: 'box-shadow .15s' }}
+      onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 4px 14px rgba(0,0,0,.08)'; }}
+      onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,.04)'; }}
+    >
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.6rem', marginBottom: '0.3rem' }}>
+        <h3 style={{ fontSize: '0.975rem', fontWeight: 700, lineHeight: 1.4, flex: 1, minWidth: 0 }}>
+          <Link to={`/jobs/${job.slug}`} style={{ color: '#0f172a', textDecoration: 'none' }}>{job.job_title}</Link>
         </h3>
+        {s && <span style={{ background: s.bg, color: s.color, border: `1px solid ${s.border}`, fontSize: '0.65rem', fontWeight: 700, padding: '0.15rem 0.55rem', borderRadius: '9999px', whiteSpace: 'nowrap', flexShrink: 0, display: 'inline-flex', alignItems: 'center', lineHeight: 1.4 }}>{s.label}</span>}
       </div>
-      <div style={{ fontSize: '0.83rem', color: '#64748b', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.3rem' }}><Landmark size={13} strokeWidth={2} />{job.organization}</div>
-      {job.short_description && <div style={{ fontSize: '0.855rem', color: '#475569', margin: '0.35rem 0', lineHeight: 1.55, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{job.short_description}</div>}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', margin: '0.4rem 0', fontSize: '0.8rem', color: '#64748b' }}>
-        {job.total_vacancies && <span style={{ background: '#f1f5f9', padding: '0.15rem 0.5rem', borderRadius: '0.35rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}><Users size={11} strokeWidth={2} />{job.total_vacancies.toLocaleString()} posts</span>}
-        {job.qualification_level && <span style={{ background: '#dbeafe', color: '#1e40af', padding: '0.15rem 0.5rem', borderRadius: '0.35rem', fontWeight: 600 }}>{job.qualification_level}</span>}
+      <div style={{ fontSize: '0.82rem', color: '#64748b', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.3rem', marginBottom: '0.3rem' }}><Landmark size={12} strokeWidth={2} />{job.organization}</div>
+      {job.short_description && <div style={{ fontSize: '0.845rem', color: '#475569', marginBottom: '0.35rem', lineHeight: 1.55, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{job.short_description}</div>}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', marginBottom: '0.6rem' }}>
+        {job.total_vacancies && <span style={{ background: '#f1f5f9', color: '#334155', padding: '0.15rem 0.5rem', borderRadius: '9999px', fontSize: '0.72rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.25rem', border: '1px solid #e2e8f0' }}><Users size={11} strokeWidth={2} />{job.total_vacancies.toLocaleString()} posts</span>}
+        {job.qualification_level && <span style={{ background: '#dbeafe', color: '#1e40af', border: '1px solid #bfdbfe', padding: '0.15rem 0.5rem', borderRadius: '9999px', fontSize: '0.72rem', fontWeight: 600 }}>{job.qualification_level}</span>}
       </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.7rem', paddingTop: '0.6rem', borderTop: '1px solid #f1f5f9', flexWrap: 'wrap', gap: '0.4rem' }}>
-        <div>
-          {job.application_end && <span style={{ fontSize: '0.78rem', color: '#b45309', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}><Clock size={12} strokeWidth={2} />Deadline: {job.application_end}</span>}
-        </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '0.55rem', borderTop: '1px solid #f1f5f9', flexWrap: 'wrap', gap: '0.4rem' }}>
+        {job.application_end
+          ? <span style={{ fontSize: '0.75rem', color: '#b45309', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.25rem', background: '#fef3c7', border: '1px solid #fde68a', padding: '0.15rem 0.5rem', borderRadius: '9999px' }}><Clock size={11} strokeWidth={2} />Deadline: {job.application_end}</span>
+          : <span />}
         <div style={{ display: 'flex', gap: '0.4rem' }}>
           <Link to={`/jobs/${job.slug}`} className="btn btn-outline btn-sm">View Details →</Link>
           {token ? (
-            <button onClick={track} className={isTracking ? 'btn-tracking btn btn-sm' : 'btn btn-outline btn-sm'}>
-              {isTracking ? <><Star size={13} strokeWidth={2} fill="currentColor" /> Tracking</> : <><Star size={13} strokeWidth={2} /> Track</>}
+            <button onClick={track} className={isTracking ? 'btn-tracking btn btn-sm' : 'btn btn-outline btn-sm'} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+              {isTracking ? <><Star size={12} strokeWidth={2} fill="currentColor" />Tracking</> : <><Star size={12} strokeWidth={2} />Track</>}
             </button>
           ) : (
-            <Link to={`/login?next=/jobs/${job.slug}`} className="btn btn-outline btn-sm"><Star size={13} strokeWidth={2} /> Track</Link>
+            <Link to={`/login?next=/jobs/${job.slug}`} className="btn btn-outline btn-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}><Star size={12} strokeWidth={2} />Track</Link>
           )}
         </div>
       </div>
@@ -110,15 +117,18 @@ export default function Jobs() {
 
   return (
     <div>
-      <div style={{ background: 'linear-gradient(135deg,#1e3a5f 0%,#2563eb 100%)', color: '#fff', padding: '1.75rem 1.5rem 1.5rem', borderRadius: '0.75rem', marginBottom: '1.25rem', position: 'relative', overflow: 'hidden' }}>
-        <div style={{ position: 'absolute', top: -40, right: -40, width: 200, height: 200, background: 'rgba(255,255,255,.05)', borderRadius: '50%' }} />
-        <h1 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '0.3rem' }}>Government Job Vacancies</h1>
-        <p style={{ fontSize: '0.875rem', opacity: 0.85 }}>Latest central &amp; state government jobs — search, filter and track deadlines</p>
-        <form onSubmit={handleSearch} style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', flexWrap: 'wrap' }}>
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search jobs..." style={{ flex: 1, minWidth: 180, padding: '0.5rem 0.75rem', borderRadius: '0.4rem', border: 'none', fontSize: '0.875rem', color: '#1e293b' }} />
-          <button type="submit" style={{ padding: '0.5rem 1rem', borderRadius: '0.4rem', background: 'rgba(255,255,255,.2)', color: '#fff', border: '1px solid rgba(255,255,255,.3)', cursor: 'pointer', fontWeight: 600 }}>Search</button>
-          {q && <button type="button" onClick={() => { setSearch(''); setSearchParams({}); }} style={{ padding: '0.5rem 0.75rem', borderRadius: '0.4rem', background: 'rgba(255,255,255,.1)', color: '#fff', border: '1px solid rgba(255,255,255,.2)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}><X size={13} strokeWidth={2.5} />Clear</button>}
-        </form>
+      <div style={{ background: 'linear-gradient(135deg, #0f2440 0%, #1e3a5f 50%, #1d4ed8 100%)', color: '#fff', padding: '1.75rem 2rem', borderRadius: '1rem', marginBottom: '1.5rem', position: 'relative', overflow: 'hidden', boxShadow: '0 8px 28px rgba(30,58,95,.3)' }}>
+        <div style={{ position: 'absolute', top: -50, right: -30, width: 200, height: 200, background: 'rgba(255,255,255,.06)', borderRadius: '50%', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', bottom: -50, left: 30, width: 140, height: 140, background: 'rgba(255,255,255,.04)', borderRadius: '50%', pointerEvents: 'none' }} />
+        <div style={{ position: 'relative', zIndex: 1 }}>
+          <h1 style={{ fontSize: '1.45rem', fontWeight: 800, marginBottom: '0.25rem', letterSpacing: '-0.02em' }}>Government Job Vacancies</h1>
+          <p style={{ fontSize: '0.875rem', opacity: 0.78, marginBottom: '1rem' }}>Latest central &amp; state government jobs — search, filter and track deadlines</p>
+          <form onSubmit={handleSearch} style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search jobs..." style={{ flex: 1, minWidth: 180, padding: '0.5rem 0.8rem', borderRadius: '0.45rem', border: 'none', fontSize: '0.875rem', color: '#1e293b', outline: 'none' }} />
+            <button type="submit" style={{ padding: '0.5rem 1.1rem', borderRadius: '0.45rem', background: 'rgba(255,255,255,.18)', color: '#fff', border: '1px solid rgba(255,255,255,.3)', cursor: 'pointer', fontWeight: 600, fontSize: '0.875rem' }}>Search</button>
+            {q && <button type="button" onClick={() => { setSearch(''); setSearchParams({}); }} style={{ padding: '0.5rem 0.75rem', borderRadius: '0.45rem', background: 'rgba(255,255,255,.1)', color: '#fff', border: '1px solid rgba(255,255,255,.2)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.875rem' }}><X size={13} strokeWidth={2.5} />Clear</button>}
+          </form>
+        </div>
       </div>
 
       <div className="list-page-grid">

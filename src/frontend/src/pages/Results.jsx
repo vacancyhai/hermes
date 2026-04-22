@@ -9,9 +9,12 @@ export default function Results() {
 
   return (
     <div>
-      <div style={{ background: 'linear-gradient(135deg,#14532d 0%,#16a34a 100%)', color: '#fff', padding: '1.75rem 1.5rem 1.5rem', borderRadius: '0.75rem', marginBottom: '1.25rem' }}>
-        <h1 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '0.3rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Trophy size={20} strokeWidth={2.5} />Results</h1>
-        <p style={{ fontSize: '0.875rem', opacity: 0.85 }}>Official results for government and entrance examinations</p>
+      <div style={{ background: 'linear-gradient(135deg, #052e16 0%, #14532d 45%, #16a34a 100%)', color: '#fff', padding: '1.75rem 2rem', borderRadius: '1rem', marginBottom: '1.5rem', position: 'relative', overflow: 'hidden', boxShadow: '0 8px 28px rgba(20,83,45,.35)' }}>
+        <div style={{ position: 'absolute', top: -50, right: -30, width: 200, height: 200, background: 'rgba(255,255,255,.06)', borderRadius: '50%', pointerEvents: 'none' }} />
+        <div style={{ position: 'relative', zIndex: 1 }}>
+          <h1 style={{ fontSize: '1.45rem', fontWeight: 800, marginBottom: '0.25rem', letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Trophy size={20} strokeWidth={2.5} />Results</h1>
+          <p style={{ fontSize: '0.875rem', opacity: 0.78 }}>Official results for government and entrance examinations</p>
+        </div>
       </div>
 
       {loading && <div style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>Loading...</div>}
@@ -21,23 +24,26 @@ export default function Results() {
         const tid = res.job_id || res.admission_id;
         const isTracking = type === 'job' ? trackedJobIds.has(String(tid)) : trackedAdmIds.has(String(tid));
         return (
-          <div key={res.id} style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderLeft: '4px solid #16a34a', borderRadius: '0.5rem', padding: '1rem 1.1rem', marginBottom: '0.75rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <div key={res.id} style={{ background: '#fff', border: '1px solid #e2e8f0', borderLeft: '3px solid #16a34a', borderRadius: '0.65rem', padding: '1rem 1.1rem', marginBottom: '0.6rem', boxShadow: '0 1px 3px rgba(0,0,0,.04)', transition: 'box-shadow .15s' }}
+            onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 4px 14px rgba(0,0,0,.08)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,.04)'; }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem' }}>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <h3 style={{ fontSize: '1rem', fontWeight: 700, lineHeight: 1.4, marginBottom: '0.25rem' }}>
-                  <Link to={`/results/${res.slug}`} style={{ color: '#14532d' }}>{res.title}</Link>
+                <h3 style={{ fontSize: '0.975rem', fontWeight: 700, lineHeight: 1.4, marginBottom: '0.3rem' }}>
+                  <Link to={`/results/${res.slug}`} style={{ color: '#0f172a', textDecoration: 'none' }}>{res.title}</Link>
                 </h3>
-                {res.published_at && <div style={{ fontSize: '0.78rem', color: '#16a34a' }}>Published: {res.published_at.slice(0, 10)}</div>}
-                {res.notes && <div style={{ fontSize: '0.855rem', color: '#475569', margin: '0.25rem 0', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{res.notes}</div>}
+                {res.published_at && <span style={{ fontSize: '0.75rem', color: '#15803d', background: '#dcfce7', border: '1px solid #bbf7d0', padding: '0.12rem 0.45rem', borderRadius: '9999px', display: 'inline-block', marginBottom: '0.3rem' }}>Published: {res.published_at.slice(0, 10)}</span>}
+                {res.notes && <div style={{ fontSize: '0.845rem', color: '#475569', lineHeight: 1.55, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{res.notes}</div>}
               </div>
-              <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexShrink: 0 }}>
                 <Link to={`/results/${res.slug}`} className="btn btn-sm" style={{ background: '#16a34a', color: '#fff', border: 'none' }}>View →</Link>
                 {tid && (token ? (
-                  <button onClick={() => track(type, tid)} className={isTracking ? 'btn-tracking btn btn-sm' : 'btn btn-outline btn-sm'} style={{ display: 'inline-flex', alignItems: 'center' }}>
-                    <Star size={13} strokeWidth={2} fill={isTracking ? 'currentColor' : 'none'} />
+                  <button onClick={() => track(type, tid)} className={isTracking ? 'btn-tracking btn btn-sm' : 'btn btn-outline btn-sm'} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                    <Star size={12} strokeWidth={2} fill={isTracking ? 'currentColor' : 'none'} />
                   </button>
                 ) : (
-                  <Link to={`/login?next=/results/${res.slug}`} className="btn btn-outline btn-sm" style={{ display: 'inline-flex', alignItems: 'center' }}><Star size={13} strokeWidth={2} /></Link>
+                  <Link to={`/login?next=/results/${res.slug}`} className="btn btn-outline btn-sm" style={{ display: 'inline-flex', alignItems: 'center' }}><Star size={12} strokeWidth={2} /></Link>
                 ))}
               </div>
             </div>

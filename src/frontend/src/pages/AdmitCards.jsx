@@ -9,9 +9,12 @@ export default function AdmitCards() {
 
   return (
     <div>
-      <div style={{ background: 'linear-gradient(135deg,#1e40af 0%,#3b82f6 100%)', color: '#fff', padding: '1.75rem 1.5rem 1.5rem', borderRadius: '0.75rem', marginBottom: '1.25rem' }}>
-        <h1 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '0.3rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><CreditCard size={20} strokeWidth={2.5} />Admit Cards</h1>
-        <p style={{ fontSize: '0.875rem', opacity: 0.85 }}>Download hall tickets and admit cards for upcoming examinations</p>
+      <div style={{ background: 'linear-gradient(135deg, #1e3a8a 0%, #1e40af 50%, #3b82f6 100%)', color: '#fff', padding: '1.75rem 2rem', borderRadius: '1rem', marginBottom: '1.5rem', position: 'relative', overflow: 'hidden', boxShadow: '0 8px 28px rgba(30,64,175,.3)' }}>
+        <div style={{ position: 'absolute', top: -50, right: -30, width: 200, height: 200, background: 'rgba(255,255,255,.06)', borderRadius: '50%', pointerEvents: 'none' }} />
+        <div style={{ position: 'relative', zIndex: 1 }}>
+          <h1 style={{ fontSize: '1.45rem', fontWeight: 800, marginBottom: '0.25rem', letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><CreditCard size={20} strokeWidth={2.5} />Admit Cards</h1>
+          <p style={{ fontSize: '0.875rem', opacity: 0.78 }}>Download hall tickets and admit cards for upcoming examinations</p>
+        </div>
       </div>
 
       {loading && <div style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>Loading...</div>}
@@ -21,23 +24,26 @@ export default function AdmitCards() {
         const tid = card.job_id || card.admission_id;
         const isTracking = type === 'job' ? trackedJobIds.has(String(tid)) : trackedAdmIds.has(String(tid));
         return (
-          <div key={card.id} style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderLeft: '4px solid #2563eb', borderRadius: '0.5rem', padding: '1rem 1.1rem', marginBottom: '0.75rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <div key={card.id} style={{ background: '#fff', border: '1px solid #e2e8f0', borderLeft: '3px solid #2563eb', borderRadius: '0.65rem', padding: '1rem 1.1rem', marginBottom: '0.6rem', boxShadow: '0 1px 3px rgba(0,0,0,.04)', transition: 'box-shadow .15s' }}
+            onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 4px 14px rgba(0,0,0,.08)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,.04)'; }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem' }}>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <h3 style={{ fontSize: '1rem', fontWeight: 700, lineHeight: 1.4, marginBottom: '0.25rem' }}>
-                  <Link to={`/admit-cards/${card.slug}`} style={{ color: '#1e40af' }}>{card.title}</Link>
+                <h3 style={{ fontSize: '0.975rem', fontWeight: 700, lineHeight: 1.4, marginBottom: '0.3rem' }}>
+                  <Link to={`/admit-cards/${card.slug}`} style={{ color: '#0f172a', textDecoration: 'none' }}>{card.title}</Link>
                 </h3>
-                {(card.exam_start || card.exam_end) && <div style={{ fontSize: '0.8rem', color: '#64748b' }}>Exam: {card.exam_start || '?'} – {card.exam_end || 'ongoing'}</div>}
-                {card.published_at && <div style={{ fontSize: '0.78rem', color: '#94a3b8' }}>Published: {card.published_at.slice(0, 10)}</div>}
+                {(card.exam_start || card.exam_end) && <div style={{ fontSize: '0.78rem', color: '#64748b', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', background: '#eff6ff', border: '1px solid #bfdbfe', padding: '0.15rem 0.5rem', borderRadius: '9999px', marginBottom: '0.25rem' }}>Exam: {card.exam_start || '?'} – {card.exam_end || 'ongoing'}</div>}
+                {card.published_at && <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Published: {card.published_at.slice(0, 10)}</div>}
               </div>
-              <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                <Link to={`/admit-cards/${card.slug}`} className="btn btn-outline btn-sm" style={{ borderColor: '#bfdbfe' }}>View →</Link>
+              <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexShrink: 0 }}>
+                <Link to={`/admit-cards/${card.slug}`} className="btn btn-outline btn-sm">View →</Link>
                 {tid && (token ? (
-                  <button onClick={() => track(type, tid)} className={isTracking ? 'btn-tracking btn btn-sm' : 'btn btn-outline btn-sm'} style={{ display: 'inline-flex', alignItems: 'center' }}>
-                    <Star size={13} strokeWidth={2} fill={isTracking ? 'currentColor' : 'none'} />
+                  <button onClick={() => track(type, tid)} className={isTracking ? 'btn-tracking btn btn-sm' : 'btn btn-outline btn-sm'} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                    <Star size={12} strokeWidth={2} fill={isTracking ? 'currentColor' : 'none'} />
                   </button>
                 ) : (
-                  <Link to={`/login?next=/admit-cards/${card.slug}`} className="btn btn-outline btn-sm" style={{ display: 'inline-flex', alignItems: 'center' }}><Star size={13} strokeWidth={2} /></Link>
+                  <Link to={`/login?next=/admit-cards/${card.slug}`} className="btn btn-outline btn-sm" style={{ display: 'inline-flex', alignItems: 'center' }}><Star size={12} strokeWidth={2} /></Link>
                 ))}
               </div>
             </div>
