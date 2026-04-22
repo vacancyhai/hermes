@@ -74,11 +74,16 @@ uploads/
 migrations/versions/*.pyc
 secrets/
 
+# Frontend (React + Vite)
+.vite/
+*.local
+
 # Mobile app (React Native — Phase 9, not yet implemented)
 node_modules/
 .expo/
 dist/
 npm-debug.log*
+yarn-debug.log*
 yarn-error.log*
 *.jks
 *.keystore
