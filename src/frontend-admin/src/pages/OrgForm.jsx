@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import client from '../api/client';
 import { makeSlug } from '../lib/formUtils';
@@ -19,6 +19,7 @@ export default function OrgForm() {
   const [orgType, setOrgType] = useState('both');
   const [websiteUrl, setWebsiteUrl] = useState('');
   const [logoUrl, setLogoUrl] = useState('');
+  const [logoError, setLogoError] = useState(false);
 
   useEffect(() => {
     if (!isEdit) return;
@@ -31,10 +32,13 @@ export default function OrgForm() {
         setOrgType(o.org_type || 'both');
         setWebsiteUrl(o.website_url || '');
         setLogoUrl(o.logo_url || '');
+        setLogoError(false);
         setLoading(false);
       })
       .catch(() => { setLoading(false); setFlash({ type: 'error', msg: 'Failed to load organization' }); });
   }, [isEdit, orgId]);
+
+  const handleLogoUrlChange = useCallback((v) => { setLogoUrl(v); setLogoError(false); }, []);
 
   function handleNameChange(v) {
     setName(v);
@@ -107,13 +111,13 @@ export default function OrgForm() {
               </div>
               <div className="form-group">
                 <label htmlFor="org-logo">Logo URL</label>
-                <input id="org-logo" type="url" value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} placeholder="https://…/logo.png" />
+                <input id="org-logo" type="url" value={logoUrl} onChange={(e) => handleLogoUrlChange(e.target.value)} placeholder="https://…/logo.png" />
               </div>
             </div>
-            {logoUrl && (
+            {logoUrl && !logoError && (
               <div style={{ marginTop: '.5rem' }}>
                 <p style={{ fontSize: '.78rem', color: '#64748b', marginBottom: '.25rem' }}>Logo preview:</p>
-                <img src={logoUrl} alt="Logo preview" style={{ maxWidth: 80, maxHeight: 80, objectFit: 'contain', border: '1px solid #e2e8f0', borderRadius: '.375rem', padding: '.25rem' }} onError={(e) => { e.target.style.display = 'none'; }} />
+                <img src={logoUrl} alt="Logo preview" style={{ maxWidth: 80, maxHeight: 80, objectFit: 'contain', border: '1px solid #e2e8f0', borderRadius: '.375rem', padding: '.25rem' }} onError={() => setLogoError(true)} />
               </div>
             )}
           </div>
