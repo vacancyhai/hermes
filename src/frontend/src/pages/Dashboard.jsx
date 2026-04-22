@@ -267,7 +267,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '210px 1fr', gap: '1.5rem', alignItems: 'start' }} className="page-grid">
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,210px) minmax(0,1fr)', gap: '1.5rem', alignItems: 'start' }} className="page-grid">
 
         {/* Upcoming Exams Sidebar */}
         <aside style={{ position: 'sticky', top: '4.5rem' }}>
