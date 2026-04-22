@@ -1,9 +1,20 @@
 import PropTypes from 'prop-types';
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { Landmark, Users, Clock, Star, SlidersHorizontal, X } from 'lucide-react';
 import api from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
+
+const cardVariants = {
+  hidden: { opacity: 0, y: 16 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.28, ease: [0.16, 1, 0.3, 1] } },
+};
+
+const listVariants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.06, delayChildren: 0.04 } },
+};
 
 function JobCard({ job, trackedIds, onToggle }) {
   const { token } = useAuth();
@@ -26,9 +37,11 @@ function JobCard({ job, trackedIds, onToggle }) {
 
   const s = statusMap[job.status];
   return (
-    <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderLeft: '3px solid #1e3a5f', borderRadius: '0.65rem', padding: '1rem 1.1rem', marginBottom: '0.6rem', boxShadow: '0 1px 3px rgba(0,0,0,.04)', transition: 'box-shadow .15s' }}
-      onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 4px 14px rgba(0,0,0,.08)'; }}
-      onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,.04)'; }}
+    <motion.div
+      variants={cardVariants}
+      whileHover={{ y: -3, boxShadow: '0 8px 24px rgba(15,23,42,.1), 0 2px 8px rgba(15,23,42,.06)', borderColor: '#93c5fd' }}
+      whileTap={{ scale: 0.99 }}
+      style={{ background: '#fff', border: '1px solid #e2e8f0', borderLeft: '3px solid #1e3a5f', borderRadius: '0.75rem', padding: '1rem 1.1rem', marginBottom: '0.6rem', boxShadow: '0 1px 4px rgba(15,23,42,.05)', transition: 'border-color 0.15s' }}
     >
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.6rem', marginBottom: '0.3rem' }}>
         <h3 style={{ fontSize: '0.975rem', fontWeight: 700, lineHeight: 1.4, flex: 1, minWidth: 0 }}>
@@ -57,7 +70,7 @@ function JobCard({ job, trackedIds, onToggle }) {
           )}
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -175,7 +188,11 @@ export default function Jobs() {
             </div>
           ))}
           {!loading && jobs.length === 0 && <div style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>No jobs found. Try a different search.</div>}
-          {!loading && jobs.map((job) => <JobCard key={job.id} job={job} trackedIds={trackedIds} onToggle={toggleId} />)}
+          {!loading && (
+            <motion.div variants={listVariants} initial="hidden" animate="show">
+              {jobs.map((job) => <JobCard key={job.id} job={job} trackedIds={trackedIds} onToggle={toggleId} />)}
+            </motion.div>
+          )}
 
           {pagination.has_more && (
             <div style={{ textAlign: 'center', padding: '1.5rem 0' }}>

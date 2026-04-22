@@ -1,9 +1,14 @@
 import PropTypes from 'prop-types';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { LayoutDashboard, Briefcase, CreditCard, FileText, Trophy, GraduationCap, Landmark, Clock, Star, Search, CalendarDays, Users } from 'lucide-react';
 import api from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
+
+const fadeUp = { hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0, transition: { duration: 0.3, ease: [0.16, 1, 0.3, 1] } } };
+const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.07, delayChildren: 0.05 } } };
+const miniCard = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0, transition: { duration: 0.25, ease: [0.16, 1, 0.3, 1] } } };
 
 const STATUS_COLORS = {
   active: { bg: '#dcfce7', color: '#15803d', border: '#bbf7d0', label: 'Active' },
@@ -49,38 +54,31 @@ function ExamsDaysBadge({ days }) {
 ExamsDaysBadge.propTypes = { days: PropTypes.number };
 ExamsDaysBadge.defaultProps = { days: null };
 
-function MiniCard({ children, color, onClick, accentBg }) {
+function MiniCard({ children, color, onClick }) {
   return (
-    <button type="button" onClick={onClick} style={{
-      background: '#fff',
-      border: '1px solid #e2e8f0',
-      borderTop: `3px solid ${color}`,
-      borderRadius: '0.6rem',
-      padding: '0.95rem 1rem 0.8rem',
-      width: 220, minWidth: 220, maxWidth: 220,
-      minHeight: 148, flexShrink: 0,
-      display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
-      cursor: 'pointer', overflow: 'visible',
-      transition: 'box-shadow .18s, transform .15s, border-color .15s',
-      textAlign: 'left',
-      boxShadow: '0 1px 3px rgba(0,0,0,.05)',
-      position: 'relative',
-    }}
-    onMouseEnter={(e) => {
-      e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,.1)';
-      e.currentTarget.style.transform = 'translateY(-2px)';
-      e.currentTarget.style.borderColor = color;
-      if (accentBg) e.currentTarget.style.background = accentBg;
-    }}
-    onMouseLeave={(e) => {
-      e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,.05)';
-      e.currentTarget.style.transform = 'none';
-      e.currentTarget.style.borderColor = '#e2e8f0';
-      e.currentTarget.style.background = '#fff';
-    }}
+    <motion.button
+      type="button"
+      onClick={onClick}
+      variants={miniCard}
+      whileHover={{ y: -4, boxShadow: '0 10px 28px rgba(15,23,42,.12), 0 2px 8px rgba(15,23,42,.06)' }}
+      whileTap={{ scale: 0.98, y: 0 }}
+      style={{
+        background: '#fff',
+        border: '1px solid #e2e8f0',
+        borderTop: `3px solid ${color}`,
+        borderRadius: 'var(--radius-lg)',
+        padding: '0.95rem 1rem 0.8rem',
+        width: 220, minWidth: 220, maxWidth: 220,
+        minHeight: 148, flexShrink: 0,
+        display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+        cursor: 'pointer', overflow: 'visible',
+        textAlign: 'left',
+        boxShadow: 'var(--shadow-xs)',
+        position: 'relative',
+      }}
     >
       {children}
-    </button>
+    </motion.button>
   );
 }
 
@@ -88,9 +86,7 @@ MiniCard.propTypes = {
   children: PropTypes.node.isRequired,
   color: PropTypes.string.isRequired,
   onClick: PropTypes.func.isRequired,
-  accentBg: PropTypes.string,
 };
-MiniCard.defaultProps = { accentBg: null };
 
 function TrackBtn({ type, id, slug, isTracking, onToggle }) {
   const { token } = useAuth();
@@ -122,13 +118,15 @@ TrackBtn.propTypes = {
 
 function SectionRow({ title, href, accent, children }) {
   return (
-    <div style={{ marginBottom: '1.75rem' }}>
+    <motion.div variants={fadeUp} style={{ marginBottom: '1.75rem' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.85rem' }}>
         <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#0f172a', display: 'inline-flex', alignItems: 'center', gap: '0.45rem', paddingLeft: '0.6rem', borderLeft: `3px solid ${accent || '#2563eb'}` }}>{title}</div>
-        <Link to={href} style={{ fontSize: '0.75rem', fontWeight: 600, color: accent || '#2563eb', whiteSpace: 'nowrap', padding: '0.25rem 0.65rem', border: `1px solid ${accent || '#2563eb'}22`, borderRadius: '0.375rem', background: `${accent || '#2563eb'}0d`, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.2rem', transition: 'background 0.15s' }}>View All →</Link>
+        <Link to={href} style={{ fontSize: '0.75rem', fontWeight: 600, color: accent || '#2563eb', whiteSpace: 'nowrap', padding: '0.28rem 0.7rem', border: `1px solid ${accent || '#2563eb'}28`, borderRadius: 'var(--radius-sm)', background: `${accent || '#2563eb'}0d`, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.2rem', transition: 'background 0.15s, box-shadow 0.15s' }}>View All →</Link>
       </div>
-      <div className="h-scroll-wrap"><div className="h-scroll">{children}</div></div>
-    </div>
+      <div className="h-scroll-wrap">
+        <motion.div className="h-scroll" variants={stagger} initial="hidden" animate="show">{children}</motion.div>
+      </div>
+    </motion.div>
   );
 }
 
@@ -249,19 +247,22 @@ export default function Dashboard() {
   };
 
   return (
-    <div>
+    <motion.div variants={stagger} initial="hidden" animate="show">
       {/* Hero */}
-      <div style={{ background: 'linear-gradient(135deg, #0f2440 0%, #1e3a5f 45%, #1d4ed8 100%)', color: '#fff', padding: '1.75rem 2rem', borderRadius: '1rem', marginBottom: '1.5rem', position: 'relative', overflow: 'hidden', boxShadow: '0 8px 32px rgba(30,58,95,.35)' }}>
-        <div style={{ position: 'absolute', top: -50, right: -40, width: 220, height: 220, background: 'rgba(255,255,255,.06)', borderRadius: '50%', pointerEvents: 'none' }} />
-        <div style={{ position: 'absolute', bottom: -60, left: 40, width: 160, height: 160, background: 'rgba(255,255,255,.04)', borderRadius: '50%', pointerEvents: 'none' }} />
+      <motion.div variants={fadeUp}
+        style={{ background: 'linear-gradient(135deg, #0f2440 0%, #1e3a5f 40%, #1d4ed8 85%, #3b82f6 100%)', color: '#fff', padding: '2rem 2.25rem', borderRadius: 'var(--radius-2xl)', marginBottom: 'var(--sp-6)', position: 'relative', overflow: 'hidden', boxShadow: '0 16px 48px rgba(15,36,64,.4), 0 4px 12px rgba(15,36,64,.2)' }}
+      >
+        <div style={{ position: 'absolute', top: -70, right: -70, width: 280, height: 280, background: 'rgba(255,255,255,.07)', borderRadius: '50%', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', bottom: -80, left: 40, width: 220, height: 220, background: 'rgba(255,255,255,.04)', borderRadius: '50%', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', top: '30%', left: '45%', width: 180, height: 180, background: 'rgba(99,162,251,.06)', borderRadius: '50%', pointerEvents: 'none' }} />
         <div style={{ position: 'relative', zIndex: 1 }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', background: 'rgba(255,255,255,.12)', borderRadius: '0.375rem', padding: '0.25rem 0.65rem', fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: '0.75rem' }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', background: 'rgba(255,255,255,.14)', backdropFilter: 'blur(8px)', borderRadius: '0.5rem', padding: '0.28rem 0.75rem', fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: '0.875rem', border: '1px solid rgba(255,255,255,.1)' }}>
             <LayoutDashboard size={11} strokeWidth={2.5} />Overview
           </div>
-          <h1 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '0.35rem', letterSpacing: '-0.02em', lineHeight: 1.2 }}>Welcome to Vacancy Hai</h1>
-          <p style={{ fontSize: '0.875rem', opacity: 0.78, maxWidth: 480 }}>Latest government jobs, admissions, admit cards, answer keys and results — all in one place.</p>
+          <h1 style={{ fontSize: '1.6rem', fontWeight: 800, marginBottom: '0.4rem', letterSpacing: '-0.025em', lineHeight: 1.18 }}>Welcome to Vacancy Hai</h1>
+          <p style={{ fontSize: '0.9rem', opacity: 0.78, maxWidth: 500, lineHeight: 1.65 }}>Latest government jobs, admissions, admit cards, answer keys and results — all in one place.</p>
         </div>
-      </div>
+      </motion.div>
 
       {/* Org strip */}
       {loading && (
@@ -571,6 +572,6 @@ export default function Dashboard() {
           )}
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }
