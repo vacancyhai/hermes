@@ -1,6 +1,33 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ['./index.html', './src/**/*.{js,jsx,ts,tsx}'],
+  safelist: [
+    'hidden',
+    'flex',
+    'block',
+    'inline-flex',
+    'sm:flex',
+    'sm:hidden',
+    'sm:block',
+    'md:flex',
+    'md:hidden',
+    'md:block',
+    'lg:flex',
+    'lg:hidden',
+    'text-sm',
+    'font-medium',
+    'font-bold',
+    'px-3',
+    'py-2',
+    'rounded',
+    'whitespace-nowrap',
+    'border-b-2',
+    'no-underline',
+    'text-white',
+    'border-blue-400',
+    'border-transparent',
+    'transition-colors',
+  ],
   theme: {
     extend: {
       colors: {
