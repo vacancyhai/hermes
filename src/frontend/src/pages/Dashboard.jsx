@@ -319,7 +319,9 @@ export default function Dashboard() {
               <MiniCard key={job.id} color="#1e3a5f" accentBg="#f0f4ff" onClick={() => navigate(`/jobs/${job.slug}`)}>
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.3rem', marginBottom: '0.2rem' }}>
-                    <div style={{ fontSize: '0.85rem', fontWeight: 700, lineHeight: 1.35, flex: 1, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{job.job_title}</div>
+                    <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
+                      <div style={{ fontSize: '0.85rem', fontWeight: 700, lineHeight: 1.35, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{job.job_title}</div>
+                    </div>
                     <MiniStatus status={job.status} />
                   </div>
                   <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.2rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '0.25rem' }}><Landmark size={11} strokeWidth={2} />{job.organization}</div>
@@ -403,8 +405,10 @@ export default function Dashboard() {
             {data.admissions.map((adm) => (
               <MiniCard key={adm.id} color="#7c3aed" accentBg="#f5f3ff" onClick={() => navigate(`/admissions/${adm.slug}`)}>
                 <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.3rem', marginBottom: '0.2rem' }}>
-                    <div style={{ fontSize: '0.85rem', fontWeight: 700, lineHeight: 1.35, flex: 1, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{adm.admission_name}</div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.3rem', marginBottom: '0.2rem' }}>
+                    <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
+                      <div style={{ fontSize: '0.85rem', fontWeight: 700, lineHeight: 1.35, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{adm.admission_name}</div>
+                    </div>
                     <MiniStatus status={adm.status} />
                   </div>
                   <div style={{ fontSize: '0.75rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '0.25rem' }}><Landmark size={11} strokeWidth={2} />{adm.conducting_body}</div>
