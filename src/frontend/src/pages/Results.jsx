@@ -17,7 +17,21 @@ export default function Results() {
         </div>
       </div>
 
-      {loading && <div style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>Loading...</div>}
+      {loading && Array.from({ length: 5 }).map((_, i) => (
+        <div key={i} style={{ background: '#fff', border: '1px solid #e2e8f0', borderLeft: '3px solid #e2e8f0', borderRadius: '0.65rem', padding: '1rem 1.1rem', marginBottom: '0.6rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem' }}>
+            <div style={{ flex: 1 }}>
+              <div className="skeleton" style={{ height: 16, width: '65%', borderRadius: '0.4rem', marginBottom: '0.45rem' }} />
+              <div className="skeleton" style={{ height: 22, width: 120, borderRadius: '9999px', marginBottom: '0.35rem' }} />
+              <div className="skeleton" style={{ height: 13, width: '80%', borderRadius: '0.4rem' }} />
+            </div>
+            <div style={{ display: 'flex', gap: '0.4rem' }}>
+              <div className="skeleton" style={{ height: 28, width: 56, borderRadius: '0.4rem' }} />
+              <div className="skeleton" style={{ height: 28, width: 32, borderRadius: '0.4rem' }} />
+            </div>
+          </div>
+        </div>
+      ))}
       {!loading && results.length === 0 && <div style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>No results available.</div>}
       {!loading && results.map((res) => {
         const type = res.job_id ? 'job' : 'admission';

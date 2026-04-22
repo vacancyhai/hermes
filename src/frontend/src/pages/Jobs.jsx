@@ -153,7 +153,27 @@ export default function Jobs() {
 
         {/* Job list */}
         <div>
-          {loading && <div style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>Loading...</div>}
+          {loading && Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} style={{ background: '#fff', border: '1px solid #e2e8f0', borderLeft: '3px solid #e2e8f0', borderRadius: '0.65rem', padding: '1rem 1.1rem', marginBottom: '0.6rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                <div className="skeleton" style={{ height: 16, width: '60%', borderRadius: '0.4rem' }} />
+                <div className="skeleton" style={{ height: 16, width: 52, borderRadius: '9999px' }} />
+              </div>
+              <div className="skeleton" style={{ height: 13, width: '40%', borderRadius: '0.4rem', marginBottom: '0.4rem' }} />
+              <div className="skeleton" style={{ height: 13, width: '80%', borderRadius: '0.4rem', marginBottom: '0.4rem' }} />
+              <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.55rem' }}>
+                <div className="skeleton" style={{ height: 22, width: 80, borderRadius: '9999px' }} />
+                <div className="skeleton" style={{ height: 22, width: 64, borderRadius: '9999px' }} />
+              </div>
+              <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '0.55rem', display: 'flex', justifyContent: 'space-between' }}>
+                <div className="skeleton" style={{ height: 22, width: 110, borderRadius: '9999px' }} />
+                <div style={{ display: 'flex', gap: '0.4rem' }}>
+                  <div className="skeleton" style={{ height: 28, width: 88, borderRadius: '0.4rem' }} />
+                  <div className="skeleton" style={{ height: 28, width: 64, borderRadius: '0.4rem' }} />
+                </div>
+              </div>
+            </div>
+          ))}
           {!loading && jobs.length === 0 && <div style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>No jobs found. Try a different search.</div>}
           {!loading && jobs.map((job) => <JobCard key={job.id} job={job} trackedIds={trackedIds} onToggle={toggleId} />)}
 

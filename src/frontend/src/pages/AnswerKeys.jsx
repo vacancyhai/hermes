@@ -17,7 +17,23 @@ export default function AnswerKeys() {
         </div>
       </div>
 
-      {loading && <div style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>Loading...</div>}
+      {loading && Array.from({ length: 5 }).map((_, i) => (
+        <div key={i} style={{ background: '#fff', border: '1px solid #e2e8f0', borderLeft: '3px solid #e2e8f0', borderRadius: '0.65rem', padding: '1rem 1.1rem', marginBottom: '0.6rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem' }}>
+            <div style={{ flex: 1 }}>
+              <div className="skeleton" style={{ height: 16, width: '70%', borderRadius: '0.4rem', marginBottom: '0.45rem' }} />
+              <div style={{ display: 'flex', gap: '0.3rem' }}>
+                <div className="skeleton" style={{ height: 22, width: 110, borderRadius: '9999px' }} />
+                <div className="skeleton" style={{ height: 22, width: 130, borderRadius: '9999px' }} />
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '0.4rem' }}>
+              <div className="skeleton" style={{ height: 28, width: 56, borderRadius: '0.4rem' }} />
+              <div className="skeleton" style={{ height: 28, width: 32, borderRadius: '0.4rem' }} />
+            </div>
+          </div>
+        </div>
+      ))}
       {!loading && keys.length === 0 && <div style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>No answer keys available.</div>}
       {!loading && keys.map((key) => {
         const type = key.job_id ? 'job' : 'admission';

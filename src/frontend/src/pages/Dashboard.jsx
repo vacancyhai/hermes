@@ -140,6 +140,20 @@ SectionRow.propTypes = {
 };
 SectionRow.defaultProps = { accent: null };
 
+function SkeletonMiniCard() {
+  return (
+    <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderTop: '3px solid #e2e8f0', borderRadius: '0.6rem', padding: '0.95rem 1rem 0.8rem', width: 220, minWidth: 220, flexShrink: 0 }}>
+      <div className="skeleton" style={{ height: 14, width: '75%', borderRadius: '0.35rem', marginBottom: '0.5rem' }} />
+      <div className="skeleton" style={{ height: 14, width: '55%', borderRadius: '0.35rem', marginBottom: '0.4rem' }} />
+      <div className="skeleton" style={{ height: 12, width: '40%', borderRadius: '0.35rem', marginBottom: '0.65rem' }} />
+      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+        <div className="skeleton" style={{ height: 22, width: 70, borderRadius: '0.35rem' }} />
+        <div className="skeleton" style={{ height: 22, width: 52, borderRadius: '0.35rem' }} />
+      </div>
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const { token } = useAuth();
   const navigate = useNavigate();
@@ -148,6 +162,7 @@ export default function Dashboard() {
   const [orgs, setOrgs] = useState([]);
   const [trackedOrgIds, setTrackedOrgIds] = useState(new Set());
   const [profileComplete, setProfileComplete] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const params = { limit: 12, offset: 0 };
@@ -169,6 +184,7 @@ export default function Dashboard() {
         exams: (ex.data.data || []).slice(0, 8),
       });
       setOrgs(og.data.data || []);
+      setLoading(false);
     });
   }, []);
 
@@ -314,8 +330,9 @@ export default function Dashboard() {
         <div>
           {/* Jobs */}
           <SectionRow title={<><Briefcase size={13} strokeWidth={2} />Latest Jobs</>} href="/jobs" accent="#1e3a5f">
-            {data.jobs.length === 0 && <p style={{ color: '#94a3b8', fontSize: '0.875rem' }}>No jobs available.</p>}
-            {data.jobs.map((job) => (
+            {loading && Array.from({ length: 6 }).map((_, i) => <SkeletonMiniCard key={i} />)}
+            {!loading && data.jobs.length === 0 && <p style={{ color: '#94a3b8', fontSize: '0.875rem' }}>No jobs available.</p>}
+            {!loading && data.jobs.map((job) => (
               <MiniCard key={job.id} color="#1e3a5f" accentBg="#f0f4ff" onClick={() => navigate(`/jobs/${job.slug}`)}>
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.3rem', marginBottom: '0.2rem' }}>
@@ -340,8 +357,9 @@ export default function Dashboard() {
 
           {/* Admit Cards */}
           <SectionRow title={<><CreditCard size={13} strokeWidth={2} />Latest Admit Cards</>} href="/admit-cards" accent="#2563eb">
-            {data.admit_cards.length === 0 && <p style={{ color: '#94a3b8', fontSize: '0.875rem' }}>No admit cards available.</p>}
-            {data.admit_cards.map((card) => (
+            {loading && Array.from({ length: 6 }).map((_, i) => <SkeletonMiniCard key={i} />)}
+            {!loading && data.admit_cards.length === 0 && <p style={{ color: '#94a3b8', fontSize: '0.875rem' }}>No admit cards available.</p>}
+            {!loading && data.admit_cards.map((card) => (
               <MiniCard key={card.id} color="#2563eb" accentBg="#eff6ff" onClick={() => navigate(`/admit-cards/${card.slug}`)}>
                 <div>
                   <div style={{ fontSize: '0.85rem', fontWeight: 700, lineHeight: 1.35, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{card.title}</div>
@@ -365,8 +383,9 @@ export default function Dashboard() {
 
           {/* Answer Keys */}
           <SectionRow title={<><FileText size={13} strokeWidth={2} />Latest Answer Keys</>} href="/answer-keys" accent="#d97706">
-            {data.answer_keys.length === 0 && <p style={{ color: '#94a3b8', fontSize: '0.875rem' }}>No answer keys available.</p>}
-            {data.answer_keys.map((key) => (
+            {loading && Array.from({ length: 6 }).map((_, i) => <SkeletonMiniCard key={i} />)}
+            {!loading && data.answer_keys.length === 0 && <p style={{ color: '#94a3b8', fontSize: '0.875rem' }}>No answer keys available.</p>}
+            {!loading && data.answer_keys.map((key) => (
               <MiniCard key={key.id} color="#d97706" accentBg="#fffbeb" onClick={() => navigate(`/answer-keys/${key.slug}`)}>
                 <div>
                   <div style={{ fontSize: '0.85rem', fontWeight: 700, lineHeight: 1.35, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{key.title}</div>
@@ -383,8 +402,9 @@ export default function Dashboard() {
 
           {/* Results */}
           <SectionRow title={<><Trophy size={13} strokeWidth={2} />Latest Results</>} href="/results" accent="#16a34a">
-            {data.results.length === 0 && <p style={{ color: '#94a3b8', fontSize: '0.875rem' }}>No results available.</p>}
-            {data.results.map((res) => (
+            {loading && Array.from({ length: 6 }).map((_, i) => <SkeletonMiniCard key={i} />)}
+            {!loading && data.results.length === 0 && <p style={{ color: '#94a3b8', fontSize: '0.875rem' }}>No results available.</p>}
+            {!loading && data.results.map((res) => (
               <MiniCard key={res.id} color="#16a34a" accentBg="#f0fdf4" onClick={() => navigate(`/results/${res.slug}`)}>
                 <div>
                   <div style={{ fontSize: '0.85rem', fontWeight: 700, lineHeight: 1.35, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{res.title}</div>
@@ -401,8 +421,9 @@ export default function Dashboard() {
 
           {/* Admissions */}
           <SectionRow title={<><GraduationCap size={13} strokeWidth={2} />Latest Admissions</>} href="/admissions" accent="#7c3aed">
-            {data.admissions.length === 0 && <p style={{ color: '#94a3b8', fontSize: '0.875rem' }}>No admissions available.</p>}
-            {data.admissions.map((adm) => (
+            {loading && Array.from({ length: 6 }).map((_, i) => <SkeletonMiniCard key={i} />)}
+            {!loading && data.admissions.length === 0 && <p style={{ color: '#94a3b8', fontSize: '0.875rem' }}>No admissions available.</p>}
+            {!loading && data.admissions.map((adm) => (
               <MiniCard key={adm.id} color="#7c3aed" accentBg="#f5f3ff" onClick={() => navigate(`/admissions/${adm.slug}`)}>
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.3rem', marginBottom: '0.2rem' }}>
