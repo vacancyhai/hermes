@@ -75,20 +75,11 @@ export default function AdmitCards() {
                 {card.parent_title && <div style={{ fontSize: '0.82rem', color: '#64748b', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.3rem', marginBottom: '0.1rem' }}>{card.parent_type === 'job' ? <Briefcase size={11} strokeWidth={2} /> : <GraduationCap size={11} strokeWidth={2} />}{card.parent_title}</div>}
                 {card.parent_organization && <div style={{ fontSize: '0.78rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '0.25rem', marginBottom: '0.35rem' }}><Landmark size={10} strokeWidth={2} />{card.parent_organization}</div>}
               </div>
-              <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'flex-start', flexShrink: 0 }}>
-                {tid && (token ? (
-                  <button onClick={(e) => { e.stopPropagation(); track(type, tid); }} className={isTracking ? 'btn-tracking btn btn-sm' : 'btn btn-outline btn-sm'} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
-                    <Star size={12} strokeWidth={2} fill={isTracking ? 'currentColor' : 'none'} />{isTracking ? 'Tracking' : 'Keep Track'}
-                  </button>
-                ) : (
-                  <Link to={`/login?next=/admit-cards/${card.slug}`} onClick={(e) => e.stopPropagation()} className="btn btn-outline btn-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}><Star size={12} strokeWidth={2} />Keep Track</Link>
-                ))}
-              </div>
             </div>
 
             {/* Date + download row */}
-            {(card.published_at || card.exam_start || card.exam_end || card.links?.length > 0) && (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginTop: '0.55rem', paddingTop: '0.5rem', borderTop: '1px solid #f1f5f9', alignItems: 'center' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginTop: '0.55rem', paddingTop: '0.5rem', borderTop: '1px solid #f1f5f9', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'center' }}>
                 {card.published_at && (
                   <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: '0.25rem', background: '#f8fafc', border: '1px solid #e2e8f0', padding: '0.15rem 0.5rem', borderRadius: '9999px' }}>
                     <CalendarDays size={10} strokeWidth={2} />Published: {card.published_at.slice(0, 10)}
@@ -110,7 +101,14 @@ export default function AdmitCards() {
                   </a>
                 )}
               </div>
-            )}
+              {tid && (token ? (
+                <button onClick={(e) => { e.stopPropagation(); track(type, tid); }} className={isTracking ? 'btn-tracking btn btn-sm' : 'btn btn-outline btn-sm'} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                  <Star size={12} strokeWidth={2} fill={isTracking ? 'currentColor' : 'none'} />{isTracking ? 'Tracking' : 'Keep Track'}
+                </button>
+              ) : (
+                <Link to={`/login?next=/admit-cards/${card.slug}`} onClick={(e) => e.stopPropagation()} className="btn btn-outline btn-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}><Star size={12} strokeWidth={2} />Keep Track</Link>
+              ))}
+            </div>
           </motion.div>
         );
       })}
