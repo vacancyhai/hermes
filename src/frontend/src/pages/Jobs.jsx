@@ -1,6 +1,6 @@
 import PropTypes from 'prop-types';
 import { useState, useEffect, useCallback } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Landmark, Users, Clock, Star, SlidersHorizontal, X } from 'lucide-react';
 import api from '../api/client';
@@ -18,10 +18,11 @@ const listVariants = {
 
 function JobCard({ job, trackedIds, onToggle }) {
   const { token } = useAuth();
+  const navigate = useNavigate();
   const isTracking = trackedIds.has(String(job.id));
 
   const track = async (e) => {
-    e.preventDefault();
+    e.stopPropagation();
     try {
       if (isTracking) await api.delete(`/jobs/${job.id}/track`);
       else await api.post(`/jobs/${job.id}/track`);
@@ -40,9 +41,10 @@ function JobCard({ job, trackedIds, onToggle }) {
   return (
     <motion.div
       variants={cardVariants}
+      onClick={() => navigate(`/jobs/${job.slug}`)}
       whileHover={{ y: -3, boxShadow: '0 8px 24px rgba(15,23,42,.1), 0 2px 8px rgba(15,23,42,.06)', borderColor: '#93c5fd' }}
       whileTap={{ scale: 0.99 }}
-      style={{ background: '#fff', border: '1px solid #e2e8f0', borderLeft: '3px solid #1e3a5f', borderRadius: '0.75rem', padding: '1rem 1.1rem', marginBottom: '0.6rem', boxShadow: '0 1px 4px rgba(15,23,42,.05)', transition: 'border-color 0.15s' }}
+      style={{ background: '#fff', border: '1px solid #e2e8f0', borderLeft: '3px solid #1e3a5f', borderRadius: '0.75rem', padding: '1rem 1.1rem', marginBottom: '0.6rem', boxShadow: '0 1px 4px rgba(15,23,42,.05)', transition: 'border-color 0.15s', cursor: 'pointer' }}
     >
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', marginBottom: '0.3rem' }}>
         {/* Org logo circle */}
@@ -53,8 +55,8 @@ function JobCard({ job, trackedIds, onToggle }) {
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.5rem' }}>
-            <h3 style={{ fontSize: '0.975rem', fontWeight: 700, lineHeight: 1.4, flex: 1, minWidth: 0, margin: 0 }}>
-              <Link to={`/jobs/${job.slug}`} style={{ color: '#0f172a', textDecoration: 'none' }}>{job.job_title}</Link>
+            <h3 style={{ fontSize: '0.975rem', fontWeight: 700, lineHeight: 1.4, flex: 1, minWidth: 0, margin: 0, color: '#0f172a' }}>
+              {job.job_title}
             </h3>
             {s && <span style={{ background: s.bg, color: s.color, border: `1px solid ${s.border}`, fontSize: '0.65rem', fontWeight: 700, padding: '0.15rem 0.55rem', borderRadius: '9999px', whiteSpace: 'nowrap', flexShrink: 0, display: 'inline-flex', alignItems: 'center', lineHeight: 1.4 }}>{s.label}</span>}
           </div>
@@ -71,13 +73,12 @@ function JobCard({ job, trackedIds, onToggle }) {
           ? <span style={{ fontSize: '0.75rem', color: '#b45309', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.25rem', background: '#fef3c7', border: '1px solid #fde68a', padding: '0.15rem 0.5rem', borderRadius: '9999px' }}><Clock size={11} strokeWidth={2} />Deadline: {job.application_end}</span>
           : <span />}
         <div style={{ display: 'flex', gap: '0.4rem' }}>
-          <Link to={`/jobs/${job.slug}`} className="btn btn-outline btn-sm">View Details →</Link>
           {token ? (
             <button onClick={track} className={isTracking ? 'btn-tracking btn btn-sm' : 'btn btn-outline btn-sm'} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
               {isTracking ? <><Star size={12} strokeWidth={2} fill="currentColor" />Tracking</> : <><Star size={12} strokeWidth={2} />Keep Track</>}
             </button>
           ) : (
-            <Link to={`/login?next=/jobs/${job.slug}`} className="btn btn-outline btn-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}><Star size={12} strokeWidth={2} />Keep Track</Link>
+            <Link to={`/login?next=/jobs/${job.slug}`} onClick={(e) => e.stopPropagation()} className="btn btn-outline btn-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}><Star size={12} strokeWidth={2} />Keep Track</Link>
           )}
         </div>
       </div>
