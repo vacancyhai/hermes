@@ -1,8 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { Briefcase, GraduationCap, Download, Link2, BookOpen, Globe, Star, ClipboardList } from 'lucide-react';
 import api from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
+
+const fadeUp = { hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0, transition: { duration: 0.3, ease: [0.16, 1, 0.3, 1] } } };
+const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.08, delayChildren: 0.05 } } };
 
 export default function AdmitCardDetail() {
   const { slug } = useParams();
@@ -35,18 +39,30 @@ export default function AdmitCardDetail() {
     } catch { }
   };
 
-  if (loading) return <div style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>Loading...</div>;
-  if (!card) return <div style={{ textAlign: 'center', padding: '3rem' }}><h2>404 — Admit Card not found</h2><Link to="/admit-cards" className="btn btn-primary" style={{ marginTop: '1rem', display: 'inline-flex' }}>Back</Link></div>;
+  if (loading) return (
+    <div style={{ padding: '3rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+      <div className="skeleton" style={{ height: 180, borderRadius: 'var(--radius-2xl)' }} />
+      <div style={{ display: 'flex', gap: '0.5rem' }}>{[120,90].map((w,i) => <div key={i} className="skeleton" style={{ height: 34, width: w, borderRadius: 'var(--radius)' }} />)}</div>
+    </div>
+  );
+  if (!card) return (
+    <div style={{ textAlign: 'center', padding: '3rem' }}>
+      <h2 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '0.75rem' }}>Admit Card not found</h2>
+      <Link to="/admit-cards" className="btn btn-primary" style={{ display: 'inline-flex' }}>← Back</Link>
+    </div>
+  );
 
   return (
-    <div>
-      <Link to="/admit-cards" className="back-link">← Back to Admit Cards</Link>
+    <motion.div variants={stagger} initial="hidden" animate="show">
+      <motion.div variants={fadeUp}>
+        <Link to="/admit-cards" className="back-link">← Back to Admit Cards</Link>
+      </motion.div>
 
-      <div className="detail-hero hero-admit">
+      <motion.div variants={fadeUp} className="detail-hero hero-admit">
         <h1>{card.title}</h1>
         {card.job && <div style={{ fontSize: '0.875rem', opacity: 0.88, marginTop: '0.3rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Briefcase size={14} strokeWidth={2} />{card.job.job_title} — {card.job.organization}</div>}
         {card.admission && <div style={{ fontSize: '0.875rem', opacity: 0.88, marginTop: '0.3rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}><GraduationCap size={14} strokeWidth={2} />{card.admission.admission_name}</div>}
-      </div>
+      </motion.div>
 
       <div className="action-bar">
         {(card.job || card.admission) && (
@@ -77,6 +93,6 @@ export default function AdmitCardDetail() {
         {card.job && <Link to={`/jobs/${card.job.slug || card.job.id}`} className="btn btn-outline">← View Job Details</Link>}
         {card.admission && <Link to={`/admissions/${card.admission.slug || card.admission.id}`} className="btn btn-outline">← View Admission Details</Link>}
       </div>
-    </div>
+    </motion.div>
   );
 }

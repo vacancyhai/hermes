@@ -1,6 +1,7 @@
 import PropTypes from 'prop-types';
 import { useState, useEffect, useRef } from 'react';
-import { User, Bell, Landmark, Lock, Mail, CheckCircle, AlertTriangle } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { User, Bell, Landmark, Lock, Mail, CheckCircle, AlertTriangle, Shield } from 'lucide-react';
 import {
   EmailAuthProvider,
   reauthenticateWithCredential,
@@ -20,9 +21,9 @@ const QUALIFICATIONS = [['10th','Class 10th'],['12th','Class 12th'],['diploma','
 function Modal({ title, open, onClose, children }) {
   if (!open) return null;
   return (
-    <button type="button" onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', border: 'none', cursor: 'default', width: '100%' }}>
-      <div aria-hidden="true" onClick={(e) => e.stopPropagation()} style={{ background: '#fff', borderRadius: '0.5rem', padding: '1.5rem', maxWidth: 420, width: '100%' }}>
-        <h3 style={{ margin: '0 0 1rem', color: '#1e3a5f' }}>{title}</h3>
+    <button type="button" onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,.55)', backdropFilter: 'blur(4px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', border: 'none', cursor: 'default', width: '100%' }}>
+      <div aria-hidden="true" onClick={(e) => e.stopPropagation()} style={{ background: '#fff', borderRadius: 'var(--radius-xl)', padding: '1.75rem', maxWidth: 420, width: '100%', boxShadow: 'var(--shadow-lg)' }}>
+        <h3 style={{ margin: '0 0 1.1rem', color: '#0f172a', fontSize: '1rem', fontWeight: 800, letterSpacing: '-0.015em' }}>{title}</h3>
         {children}
       </div>
     </button>
@@ -258,13 +259,24 @@ export default function Profile() {
   return (
     <div style={{ maxWidth: 720, margin: '0 auto' }}>
       {/* Hero */}
-      <div style={{ background: 'linear-gradient(135deg,#1e3a5f 0%,#2563eb 100%)', color: '#fff', padding: '1.5rem', borderRadius: '0.75rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-        <div style={{ width: 60, height: 60, background: 'rgba(255,255,255,.2)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><User size={28} strokeWidth={2} /></div>
-        <div>
-          <div style={{ fontSize: '1.1rem', fontWeight: 800 }}>{user?.full_name || 'User'}</div>
-          <div style={{ fontSize: '0.85rem', opacity: 0.8 }}>{user?.email || user?.phone || ''}</div>
+      <motion.div
+        initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+        style={{ background: 'linear-gradient(135deg, #0f2440 0%, #1e3a5f 50%, #2563eb 100%)', color: '#fff', padding: '1.6rem 1.75rem', borderRadius: 'var(--radius-2xl)', marginBottom: '1.5rem', position: 'relative', overflow: 'hidden', boxShadow: '0 16px 48px rgba(15,36,64,.35), 0 4px 12px rgba(15,36,64,.2)', display: 'flex', alignItems: 'center', gap: '1.1rem' }}
+      >
+        <div style={{ position: 'absolute', top: -50, right: -30, width: 180, height: 180, background: 'rgba(255,255,255,.06)', borderRadius: '50%', pointerEvents: 'none' }} />
+        <div style={{ position: 'relative', zIndex: 1, width: 64, height: 64, background: 'rgba(255,255,255,.15)', backdropFilter: 'blur(8px)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: '2px solid rgba(255,255,255,.25)', boxShadow: '0 0 0 4px rgba(255,255,255,.08)' }}>
+          <User size={28} strokeWidth={2} />
         </div>
-      </div>
+        <div style={{ position: 'relative', zIndex: 1 }}>
+          <div style={{ fontSize: '1.15rem', fontWeight: 800, letterSpacing: '-0.02em' }}>{user?.full_name || 'User'}</div>
+          <div style={{ fontSize: '0.82rem', opacity: 0.78, marginTop: '0.1rem' }}>{user?.email || user?.phone || ''}</div>
+          {user?.is_phone_verified && (
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', marginTop: '0.35rem', background: 'rgba(34,197,94,.18)', border: '1px solid rgba(34,197,94,.3)', borderRadius: '9999px', padding: '0.12rem 0.55rem', fontSize: '0.68rem', fontWeight: 700 }}>
+              <Shield size={10} strokeWidth={2.5} />Verified
+            </div>
+          )}
+        </div>
+      </motion.div>
 
       {flash.msg && <div className={flash.type === 'success' ? 'flash-success' : 'flash-error'} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>{flash.type === 'success' ? <CheckCircle size={15} strokeWidth={2} /> : <AlertTriangle size={15} strokeWidth={2} />} {flash.msg}</div>}
 
@@ -275,9 +287,9 @@ export default function Profile() {
       )}
 
       {/* Tabs */}
-      <div style={{ display: 'flex', borderBottom: '2px solid #e2e8f0', marginBottom: '1.5rem', overflowX: 'auto' }}>
+      <div style={{ display: 'flex', background: '#fff', borderRadius: 'var(--radius-lg)', border: '1px solid #e2e8f0', padding: '0.3rem', marginBottom: '1.5rem', overflowX: 'auto', gap: '0.2rem', boxShadow: 'var(--shadow-xs)' }}>
         {[['profile', 'Profile', User], ['notifications', 'Notifications', Bell], ['account', 'Account', Landmark], ['security', 'Security', Lock]].map(([t, label, Icon]) => (
-          <button key={t} onClick={() => setTab(t)} style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', fontWeight: tab === t ? 700 : 500, cursor: 'pointer', background: 'none', border: 'none', borderBottom: tab === t ? '2px solid #2563eb' : '2px solid transparent', marginBottom: -2, color: tab === t ? '#2563eb' : '#64748b', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+          <button key={t} onClick={() => setTab(t)} style={{ padding: '0.5rem 1rem', fontSize: '0.82rem', fontWeight: tab === t ? 700 : 500, cursor: 'pointer', background: tab === t ? '#f0f7ff' : 'transparent', border: tab === t ? '1px solid #bfdbfe' : '1px solid transparent', borderRadius: 'var(--radius)', color: tab === t ? '#1d4ed8' : '#64748b', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: '0.4rem', transition: 'all 0.15s', flexShrink: 0 }}>
             <Icon size={14} strokeWidth={2} />{label}
           </button>
         ))}

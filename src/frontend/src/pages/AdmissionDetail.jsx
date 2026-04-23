@@ -1,9 +1,13 @@
 import PropTypes from 'prop-types';
 import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { Search, AlertTriangle, CheckCircle, XCircle, Landmark, Link2, BookOpen, Globe, Share2, Folder, Star } from 'lucide-react';
 import api from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
+
+const fadeUp = { hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0, transition: { duration: 0.3, ease: [0.16, 1, 0.3, 1] } } };
+const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.08, delayChildren: 0.05 } } };
 
 function EligBanner({ token, profileComplete, eligibility, slug }) {
   if (!token) return (
@@ -84,8 +88,19 @@ export default function AdmissionDetail() {
     } catch { }
   };
 
-  if (loading) return <div style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>Loading...</div>;
-  if (!admission) return <div style={{ textAlign: 'center', padding: '3rem' }}><h2>404 — Admission not found</h2><Link to="/admissions" className="btn btn-primary" style={{ marginTop: '1rem', display: 'inline-flex' }}>Back to Admissions</Link></div>;
+  if (loading) return (
+    <div style={{ padding: '3rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+      <div className="skeleton" style={{ height: 200, borderRadius: 'var(--radius-2xl)' }} />
+      <div style={{ display: 'flex', gap: '0.5rem' }}>{[120,90,80].map((w,i) => <div key={i} className="skeleton" style={{ height: 34, width: w, borderRadius: 'var(--radius)' }} />)}</div>
+      <div className="skeleton" style={{ height: 120, borderRadius: 'var(--radius-lg)' }} />
+    </div>
+  );
+  if (!admission) return (
+    <div style={{ textAlign: 'center', padding: '3rem' }}>
+      <h2 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '0.75rem' }}>Admission not found</h2>
+      <Link to="/admissions" className="btn btn-primary" style={{ display: 'inline-flex' }}>← Back to Admissions</Link>
+    </div>
+  );
 
   const hasAdmitCards = admission.admit_cards?.length > 0;
   const hasAnswerKeys = admission.answer_keys?.length > 0;
@@ -94,10 +109,12 @@ export default function AdmissionDetail() {
   const feeLabels = { general: 'General / UR', obc: 'OBC-NCL', sc_st: 'SC / ST', ews: 'EWS', female: 'Female / PwBD' };
 
   return (
-    <div>
-      <Link to="/admissions" className="back-link">← Back to Admissions</Link>
+    <motion.div variants={stagger} initial="hidden" animate="show">
+      <motion.div variants={fadeUp}>
+        <Link to="/admissions" className="back-link">← Back to Admissions</Link>
+      </motion.div>
 
-      <div className="detail-hero hero-admission">
+      <motion.div variants={fadeUp} className="detail-hero hero-admission">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem', flexWrap: 'wrap' }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             {admission.admission_type && <span style={{ background: 'rgba(255,255,255,.2)', color: '#fff', padding: '0.15rem 0.55rem', borderRadius: 9999, fontSize: '0.75rem', fontWeight: 600, display: 'inline-block', marginBottom: '0.5rem' }}>{admission.admission_type.toUpperCase()}</span>}
@@ -106,7 +123,7 @@ export default function AdmissionDetail() {
           </div>
           {admission.status && <span className={`status-pill status-${admission.status}`}>{admission.status}</span>}
         </div>
-      </div>
+      </motion.div>
 
       <div className="action-bar">
         <button onClick={toggleTrack} className="share-btn" style={tracking ? { background: '#fef3c7', color: '#92400e', borderColor: '#fde68a' } : { background: '#ede9fe', color: '#5b21b6', borderColor: '#ddd6fe' }}>
@@ -195,6 +212,6 @@ export default function AdmissionDetail() {
           )}
         </div>
       )}
-    </div>
+    </motion.div>
   );
 }

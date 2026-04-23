@@ -251,7 +251,7 @@ export default function Login() {
         style={{ display: 'flex', width: '100%', maxWidth: 880, borderRadius: 'var(--radius-2xl)', overflow: 'hidden', boxShadow: '0 32px 80px rgba(0,0,0,.22), 0 8px 24px rgba(0,0,0,.12)' }}
       >
         {/* Left branding panel */}
-        <div style={{ flex: '0 0 300px', background: 'linear-gradient(160deg, #0a1628 0%, #0f2440 30%, #1e3a5f 65%, #2563eb 100%)', padding: '2.5rem 2rem', display: 'flex', flexDirection: 'column', justifyContent: 'center', color: '#fff', position: 'relative', overflow: 'hidden' }} className="login-brand-panel">
+        <div style={{ flex: '0 0 300px', background: 'linear-gradient(160deg, #0a1628 0%, #0f2440 30%, #1e3a5f 65%, #2563eb 100%)', padding: '2.5rem 2rem', display: 'flex', flexDirection: 'column', justifyContent: 'center', color: '#fff', position: 'relative', overflow: 'hidden', minHeight: 520 }} className="login-brand-panel">
           {/* decorative circles */}
           <div style={{ position: 'absolute', top: -80, right: -80, width: 260, height: 260, background: 'rgba(255,255,255,.05)', borderRadius: '50%', pointerEvents: 'none' }} />
           <div style={{ position: 'absolute', bottom: -100, left: -60, width: 240, height: 240, background: 'rgba(99,162,251,.06)', borderRadius: '50%', pointerEvents: 'none' }} />
@@ -273,7 +273,7 @@ export default function Login() {
         </div>
 
         {/* Right form */}
-        <div style={{ flex: 1, background: '#fff', padding: '2rem 2rem', overflowY: 'auto', maxHeight: '92vh' }}>
+        <div style={{ flex: 1, background: '#fff', padding: '2rem 2rem', overflowY: 'auto', maxHeight: '92vh', minHeight: 520 }}>
           <div style={{ maxWidth: 340, margin: '0 auto' }}>
 
             {!FIREBASE_API_KEY && <div className="flash-error" style={{ marginBottom: '1rem', fontSize: '0.8rem' }}>Firebase not configured. Contact administrator.</div>}

@@ -1,7 +1,14 @@
 import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { FileText, Star } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTrackedItems } from '../hooks/useTrackedItems';
+
+const cardVariants = {
+  hidden: { opacity: 0, y: 16 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.28, ease: [0.16, 1, 0.3, 1] } },
+};
+const listVariants = { hidden: {}, show: { transition: { staggerChildren: 0.06, delayChildren: 0.04 } } };
 
 export default function AnswerKeys() {
   const { token } = useAuth();
@@ -9,13 +16,20 @@ export default function AnswerKeys() {
 
   return (
     <div>
-      <div style={{ background: 'linear-gradient(135deg, #78350f 0%, #92400e 45%, #d97706 100%)', color: '#fff', padding: '1.75rem 2rem', borderRadius: '1rem', marginBottom: '1.5rem', position: 'relative', overflow: 'hidden', boxShadow: '0 8px 28px rgba(146,64,14,.35)' }}>
-        <div style={{ position: 'absolute', top: -50, right: -30, width: 200, height: 200, background: 'rgba(255,255,255,.06)', borderRadius: '50%', pointerEvents: 'none' }} />
+      <motion.div
+        initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+        style={{ background: 'linear-gradient(135deg, #78350f 0%, #92400e 45%, #d97706 100%)', color: '#fff', padding: '1.75rem 2rem', borderRadius: 'var(--radius-2xl)', marginBottom: '1.5rem', position: 'relative', overflow: 'hidden', boxShadow: '0 16px 48px rgba(146,64,14,.4), 0 4px 12px rgba(146,64,14,.2)' }}
+      >
+        <div style={{ position: 'absolute', top: -60, right: -40, width: 240, height: 240, background: 'rgba(255,255,255,.06)', borderRadius: '50%', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', bottom: -50, left: 20, width: 160, height: 160, background: 'rgba(255,255,255,.04)', borderRadius: '50%', pointerEvents: 'none' }} />
         <div style={{ position: 'relative', zIndex: 1 }}>
-          <h1 style={{ fontSize: '1.45rem', fontWeight: 800, marginBottom: '0.25rem', letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><FileText size={20} strokeWidth={2.5} />Answer Keys</h1>
-          <p style={{ fontSize: '0.875rem', opacity: 0.78 }}>Official answer keys for government and entrance examinations</p>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', background: 'rgba(255,255,255,.14)', backdropFilter: 'blur(8px)', borderRadius: '0.5rem', padding: '0.28rem 0.75rem', fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: '0.75rem', border: '1px solid rgba(255,255,255,.1)' }}>
+            <FileText size={11} strokeWidth={2.5} />Answer Keys
+          </div>
+          <h1 style={{ fontSize: '1.55rem', fontWeight: 800, marginBottom: '0.3rem', letterSpacing: '-0.025em', lineHeight: 1.18 }}>Answer Keys</h1>
+          <p style={{ fontSize: '0.875rem', opacity: 0.78, lineHeight: 1.6 }}>Official answer keys for government and entrance examinations</p>
         </div>
-      </div>
+      </motion.div>
 
       {loading && Array.from({ length: 5 }).map((_, i) => (
         <div key={i} style={{ background: '#fff', border: '1px solid #e2e8f0', borderLeft: '3px solid #e2e8f0', borderRadius: '0.65rem', padding: '1rem 1.1rem', marginBottom: '0.6rem' }}>
@@ -35,14 +49,18 @@ export default function AnswerKeys() {
         </div>
       ))}
       {!loading && keys.length === 0 && <div style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>No answer keys available.</div>}
-      {!loading && keys.map((key) => {
+      {!loading && (
+        <motion.div variants={listVariants} initial="hidden" animate="show">
+        {keys.map((key) => {
         const type = key.job_id ? 'job' : 'admission';
         const tid = key.job_id || key.admission_id;
         const isTracking = type === 'job' ? trackedJobIds.has(String(tid)) : trackedAdmIds.has(String(tid));
         return (
-          <div key={key.id} style={{ background: '#fff', border: '1px solid #e2e8f0', borderLeft: '3px solid #d97706', borderRadius: '0.65rem', padding: '1rem 1.1rem', marginBottom: '0.6rem', boxShadow: '0 1px 3px rgba(0,0,0,.04)', transition: 'box-shadow .15s' }}
-            onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 4px 14px rgba(0,0,0,.08)'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,.04)'; }}
+          <motion.div key={key.id}
+            variants={cardVariants}
+            whileHover={{ y: -3, boxShadow: '0 8px 24px rgba(15,23,42,.1), 0 2px 8px rgba(15,23,42,.06)', borderColor: '#fcd34d' }}
+            whileTap={{ scale: 0.99 }}
+            style={{ background: '#fff', border: '1px solid #e2e8f0', borderLeft: '3px solid #d97706', borderRadius: 'var(--radius-lg)', padding: '1rem 1.1rem', marginBottom: '0.65rem', boxShadow: 'var(--shadow-sm)', transition: 'border-color 0.15s' }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem' }}>
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -65,9 +83,11 @@ export default function AnswerKeys() {
                 ))}
               </div>
             </div>
-          </div>
+          </motion.div>
         );
       })}
+        </motion.div>
+      )}
       {pagination.has_more && (
         <div style={{ textAlign: 'center', padding: '1.5rem 0' }}>
           <button onClick={() => setSearchParams({ offset: offset + limit })} className="btn btn-outline">Load More</button>

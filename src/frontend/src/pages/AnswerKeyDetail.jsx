@@ -1,8 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { Briefcase, GraduationCap, Download, Globe, Star, ClipboardList, FileText } from 'lucide-react';
 import api from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
+
+const fadeUp = { hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0, transition: { duration: 0.3, ease: [0.16, 1, 0.3, 1] } } };
+const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.08, delayChildren: 0.05 } } };
 
 export default function AnswerKeyDetail() {
   const { slug } = useParams();
@@ -35,18 +39,30 @@ export default function AnswerKeyDetail() {
     } catch { }
   };
 
-  if (loading) return <div style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>Loading...</div>;
-  if (!key) return <div style={{ textAlign: 'center', padding: '3rem' }}><h2>404 — Answer Key not found</h2><Link to="/answer-keys" className="btn btn-primary" style={{ marginTop: '1rem', display: 'inline-flex' }}>Back</Link></div>;
+  if (loading) return (
+    <div style={{ padding: '3rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+      <div className="skeleton" style={{ height: 180, borderRadius: 'var(--radius-2xl)' }} />
+      <div style={{ display: 'flex', gap: '0.5rem' }}>{[120,90].map((w,i) => <div key={i} className="skeleton" style={{ height: 34, width: w, borderRadius: 'var(--radius)' }} />)}</div>
+    </div>
+  );
+  if (!key) return (
+    <div style={{ textAlign: 'center', padding: '3rem' }}>
+      <h2 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '0.75rem' }}>Answer Key not found</h2>
+      <Link to="/answer-keys" className="btn btn-primary" style={{ display: 'inline-flex' }}>← Back</Link>
+    </div>
+  );
 
   return (
-    <div>
-      <Link to="/answer-keys" className="back-link">← Back to Answer Keys</Link>
+    <motion.div variants={stagger} initial="hidden" animate="show">
+      <motion.div variants={fadeUp}>
+        <Link to="/answer-keys" className="back-link">← Back to Answer Keys</Link>
+      </motion.div>
 
-      <div className="detail-hero hero-answer">
+      <motion.div variants={fadeUp} className="detail-hero hero-answer">
         <h1>{key.title}</h1>
         {key.job && <div style={{ fontSize: '0.875rem', opacity: 0.88, marginTop: '0.3rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Briefcase size={14} strokeWidth={2} />{key.job.job_title} — {key.job.organization}</div>}
         {key.admission && <div style={{ fontSize: '0.875rem', opacity: 0.88, marginTop: '0.3rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}><GraduationCap size={14} strokeWidth={2} />{key.admission.admission_name}</div>}
-      </div>
+      </motion.div>
 
       <div className="action-bar">
         {(key.job || key.admission) && (
@@ -85,6 +101,6 @@ export default function AnswerKeyDetail() {
         {key.job && <Link to={`/jobs/${key.job.slug || key.job.id}`} className="btn btn-outline">← View Job Details</Link>}
         {key.admission && <Link to={`/admissions/${key.admission.slug || key.admission.id}`} className="btn btn-outline">← View Admission Details</Link>}
       </div>
-    </div>
+    </motion.div>
   );
 }

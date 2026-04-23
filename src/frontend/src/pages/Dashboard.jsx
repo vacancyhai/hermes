@@ -2,7 +2,7 @@ import PropTypes from 'prop-types';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { LayoutDashboard, Briefcase, CreditCard, FileText, Trophy, GraduationCap, Landmark, Clock, Star, Search, CalendarDays, Users } from 'lucide-react';
+import { LayoutDashboard, Briefcase, CreditCard, FileText, Trophy, GraduationCap, Landmark, Clock, Star, Search, CalendarDays, Users, Bell, AlertCircle } from 'lucide-react';
 import api from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -43,12 +43,17 @@ MiniStatus.defaultProps = { status: '' };
 
 function ExamsDaysBadge({ days }) {
   if (days == null) return null;
-  let bg, col;
-  if (days === 0) { bg = '#ef4444'; col = '#fff'; }
-  else if (days <= 7) { bg = '#fee2e2'; col = '#991b1b'; }
-  else if (days <= 30) { bg = '#fef9c3'; col = '#854d0e'; }
-  else { bg = '#eff6ff'; col = '#1d4ed8'; }
-  return <span style={{ background: bg, color: col, borderRadius: 9999, padding: '0.1rem 0.4rem', fontSize: '0.65rem' }}>{days === 0 ? 'Today!' : `${days}d left`}</span>;
+  let bg, col, border, label;
+  if (days === 0)      { bg = '#ef4444'; col = '#fff';    border = '#dc2626'; label = 'Today!'; }
+  else if (days <= 3) { bg = '#fee2e2'; col = '#991b1b';  border = '#fca5a5'; label = `${days}d left`; }
+  else if (days <= 7) { bg = '#fef3c7'; col = '#92400e';  border = '#fde68a'; label = `${days}d left`; }
+  else if (days <= 30){ bg = '#eff6ff'; col = '#1d4ed8';  border = '#bfdbfe'; label = `${days}d left`; }
+  else                { bg = '#f0fdf4'; col = '#15803d';  border = '#bbf7d0'; label = `${days}d`; }
+  return (
+    <span style={{ background: bg, color: col, border: `1px solid ${border}`, borderRadius: 9999, padding: '0.18rem 0.55rem', fontSize: '0.65rem', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '0.2rem', letterSpacing: '0.02em' }}>
+      {days <= 3 && <AlertCircle size={9} strokeWidth={2.5} />}{label}
+    </span>
+  );
 }
 
 ExamsDaysBadge.propTypes = { days: PropTypes.number };
@@ -266,109 +271,193 @@ export default function Dashboard() {
 
       {/* Org strip */}
       {loading && (
-        <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '0.85rem', padding: '1rem 1.25rem', marginBottom: '1.5rem', boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
-          {/* header row — matches: <Landmark 13px> + "Organizations" (0.8rem) + count badge */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.85rem' }}>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
-              <div className="skeleton" style={{ width: 13, height: 13, borderRadius: '0.2rem', flexShrink: 0 }} />
-              <div className="skeleton" style={{ height: 13, width: 88, borderRadius: '0.3rem' }} />
-              <div className="skeleton" style={{ height: 13, width: 20, borderRadius: '9999px' }} />
-            </div>
+        <motion.div variants={fadeUp} style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 'var(--radius-xl)', overflow: 'hidden', marginBottom: '1.5rem', boxShadow: 'var(--shadow-sm)' }}>
+          <div style={{ background: 'linear-gradient(135deg,#0f2440,#1e3a5f 50%,#334155)', padding: '0.75rem 1.1rem', display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+            <div className="skeleton" style={{ width: 24, height: 24, borderRadius: '0.4rem', flexShrink: 0 }} />
+            <div className="skeleton" style={{ height: 12, width: 100, borderRadius: '0.3rem' }} />
           </div>
-          {/* tiles row — matches real overflowX:auto, paddingBottom:0.2rem */}
-          <div style={{ display: 'flex', gap: '0.65rem', overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: '0.2rem' }}>
-            {Array.from({ length: 12 }).map((_, i) => (
-              <div key={i} style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: '0.45rem', flexShrink: 0, width: 88 }}>
-                {/* avatar: 48×48 with 2px border = 52px visual */}
-                <div className="skeleton" style={{ width: 48, height: 48, borderRadius: '0.6rem' }} />
-                {/* name: fontSize 0.65rem ≈ 10.4px + lineHeight 1.3 ≈ 13.5px */}
-                <div className="skeleton" style={{ height: 10, width: 72, borderRadius: '0.3rem' }} />
-                {/* follow button: padding 0.18rem 0.45rem + fontSize 0.6rem + Star 9px ≈ 22px tall, full width */}
-                <div className="skeleton" style={{ height: 22, width: 88, borderRadius: '0.3rem' }} />
+          <div style={{ display: 'flex', gap: '0.75rem', overflowX: 'auto', scrollbarWidth: 'none', padding: '1rem 1.1rem 1rem' }}>
+            {Array.from({ length: 10 }).map((_, i) => (
+              <div key={i} style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', flexShrink: 0, width: 76 }}>
+                <div className="skeleton" style={{ width: 56, height: 56, borderRadius: '0.75rem' }} />
+                <div className="skeleton" style={{ height: 10, width: 60, borderRadius: '0.3rem' }} />
+                <div className="skeleton" style={{ height: 22, width: 76, borderRadius: '9999px' }} />
               </div>
             ))}
           </div>
-        </div>
+        </motion.div>
       )}
       {!loading && orgs.length > 0 && (
-        <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '0.85rem', padding: '1rem 1.25rem', marginBottom: '1.5rem', boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.85rem' }}>
-            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#0f172a', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}><Landmark size={13} strokeWidth={2} />Organizations <span style={{ fontSize: '0.68rem', fontWeight: 700, background: '#f1f5f9', color: '#64748b', borderRadius: '9999px', padding: '0.1rem 0.5rem' }}>{orgs.length}</span></span>
+        <motion.div variants={fadeUp} style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 'var(--radius-xl)', overflow: 'hidden', marginBottom: '1.5rem', boxShadow: 'var(--shadow-sm)' }}>
+          {/* Header */}
+          <div style={{ background: 'linear-gradient(135deg, #0f2440 0%, #1e3a5f 55%, #334155 100%)', padding: '0.75rem 1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span style={{ width: 28, height: 28, background: 'rgba(255,255,255,.14)', border: '1px solid rgba(255,255,255,.12)', borderRadius: '0.45rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Landmark size={14} strokeWidth={2.5} color="#fff" />
+              </span>
+              <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#fff', letterSpacing: '0.01em' }}>Organizations</span>
+              <span style={{ background: 'rgba(255,255,255,.18)', color: '#fff', fontSize: '0.65rem', fontWeight: 700, padding: '0.1rem 0.45rem', borderRadius: 9999, border: '1px solid rgba(255,255,255,.15)' }}>{orgs.length}</span>
+            </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-              {token && trackedOrgIds.size > 0 && <span style={{ fontSize: '0.72rem', color: '#64748b' }}>{trackedOrgIds.size} followed</span>}
-              {orgs.length > 8 && <span style={{ fontSize: '0.7rem', color: '#94a3b8', display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}>scroll for more →</span>}
+              {token && trackedOrgIds.size > 0 && (
+                <span style={{ background: 'rgba(245,158,11,.22)', color: '#fcd34d', fontSize: '0.68rem', fontWeight: 700, padding: '0.15rem 0.55rem', borderRadius: 9999, border: '1px solid rgba(245,158,11,.3)', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                  <Star size={9} strokeWidth={2} fill="currentColor" />{trackedOrgIds.size} following
+                </span>
+              )}
             </div>
           </div>
+
+          {/* Tiles */}
           <div style={{ position: 'relative' }}>
-          <div style={{ display: 'flex', gap: '0.65rem', overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: '0.2rem' }}>
-            {orgs.map((org) => {
-              const isTracking = trackedOrgIds.has(String(org.id));
-              const displayName = org.short_name || org.name;
-              const toggleOrg = async (e) => {
-                e.preventDefault();
-                if (!token) { navigate('/login?next=/'); return; }
-                try {
-                  if (isTracking) { await api.delete(`/organizations/${org.id}/track`); }
-                  else { await api.post(`/organizations/${org.id}/track`); }
-                  setTrackedOrgIds((prev) => {
-                    const next = new Set(prev);
-                    if (isTracking) next.delete(String(org.id));
-                    else next.add(String(org.id));
-                    return next;
-                  });
-                } catch { }
-              };
-              return (
-                <div key={org.id} style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: '0.45rem', flexShrink: 0, width: 88, cursor: 'default' }}>
-                  {org.logo_url
-                    ? <img src={org.logo_url} alt={displayName} style={{ width: 48, height: 48, borderRadius: '0.6rem', objectFit: 'cover', border: isTracking ? '2px solid #f59e0b' : '2px solid #e2e8f0', transition: 'border-color .15s' }} />
-                    : <div style={{ width: 48, height: 48, borderRadius: '0.6rem', background: isTracking ? 'linear-gradient(135deg,#b45309,#f59e0b)' : 'linear-gradient(135deg,#1e3a5f,#3b82f6)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', fontWeight: 800, border: isTracking ? '2px solid #f59e0b' : '2px solid transparent', transition: 'border-color .15s', flexShrink: 0 }}>{displayName[0]?.toUpperCase()}</div>
-                  }
-                  <span style={{ fontSize: '0.65rem', fontWeight: 600, color: '#334155', textAlign: 'center', lineHeight: 1.3, width: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={org.name}>{displayName}</span>
-                  <button onClick={toggleOrg} style={{ fontSize: '0.6rem', fontWeight: 700, borderRadius: '0.3rem', padding: '0.18rem 0.45rem', border: `1px solid ${isTracking ? '#f59e0b' : '#e2e8f0'}`, background: isTracking ? '#fef3c7' : '#f8fafc', color: isTracking ? '#92400e' : '#64748b', cursor: 'pointer', whiteSpace: 'nowrap', width: '100%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.2rem', transition: 'all .15s' }}>
-                    {isTracking ? <><Star size={9} strokeWidth={2} fill="currentColor" />Following</> : <><Star size={9} strokeWidth={2} />Follow</>}
-                  </button>
-                </div>
-              );
-            })}
+            <motion.div
+              variants={stagger} initial="hidden" animate="show"
+              style={{ display: 'flex', gap: '0.75rem', overflowX: 'auto', scrollbarWidth: 'none', padding: '1rem 1.1rem 1rem' }}
+            >
+              {orgs.map((org) => {
+                const isTracking = trackedOrgIds.has(String(org.id));
+                const displayName = org.short_name || org.name;
+                const toggleOrg = async (e) => {
+                  e.preventDefault();
+                  if (!token) { navigate('/login?next=/'); return; }
+                  try {
+                    if (isTracking) { await api.delete(`/organizations/${org.id}/track`); }
+                    else { await api.post(`/organizations/${org.id}/track`); }
+                    setTrackedOrgIds((prev) => {
+                      const next = new Set(prev);
+                      if (isTracking) next.delete(String(org.id));
+                      else next.add(String(org.id));
+                      return next;
+                    });
+                  } catch { }
+                };
+                return (
+                  <motion.div
+                    key={org.id}
+                    variants={miniCard}
+                    whileHover={{ y: -4, transition: { duration: 0.18 } }}
+                    style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', flexShrink: 0, width: 76 }}
+                  >
+                    {/* Avatar */}
+                    <div style={{ position: 'relative' }}>
+                      {org.logo_url
+                        ? <img src={org.logo_url} alt={displayName} style={{ width: 56, height: 56, borderRadius: '0.75rem', objectFit: 'cover', border: isTracking ? '2.5px solid #f59e0b' : '2px solid #e2e8f0', transition: 'border-color .15s', boxShadow: isTracking ? '0 0 0 3px rgba(245,158,11,.18)' : 'var(--shadow-xs)' }} />
+                        : <div style={{ width: 56, height: 56, borderRadius: '0.75rem', background: isTracking ? 'linear-gradient(135deg,#b45309,#f59e0b)' : 'linear-gradient(135deg,#1e3a5f,#3b82f6)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.35rem', fontWeight: 800, boxShadow: isTracking ? '0 0 0 3px rgba(245,158,11,.25), var(--shadow-sm)' : 'var(--shadow-xs)', transition: 'box-shadow .15s', flexShrink: 0 }}>{displayName[0]?.toUpperCase()}</div>
+                      }
+                      {isTracking && (
+                        <span style={{ position: 'absolute', top: -4, right: -4, width: 16, height: 16, background: '#f59e0b', borderRadius: '50%', border: '2px solid #fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <Star size={8} strokeWidth={2.5} fill="#fff" color="#fff" />
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Name */}
+                    <span style={{ fontSize: '0.65rem', fontWeight: 600, color: '#334155', textAlign: 'center', lineHeight: 1.3, width: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={org.name}>{displayName}</span>
+
+                    {/* Follow button */}
+                    <motion.button
+                      onClick={toggleOrg}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      style={{ fontSize: '0.62rem', fontWeight: 700, borderRadius: 9999, padding: '0.22rem 0.6rem', border: `1.5px solid ${isTracking ? '#f59e0b' : '#e2e8f0'}`, background: isTracking ? 'linear-gradient(135deg,#fef3c7,#fde68a)' : '#f8fafc', color: isTracking ? '#92400e' : '#64748b', cursor: 'pointer', whiteSpace: 'nowrap', width: '100%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.22rem', transition: 'border-color .15s, background .15s', boxShadow: isTracking ? '0 2px 6px rgba(245,158,11,.2)' : 'none' }}
+                    >
+                      {isTracking
+                        ? <><Star size={9} strokeWidth={2} fill="currentColor" />Following</>
+                        : <><Star size={9} strokeWidth={2} />Follow</>}
+                    </motion.button>
+                  </motion.div>
+                );
+              })}
+            </motion.div>
+            {/* scroll fade right */}
+            <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: 40, background: 'linear-gradient(90deg, transparent, rgba(255,255,255,.9))', pointerEvents: 'none' }} />
           </div>
-          </div>{/* end position:relative wrapper */}
-        </div>
+        </motion.div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,210px) minmax(0,1fr)', gap: '1.5rem', alignItems: 'start' }} className="page-grid">
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,380px) minmax(0,1fr)', gap: '1.5rem', alignItems: 'start' }} className="page-grid">
 
         {/* Upcoming Exams Sidebar */}
         <aside style={{ position: 'sticky', top: '4.5rem' }}>
-          <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '0.85rem', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
-            <div style={{ background: 'linear-gradient(90deg, #0f2440, #1e3a5f)', color: '#fff', padding: '0.75rem 1rem', fontSize: '0.78rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem', letterSpacing: '0.02em' }}><CalendarDays size={13} strokeWidth={2} />Upcoming Exams</div>
-            <div>
-              {loading && Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} style={{ borderBottom: '1px solid #f8fafc', padding: '0.65rem 0.9rem' }}>
-                  <div className="skeleton" style={{ height: 11, width: '88%', borderRadius: '0.3rem', marginBottom: '0.2rem' }} />
-                  <div className="skeleton" style={{ height: 11, width: '60%', borderRadius: '0.3rem', marginBottom: '0.3rem' }} />
-                  <div className="skeleton" style={{ height: 11, width: '45%', borderRadius: '0.3rem', marginBottom: '0.3rem' }} />
-                  <div className="skeleton" style={{ height: 17, width: 48, borderRadius: '9999px' }} />
-                </div>
-              ))}
-              {!loading && data.exams.length === 0 && <div style={{ padding: '1rem', textAlign: 'center', color: '#94a3b8', fontSize: '0.78rem' }}>No upcoming exams</div>}
-              {!loading && data.exams.map((exam) => {
-                const isJob = exam.type === 'job' || exam.parent_type === 'job';
-                const url = isJob ? `/jobs/${exam.slug || exam.parent_slug}` : `/admissions/${exam.slug || exam.parent_slug}`;
-                return (
-                  <button type="button" key={exam.id} onClick={() => navigate(url)} style={{ display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none', borderBottom: '1px solid #f8fafc', padding: '0.65rem 0.9rem', cursor: 'pointer', transition: 'background .12s' }}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = '#f8fafc'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = ''; }}>
-                    <div style={{ color: '#0f172a', fontWeight: 600, fontSize: '0.77rem', lineHeight: 1.4, marginBottom: '0.25rem' }}>{exam.title}</div>
-                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', color: '#64748b', fontSize: '0.68rem', fontWeight: 500 }}>
-                      <CalendarDays size={10} strokeWidth={2} />{exam.exam_start || 'TBA'}
-                    </div>
-                    <div style={{ marginTop: '0.2rem' }}><ExamsDaysBadge days={exam.days_remaining} /></div>
-                  </button>
-                );
-              })}
+          <motion.div variants={fadeUp} style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 'var(--radius-xl)', overflow: 'hidden', boxShadow: 'var(--shadow)' }}>
+            {/* Header */}
+            <div style={{ background: 'linear-gradient(135deg, #0f2440 0%, #1e3a5f 50%, #2563eb 100%)', color: '#fff', padding: '0.875rem 1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.8rem', fontWeight: 700, letterSpacing: '0.02em' }}>
+                <span style={{ width: 26, height: 26, background: 'rgba(255,255,255,.15)', borderRadius: '0.4rem', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(255,255,255,.12)' }}>
+                  <CalendarDays size={13} strokeWidth={2.5} />
+                </span>
+                Upcoming Exams
+              </div>
+              {!loading && data.exams.length > 0 && (
+                <span style={{ background: 'rgba(255,255,255,.18)', color: '#fff', fontSize: '0.65rem', fontWeight: 700, padding: '0.15rem 0.5rem', borderRadius: 9999, border: '1px solid rgba(255,255,255,.15)' }}>{data.exams.length}</span>
+              )}
             </div>
-          </div>
+
+            {/* Body */}
+            <div style={{ padding: '0.75rem' }}>
+              {/* skeleton — 2-col grid */}
+              {loading && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem' }}>
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <div key={i} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 'var(--radius)', padding: '0.75rem' }}>
+                      <div className="skeleton" style={{ height: 11, width: '90%', borderRadius: '0.3rem', marginBottom: '0.35rem' }} />
+                      <div className="skeleton" style={{ height: 10, width: '65%', borderRadius: '0.3rem', marginBottom: '0.4rem' }} />
+                      <div className="skeleton" style={{ height: 20, width: 56, borderRadius: '9999px' }} />
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {!loading && data.exams.length === 0 && (
+                <div style={{ padding: '1.5rem 1rem', textAlign: 'center' }}>
+                  <div style={{ width: 44, height: 44, background: '#f1f5f9', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 0.75rem' }}>
+                    <Bell size={20} strokeWidth={1.5} color="#94a3b8" />
+                  </div>
+                  <p style={{ fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '0.2rem' }}>No upcoming exams</p>
+                  <p style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Check back later</p>
+                </div>
+              )}
+
+              {/* 2-column grid */}
+              {!loading && data.exams.length > 0 && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem' }}>
+                  {data.exams.map((exam) => {
+                    const isJob = exam.type === 'job' || exam.parent_type === 'job';
+                    const url = isJob ? `/jobs/${exam.slug || exam.parent_slug}` : `/admissions/${exam.slug || exam.parent_slug}`;
+                    const days = exam.days_remaining;
+                    const urgentBorder = days != null && days <= 3 ? '#ef4444' : days != null && days <= 7 ? '#f59e0b' : '#2563eb';
+                    const urgentBg    = days != null && days <= 3 ? '#fff5f5' : days != null && days <= 7 ? '#fffbeb' : '#f8fbff';
+                    return (
+                      <motion.button
+                        type="button" key={exam.id}
+                        onClick={() => navigate(url)}
+                        whileHover={{ y: -2, boxShadow: '0 6px 18px rgba(15,23,42,.1)' }}
+                        whileTap={{ scale: 0.97 }}
+                        transition={{ duration: 0.15 }}
+                        style={{
+                          display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+                          textAlign: 'left', background: urgentBg,
+                          border: `1px solid ${urgentBorder}22`,
+                          borderTop: `3px solid ${urgentBorder}`,
+                          borderRadius: 'var(--radius)', padding: '0.7rem 0.75rem 0.65rem',
+                          cursor: 'pointer', minHeight: 100,
+                          boxShadow: 'var(--shadow-xs)',
+                        }}
+                      >
+                        <div style={{ color: '#0f172a', fontWeight: 700, fontSize: '0.75rem', lineHeight: 1.4, marginBottom: '0.35rem', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{exam.title}</div>
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: '#64748b', fontSize: '0.67rem', fontWeight: 500, marginBottom: '0.3rem' }}>
+                            <CalendarDays size={9} strokeWidth={2} />
+                            <span>{exam.exam_start || 'TBA'}</span>
+                          </div>
+                          <ExamsDaysBadge days={exam.days_remaining} />
+                        </div>
+                      </motion.button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </motion.div>
         </aside>
 
         {/* Main content */}

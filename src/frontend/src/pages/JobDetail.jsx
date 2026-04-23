@@ -1,9 +1,13 @@
 import PropTypes from 'prop-types';
 import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { Search, AlertTriangle, CheckCircle, XCircle, Landmark, Users, Link2, Download, BookOpen, Globe, Share2, Folder, Star } from 'lucide-react';
 import api from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
+
+const fadeUp = { hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0, transition: { duration: 0.3, ease: [0.16, 1, 0.3, 1] } } };
+const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.08, delayChildren: 0.05 } } };
 
 function EligibilityBanner({ eligibility, profileComplete, token, slug }) {
   if (!token) return (
@@ -125,8 +129,19 @@ export default function JobDetail() {
     } catch { }
   };
 
-  if (loading) return <div style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>Loading...</div>;
-  if (!job) return <div style={{ textAlign: 'center', padding: '3rem' }}><h2>404 — Job not found</h2><Link to="/jobs" className="btn btn-primary" style={{ marginTop: '1rem', display: 'inline-flex' }}>Back to Jobs</Link></div>;
+  if (loading) return (
+    <div style={{ padding: '3rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+      <div className="skeleton" style={{ height: 200, borderRadius: 'var(--radius-2xl)' }} />
+      <div style={{ display: 'flex', gap: '0.5rem' }}>{[120,90,80].map((w,i) => <div key={i} className="skeleton" style={{ height: 34, width: w, borderRadius: 'var(--radius)' }} />)}</div>
+      <div className="skeleton" style={{ height: 120, borderRadius: 'var(--radius-lg)' }} />
+    </div>
+  );
+  if (!job) return (
+    <div style={{ textAlign: 'center', padding: '3rem' }}>
+      <h2 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '0.75rem' }}>Job not found</h2>
+      <Link to="/jobs" className="btn btn-primary" style={{ display: 'inline-flex' }}>← Back to Jobs</Link>
+    </div>
+  );
 
   const feeLabels = { general: 'General / UR', obc: 'OBC-NCL', sc_st: 'SC / ST', ews: 'EWS', female: 'Female / PwBD' };
   const impLinks = job.application_details?.important_links || [];
@@ -137,11 +152,13 @@ export default function JobDetail() {
   const hasResults = job.results?.length > 0;
 
   return (
-    <div>
-      <Link to="/jobs" className="back-link">← Back to Jobs</Link>
+    <motion.div variants={stagger} initial="hidden" animate="show">
+      <motion.div variants={fadeUp}>
+        <Link to="/jobs" className="back-link">← Back to Jobs</Link>
+      </motion.div>
 
       {/* Hero */}
-      <div className="detail-hero hero-job">
+      <motion.div variants={fadeUp} className="detail-hero hero-job">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem', flexWrap: 'wrap' }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             {job.qualification_level && <span style={{ background: 'rgba(255,255,255,.2)', color: '#fff', padding: '0.15rem 0.55rem', borderRadius: 9999, fontSize: '0.75rem', fontWeight: 600, display: 'inline-block', marginBottom: '0.5rem' }}>{job.qualification_level}</span>}
@@ -153,7 +170,7 @@ export default function JobDetail() {
             {job.status && <span className={`status-pill status-${job.status}`}>{job.status.charAt(0).toUpperCase() + job.status.slice(1)}</span>}
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* Action bar */}
       <div className="action-bar">
@@ -332,6 +349,6 @@ export default function JobDetail() {
           )}
         </div>
       )}
-    </div>
+    </motion.div>
   );
 }
