@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Landmark, Clock, Star, SlidersHorizontal, X, GraduationCap } from 'lucide-react';
 import api from '../api/client';
@@ -15,6 +15,7 @@ const listVariants = {
 };
 
 export default function Admissions() {
+  const navigate = useNavigate();
   const { token } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [admissions, setAdmissions] = useState([]);
@@ -161,9 +162,10 @@ export default function Admissions() {
             return (
               <motion.div key={adm.id}
                 variants={cardVariants}
+                onClick={() => navigate(`/admissions/${adm.slug}`)}
                 whileHover={{ y: -3, boxShadow: '0 8px 24px rgba(15,23,42,.1), 0 2px 8px rgba(15,23,42,.06)', borderColor: '#c4b5fd' }}
                 whileTap={{ scale: 0.99 }}
-                style={{ background: '#fff', border: '1px solid #e2e8f0', borderLeft: '3px solid #7c3aed', borderRadius: 'var(--radius-lg)', padding: '1rem 1.1rem', marginBottom: '0.65rem', boxShadow: 'var(--shadow-sm)', transition: 'border-color 0.15s' }}
+                style={{ background: '#fff', border: '1px solid #e2e8f0', borderLeft: '3px solid #7c3aed', borderRadius: 'var(--radius-lg)', padding: '1rem 1.1rem', marginBottom: '0.65rem', boxShadow: 'var(--shadow-sm)', transition: 'border-color 0.15s', cursor: 'pointer' }}
               >
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', marginBottom: '0.3rem' }}>
                   {/* Org logo circle */}
@@ -174,8 +176,8 @@ export default function Admissions() {
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.5rem' }}>
-                      <h3 style={{ fontSize: '0.975rem', fontWeight: 700, lineHeight: 1.4, flex: 1, minWidth: 0, margin: 0 }}>
-                        <Link to={`/admissions/${adm.slug}`} style={{ color: '#0f172a', textDecoration: 'none' }}>{adm.admission_name}</Link>
+                      <h3 style={{ fontSize: '0.975rem', fontWeight: 700, lineHeight: 1.4, flex: 1, minWidth: 0, margin: 0, color: '#0f172a' }}>
+                        {adm.admission_name}
                       </h3>
                       {(() => { const s = statusMap[adm.status]; return s ? <span style={{ background: s.bg, color: s.color, border: `1px solid ${s.border}`, fontSize: '0.65rem', fontWeight: 700, padding: '0.15rem 0.55rem', borderRadius: '9999px', whiteSpace: 'nowrap', flexShrink: 0, display: 'inline-flex', alignItems: 'center', lineHeight: 1.4 }}>{s.label}</span> : null; })()}
                     </div>
@@ -191,13 +193,12 @@ export default function Admissions() {
                     ? <span style={{ fontSize: '0.75rem', color: '#b45309', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.25rem', background: '#fef3c7', border: '1px solid #fde68a', padding: '0.15rem 0.5rem', borderRadius: '9999px' }}><Clock size={11} strokeWidth={2} />Deadline: {adm.application_end}</span>
                     : <span />}
                   <div style={{ display: 'flex', gap: '0.4rem' }}>
-                    <Link to={`/admissions/${adm.slug}`} className="btn btn-outline btn-sm">View Details →</Link>
                     {token ? (
-                      <button onClick={() => track(adm)} className={isTracking ? 'btn-tracking btn btn-sm' : 'btn btn-outline btn-sm'} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+                      <button onClick={(e) => { e.stopPropagation(); track(adm); }} className={isTracking ? 'btn-tracking btn btn-sm' : 'btn btn-outline btn-sm'} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
                         {isTracking ? <><Star size={12} strokeWidth={2} fill="currentColor" />Tracking</> : <><Star size={12} strokeWidth={2} />Keep Track</>}
                       </button>
                     ) : (
-                      <Link to={`/login?next=/admissions/${adm.slug}`} className="btn btn-outline btn-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}><Star size={12} strokeWidth={2} />Keep Track</Link>
+                      <Link to={`/login?next=/admissions/${adm.slug}`} onClick={(e) => e.stopPropagation()} className="btn btn-outline btn-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}><Star size={12} strokeWidth={2} />Keep Track</Link>
                     )}
                   </div>
                 </div>

@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Trophy, Star } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -11,6 +11,7 @@ const cardVariants = {
 const listVariants = { hidden: {}, show: { transition: { staggerChildren: 0.06, delayChildren: 0.04 } } };
 
 export default function Results() {
+  const navigate = useNavigate();
   const { token } = useAuth();
   const { items: results, pagination, loading, offset, limit, trackedJobIds, trackedAdmIds, track, setSearchParams } = useTrackedItems('/results', token);
 
@@ -56,26 +57,26 @@ export default function Results() {
         return (
           <motion.div key={res.id}
             variants={cardVariants}
+            onClick={() => navigate(`/results/${res.slug}`)}
             whileHover={{ y: -3, boxShadow: '0 8px 24px rgba(15,23,42,.1), 0 2px 8px rgba(15,23,42,.06)', borderColor: '#86efac' }}
             whileTap={{ scale: 0.99 }}
-            style={{ background: '#fff', border: '1px solid #e2e8f0', borderLeft: '3px solid #16a34a', borderRadius: 'var(--radius-lg)', padding: '1rem 1.1rem', marginBottom: '0.65rem', boxShadow: 'var(--shadow-sm)', transition: 'border-color 0.15s' }}
+            style={{ background: '#fff', border: '1px solid #e2e8f0', borderLeft: '3px solid #16a34a', borderRadius: 'var(--radius-lg)', padding: '1rem 1.1rem', marginBottom: '0.65rem', boxShadow: 'var(--shadow-sm)', transition: 'border-color 0.15s', cursor: 'pointer' }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem' }}>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <h3 style={{ fontSize: '0.975rem', fontWeight: 700, lineHeight: 1.4, marginBottom: '0.3rem' }}>
-                  <Link to={`/results/${res.slug}`} style={{ color: '#0f172a', textDecoration: 'none' }}>{res.title}</Link>
+                <h3 style={{ fontSize: '0.975rem', fontWeight: 700, lineHeight: 1.4, marginBottom: '0.3rem', color: '#0f172a' }}>
+                  {res.title}
                 </h3>
                 {res.published_at && <span style={{ fontSize: '0.75rem', color: '#15803d', background: '#dcfce7', border: '1px solid #bbf7d0', padding: '0.12rem 0.45rem', borderRadius: '9999px', display: 'inline-block', marginBottom: '0.3rem' }}>Published: {res.published_at.slice(0, 10)}</span>}
                 {res.notes && <div style={{ fontSize: '0.845rem', color: '#475569', lineHeight: 1.55, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{res.notes}</div>}
               </div>
               <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexShrink: 0 }}>
-                <Link to={`/results/${res.slug}`} className="btn btn-sm" style={{ background: '#16a34a', color: '#fff', border: 'none' }}>View →</Link>
                 {tid && (token ? (
-                  <button onClick={() => track(type, tid)} className={isTracking ? 'btn-tracking btn btn-sm' : 'btn btn-outline btn-sm'} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                  <button onClick={(e) => { e.stopPropagation(); track(type, tid); }} className={isTracking ? 'btn-tracking btn btn-sm' : 'btn btn-outline btn-sm'} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
                     <Star size={12} strokeWidth={2} fill={isTracking ? 'currentColor' : 'none'} />{isTracking ? 'Tracking' : 'Keep Track'}
                   </button>
                 ) : (
-                  <Link to={`/login?next=/results/${res.slug}`} className="btn btn-outline btn-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}><Star size={12} strokeWidth={2} />Keep Track</Link>
+                  <Link to={`/login?next=/results/${res.slug}`} onClick={(e) => e.stopPropagation()} className="btn btn-outline btn-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}><Star size={12} strokeWidth={2} />Keep Track</Link>
                 ))}
               </div>
             </div>

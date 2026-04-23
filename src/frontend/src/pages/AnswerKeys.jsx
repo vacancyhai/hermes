@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { FileText, Star } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -11,6 +11,7 @@ const cardVariants = {
 const listVariants = { hidden: {}, show: { transition: { staggerChildren: 0.06, delayChildren: 0.04 } } };
 
 export default function AnswerKeys() {
+  const navigate = useNavigate();
   const { token } = useAuth();
   const { items: keys, pagination, loading, offset, limit, trackedJobIds, trackedAdmIds, track, setSearchParams } = useTrackedItems('/answer-keys', token);
 
@@ -58,14 +59,15 @@ export default function AnswerKeys() {
         return (
           <motion.div key={key.id}
             variants={cardVariants}
+            onClick={() => navigate(`/answer-keys/${key.slug}`)}
             whileHover={{ y: -3, boxShadow: '0 8px 24px rgba(15,23,42,.1), 0 2px 8px rgba(15,23,42,.06)', borderColor: '#fcd34d' }}
             whileTap={{ scale: 0.99 }}
-            style={{ background: '#fff', border: '1px solid #e2e8f0', borderLeft: '3px solid #d97706', borderRadius: 'var(--radius-lg)', padding: '1rem 1.1rem', marginBottom: '0.65rem', boxShadow: 'var(--shadow-sm)', transition: 'border-color 0.15s' }}
+            style={{ background: '#fff', border: '1px solid #e2e8f0', borderLeft: '3px solid #d97706', borderRadius: 'var(--radius-lg)', padding: '1rem 1.1rem', marginBottom: '0.65rem', boxShadow: 'var(--shadow-sm)', transition: 'border-color 0.15s', cursor: 'pointer' }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem' }}>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <h3 style={{ fontSize: '0.975rem', fontWeight: 700, lineHeight: 1.4, marginBottom: '0.3rem' }}>
-                  <Link to={`/answer-keys/${key.slug}`} style={{ color: '#0f172a', textDecoration: 'none' }}>{key.title}</Link>
+                <h3 style={{ fontSize: '0.975rem', fontWeight: 700, lineHeight: 1.4, marginBottom: '0.3rem', color: '#0f172a' }}>
+                  {key.title}
                 </h3>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem' }}>
                   {key.published_at && <span style={{ fontSize: '0.75rem', color: '#a16207', background: '#fef3c7', border: '1px solid #fde68a', padding: '0.12rem 0.45rem', borderRadius: '9999px' }}>Published: {key.published_at.slice(0, 10)}</span>}
@@ -73,13 +75,12 @@ export default function AnswerKeys() {
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexShrink: 0 }}>
-                <Link to={`/answer-keys/${key.slug}`} className="btn btn-sm" style={{ background: '#d97706', color: '#fff', border: 'none' }}>View →</Link>
                 {tid && (token ? (
-                  <button onClick={() => track(type, tid)} className={isTracking ? 'btn-tracking btn btn-sm' : 'btn btn-outline btn-sm'} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
-                    <Star size={12} strokeWidth={2} fill={isTracking ? 'currentColor' : 'none'} />
+                  <button onClick={(e) => { e.stopPropagation(); track(type, tid); }} className={isTracking ? 'btn-tracking btn btn-sm' : 'btn btn-outline btn-sm'} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                    <Star size={12} strokeWidth={2} fill={isTracking ? 'currentColor' : 'none'} />{isTracking ? 'Tracking' : 'Keep Track'}
                   </button>
                 ) : (
-                  <Link to={`/login?next=/answer-keys/${key.slug}`} className="btn btn-outline btn-sm" style={{ display: 'inline-flex', alignItems: 'center' }}><Star size={12} strokeWidth={2} /></Link>
+                  <Link to={`/login?next=/answer-keys/${key.slug}`} onClick={(e) => e.stopPropagation()} className="btn btn-outline btn-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}><Star size={12} strokeWidth={2} />Keep Track</Link>
                 ))}
               </div>
             </div>
