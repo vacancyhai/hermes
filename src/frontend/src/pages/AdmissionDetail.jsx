@@ -1,54 +1,15 @@
-import PropTypes from 'prop-types';
 import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Search, AlertTriangle, CheckCircle, XCircle, Landmark, Link2, BookOpen, Globe, Share2, Folder, Star } from 'lucide-react';
+import { Landmark, Link2, BookOpen, Globe, Share2, CheckCircle, Star } from 'lucide-react';
 import api from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
+import EligibilityBanner from '../components/EligibilityBanner';
+import PhaseDocTabs from '../components/PhaseDocTabs';
+import DetailSkeleton from '../components/DetailSkeleton';
 
 const fadeUp = { hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0, transition: { duration: 0.3, ease: [0.16, 1, 0.3, 1] } } };
 const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.08, delayChildren: 0.05 } } };
-
-function EligBanner({ token, profileComplete, eligibility, slug }) {
-  if (!token) return (
-    <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '0.5rem', padding: '1rem 1.25rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-      <Search size={18} strokeWidth={2} />
-      <div style={{ flex: 1 }}><div style={{ fontWeight: 600, fontSize: '0.9rem' }}>Check Your Eligibility</div><div style={{ fontSize: '0.8rem', color: '#64748b' }}>Login and complete your profile to see if you qualify.</div></div>
-      <Link to={`/login?next=/admissions/${slug}`} className="btn btn-primary btn-sm">Login to Check</Link>
-    </div>
-  );
-  if (!profileComplete) return (
-    <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '0.5rem', padding: '1rem 1.25rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-      <AlertTriangle size={18} strokeWidth={2} color="#92400e" />
-      <div style={{ flex: 1 }}><div style={{ fontWeight: 600, fontSize: '0.9rem', color: '#92400e' }}>Profile Incomplete</div><div style={{ fontSize: '0.8rem', color: '#a16207' }}>Complete your profile to check eligibility.</div></div>
-      <Link to="/profile" className="btn btn-sm" style={{ background: '#fef3c7', color: '#92400e', border: '1px solid #fde68a' }}>Complete Profile</Link>
-    </div>
-  );
-  if (!eligibility) return null;
-  const cfg = {
-    eligible: { bg: '#f0fdf4', border: '#bbf7d0', Icon: CheckCircle, color: '#166534', label: 'You are Eligible' },
-    partially_eligible: { bg: '#fffbeb', border: '#fde68a', Icon: AlertTriangle, color: '#92400e', label: 'Partially Eligible' },
-    not_eligible: { bg: '#fef2f2', border: '#fecaca', Icon: XCircle, color: '#991b1b', label: 'Not Eligible' },
-  }[eligibility.status];
-  if (!cfg) return null;
-  return (
-    <div style={{ background: cfg.bg, border: `1px solid ${cfg.border}`, borderRadius: '0.5rem', padding: '1rem 1.25rem', marginBottom: '1rem' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: eligibility.reasons?.length ? '0.6rem' : 0 }}>
-        {(() => { const Icon = cfg.Icon; return <Icon size={18} strokeWidth={2} color={cfg.color} />; })()}
-        <span style={{ fontWeight: 700, fontSize: '0.95rem', color: cfg.color }}>{cfg.label}</span>
-      </div>
-      {eligibility.reasons?.length > 0 && <ul style={{ margin: 0, paddingLeft: '1.25rem' }}>{eligibility.reasons.map((r) => <li key={r} style={{ fontSize: '0.82rem', color: cfg.color }}>{r}</li>)}</ul>}
-    </div>
-  );
-}
-
-EligBanner.propTypes = {
-  token: PropTypes.string,
-  profileComplete: PropTypes.bool.isRequired,
-  eligibility: PropTypes.shape({ status: PropTypes.string, reasons: PropTypes.arrayOf(PropTypes.string) }),
-  slug: PropTypes.string.isRequired,
-};
-EligBanner.defaultProps = { token: null, eligibility: null };
 
 export default function AdmissionDetail() {
   const { slug } = useParams();
@@ -59,7 +20,6 @@ export default function AdmissionDetail() {
   const [profileComplete, setProfileComplete] = useState(false);
   const [eligibility, setEligibility] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [docTab, setDocTab] = useState('admit');
 
   useEffect(() => {
     const fetchUserData = async (admId) => {
@@ -88,13 +48,7 @@ export default function AdmissionDetail() {
     } catch { }
   };
 
-  if (loading) return (
-    <div style={{ padding: '3rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-      <div className="skeleton" style={{ height: 200, borderRadius: 'var(--radius-2xl)' }} />
-      <div style={{ display: 'flex', gap: '0.5rem' }}>{[120,90,80].map((w) => <div key={w} className="skeleton" style={{ height: 34, width: w, borderRadius: 'var(--radius)' }} />)}</div>
-      <div className="skeleton" style={{ height: 120, borderRadius: 'var(--radius-lg)' }} />
-    </div>
-  );
+  if (loading) return <DetailSkeleton skeletonWidths={[120, 90, 80]} />;
   if (!admission) return (
     <div style={{ textAlign: 'center', padding: '3rem' }}>
       <h2 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '0.75rem' }}>Admission not found</h2>
@@ -102,9 +56,6 @@ export default function AdmissionDetail() {
     </div>
   );
 
-  const hasAdmitCards = admission.admit_cards?.length > 0;
-  const hasAnswerKeys = admission.answer_keys?.length > 0;
-  const hasResults = admission.results?.length > 0;
   const impLinks = admission.application_details?.important_links || [];
   const feeLabels = { general: 'General / UR', obc: 'OBC-NCL', sc_st: 'SC / ST', ews: 'EWS', female: 'Female / PwBD' };
 
@@ -133,7 +84,7 @@ export default function AdmissionDetail() {
         {admission.application_details?.application_link && <a href={admission.application_details.application_link} target="_blank" rel="noopener noreferrer" className="share-btn" style={{ background: '#7c3aed', color: '#fff', borderColor: '#7c3aed' }}>Apply Online →</a>}
       </div>
 
-      <EligBanner token={token} profileComplete={profileComplete} eligibility={eligibility} slug={slug} />
+      <EligibilityBanner token={token} profileComplete={profileComplete} eligibility={eligibility} slug={slug} loginPrefix="admissions" />
 
       {/* Key Dates */}
       <div className="detail-grid">
@@ -182,36 +133,7 @@ export default function AdmissionDetail() {
         </div>
       )}
 
-      {(hasAdmitCards || hasAnswerKeys || hasResults) && (
-        <div className="detail-section">
-          <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Folder size={16} strokeWidth={2} />Phase Documents</h2>
-          <div className="doc-tabs-bar">
-            {hasAdmitCards && <button className={`doc-tab-btn${docTab === 'admit' ? ' active' : ''}`} onClick={() => setDocTab('admit')}>Admit Cards ({admission.admit_cards.length})</button>}
-            {hasAnswerKeys && <button className={`doc-tab-btn${docTab === 'answer' ? ' active' : ''}`} onClick={() => setDocTab('answer')}>Answer Keys ({admission.answer_keys.length})</button>}
-            {hasResults && <button className={`doc-tab-btn${docTab === 'result' ? ' active' : ''}`} onClick={() => setDocTab('result')}>Results ({admission.results.length})</button>}
-          </div>
-          {docTab === 'admit' && hasAdmitCards && (
-            <div style={{ paddingTop: '0.85rem' }}>
-              {admission.admit_cards.map((card) => (
-                <div key={card.id} style={{ border: '1px solid #bfdbfe', background: '#eff6ff', borderRadius: '0.5rem', padding: '0.8rem 1rem', marginBottom: '0.65rem', display: 'flex', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
-                  <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{card.title}</div>
-                  <Link to={`/admit-cards/${card.slug}`} style={{ background: '#2563eb', color: '#fff', padding: '0.38rem 0.75rem', borderRadius: '0.5rem', fontSize: '0.78rem', fontWeight: 600, textDecoration: 'none' }}>View →</Link>
-                </div>
-              ))}
-            </div>
-          )}
-          {docTab === 'answer' && hasAnswerKeys && (
-            <div style={{ paddingTop: '0.85rem' }}>
-              {admission.answer_keys.map((key) => (
-                <div key={key.id} style={{ border: '1px solid #fde68a', background: '#fefce8', borderRadius: '0.5rem', padding: '0.8rem 1rem', marginBottom: '0.65rem', display: 'flex', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
-                  <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{key.title}</div>
-                  <Link to={`/answer-keys/${key.slug}`} style={{ background: '#d97706', color: '#fff', padding: '0.38rem 0.75rem', borderRadius: '0.5rem', fontSize: '0.78rem', fontWeight: 600, textDecoration: 'none' }}>View →</Link>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+      <PhaseDocTabs admitCards={admission.admit_cards || []} answerKeys={admission.answer_keys || []} results={admission.results || []} currentSlug="" />
     </motion.div>
   );
 }

@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { Landmark, Users, Clock, Star, SlidersHorizontal, X } from 'lucide-react';
 import api from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
+import OrgLogoCircle from '../components/OrgLogoCircle';
 
 const cardVariants = {
   hidden: { opacity: 0, y: 16 },
@@ -37,7 +38,6 @@ function JobCard({ job, trackedIds, onToggle }) {
   };
 
   const s = statusMap[job.status];
-  const initials = (job.organization || '?')[0].toUpperCase();
   return (
     <motion.div
       variants={cardVariants}
@@ -47,12 +47,7 @@ function JobCard({ job, trackedIds, onToggle }) {
       style={{ background: '#fff', border: '1px solid #e2e8f0', borderLeft: '3px solid #1e3a5f', borderRadius: '0.75rem', padding: '1rem 1.1rem', marginBottom: '0.6rem', boxShadow: '0 1px 4px rgba(15,23,42,.05)', transition: 'border-color 0.15s', cursor: 'pointer' }}
     >
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', marginBottom: '0.3rem' }}>
-        {/* Org logo circle */}
-        <div style={{ flexShrink: 0, width: 40, height: 40, borderRadius: '50%', overflow: 'hidden', border: '1.5px solid #e2e8f0', background: 'linear-gradient(135deg,#1e3a5f,#3b82f6)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 1px 4px rgba(15,23,42,.1)' }}>
-          {job.organization_logo_url
-            ? <img src={job.organization_logo_url} alt={job.organization} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; e.target.parentNode.dataset.fallback = '1'; }} />
-            : <span style={{ color: '#fff', fontWeight: 800, fontSize: '0.95rem', lineHeight: 1 }}>{initials}</span>}
-        </div>
+        <OrgLogoCircle logoUrl={job.organization_logo_url} orgName={job.organization} gradient="linear-gradient(135deg,#1e3a5f,#3b82f6)" />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.5rem' }}>
             <h3 style={{ fontSize: '0.975rem', fontWeight: 700, lineHeight: 1.4, flex: 1, minWidth: 0, margin: 0, color: '#0f172a' }}>

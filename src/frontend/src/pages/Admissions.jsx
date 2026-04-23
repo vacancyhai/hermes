@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Landmark, Clock, Star, SlidersHorizontal, X, GraduationCap, Users } from 'lucide-react';
 import api from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
+import OrgLogoCircle from '../components/OrgLogoCircle';
 
 const cardVariants = {
   hidden: { opacity: 0, y: 16 },
@@ -168,12 +169,7 @@ export default function Admissions() {
                 style={{ background: '#fff', border: '1px solid #e2e8f0', borderLeft: '3px solid #7c3aed', borderRadius: 'var(--radius-lg)', padding: '1rem 1.1rem', marginBottom: '0.65rem', boxShadow: 'var(--shadow-sm)', transition: 'border-color 0.15s', cursor: 'pointer' }}
               >
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', marginBottom: '0.3rem' }}>
-                  {/* Org logo circle */}
-                  <div style={{ flexShrink: 0, width: 40, height: 40, borderRadius: '50%', overflow: 'hidden', border: '1.5px solid #e2e8f0', background: 'linear-gradient(135deg,#4c1d95,#7c3aed)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 1px 4px rgba(15,23,42,.1)' }}>
-                    {adm.organization_logo_url
-                      ? <img src={adm.organization_logo_url} alt={adm.conducting_body} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; }} />
-                      : <span style={{ color: '#fff', fontWeight: 800, fontSize: '0.95rem', lineHeight: 1 }}>{(adm.conducting_body || '?')[0].toUpperCase()}</span>}
-                  </div>
+                  <OrgLogoCircle logoUrl={adm.organization_logo_url} orgName={adm.conducting_body} gradient="linear-gradient(135deg,#4c1d95,#7c3aed)" />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.5rem' }}>
                       <h3 style={{ fontSize: '0.975rem', fontWeight: 700, lineHeight: 1.4, flex: 1, minWidth: 0, margin: 0, color: '#0f172a' }}>
