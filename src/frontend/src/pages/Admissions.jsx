@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Landmark, Clock, Star, SlidersHorizontal, X, GraduationCap } from 'lucide-react';
+import { Landmark, Clock, Star, SlidersHorizontal, X, GraduationCap, Users } from 'lucide-react';
 import api from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -187,6 +187,7 @@ export default function Admissions() {
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', marginBottom: '0.6rem' }}>
                   {adm.admission_type && <span style={{ background: '#ede9fe', color: '#5b21b6', border: '1px solid #ddd6fe', padding: '0.15rem 0.5rem', borderRadius: '9999px', fontSize: '0.72rem', fontWeight: 700 }}>{adm.admission_type.toUpperCase()}</span>}
                   {adm.stream && <span style={{ background: '#dbeafe', color: '#1e40af', border: '1px solid #bfdbfe', padding: '0.15rem 0.5rem', borderRadius: '9999px', fontSize: '0.72rem', fontWeight: 600 }}>{adm.stream}</span>}
+                  {adm.seats_info?.total && <span style={{ background: '#f1f5f9', color: '#334155', border: '1px solid #e2e8f0', padding: '0.15rem 0.5rem', borderRadius: '9999px', fontSize: '0.72rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}><Users size={11} strokeWidth={2} />{Number(adm.seats_info.total).toLocaleString()} seats</span>}
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '0.55rem', borderTop: '1px solid #f1f5f9', flexWrap: 'wrap', gap: '0.4rem' }}>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem' }}>

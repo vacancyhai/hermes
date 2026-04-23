@@ -118,6 +118,7 @@ class AdmissionListItem(BaseModel):
     exam_start: date | None
     exam_end: date | None
     result_date: date | None
+    seats_info: dict | None = None
     fee: dict = Field(default_factory=dict)
     status: str
     created_at: datetime
