@@ -96,7 +96,7 @@ MiniCard.propTypes = {
 function TrackBtn({ type, id, slug, isTracking, onToggle }) {
   const { token } = useAuth();
   if (!token) {
-    return <a href={`/login?next=/${type}s/${slug}`} onClick={(e) => { e.stopPropagation(); }} style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem', borderRadius: 9999, border: '1px solid #bfdbfe', background: '#eff6ff', color: '#1d4ed8', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}><Star size={11} strokeWidth={2} />Keep Track</a>;
+    return <a href={`/login?next=/${type}s/${slug}`} onClick={(e) => { e.stopPropagation(); }} style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem', borderRadius: 9999, border: '1px solid #bfdbfe', background: '#eff6ff', color: '#1d4ed8', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}><Bell size={11} strokeWidth={2} />Keep Track</a>;
   }
   const track = async (e) => {
     e.stopPropagation();
@@ -108,7 +108,7 @@ function TrackBtn({ type, id, slug, isTracking, onToggle }) {
   };
   return (
     <button onClick={track} className={isTracking ? 'btn-tracking btn btn-sm' : 'btn btn-outline btn-sm'} style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem', display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}>
-      <Star size={11} strokeWidth={2} fill={isTracking ? 'currentColor' : 'none'} />{isTracking ? 'Tracking' : 'Keep Track'}
+      <Bell size={11} strokeWidth={2} fill={isTracking ? 'currentColor' : 'none'} />{isTracking ? 'Tracking' : 'Keep Track'}
     </button>
   );
 }
@@ -608,7 +608,7 @@ export default function Dashboard() {
               {/* Stats row */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '0.75rem', marginBottom: '1.5rem' }}>
                 {[
-                  { label: 'Total Tracking', count: tracked.total, color: '#1e3a5f', bg: '#eff6ff', icon: Star },
+                  { label: 'Total Tracking', count: tracked.total, color: '#1e3a5f', bg: '#eff6ff', icon: Bell },
                   { label: 'Jobs', count: tracked.jobs.length, color: '#1d4ed8', bg: '#dbeafe', icon: Briefcase },
                   { label: 'Admissions', count: tracked.admissions.length, color: '#6d28d9', bg: '#ede9fe', icon: GraduationCap },
                 ].map(({ label, count, color, bg, icon: Icon }) => (
@@ -646,7 +646,7 @@ export default function Dashboard() {
                       </div>
                       <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexShrink: 0 }}>
                         <Link to={`/jobs/${item.slug}`} className="btn btn-outline btn-sm">View</Link>
-                        <button onClick={() => untrackJob(item)} className="btn-tracking btn btn-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}><Star size={11} strokeWidth={2} fill="currentColor" />Untrack</button>
+                        <button onClick={() => untrackJob(item)} className="btn-tracking btn btn-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}><Bell size={11} strokeWidth={2} fill="currentColor" />Untrack</button>
                       </div>
                     </div>
                   ))}
@@ -675,7 +675,7 @@ export default function Dashboard() {
                       </div>
                       <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexShrink: 0 }}>
                         <Link to={`/admissions/${item.slug}`} className="btn btn-outline btn-sm">View</Link>
-                        <button onClick={() => untrackAdmission(item)} className="btn-tracking btn btn-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}><Star size={11} strokeWidth={2} fill="currentColor" />Untrack</button>
+                        <button onClick={() => untrackAdmission(item)} className="btn-tracking btn btn-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}><Bell size={11} strokeWidth={2} fill="currentColor" />Untrack</button>
                       </div>
                     </div>
                   ))}
