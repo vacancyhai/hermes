@@ -180,7 +180,7 @@ export default function Layout() {
       </header>
 
       {/* Main content */}
-      <main style={{ flex: 1, padding: 'var(--sp-6) var(--sp-4)', background: 'var(--surface)' }}>
+      <main style={{ flex: 1, padding: 'var(--sp-6) 1.5rem', background: 'var(--surface)' }}>
         <div style={{ maxWidth: 1280, margin: '0 auto' }}>
           <AnimatePresence mode="wait" initial={false}>
             <motion.div key={location.pathname} variants={pageVariants} initial="initial" animate="animate" exit="exit">
@@ -191,7 +191,7 @@ export default function Layout() {
       </main>
 
       {/* Footer */}
-      <footer style={{ background: 'linear-gradient(180deg, #fff 0%, #f8fafc 100%)', borderTop: '1px solid var(--slate-200)', padding: '1.5rem 1.5rem' }}>
+      <footer style={{ background: 'linear-gradient(180deg, #fff 0%, #f8fafc 100%)', borderTop: '1px solid var(--slate-200)', padding: '1.25rem 1.5rem' }}>
         <div style={{ maxWidth: 1280, margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
           <p style={{ color: '#94a3b8', fontSize: '0.8rem', fontWeight: 500 }}>© 2025 Vacancy Hai — Government Jobs &amp; Exam Tracker</p>
           <div style={{ display: 'flex', gap: '1.25rem' }}>
