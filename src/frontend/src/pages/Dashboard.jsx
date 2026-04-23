@@ -74,7 +74,7 @@ function MiniCard({ children, color, onClick }) {
         borderRadius: 'var(--radius-lg)',
         padding: '0.95rem 1rem 0.8rem',
         width: 220, minWidth: 220, maxWidth: 220,
-        minHeight: 148, flexShrink: 0,
+        flexShrink: 0,
         display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
         cursor: 'pointer', overflow: 'visible',
         textAlign: 'left',
@@ -145,7 +145,7 @@ SectionRow.defaultProps = { accent: null };
 
 function SkeletonMiniCard() {
   return (
-    <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderTop: '3px solid #e2e8f0', borderRadius: '0.6rem', padding: '0.95rem 1rem 0.8rem', width: 220, minWidth: 220, maxWidth: 220, minHeight: 148, flexShrink: 0, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+    <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderTop: '3px solid #e2e8f0', borderRadius: '0.6rem', padding: '0.95rem 1rem 0.8rem', width: 220, minWidth: 220, maxWidth: 220, flexShrink: 0, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.2rem' }}>
           <div className="skeleton" style={{ height: 13, width: '65%', borderRadius: '0.3rem' }} />
@@ -486,7 +486,7 @@ export default function Dashboard() {
                         </div>
                         <MiniStatus status={job.status} />
                       </div>
-                      <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '0.15rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '0.2rem' }}><Landmark size={10} strokeWidth={2} />{job.organization}</div>
+                      <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '0.15rem', display: 'flex', alignItems: 'center', gap: '0.2rem', overflow: 'hidden' }}><Landmark size={10} strokeWidth={2} style={{ flexShrink: 0 }} /><span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{job.organization}</span></div>
                     </div>
                   </div>
                   {job.application_end && <div style={{ fontSize: '0.72rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '0.2rem' }}><Clock size={10} strokeWidth={2} />{job.application_end}</div>}
@@ -586,7 +586,7 @@ export default function Dashboard() {
                         </div>
                         <MiniStatus status={adm.status} />
                       </div>
-                      <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '0.15rem', display: 'flex', alignItems: 'center', gap: '0.2rem' }}><Landmark size={10} strokeWidth={2} />{adm.conducting_body}</div>
+                      <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '0.15rem', display: 'flex', alignItems: 'center', gap: '0.2rem', overflow: 'hidden' }}><Landmark size={10} strokeWidth={2} style={{ flexShrink: 0 }} /><span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{adm.conducting_body}</span></div>
                     </div>
                   </div>
                   {adm.application_end && <div style={{ fontSize: '0.72rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '0.2rem' }}><Clock size={10} strokeWidth={2} />{adm.application_end}</div>}
