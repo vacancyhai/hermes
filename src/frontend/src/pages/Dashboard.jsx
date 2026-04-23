@@ -2,7 +2,7 @@ import PropTypes from 'prop-types';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { LayoutDashboard, Briefcase, CreditCard, FileText, Trophy, GraduationCap, Landmark, Clock, Star, Search, CalendarDays, Users, Bell, AlertCircle } from 'lucide-react';
+import { LayoutDashboard, Briefcase, CreditCard, FileText, Trophy, GraduationCap, Landmark, Clock, Star, HelpCircle, CalendarDays, Users, Bell, AlertCircle } from 'lucide-react';
 import api from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -494,7 +494,7 @@ export default function Dashboard() {
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '0.4rem', flexWrap: 'wrap', gap: '0.3rem' }}>
                   {!token || !profileComplete
-                    ? <Link to="/profile" onClick={(e) => e.stopPropagation()} style={{ fontSize: '0.65rem', padding: '0.15rem 0.5rem', border: '1px solid #e2e8f0', borderRadius: '9999px', background: '#f8fafc', color: '#64748b', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}><Search size={10} strokeWidth={2} />Eligibility</Link>
+                    ? <Link to={!token ? `/login?next=/jobs/${job.slug}` : '/profile'} onClick={(e) => e.stopPropagation()} style={{ fontSize: '0.65rem', padding: '0.18rem 0.55rem', border: '1px solid #bfdbfe', borderRadius: '9999px', background: '#eff6ff', color: '#1d4ed8', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontWeight: 600 }}><HelpCircle size={10} strokeWidth={2.5} />Am I Eligible?</Link>
                     : <span style={{ fontSize: '0.65rem', color: '#94a3b8' }}>checking…</span>}
                   <TrackBtn type="job" id={job.id} slug={job.slug} isTracking={tracked.jobIds.has(String(job.id))} onToggle={toggleJobId} />
                 </div>
@@ -594,7 +594,7 @@ export default function Dashboard() {
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '0.4rem', flexWrap: 'wrap', gap: '0.3rem' }}>
                   {!token || !profileComplete
-                    ? <Link to="/profile" onClick={(e) => e.stopPropagation()} style={{ fontSize: '0.65rem', padding: '0.15rem 0.5rem', border: '1px solid #e2e8f0', borderRadius: '9999px', background: '#f8fafc', color: '#64748b', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}><Search size={10} strokeWidth={2} />Eligibility</Link>
+                    ? <Link to={!token ? `/login?next=/admissions/${adm.slug}` : '/profile'} onClick={(e) => e.stopPropagation()} style={{ fontSize: '0.65rem', padding: '0.18rem 0.55rem', border: '1px solid #ddd6fe', borderRadius: '9999px', background: '#ede9fe', color: '#5b21b6', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontWeight: 600 }}><HelpCircle size={10} strokeWidth={2.5} />Am I Eligible?</Link>
                     : <span style={{ fontSize: '0.65rem', color: '#94a3b8' }}>checking…</span>}
                   <TrackBtn type="admission" id={adm.id} slug={adm.slug} isTracking={tracked.admissionIds.has(String(adm.id))} onToggle={toggleAdmId} />
                 </div>
