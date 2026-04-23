@@ -1,6 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { CreditCard, Star, Landmark, Briefcase, GraduationCap } from 'lucide-react';
+import { CreditCard, Star, Landmark, Briefcase, GraduationCap, Clock, CalendarDays, Download } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTrackedItems } from '../hooks/useTrackedItems';
 
@@ -72,14 +72,10 @@ export default function AdmitCards() {
                 <h3 style={{ fontSize: '0.975rem', fontWeight: 700, lineHeight: 1.4, marginBottom: '0.15rem', color: '#0f172a' }}>
                   {card.title}
                 </h3>
-                {card.parent_title && <div style={{ fontSize: '0.82rem', color: '#64748b', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.3rem', marginBottom: '0.2rem' }}>{card.parent_type === 'job' ? <Briefcase size={11} strokeWidth={2} /> : <GraduationCap size={11} strokeWidth={2} />}{card.parent_title}</div>}
-                {card.parent_organization && <div style={{ fontSize: '0.78rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '0.25rem', marginBottom: '0.2rem' }}><Landmark size={10} strokeWidth={2} />{card.parent_organization}</div>}
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem' }}>
-                  {(card.exam_start || card.exam_end) && <span style={{ fontSize: '0.72rem', color: '#64748b', background: '#eff6ff', border: '1px solid #bfdbfe', padding: '0.12rem 0.45rem', borderRadius: '9999px' }}>Exam: {card.exam_start || '?'} – {card.exam_end || 'ongoing'}</span>}
-                  {card.published_at && <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Published: {card.published_at.slice(0, 10)}</span>}
-                </div>
+                {card.parent_title && <div style={{ fontSize: '0.82rem', color: '#64748b', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.3rem', marginBottom: '0.1rem' }}>{card.parent_type === 'job' ? <Briefcase size={11} strokeWidth={2} /> : <GraduationCap size={11} strokeWidth={2} />}{card.parent_title}</div>}
+                {card.parent_organization && <div style={{ fontSize: '0.78rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '0.25rem', marginBottom: '0.35rem' }}><Landmark size={10} strokeWidth={2} />{card.parent_organization}</div>}
               </div>
-              <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexShrink: 0 }}>
+              <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'flex-start', flexShrink: 0 }}>
                 {tid && (token ? (
                   <button onClick={(e) => { e.stopPropagation(); track(type, tid); }} className={isTracking ? 'btn-tracking btn btn-sm' : 'btn btn-outline btn-sm'} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
                     <Star size={12} strokeWidth={2} fill={isTracking ? 'currentColor' : 'none'} />{isTracking ? 'Tracking' : 'Keep Track'}
@@ -89,6 +85,32 @@ export default function AdmitCards() {
                 ))}
               </div>
             </div>
+
+            {/* Date + download row */}
+            {(card.published_at || card.exam_start || card.exam_end || card.links?.length > 0) && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginTop: '0.55rem', paddingTop: '0.5rem', borderTop: '1px solid #f1f5f9', alignItems: 'center' }}>
+                {card.published_at && (
+                  <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: '0.25rem', background: '#f8fafc', border: '1px solid #e2e8f0', padding: '0.15rem 0.5rem', borderRadius: '9999px' }}>
+                    <CalendarDays size={10} strokeWidth={2} />Published: {card.published_at.slice(0, 10)}
+                  </span>
+                )}
+                {card.exam_start && (
+                  <span style={{ fontSize: '0.72rem', color: '#0369a1', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.25rem', background: '#e0f2fe', border: '1px solid #bae6fd', padding: '0.15rem 0.5rem', borderRadius: '9999px' }}>
+                    <Clock size={10} strokeWidth={2} />Exam From: {card.exam_start}
+                  </span>
+                )}
+                {card.exam_end && (
+                  <span style={{ fontSize: '0.72rem', color: '#b45309', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.25rem', background: '#fef3c7', border: '1px solid #fde68a', padding: '0.15rem 0.5rem', borderRadius: '9999px' }}>
+                    <Clock size={10} strokeWidth={2} />Exam Till: {card.exam_end}
+                  </span>
+                )}
+                {card.links?.length > 0 && card.links[0]?.url && (
+                  <a href={card.links[0].url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} style={{ fontSize: '0.72rem', color: '#1d4ed8', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.25rem', background: '#eff6ff', border: '1px solid #bfdbfe', padding: '0.15rem 0.5rem', borderRadius: '9999px', textDecoration: 'none' }}>
+                    <Download size={10} strokeWidth={2} />{card.links[0].text || 'Download'}
+                  </a>
+                )}
+              </div>
+            )}
           </motion.div>
         );
       })}
