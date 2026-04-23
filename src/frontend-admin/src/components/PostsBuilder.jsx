@@ -1,4 +1,5 @@
 import PropTypes from 'prop-types';
+import { X, Trash2, ClipboardList } from 'lucide-react';
 
 /* ─── helpers ─── */
 const num = (v) => (v === '' || v === undefined || v === null ? '' : Number(v));
@@ -197,13 +198,13 @@ function SalaryTab({ salary, fee, onSalary, onFee }) {
 SalaryTab.propTypes = { salary: PropTypes.object.isRequired, fee: PropTypes.object.isRequired, onSalary: PropTypes.func.isRequired, onFee: PropTypes.func.isRequired };
 
 const PHASE_TYPES = [
-  { value: 'written_test', label: '📝 Written Test' },
-  { value: 'physical_test', label: '🏃 Physical Test (PET)' },
-  { value: 'physical_standard', label: '🧍 Physical Standard (PST)' },
-  { value: 'skill_test', label: '⌨️ Skill / Typing Test' },
-  { value: 'interview', label: '💬 Interview' },
-  { value: 'medical', label: '🏥 Medical Examination' },
-  { value: 'document', label: '📄 Document Verification' },
+  { value: 'written_test', label: 'Written Test' },
+  { value: 'physical_test', label: 'Physical Test (PET)' },
+  { value: 'physical_standard', label: 'Physical Standard (PST)' },
+  { value: 'skill_test', label: 'Skill / Typing Test' },
+  { value: 'interview', label: 'Interview' },
+  { value: 'medical', label: 'Medical Examination' },
+  { value: 'document', label: 'Document Verification' },
 ];
 
 function PhaseDetail({ ph, onChange }) {
@@ -352,7 +353,7 @@ function SelectionProcessTab({ phases, onChange }) {
                 </select>
               </div>
             </div>
-            <button type="button" onClick={() => removePhase(ph.id)} style={{ background: 'none', border: 'none', color: '#cbd5e1', cursor: 'pointer', fontSize: '.85rem', padding: '.3rem', borderRadius: '.25rem', marginBottom: '.25rem' }} title="Remove phase">✕</button>
+            <button type="button" onClick={() => removePhase(ph.id)} style={{ background: 'none', border: 'none', color: '#cbd5e1', cursor: 'pointer', padding: '.3rem', borderRadius: '.25rem', marginBottom: '.25rem', display: 'flex' }} title="Remove phase"><X size={14} /></button>
           </div>
           <PhaseDetail ph={ph} onChange={(updated) => updatePhase(ph.id, updated)} />
         </div>
@@ -381,7 +382,7 @@ function PostCard({ post, idx, onUpdate, onRemove }) {
           placeholder="Post name, e.g. Constable GD"
           style={{ border: 'none', borderBottom: '2px solid #e2e8f0', borderRadius: 0, padding: '.3rem .2rem', fontSize: '.95rem', fontWeight: 600, color: '#111827', flex: 1, background: 'transparent', outline: 'none' }}
         />
-        <button type="button" onClick={onRemove} style={{ background: 'none', border: 'none', color: '#d1d5db', cursor: 'pointer', fontSize: '1.1rem', padding: '.2rem .4rem', borderRadius: '.25rem' }} title="Remove post">🗑️</button>
+        <button type="button" onClick={onRemove} style={{ background: 'none', border: 'none', color: '#d1d5db', cursor: 'pointer', padding: '.2rem .4rem', borderRadius: '.25rem', display: 'flex' }} title="Remove post"><Trash2 size={15} /></button>
       </div>
 
       <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', background: '#f9fafb', padding: '0 .5rem', gap: '.1rem' }}>
@@ -424,7 +425,7 @@ export default function PostsBuilder({ posts, onChange }) {
       <div className="section-body">
         {posts.length === 0 && (
           <div style={{ textAlign: 'center', padding: '1.5rem', color: '#94a3b8' }}>
-            <div style={{ fontSize: '2rem', marginBottom: '.4rem' }}>📋</div>
+            <div style={{ marginBottom: '.5rem', display: 'flex', justifyContent: 'center' }}><ClipboardList size={32} strokeWidth={1.5} /></div>
             <p style={{ fontSize: '.88rem', margin: '0 0 .75rem' }}>No posts added yet. Add posts with their vacancy breakdown and selection process.</p>
             <button type="button" className="btn btn-outline" onClick={add}>+ Add First Post</button>
           </div>

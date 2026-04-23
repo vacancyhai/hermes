@@ -15,7 +15,7 @@ export default function NotFound() {
       <h1 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f172a', marginBottom: '.4rem', letterSpacing: '-0.015em' }}>Page not found</h1>
       <p style={{ color: '#64748b', fontSize: '.875rem', marginBottom: '1.5rem' }}>This page doesn’t exist or you don’t have access.</p>
       <Link to="/" style={{ display: 'inline-flex', alignItems: 'center', gap: '.4rem', background: 'linear-gradient(135deg,#1e3a5f,#2563eb)', color: '#fff', padding: '.6rem 1.25rem', borderRadius: 'var(--radius-lg)', fontWeight: 700, fontSize: '.82rem', textDecoration: 'none', boxShadow: '0 4px 14px rgba(37,99,235,.3)' }}>
-        <LayoutDashboard size={14} strokeWidth={2.5} />← Back to Dashboard
+        <LayoutDashboard size={14} strokeWidth={2.5} />Back to Dashboard
       </Link>
     </motion.div>
   );

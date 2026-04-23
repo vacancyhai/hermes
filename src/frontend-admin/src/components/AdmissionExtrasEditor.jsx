@@ -1,4 +1,5 @@
 import PropTypes from 'prop-types';
+import { X, Activity } from 'lucide-react';
 
 /* ────────────────────────────────────────────────
    Helpers: convert between flat editor state and
@@ -84,12 +85,12 @@ export function seatsToPayload(s) {
 }
 
 const ADM_PHASE_TYPES = [
-  { value: 'written_test', label: '📝 Written Test' },
-  { value: 'counselling', label: '🎓 Counselling' },
-  { value: 'interview', label: '💬 Interview / Personality Test' },
-  { value: 'document', label: '📄 Document Verification' },
-  { value: 'seat_allotment', label: '🏆 Seat Allotment' },
-  { value: 'other', label: '🔧 Other' },
+  { value: 'written_test', label: 'Written Test' },
+  { value: 'counselling', label: 'Counselling' },
+  { value: 'interview', label: 'Interview / Personality Test' },
+  { value: 'document', label: 'Document Verification' },
+  { value: 'seat_allotment', label: 'Seat Allotment' },
+  { value: 'other', label: 'Other' },
 ];
 
 const emptyPhase = () => ({
@@ -282,7 +283,7 @@ export default function AdmissionExtrasEditor({
         <div className="section-body">
           {phases.length === 0 && (
             <div style={{ textAlign: 'center', padding: '1.5rem', color: '#94a3b8' }}>
-              <div style={{ fontSize: '2rem', marginBottom: '.4rem' }}>🏃</div>
+              <div style={{ marginBottom: '.5rem', display: 'flex', justifyContent: 'center' }}><Activity size={32} strokeWidth={1.5} /></div>
               <p style={{ fontSize: '.88rem', margin: '0 0 .75rem' }}>No phases added. Skip if not applicable.</p>
               <button type="button" className="btn btn-outline" onClick={addPhase}>+ Add Phase</button>
             </div>
@@ -310,7 +311,7 @@ export default function AdmissionExtrasEditor({
                     </select>
                   </div>
                 </div>
-                <button type="button" onClick={() => removePhase(ph.id)} style={{ background: 'none', border: 'none', color: '#cbd5e1', cursor: 'pointer', fontSize: '.85rem', padding: '.3rem', borderRadius: '.25rem', marginBottom: '.25rem' }} title="Remove phase">✕</button>
+                <button type="button" onClick={() => removePhase(ph.id)} style={{ background: 'none', border: 'none', color: '#cbd5e1', cursor: 'pointer', padding: '.3rem', borderRadius: '.25rem', marginBottom: '.25rem', display: 'flex' }} title="Remove phase"><X size={14} /></button>
               </div>
               <PhaseDetail ph={ph} onChange={(updated) => updatePhase(ph.id, updated)} />
             </div>

@@ -1,4 +1,5 @@
 import PropTypes from 'prop-types';
+import { Globe, X } from 'lucide-react';
 
 const emptyZone = () => ({ id: Date.now() + Math.random(), zone: '', total: '', male: '', female: '', ur: '', obc: '', ews: '', sc: '', st: '' });
 
@@ -60,7 +61,7 @@ export default function ZonesBuilder({ zones, onChange }) {
       <div className="section-body">
         {zones.length === 0 && (
           <div style={{ textAlign: 'center', padding: '1.5rem', color: '#94a3b8' }}>
-            <div style={{ fontSize: '2rem', marginBottom: '.4rem' }}>🌐</div>
+            <div style={{ marginBottom: '.5rem', display: 'flex', justifyContent: 'center' }}><Globe size={32} strokeWidth={1.5} /></div>
             <p style={{ fontSize: '.88rem', margin: '0 0 .75rem' }}>No zones added. Skip if not applicable.</p>
             <button type="button" className="btn btn-outline" onClick={add}>+ Add Zone</button>
           </div>
@@ -75,7 +76,7 @@ export default function ZonesBuilder({ zones, onChange }) {
                 placeholder="e.g. NR (Northern Region)"
                 style={{ flex: 1, border: 'none', borderBottom: '2px solid #99f6e4', background: 'transparent', padding: '.25rem .2rem', fontSize: '.9rem', fontWeight: 600, color: '#134e4a', outline: 'none' }}
               />
-              <button type="button" onClick={() => remove(z.id)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '1rem', padding: '.2rem .4rem' }} title="Remove zone">✕</button>
+              <button type="button" onClick={() => remove(z.id)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '.2rem .4rem', display: 'flex' }} title="Remove zone"><X size={14} /></button>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8,1fr)', gap: '.4rem', padding: '.6rem' }}>
               {vacancyCells.map(({ field, label, cls }) => (
