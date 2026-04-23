@@ -33,16 +33,22 @@ export default function AdmitCards() {
       </motion.div>
 
       {loading && Array.from({ length: 5 }).map((_, i) => (
-        <div key={i} style={{ background: '#fff', border: '1px solid #e2e8f0', borderLeft: '3px solid #e2e8f0', borderRadius: '0.65rem', padding: '1rem 1.1rem', marginBottom: '0.6rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem' }}>
+        <div key={i} style={{ background: '#fff', border: '1px solid #e2e8f0', borderLeft: '3px solid #2563eb', borderRadius: '0.65rem', padding: '1rem 1.1rem', marginBottom: '0.65rem' }}>
+          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
+            <div className="skeleton" style={{ width: 40, height: 40, borderRadius: '50%', flexShrink: 0 }} />
             <div style={{ flex: 1 }}>
-              <div className="skeleton" style={{ height: 16, width: '70%', borderRadius: '0.4rem', marginBottom: '0.45rem' }} />
-              <div className="skeleton" style={{ height: 22, width: 140, borderRadius: '9999px' }} />
+              <div className="skeleton" style={{ height: 15, width: '65%', borderRadius: '0.4rem', marginBottom: '0.4rem' }} />
+              <div className="skeleton" style={{ height: 12, width: '50%', borderRadius: '0.4rem', marginBottom: '0.3rem' }} />
+              <div className="skeleton" style={{ height: 11, width: '35%', borderRadius: '0.4rem' }} />
             </div>
-            <div style={{ display: 'flex', gap: '0.4rem' }}>
-              <div className="skeleton" style={{ height: 28, width: 56, borderRadius: '0.4rem' }} />
-              <div className="skeleton" style={{ height: 28, width: 32, borderRadius: '0.4rem' }} />
+          </div>
+          <div style={{ borderTop: '1px solid #f1f5f9', marginTop: '0.55rem', paddingTop: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: '0.35rem' }}>
+              <div className="skeleton" style={{ height: 22, width: 100, borderRadius: '9999px' }} />
+              <div className="skeleton" style={{ height: 22, width: 110, borderRadius: '9999px' }} />
+              <div className="skeleton" style={{ height: 22, width: 110, borderRadius: '9999px' }} />
             </div>
+            <div className="skeleton" style={{ height: 28, width: 88, borderRadius: '0.4rem' }} />
           </div>
         </div>
       ))}
