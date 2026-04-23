@@ -590,7 +590,7 @@ export default function Dashboard() {
                     </div>
                   </div>
                   {adm.application_end && <div style={{ fontSize: '0.72rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '0.2rem' }}><Clock size={10} strokeWidth={2} />{adm.application_end}</div>}
-                  {adm.admission_type && <span style={{ background: '#ede9fe', color: '#5b21b6', border: '1px solid #ddd6fe', padding: '0.15rem 0.5rem', borderRadius: '9999px', fontSize: '0.6rem', fontWeight: 700, display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap', lineHeight: 1.4 }}>{adm.admission_type.toUpperCase()}</span>}
+                  {adm.seats_info?.total && <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>{Number(adm.seats_info.total).toLocaleString()} seats</div>}
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '0.4rem', flexWrap: 'wrap', gap: '0.3rem' }}>
                   {!token || !profileComplete
