@@ -50,12 +50,12 @@ export function admDetailsToPayload(s) {
   if (s.duration !== '') out.duration_minutes = n(s.duration);
   if (s.total_marks !== '') out.total_marks = n(s.total_marks);
   if (s.total_questions !== '') out.total_questions = n(s.total_questions);
-  if (s.negative_marking !== '') out.negative_marking = parseFloat(s.negative_marking) || null;
+  if (s.negative_marking !== '') out.negative_marking = Number.parseFloat(s.negative_marking) || null;
   if (s.language) out.language = s.language.split(',').map((x) => x.trim()).filter(Boolean);
   if (s.subjects) {
     out.subjects = s.subjects.split('\n').filter((l) => l.trim()).map((line) => {
       const p = line.split(',').map((x) => x.trim());
-      return { name: p[0] || '', questions: parseInt(p[1]) || 0, marks: parseInt(p[2]) || 0 };
+      return { name: p[0] || '', questions: Number.parseInt(p[1], 10) || 0, marks: Number.parseInt(p[2], 10) || 0 };
     });
   }
   return out;
@@ -129,14 +129,14 @@ function PhaseDetail({ ph, onChange }) {
   if (ph.type === 'written_test') return (
     <div style={{ padding: '.75rem', background: '#fafafa', borderTop: '1px solid #f1f5f9' }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '.75rem' }}>
-        <div className="form-group"><label>Total Marks</label><input type="number" min="0" value={d.total_marks || ''} onChange={(e) => upd('total_marks', e.target.value ? Number(e.target.value) : null)} placeholder="360" /></div>
-        <div className="form-group"><label>Duration (min)</label><input type="number" min="0" value={d.duration_minutes || ''} onChange={(e) => upd('duration_minutes', e.target.value ? Number(e.target.value) : null)} placeholder="180" /></div>
-        <div className="form-group"><label>Negative Marking</label><input type="number" step="0.01" value={d.negative_marking || ''} onChange={(e) => upd('negative_marking', e.target.value ? parseFloat(e.target.value) : null)} placeholder="1.0" /></div>
+        <div className="form-group"><label htmlFor={`${ph.id}-tm`}>Total Marks</label><input id={`${ph.id}-tm`} type="number" min="0" value={d.total_marks || ''} onChange={(e) => upd('total_marks', e.target.value ? Number(e.target.value) : null)} placeholder="360" /></div>
+        <div className="form-group"><label htmlFor={`${ph.id}-dm`}>Duration (min)</label><input id={`${ph.id}-dm`} type="number" min="0" value={d.duration_minutes || ''} onChange={(e) => upd('duration_minutes', e.target.value ? Number(e.target.value) : null)} placeholder="180" /></div>
+        <div className="form-group"><label htmlFor={`${ph.id}-nm`}>Negative Marking</label><input id={`${ph.id}-nm`} type="number" step="0.01" value={d.negative_marking || ''} onChange={(e) => upd('negative_marking', e.target.value ? Number.parseFloat(e.target.value) : null)} placeholder="1.0" /></div>
       </div>
       <div className="form-group" style={{ marginTop: '.5rem' }}>
-        <label>Subjects <span style={{ fontSize: '.7rem', color: '#94a3b8' }}>(one per line: Subject, Questions, Marks)</span></label>
-        <textarea rows={3} value={(d.subjects || []).map((s) => `${s.name}, ${s.questions}, ${s.marks}`).join('\n')}
-          onChange={(e) => upd('subjects', e.target.value.split('\n').filter((l) => l.trim()).map((line) => { const p = line.split(',').map((x) => x.trim()); return { name: p[0] || '', questions: parseInt(p[1]) || 0, marks: parseInt(p[2]) || 0 }; }))}
+        <label htmlFor={`${ph.id}-subj`}>Subjects <span style={{ fontSize: '.7rem', color: '#94a3b8' }}>(one per line: Subject, Questions, Marks)</span></label>
+        <textarea id={`${ph.id}-subj`} rows={3} value={(d.subjects || []).map((s) => `${s.name}, ${s.questions}, ${s.marks}`).join('\n')}
+          onChange={(e) => upd('subjects', e.target.value.split('\n').filter((l) => l.trim()).map((line) => { const p = line.split(',').map((x) => x.trim()); return { name: p[0] || '', questions: Number.parseInt(p[1], 10) || 0, marks: Number.parseInt(p[2], 10) || 0 }; }))}
           placeholder={'Physics, 50, 180\nChemistry, 50, 180\nBiology, 100, 360'} />
       </div>
     </div>
@@ -145,8 +145,8 @@ function PhaseDetail({ ph, onChange }) {
   if (ph.type === 'interview') return (
     <div style={{ padding: '.75rem', background: '#fafafa', borderTop: '1px solid #f1f5f9' }}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '.75rem' }}>
-        <div className="form-group"><label>Marks</label><input type="number" min="0" value={d.marks || ''} onChange={(e) => upd('marks', e.target.value ? Number(e.target.value) : null)} /></div>
-        <div className="form-group"><label>Note</label><input type="text" value={d.note || ''} onChange={(e) => upd('note', e.target.value)} placeholder="e.g. Personality test / Demo teaching" /></div>
+        <div className="form-group"><label htmlFor={`${ph.id}-marks`}>Marks</label><input id={`${ph.id}-marks`} type="number" min="0" value={d.marks || ''} onChange={(e) => upd('marks', e.target.value ? Number(e.target.value) : null)} /></div>
+        <div className="form-group"><label htmlFor={`${ph.id}-note`}>Note</label><input id={`${ph.id}-note`} type="text" value={d.note || ''} onChange={(e) => upd('note', e.target.value)} placeholder="e.g. Personality test / Demo teaching" /></div>
       </div>
     </div>
   );
@@ -154,8 +154,8 @@ function PhaseDetail({ ph, onChange }) {
   if (ph.type === 'document') return (
     <div style={{ padding: '.75rem', background: '#fafafa', borderTop: '1px solid #f1f5f9' }}>
       <div className="form-group">
-        <label>Documents Required <span style={{ fontSize: '.7rem', color: '#94a3b8' }}>(one per line)</span></label>
-        <textarea rows={3} value={(d.documents || []).join('\n')} onChange={(e) => upd('documents', e.target.value.split('\n').map((s) => s.trim()).filter(Boolean))} placeholder={'10th Certificate\nAadhar Card\nCategory Certificate'} />
+        <label htmlFor={`${ph.id}-docs`}>Documents Required <span style={{ fontSize: '.7rem', color: '#94a3b8' }}>(one per line)</span></label>
+        <textarea id={`${ph.id}-docs`} rows={3} value={(d.documents || []).join('\n')} onChange={(e) => upd('documents', e.target.value.split('\n').map((s) => s.trim()).filter(Boolean))} placeholder={'10th Certificate\nAadhar Card\nCategory Certificate'} />
       </div>
     </div>
   );
@@ -163,7 +163,7 @@ function PhaseDetail({ ph, onChange }) {
   /* counselling, seat_allotment, other */
   return (
     <div style={{ padding: '.75rem', background: '#fafafa', borderTop: '1px solid #f1f5f9' }}>
-      <div className="form-group"><label>Note</label><input type="text" value={d.note || ''} onChange={(e) => upd('note', e.target.value)} placeholder="e.g. JoSAA rounds 1-6" /></div>
+      <div className="form-group"><label htmlFor={`${ph.id}-note`}>Note</label><input id={`${ph.id}-note`} type="text" value={d.note || ''} onChange={(e) => upd('note', e.target.value)} placeholder="e.g. JoSAA rounds 1-6" /></div>
     </div>
   );
 }
@@ -190,8 +190,8 @@ export default function AdmissionExtrasEditor({
         <div className="section-body">
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '.75rem' }}>
             <div className="form-group">
-              <label>Mode</label>
-              <select value={admDetails.mode} onChange={(e) => onAdmDetails('mode', e.target.value)}>
+              <label htmlFor="adm-mode">Mode</label>
+              <select id="adm-mode" value={admDetails.mode} onChange={(e) => onAdmDetails('mode', e.target.value)}>
                 <option value="">— select —</option>
                 <option value="Online">Online (CBT)</option>
                 <option value="Offline">Offline (OMR)</option>
@@ -199,29 +199,29 @@ export default function AdmissionExtrasEditor({
               </select>
             </div>
             <div className="form-group">
-              <label>Duration (minutes)</label>
-              <input type="number" min="0" value={admDetails.duration} onChange={(e) => onAdmDetails('duration', e.target.value)} placeholder="180" />
+              <label htmlFor="adm-dur">Duration (minutes)</label>
+              <input id="adm-dur" type="number" min="0" value={admDetails.duration} onChange={(e) => onAdmDetails('duration', e.target.value)} placeholder="180" />
             </div>
             <div className="form-group">
-              <label>Total Marks</label>
-              <input type="number" min="0" value={admDetails.total_marks} onChange={(e) => onAdmDetails('total_marks', e.target.value)} placeholder="720" />
+              <label htmlFor="adm-marks">Total Marks</label>
+              <input id="adm-marks" type="number" min="0" value={admDetails.total_marks} onChange={(e) => onAdmDetails('total_marks', e.target.value)} placeholder="720" />
             </div>
             <div className="form-group">
-              <label>Total Questions</label>
-              <input type="number" min="0" value={admDetails.total_questions} onChange={(e) => onAdmDetails('total_questions', e.target.value)} placeholder="200" />
+              <label htmlFor="adm-qs">Total Questions</label>
+              <input id="adm-qs" type="number" min="0" value={admDetails.total_questions} onChange={(e) => onAdmDetails('total_questions', e.target.value)} placeholder="200" />
             </div>
             <div className="form-group">
-              <label>Negative Marking</label>
-              <input type="number" step="0.01" value={admDetails.negative_marking} onChange={(e) => onAdmDetails('negative_marking', e.target.value)} placeholder="0.25" />
+              <label htmlFor="adm-neg">Negative Marking</label>
+              <input id="adm-neg" type="number" step="0.01" value={admDetails.negative_marking} onChange={(e) => onAdmDetails('negative_marking', e.target.value)} placeholder="0.25" />
             </div>
             <div className="form-group">
-              <label>Language(s) <span style={{ fontSize: '.7rem', color: '#94a3b8' }}>(comma separated)</span></label>
-              <input type="text" value={admDetails.language} onChange={(e) => onAdmDetails('language', e.target.value)} placeholder="Hindi, English" />
+              <label htmlFor="adm-lang">Language(s) <span style={{ fontSize: '.7rem', color: '#94a3b8' }}>(comma separated)</span></label>
+              <input id="adm-lang" type="text" value={admDetails.language} onChange={(e) => onAdmDetails('language', e.target.value)} placeholder="Hindi, English" />
             </div>
           </div>
           <div className="form-group" style={{ marginTop: '.75rem' }}>
-            <label>Subjects <span style={{ fontSize: '.7rem', color: '#94a3b8' }}>(one per line: Subject, Questions, Marks)</span></label>
-            <textarea rows={4} value={admDetails.subjects} onChange={(e) => onAdmDetails('subjects', e.target.value)} placeholder={'Physics, 50, 180\nChemistry, 50, 180\nBiology, 100, 360'} />
+            <label htmlFor="adm-subjects">Subjects <span style={{ fontSize: '.7rem', color: '#94a3b8' }}>(one per line: Subject, Questions, Marks)</span></label>
+            <textarea id="adm-subjects" rows={4} value={admDetails.subjects} onChange={(e) => onAdmDetails('subjects', e.target.value)} placeholder={'Physics, 50, 180\nChemistry, 50, 180\nBiology, 100, 360'} />
           </div>
         </div>
       </div>
@@ -232,29 +232,29 @@ export default function AdmissionExtrasEditor({
         <div className="section-body">
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '.75rem' }}>
             <div className="form-group" style={{ gridColumn: 'span 2' }}>
-              <label>Qualification Required</label>
-              <input type="text" value={eligibility.qualification} onChange={(e) => onEligibility('qualification', e.target.value)} placeholder="e.g. MBBS / BDS from MCI recognised institution" />
+              <label htmlFor="elig-qual">Qualification Required</label>
+              <input id="elig-qual" type="text" value={eligibility.qualification} onChange={(e) => onEligibility('qualification', e.target.value)} placeholder="e.g. MBBS / BDS from MCI recognised institution" />
             </div>
             <div className="form-group">
-              <label>Min % in Qualifying</label>
-              <input type="number" min="0" max="100" value={eligibility.min_percent} onChange={(e) => onEligibility('min_percent', e.target.value)} placeholder="50" />
+              <label htmlFor="elig-pct">Min % in Qualifying</label>
+              <input id="elig-pct" type="number" min="0" max="100" value={eligibility.min_percent} onChange={(e) => onEligibility('min_percent', e.target.value)} placeholder="50" />
             </div>
             <div className="form-group">
-              <label>Min Age</label>
-              <input type="number" min="0" value={eligibility.age_min} onChange={(e) => onEligibility('age_min', e.target.value)} placeholder="17" />
+              <label htmlFor="elig-amin">Min Age</label>
+              <input id="elig-amin" type="number" min="0" value={eligibility.age_min} onChange={(e) => onEligibility('age_min', e.target.value)} placeholder="17" />
             </div>
             <div className="form-group">
-              <label>Max Age (General)</label>
-              <input type="number" min="0" value={eligibility.age_max} onChange={(e) => onEligibility('age_max', e.target.value)} placeholder="25" />
+              <label htmlFor="elig-amax">Max Age (General)</label>
+              <input id="elig-amax" type="number" min="0" value={eligibility.age_max} onChange={(e) => onEligibility('age_max', e.target.value)} placeholder="25" />
             </div>
             <div className="form-group">
-              <label>Attempts Allowed</label>
-              <input type="number" min="0" value={eligibility.attempts} onChange={(e) => onEligibility('attempts', e.target.value)} placeholder="3" />
+              <label htmlFor="elig-att">Attempts Allowed</label>
+              <input id="elig-att" type="number" min="0" value={eligibility.attempts} onChange={(e) => onEligibility('attempts', e.target.value)} placeholder="3" />
             </div>
           </div>
           <div className="form-group" style={{ marginTop: '.75rem' }}>
-            <label>Additional Notes</label>
-            <input type="text" value={eligibility.notes} onChange={(e) => onEligibility('notes', e.target.value)} placeholder="e.g. NRI / OCI candidates must apply through MCC" />
+            <label htmlFor="elig-notes">Additional Notes</label>
+            <input id="elig-notes" type="text" value={eligibility.notes} onChange={(e) => onEligibility('notes', e.target.value)} placeholder="e.g. NRI / OCI candidates must apply through MCC" />
           </div>
         </div>
       </div>
@@ -266,8 +266,8 @@ export default function AdmissionExtrasEditor({
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6,1fr)', gap: '.5rem' }}>
             {[['total', 'Total', 'total-cell'], ['ur', 'UR', ''], ['obc', 'OBC', ''], ['ews', 'EWS', ''], ['sc', 'SC', ''], ['st', 'ST', '']].map(([k, lbl, cls]) => (
               <div key={k} className={`vacancy-cell ${cls}`}>
-                <label>{lbl}</label>
-                <input type="number" min="0" value={seats[k]} onChange={(e) => onSeats(k, e.target.value)} placeholder="0" />
+                <label htmlFor={`seats-${k}`}>{lbl}</label>
+                <input id={`seats-${k}`} type="number" min="0" value={seats[k]} onChange={(e) => onSeats(k, e.target.value)} placeholder="0" />
               </div>
             ))}
           </div>
@@ -278,7 +278,7 @@ export default function AdmissionExtrasEditor({
       <div className="section-card">
         <div className="section-header section-header--orange" style={{ display: 'flex', alignItems: 'center' }}>
           Selection Process
-          <button type="button" onClick={addPhase} style={{ marginLeft: 'auto', background: 'rgba(255,255,255,.2)', border: '1px solid rgba(255,255,255,.4)', color: '#fff', borderRadius: '.375rem', padding: '.2rem .65rem', fontSize: '.8rem', cursor: 'pointer', fontWeight: 600 }}>+ Add Phase</button>
+          {' '}<button type="button" onClick={addPhase} style={{ marginLeft: 'auto', background: 'rgba(255,255,255,.2)', border: '1px solid rgba(255,255,255,.4)', color: '#fff', borderRadius: '.375rem', padding: '.2rem .65rem', fontSize: '.8rem', cursor: 'pointer', fontWeight: 600 }}>+ Add Phase</button>
         </div>
         <div className="section-body">
           {phases.length === 0 && (
@@ -294,18 +294,18 @@ export default function AdmissionExtrasEditor({
                 <div style={{ width: 28, height: 28, background: '#f59e0b', color: '#fff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '.7rem', fontWeight: 700, flexShrink: 0, marginBottom: '.25rem' }}>{i + 1}</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '.75rem', flex: 1 }}>
                   <div className="form-group">
-                    <label>Phase Type</label>
-                    <select value={ph.type} onChange={(e) => updatePhase(ph.id, { ...ph, type: e.target.value, details: {} })}>
+                    <label htmlFor={`${ph.id}-ptype`}>Phase Type</label>
+                    <select id={`${ph.id}-ptype`} value={ph.type} onChange={(e) => updatePhase(ph.id, { ...ph, type: e.target.value, details: {} })}>
                       {ADM_PHASE_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
                     </select>
                   </div>
                   <div className="form-group">
-                    <label>Phase Name</label>
-                    <input type="text" value={ph.name} onChange={(e) => updatePhase(ph.id, { ...ph, name: e.target.value })} placeholder="e.g. JEE Advanced Paper 1 & 2" />
+                    <label htmlFor={`${ph.id}-pname`}>Phase Name</label>
+                    <input id={`${ph.id}-pname`} type="text" value={ph.name} onChange={(e) => updatePhase(ph.id, { ...ph, name: e.target.value })} placeholder="e.g. JEE Advanced Paper 1 &amp; 2" />
                   </div>
                   <div className="form-group">
-                    <label>Qualifying Only?</label>
-                    <select value={ph.qualifying ? 'true' : 'false'} onChange={(e) => updatePhase(ph.id, { ...ph, qualifying: e.target.value === 'true' })}>
+                    <label htmlFor={`${ph.id}-qual`}>Qualifying Only?</label>
+                    <select id={`${ph.id}-qual`} value={ph.qualifying ? 'true' : 'false'} onChange={(e) => updatePhase(ph.id, { ...ph, qualifying: e.target.value === 'true' })}>
                       <option value="false">No — Marks count</option>
                       <option value="true">Yes — Pass / Fail</option>
                     </select>

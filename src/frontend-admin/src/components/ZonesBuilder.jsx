@@ -56,7 +56,7 @@ export default function ZonesBuilder({ zones, onChange }) {
     <div className="section-card">
       <div className="section-header section-header--teal" style={{ display: 'flex', alignItems: 'center' }}>
         Zone-wise Vacancy
-        <button type="button" onClick={add} style={{ marginLeft: 'auto', background: 'rgba(255,255,255,.2)', border: '1px solid rgba(255,255,255,.4)', color: '#fff', borderRadius: '.375rem', padding: '.2rem .65rem', fontSize: '.8rem', cursor: 'pointer', fontWeight: 600 }}>+ Add Zone</button>
+        {' '}<button type="button" onClick={add} style={{ marginLeft: 'auto', background: 'rgba(255,255,255,.2)', border: '1px solid rgba(255,255,255,.4)', color: '#fff', borderRadius: '.375rem', padding: '.2rem .65rem', fontSize: '.8rem', cursor: 'pointer', fontWeight: 600 }}>+ Add Zone</button>
       </div>
       <div className="section-body">
         {zones.length === 0 && (

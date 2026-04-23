@@ -186,7 +186,7 @@ function JobParent({ job, currentSlug, currentType }) {
               };
               const icons = { apply_online: <BookOpen size={13} strokeWidth={2} />, download_notification: <Download size={13} strokeWidth={2} />, syllabus: <BookOpen size={13} strokeWidth={2} />, official_website: <Globe size={13} strokeWidth={2} /> };
               return (
-                <a key={url} href={url} target="_blank" rel="noopener noreferrer" className="share-btn" style={{ ...styles[ltype] || {}, display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                <a key={url} href={url} target="_blank" rel="noopener noreferrer" className="share-btn" style={{ ...(styles[ltype] ?? {}), display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
                   {icons[ltype] || <Link2 size={13} strokeWidth={2} />} {text}
                 </a>
               );

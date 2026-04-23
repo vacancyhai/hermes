@@ -277,8 +277,8 @@ export default function Dashboard() {
             <div className="skeleton" style={{ height: 12, width: 100, borderRadius: '0.3rem' }} />
           </div>
           <div style={{ display: 'flex', gap: '0.75rem', overflowX: 'auto', scrollbarWidth: 'none', padding: '1rem 1.1rem 1rem' }}>
-            {Array.from({ length: 10 }).map((_, i) => (
-              <div key={i} style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', flexShrink: 0, width: 76 }}>
+            {['o1','o2','o3','o4','o5','o6','o7','o8','o9','o10'].map((sk) => (
+              <div key={sk} style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', flexShrink: 0, width: 76 }}>
                 <div className="skeleton" style={{ width: 56, height: 56, borderRadius: '0.75rem' }} />
                 <div className="skeleton" style={{ height: 10, width: 60, borderRadius: '0.3rem' }} />
                 <div className="skeleton" style={{ height: 22, width: 76, borderRadius: '9999px' }} />
@@ -397,8 +397,8 @@ export default function Dashboard() {
               {/* skeleton — 2-col grid */}
               {loading && (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem' }}>
-                  {Array.from({ length: 6 }).map((_, i) => (
-                    <div key={i} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 'var(--radius)', padding: '0.75rem' }}>
+                  {['e1','e2','e3','e4','e5','e6'].map((sk) => (
+                    <div key={sk} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 'var(--radius)', padding: '0.75rem' }}>
                       <div className="skeleton" style={{ height: 11, width: '90%', borderRadius: '0.3rem', marginBottom: '0.35rem' }} />
                       <div className="skeleton" style={{ height: 10, width: '65%', borderRadius: '0.3rem', marginBottom: '0.4rem' }} />
                       <div className="skeleton" style={{ height: 20, width: 56, borderRadius: '9999px' }} />
@@ -424,8 +424,12 @@ export default function Dashboard() {
                     const isJob = exam.type === 'job' || exam.parent_type === 'job';
                     const url = isJob ? `/jobs/${exam.slug || exam.parent_slug}` : `/admissions/${exam.slug || exam.parent_slug}`;
                     const days = exam.days_remaining;
-                    const urgentBorder = days != null && days <= 3 ? '#ef4444' : days != null && days <= 7 ? '#f59e0b' : '#2563eb';
-                    const urgentBg    = days != null && days <= 3 ? '#fff5f5' : days != null && days <= 7 ? '#fffbeb' : '#f8fbff';
+                    let urgentBorder = '#2563eb';
+                    if (days != null && days <= 3) urgentBorder = '#ef4444';
+                    else if (days != null && days <= 7) urgentBorder = '#f59e0b';
+                    let urgentBg = '#f8fbff';
+                    if (days != null && days <= 3) urgentBg = '#fff5f5';
+                    else if (days != null && days <= 7) urgentBg = '#fffbeb';
                     return (
                       <motion.button
                         type="button" key={exam.id}

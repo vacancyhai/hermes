@@ -132,7 +132,7 @@ export default function JobDetail() {
   if (loading) return (
     <div style={{ padding: '3rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
       <div className="skeleton" style={{ height: 200, borderRadius: 'var(--radius-2xl)' }} />
-      <div style={{ display: 'flex', gap: '0.5rem' }}>{[120,90,80].map((w,i) => <div key={i} className="skeleton" style={{ height: 34, width: w, borderRadius: 'var(--radius)' }} />)}</div>
+      <div style={{ display: 'flex', gap: '0.5rem' }}>{[120,90,80].map((w) => <div key={w} className="skeleton" style={{ height: 34, width: w, borderRadius: 'var(--radius)' }} />)}</div>
       <div className="skeleton" style={{ height: 120, borderRadius: 'var(--radius-lg)' }} />
     </div>
   );

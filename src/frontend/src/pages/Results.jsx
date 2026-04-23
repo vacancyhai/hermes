@@ -32,8 +32,8 @@ export default function Results() {
         </div>
       </motion.div>
 
-      {loading && Array.from({ length: 5 }).map((_, i) => (
-        <div key={i} style={{ background: '#fff', border: '1px solid #e2e8f0', borderLeft: '3px solid #16a34a', borderRadius: '0.65rem', padding: '1rem 1.1rem', marginBottom: '0.65rem' }}>
+      {loading && ['s1','s2','s3','s4','s5'].map((sk) => (
+        <div key={sk} style={{ background: '#fff', border: '1px solid #e2e8f0', borderLeft: '3px solid #16a34a', borderRadius: '0.65rem', padding: '1rem 1.1rem', marginBottom: '0.65rem' }}>
           <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
             <div className="skeleton" style={{ width: 40, height: 40, borderRadius: '50%', flexShrink: 0 }} />
             <div style={{ flex: 1 }}>

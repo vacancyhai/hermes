@@ -34,10 +34,10 @@ export function postsToState(arr) {
     const fee = p.fee || {};
     const male = el.male || {};
     const female = el.female || {};
-    const mAgeL = male.age_limit || {};
-    const mPhys = (male.physical_standards || {}).general || {};
-    const fAgeL = female.age_limit || {};
-    const fPhys = (female.physical_standards || {}).all || {};
+    const mAgeL = male.age_limit ?? {};
+    const mPhys = male.physical_standards?.general ?? {};
+    const fAgeL = female.age_limit ?? {};
+    const fPhys = female.physical_standards?.all ?? {};
     return {
       id: Math.random(),
       post_name: p.post_name || '',
@@ -139,12 +139,12 @@ function EligibilityTab({ e, onChange }) {
     <div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.75rem', marginBottom: '.75rem' }}>
         <div className="form-group">
-          <label>Qualification Description</label>
-          <input type="text" value={e.qualification} onChange={(ev) => onChange('qualification', ev.target.value)} placeholder="e.g. 10th Pass from recognized board" />
+          <label htmlFor="elig-qual-desc">Qualification Description</label>
+          <input id="elig-qual-desc" type="text" value={e.qualification} onChange={(ev) => onChange('qualification', ev.target.value)} placeholder="e.g. 10th Pass from recognized board" />
         </div>
         <div className="form-group">
-          <label>Qualification Level</label>
-          <select value={e.qualification_level} onChange={(ev) => onChange('qualification_level', ev.target.value)}>
+          <label htmlFor="elig-qual-level">Qualification Level</label>
+          <select id="elig-qual-level" value={e.qualification_level} onChange={(ev) => onChange('qualification_level', ev.target.value)}>
             {QUALS.map((q) => <option key={q} value={q}>{q}</option>)}
           </select>
         </div>
@@ -153,19 +153,19 @@ function EligibilityTab({ e, onChange }) {
         <div style={{ border: '1px solid #bfdbfe', borderRadius: '.5rem', padding: '.75rem', background: '#f0f7ff' }}>
           <div style={{ fontSize: '.8rem', fontWeight: 700, color: '#1d4ed8', marginBottom: '.6rem', paddingBottom: '.4rem', borderBottom: '1px solid #e2e8f0' }}>♂ Male</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.5rem' }}>
-            <div className="form-group"><label>Age Min</label><input type="number" min="0" value={e.male_age_min} onChange={(ev) => onChange('male_age_min', ev.target.value)} placeholder="18" /></div>
-            <div className="form-group"><label>Age Max</label><input type="number" min="0" value={e.male_age_max} onChange={(ev) => onChange('male_age_max', ev.target.value)} placeholder="25" /></div>
-            <div className="form-group"><label>Height (cm)</label><input type="number" min="0" value={e.male_height} onChange={(ev) => onChange('male_height', ev.target.value)} placeholder="170" /></div>
-            <div className="form-group"><label>Chest (cm)</label><input type="number" min="0" value={e.male_chest} onChange={(ev) => onChange('male_chest', ev.target.value)} placeholder="80" /></div>
+            <div className="form-group"><label htmlFor="m-age-min">Age Min</label><input id="m-age-min" type="number" min="0" value={e.male_age_min} onChange={(ev) => onChange('male_age_min', ev.target.value)} placeholder="18" /></div>
+            <div className="form-group"><label htmlFor="m-age-max">Age Max</label><input id="m-age-max" type="number" min="0" value={e.male_age_max} onChange={(ev) => onChange('male_age_max', ev.target.value)} placeholder="25" /></div>
+            <div className="form-group"><label htmlFor="m-height">Height (cm)</label><input id="m-height" type="number" min="0" value={e.male_height} onChange={(ev) => onChange('male_height', ev.target.value)} placeholder="170" /></div>
+            <div className="form-group"><label htmlFor="m-chest">Chest (cm)</label><input id="m-chest" type="number" min="0" value={e.male_chest} onChange={(ev) => onChange('male_chest', ev.target.value)} placeholder="80" /></div>
           </div>
         </div>
         <div style={{ border: '1px solid #fbcfe8', borderRadius: '.5rem', padding: '.75rem', background: '#fdf4fb' }}>
           <div style={{ fontSize: '.8rem', fontWeight: 700, color: '#9d174d', marginBottom: '.6rem', paddingBottom: '.4rem', borderBottom: '1px solid #e2e8f0' }}>♀ Female</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.5rem' }}>
-            <div className="form-group"><label>Age Min</label><input type="number" min="0" value={e.female_age_min} onChange={(ev) => onChange('female_age_min', ev.target.value)} placeholder="18" /></div>
-            <div className="form-group"><label>Age Max</label><input type="number" min="0" value={e.female_age_max} onChange={(ev) => onChange('female_age_max', ev.target.value)} placeholder="25" /></div>
-            <div className="form-group"><label>Height (cm)</label><input type="number" min="0" value={e.female_height} onChange={(ev) => onChange('female_height', ev.target.value)} placeholder="157" /></div>
-            <div className="form-group"><label>Weight (kg)</label><input type="number" min="0" value={e.female_weight} onChange={(ev) => onChange('female_weight', ev.target.value)} placeholder="48" /></div>
+            <div className="form-group"><label htmlFor="f-age-min">Age Min</label><input id="f-age-min" type="number" min="0" value={e.female_age_min} onChange={(ev) => onChange('female_age_min', ev.target.value)} placeholder="18" /></div>
+            <div className="form-group"><label htmlFor="f-age-max">Age Max</label><input id="f-age-max" type="number" min="0" value={e.female_age_max} onChange={(ev) => onChange('female_age_max', ev.target.value)} placeholder="25" /></div>
+            <div className="form-group"><label htmlFor="f-height">Height (cm)</label><input id="f-height" type="number" min="0" value={e.female_height} onChange={(ev) => onChange('female_height', ev.target.value)} placeholder="157" /></div>
+            <div className="form-group"><label htmlFor="f-weight">Weight (kg)</label><input id="f-weight" type="number" min="0" value={e.female_weight} onChange={(ev) => onChange('female_weight', ev.target.value)} placeholder="48" /></div>
           </div>
         </div>
       </div>
@@ -179,9 +179,9 @@ function SalaryTab({ salary, fee, onSalary, onFee }) {
     <div>
       <p className="subsection-label">Salary</p>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '.75rem', marginBottom: '1rem' }}>
-        <div className="form-group"><label>Min (₹/month)</label><input type="number" min="0" value={salary.min} onChange={(e) => onSalary('min', e.target.value)} placeholder="21700" /></div>
-        <div className="form-group"><label>Max (₹/month)</label><input type="number" min="0" value={salary.max} onChange={(e) => onSalary('max', e.target.value)} placeholder="69100" /></div>
-        <div className="form-group"><label>Pay Level</label><input type="text" value={salary.pay_level} onChange={(e) => onSalary('pay_level', e.target.value)} placeholder="Level-3" /></div>
+        <div className="form-group"><label htmlFor="sal-min">Min (₹/month)</label><input id="sal-min" type="number" min="0" value={salary.min} onChange={(e) => onSalary('min', e.target.value)} placeholder="21700" /></div>
+        <div className="form-group"><label htmlFor="sal-max">Max (₹/month)</label><input id="sal-max" type="number" min="0" value={salary.max} onChange={(e) => onSalary('max', e.target.value)} placeholder="69100" /></div>
+        <div className="form-group"><label htmlFor="sal-level">Pay Level</label><input id="sal-level" type="text" value={salary.pay_level} onChange={(e) => onSalary('pay_level', e.target.value)} placeholder="Level-3" /></div>
       </div>
       <p className="subsection-label">Application Fee (INR) — Post-specific override</p>
       <div className="fee-grid">
@@ -214,19 +214,19 @@ function PhaseDetail({ ph, onChange }) {
   if (ph.type === 'written_test') return (
     <div style={{ padding: '.75rem', background: '#fafafa', borderTop: '1px solid #f1f5f9' }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '.75rem' }}>
-        <div className="form-group"><label>Total Marks</label><input type="number" min="0" value={d.total_marks || ''} onChange={(e) => upd('total_marks', e.target.value ? Number(e.target.value) : null)} placeholder="160" /></div>
-        <div className="form-group"><label>Duration (min)</label><input type="number" min="0" value={d.duration_minutes || ''} onChange={(e) => upd('duration_minutes', e.target.value ? Number(e.target.value) : null)} placeholder="120" /></div>
-        <div className="form-group"><label>Negative Marking</label><input type="number" step="0.01" value={d.negative_marking || ''} onChange={(e) => upd('negative_marking', e.target.value ? parseFloat(e.target.value) : null)} placeholder="0.25" /></div>
-        <div className="form-group"><label>Mode</label><input type="text" value={d.mode || ''} onChange={(e) => upd('mode', e.target.value)} placeholder="Online" /></div>
+        <div className="form-group"><label htmlFor={`${ph.id}-tm`}>Total Marks</label><input id={`${ph.id}-tm`} type="number" min="0" value={d.total_marks || ''} onChange={(e) => upd('total_marks', e.target.value ? Number(e.target.value) : null)} placeholder="160" /></div>
+        <div className="form-group"><label htmlFor={`${ph.id}-dm`}>Duration (min)</label><input id={`${ph.id}-dm`} type="number" min="0" value={d.duration_minutes || ''} onChange={(e) => upd('duration_minutes', e.target.value ? Number(e.target.value) : null)} placeholder="120" /></div>
+        <div className="form-group"><label htmlFor={`${ph.id}-nm`}>Negative Marking</label><input id={`${ph.id}-nm`} type="number" step="0.01" value={d.negative_marking || ''} onChange={(e) => upd('negative_marking', e.target.value ? Number.parseFloat(e.target.value) : null)} placeholder="0.25" /></div>
+        <div className="form-group"><label htmlFor={`${ph.id}-mode`}>Mode</label><input id={`${ph.id}-mode`} type="text" value={d.mode || ''} onChange={(e) => upd('mode', e.target.value)} placeholder="Online" /></div>
       </div>
       <div className="form-group" style={{ marginTop: '.5rem' }}>
-        <label>Language(s) <span style={{ fontSize: '.7rem', color: '#94a3b8' }}>(comma separated)</span></label>
-        <input type="text" value={(d.language || []).join(', ')} onChange={(e) => upd('language', e.target.value.split(',').map((s) => s.trim()).filter(Boolean))} placeholder="Hindi, English" />
+        <label htmlFor={`${ph.id}-lang`}>Language(s) <span style={{ fontSize: '.7rem', color: '#94a3b8' }}>(comma separated)</span></label>
+        <input id={`${ph.id}-lang`} type="text" value={(d.language || []).join(', ')} onChange={(e) => upd('language', e.target.value.split(',').map((s) => s.trim()).filter(Boolean))} placeholder="Hindi, English" />
       </div>
       <div className="form-group" style={{ marginTop: '.5rem' }}>
-        <label>Subjects <span style={{ fontSize: '.7rem', color: '#94a3b8' }}>(one per line: Subject, Questions, Marks)</span></label>
-        <textarea rows={4} value={(d.subjects || []).map((s) => `${s.name}, ${s.questions}, ${s.marks}`).join('\n')}
-          onChange={(e) => upd('subjects', e.target.value.split('\n').filter((l) => l.trim()).map((line) => { const p = line.split(',').map((s) => s.trim()); return { name: p[0] || '', questions: parseInt(p[1]) || 0, marks: parseInt(p[2]) || 0 }; }))}
+        <label htmlFor={`${ph.id}-subj`}>Subjects <span style={{ fontSize: '.7rem', color: '#94a3b8' }}>(one per line: Subject, Questions, Marks)</span></label>
+        <textarea id={`${ph.id}-subj`} rows={4} value={(d.subjects || []).map((s) => `${s.name}, ${s.questions}, ${s.marks}`).join('\n')}
+          onChange={(e) => upd('subjects', e.target.value.split('\n').filter((l) => l.trim()).map((line) => { const p = line.split(',').map((s) => s.trim()); return { name: p[0] || '', questions: Number.parseInt(p[1], 10) || 0, marks: Number.parseInt(p[2], 10) || 0 }; }))}
           placeholder={'General Intelligence, 40, 40\nGeneral Knowledge, 40, 40\nMathematics, 40, 40'} />
       </div>
     </div>
@@ -241,15 +241,15 @@ function PhaseDetail({ ph, onChange }) {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.75rem' }}>
           <div style={{ border: '1px solid #bfdbfe', borderRadius: '.5rem', padding: '.75rem', background: '#f0f7ff' }}>
             <div style={{ fontSize: '.8rem', fontWeight: 700, color: '#1d4ed8', marginBottom: '.5rem' }}>♂ Male Criteria</div>
-            <div className="form-group"><label>Race</label><input type="text" value={male.race || ''} onChange={(e) => um('race', e.target.value)} placeholder="5 km in 24 min" /></div>
-            <div className="form-group" style={{ marginTop: '.4rem' }}><label>Long Jump</label><input type="text" value={male.long_jump || ''} onChange={(e) => um('long_jump', e.target.value)} placeholder="3.65 m" /></div>
-            <div className="form-group" style={{ marginTop: '.4rem' }}><label>High Jump</label><input type="text" value={male.high_jump || ''} onChange={(e) => um('high_jump', e.target.value)} placeholder="1.2 m" /></div>
+            <div className="form-group"><label htmlFor={`${ph.id}-mrace`}>Race</label><input id={`${ph.id}-mrace`} type="text" value={male.race || ''} onChange={(e) => um('race', e.target.value)} placeholder="5 km in 24 min" /></div>
+            <div className="form-group" style={{ marginTop: '.4rem' }}><label htmlFor={`${ph.id}-mlj`}>Long Jump</label><input id={`${ph.id}-mlj`} type="text" value={male.long_jump || ''} onChange={(e) => um('long_jump', e.target.value)} placeholder="3.65 m" /></div>
+            <div className="form-group" style={{ marginTop: '.4rem' }}><label htmlFor={`${ph.id}-mhj`}>High Jump</label><input id={`${ph.id}-mhj`} type="text" value={male.high_jump || ''} onChange={(e) => um('high_jump', e.target.value)} placeholder="1.2 m" /></div>
           </div>
           <div style={{ border: '1px solid #fbcfe8', borderRadius: '.5rem', padding: '.75rem', background: '#fdf4fb' }}>
             <div style={{ fontSize: '.8rem', fontWeight: 700, color: '#9d174d', marginBottom: '.5rem' }}>♀ Female Criteria</div>
-            <div className="form-group"><label>Race</label><input type="text" value={female.race || ''} onChange={(e) => uf('race', e.target.value)} placeholder="1.6 km in 8.5 min" /></div>
-            <div className="form-group" style={{ marginTop: '.4rem' }}><label>Long Jump</label><input type="text" value={female.long_jump || ''} onChange={(e) => uf('long_jump', e.target.value)} placeholder="2.7 m" /></div>
-            <div className="form-group" style={{ marginTop: '.4rem' }}><label>High Jump</label><input type="text" value={female.high_jump || ''} onChange={(e) => uf('high_jump', e.target.value)} placeholder="0.9 m" /></div>
+            <div className="form-group"><label htmlFor={`${ph.id}-frace`}>Race</label><input id={`${ph.id}-frace`} type="text" value={female.race || ''} onChange={(e) => uf('race', e.target.value)} placeholder="1.6 km in 8.5 min" /></div>
+            <div className="form-group" style={{ marginTop: '.4rem' }}><label htmlFor={`${ph.id}-flj`}>Long Jump</label><input id={`${ph.id}-flj`} type="text" value={female.long_jump || ''} onChange={(e) => uf('long_jump', e.target.value)} placeholder="2.7 m" /></div>
+            <div className="form-group" style={{ marginTop: '.4rem' }}><label htmlFor={`${ph.id}-fhj`}>High Jump</label><input id={`${ph.id}-fhj`} type="text" value={female.high_jump || ''} onChange={(e) => uf('high_jump', e.target.value)} placeholder="0.9 m" /></div>
           </div>
         </div>
       </div>
@@ -267,17 +267,17 @@ function PhaseDetail({ ph, onChange }) {
           <div style={{ border: '1px solid #bfdbfe', borderRadius: '.5rem', padding: '.75rem', background: '#f0f7ff' }}>
             <div style={{ fontSize: '.8rem', fontWeight: 700, color: '#1d4ed8', marginBottom: '.5rem' }}>♂ Male Standards</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.5rem' }}>
-              <div className="form-group"><label>Height General (cm)</label><input type="number" min="0" value={mg.height_cm || ''} onChange={(e) => ug('height_cm', Number(e.target.value))} placeholder="170" /></div>
-              <div className="form-group"><label>Chest General (cm)</label><input type="number" min="0" value={mg.chest_cm || ''} onChange={(e) => ug('chest_cm', Number(e.target.value))} placeholder="80" /></div>
-              <div className="form-group"><label>Height SC/ST (cm)</label><input type="number" min="0" value={ms.height_cm || ''} onChange={(e) => us('height_cm', Number(e.target.value))} placeholder="165" /></div>
-              <div className="form-group"><label>Chest SC/ST (cm)</label><input type="number" min="0" value={ms.chest_cm || ''} onChange={(e) => us('chest_cm', Number(e.target.value))} placeholder="78" /></div>
+              <div className="form-group"><label htmlFor={`${ph.id}-mhg`}>Height General (cm)</label><input id={`${ph.id}-mhg`} type="number" min="0" value={mg.height_cm || ''} onChange={(e) => ug('height_cm', Number(e.target.value))} placeholder="170" /></div>
+              <div className="form-group"><label htmlFor={`${ph.id}-mcg`}>Chest General (cm)</label><input id={`${ph.id}-mcg`} type="number" min="0" value={mg.chest_cm || ''} onChange={(e) => ug('chest_cm', Number(e.target.value))} placeholder="80" /></div>
+              <div className="form-group"><label htmlFor={`${ph.id}-mhs`}>Height SC/ST (cm)</label><input id={`${ph.id}-mhs`} type="number" min="0" value={ms.height_cm || ''} onChange={(e) => us('height_cm', Number(e.target.value))} placeholder="165" /></div>
+              <div className="form-group"><label htmlFor={`${ph.id}-mcs`}>Chest SC/ST (cm)</label><input id={`${ph.id}-mcs`} type="number" min="0" value={ms.chest_cm || ''} onChange={(e) => us('chest_cm', Number(e.target.value))} placeholder="78" /></div>
             </div>
           </div>
           <div style={{ border: '1px solid #fbcfe8', borderRadius: '.5rem', padding: '.75rem', background: '#fdf4fb' }}>
             <div style={{ fontSize: '.8rem', fontWeight: 700, color: '#9d174d', marginBottom: '.5rem' }}>♀ Female Standards</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.5rem' }}>
-              <div className="form-group"><label>Height (cm)</label><input type="number" min="0" value={fa.height_cm || ''} onChange={(e) => ua('height_cm', Number(e.target.value))} placeholder="157" /></div>
-              <div className="form-group"><label>Weight (kg)</label><input type="number" min="0" value={fa.weight_kg || ''} onChange={(e) => ua('weight_kg', Number(e.target.value))} placeholder="48" /></div>
+              <div className="form-group"><label htmlFor={`${ph.id}-fh`}>Height (cm)</label><input id={`${ph.id}-fh`} type="number" min="0" value={fa.height_cm || ''} onChange={(e) => ua('height_cm', Number(e.target.value))} placeholder="157" /></div>
+              <div className="form-group"><label htmlFor={`${ph.id}-fw`}>Weight (kg)</label><input id={`${ph.id}-fw`} type="number" min="0" value={fa.weight_kg || ''} onChange={(e) => ua('weight_kg', Number(e.target.value))} placeholder="48" /></div>
             </div>
           </div>
         </div>
@@ -287,15 +287,15 @@ function PhaseDetail({ ph, onChange }) {
 
   if (ph.type === 'skill_test') return (
     <div style={{ padding: '.75rem', background: '#fafafa', borderTop: '1px solid #f1f5f9' }}>
-      <div className="form-group"><label>Criteria / Note</label><input type="text" value={d.note || ''} onChange={(e) => upd('note', e.target.value)} placeholder="e.g. 35 wpm English or 30 wpm Hindi on computer" /></div>
+      <div className="form-group"><label htmlFor={`${ph.id}-note`}>Criteria / Note</label><input id={`${ph.id}-note`} type="text" value={d.note || ''} onChange={(e) => upd('note', e.target.value)} placeholder="e.g. 35 wpm English or 30 wpm Hindi on computer" /></div>
     </div>
   );
 
   if (ph.type === 'interview') return (
     <div style={{ padding: '.75rem', background: '#fafafa', borderTop: '1px solid #f1f5f9' }}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.75rem' }}>
-        <div className="form-group"><label>Total Marks</label><input type="number" min="0" value={d.marks || ''} onChange={(e) => upd('marks', e.target.value ? Number(e.target.value) : null)} placeholder="100" /></div>
-        <div className="form-group"><label>Note / Criteria</label><input type="text" value={d.note || ''} onChange={(e) => upd('note', e.target.value)} placeholder="e.g. Personality test" /></div>
+        <div className="form-group"><label htmlFor={`${ph.id}-marks`}>Total Marks</label><input id={`${ph.id}-marks`} type="number" min="0" value={d.marks || ''} onChange={(e) => upd('marks', e.target.value ? Number(e.target.value) : null)} placeholder="100" /></div>
+        <div className="form-group"><label htmlFor={`${ph.id}-note`}>Note / Criteria</label><input id={`${ph.id}-note`} type="text" value={d.note || ''} onChange={(e) => upd('note', e.target.value)} placeholder="e.g. Personality test" /></div>
       </div>
     </div>
   );
@@ -303,9 +303,9 @@ function PhaseDetail({ ph, onChange }) {
   if (ph.type === 'medical') return (
     <div style={{ padding: '.75rem', background: '#fafafa', borderTop: '1px solid #f1f5f9' }}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.75rem' }}>
-        <div className="form-group"><label>Vision Standard</label><input type="text" value={d.vision || ''} onChange={(e) => upd('vision', e.target.value)} placeholder="6/6 in one eye, 6/9 in other" /></div>
-        <div className="form-group"><label>Colour Blindness</label><input type="text" value={d.color_blindness || ''} onChange={(e) => upd('color_blindness', e.target.value)} placeholder="Not permitted" /></div>
-        <div className="form-group" style={{ gridColumn: 'span 2' }}><label>Other Criteria</label><input type="text" value={d.other || ''} onChange={(e) => upd('other', e.target.value)} placeholder="No flat foot, knock knee, squint eyes" /></div>
+        <div className="form-group"><label htmlFor={`${ph.id}-vision`}>Vision Standard</label><input id={`${ph.id}-vision`} type="text" value={d.vision || ''} onChange={(e) => upd('vision', e.target.value)} placeholder="6/6 in one eye, 6/9 in other" /></div>
+        <div className="form-group"><label htmlFor={`${ph.id}-colb`}>Colour Blindness</label><input id={`${ph.id}-colb`} type="text" value={d.color_blindness || ''} onChange={(e) => upd('color_blindness', e.target.value)} placeholder="Not permitted" /></div>
+        <div className="form-group" style={{ gridColumn: 'span 2' }}><label htmlFor={`${ph.id}-other`}>Other Criteria</label><input id={`${ph.id}-other`} type="text" value={d.other || ''} onChange={(e) => upd('other', e.target.value)} placeholder="No flat foot, knock knee, squint eyes" /></div>
       </div>
     </div>
   );
@@ -313,8 +313,8 @@ function PhaseDetail({ ph, onChange }) {
   if (ph.type === 'document') return (
     <div style={{ padding: '.75rem', background: '#fafafa', borderTop: '1px solid #f1f5f9' }}>
       <div className="form-group">
-        <label>Documents Required <span style={{ fontSize: '.7rem', color: '#94a3b8' }}>(one per line)</span></label>
-        <textarea rows={4} value={(d.documents || []).join('\n')} onChange={(e) => upd('documents', e.target.value.split('\n').map((s) => s.trim()).filter(Boolean))} placeholder={'10th Certificate\nAadhar Card\nPhotograph (JPG)\nCategory Certificate'} />
+        <label htmlFor={`${ph.id}-docs`}>Documents Required <span style={{ fontSize: '.7rem', color: '#94a3b8' }}>(one per line)</span></label>
+        <textarea id={`${ph.id}-docs`} rows={4} value={(d.documents || []).join('\n')} onChange={(e) => upd('documents', e.target.value.split('\n').map((s) => s.trim()).filter(Boolean))} placeholder={'10th Certificate\nAadhar Card\nPhotograph (JPG)\nCategory Certificate'} />
       </div>
     </div>
   );
@@ -336,18 +336,18 @@ function SelectionProcessTab({ phases, onChange }) {
             <div style={{ width: 28, height: 28, background: '#6366f1', color: '#fff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '.7rem', fontWeight: 700, flexShrink: 0, marginBottom: '.25rem' }}>{i + 1}</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '.75rem', flex: 1 }}>
               <div className="form-group">
-                <label>Phase Type</label>
-                <select value={ph.type} onChange={(e) => updatePhase(ph.id, { ...ph, type: e.target.value, details: {} })}>
+                <label htmlFor={`${ph.id}-ptype`}>Phase Type</label>
+                <select id={`${ph.id}-ptype`} value={ph.type} onChange={(e) => updatePhase(ph.id, { ...ph, type: e.target.value, details: {} })}>
                   {PHASE_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
                 </select>
               </div>
               <div className="form-group">
-                <label>Phase Name</label>
-                <input type="text" value={ph.name} onChange={(e) => updatePhase(ph.id, { ...ph, name: e.target.value })} placeholder="e.g. Computer Based Test (CBT)" />
+                <label htmlFor={`${ph.id}-pname`}>Phase Name</label>
+                <input id={`${ph.id}-pname`} type="text" value={ph.name} onChange={(e) => updatePhase(ph.id, { ...ph, name: e.target.value })} placeholder="e.g. Computer Based Test (CBT)" />
               </div>
               <div className="form-group">
-                <label>Qualifying Only?</label>
-                <select value={ph.qualifying ? 'true' : 'false'} onChange={(e) => updatePhase(ph.id, { ...ph, qualifying: e.target.value === 'true' })}>
+                <label htmlFor={`${ph.id}-qual`}>Qualifying Only?</label>
+                <select id={`${ph.id}-qual`} value={ph.qualifying ? 'true' : 'false'} onChange={(e) => updatePhase(ph.id, { ...ph, qualifying: e.target.value === 'true' })}>
                   <option value="false">No — Marks count</option>
                   <option value="true">Yes — Pass / Fail</option>
                 </select>
@@ -420,7 +420,7 @@ export default function PostsBuilder({ posts, onChange }) {
     <div className="section-card">
       <div className="section-header section-header--orange" style={{ display: 'flex', alignItems: 'center' }}>
         Posts &amp; Vacancies
-        <button type="button" onClick={add} style={{ marginLeft: 'auto', background: 'rgba(255,255,255,.2)', border: '1px solid rgba(255,255,255,.4)', color: '#fff', borderRadius: '.375rem', padding: '.2rem .65rem', fontSize: '.8rem', cursor: 'pointer', fontWeight: 600 }}>+ Add Post</button>
+        {' '}<button type="button" onClick={add} style={{ marginLeft: 'auto', background: 'rgba(255,255,255,.2)', border: '1px solid rgba(255,255,255,.4)', color: '#fff', borderRadius: '.375rem', padding: '.2rem .65rem', fontSize: '.8rem', cursor: 'pointer', fontWeight: 600 }}>+ Add Post</button>
       </div>
       <div className="section-body">
         {posts.length === 0 && (
