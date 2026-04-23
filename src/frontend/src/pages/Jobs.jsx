@@ -74,10 +74,10 @@ function JobCard({ job, trackedIds, onToggle }) {
           <Link to={`/jobs/${job.slug}`} className="btn btn-outline btn-sm">View Details →</Link>
           {token ? (
             <button onClick={track} className={isTracking ? 'btn-tracking btn btn-sm' : 'btn btn-outline btn-sm'} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
-              {isTracking ? <><Star size={12} strokeWidth={2} fill="currentColor" />Tracking</> : <><Star size={12} strokeWidth={2} />Track</>}
+              {isTracking ? <><Star size={12} strokeWidth={2} fill="currentColor" />Tracking</> : <><Star size={12} strokeWidth={2} />Keep Track</>}
             </button>
           ) : (
-            <Link to={`/login?next=/jobs/${job.slug}`} className="btn btn-outline btn-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}><Star size={12} strokeWidth={2} />Track</Link>
+            <Link to={`/login?next=/jobs/${job.slug}`} className="btn btn-outline btn-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}><Star size={12} strokeWidth={2} />Keep Track</Link>
           )}
         </div>
       </div>

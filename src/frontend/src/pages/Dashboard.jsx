@@ -96,7 +96,7 @@ MiniCard.propTypes = {
 function TrackBtn({ type, id, slug, isTracking, onToggle }) {
   const { token } = useAuth();
   if (!token) {
-    return <a href={`/login?next=/${type}s/${slug}`} onClick={(e) => { e.stopPropagation(); }} style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem', borderRadius: 9999, border: '1px solid #bfdbfe', background: '#eff6ff', color: '#1d4ed8', textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}><Star size={11} strokeWidth={2} /></a>;
+    return <a href={`/login?next=/${type}s/${slug}`} onClick={(e) => { e.stopPropagation(); }} style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem', borderRadius: 9999, border: '1px solid #bfdbfe', background: '#eff6ff', color: '#1d4ed8', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}><Star size={11} strokeWidth={2} />Keep Track</a>;
   }
   const track = async (e) => {
     e.stopPropagation();
@@ -107,8 +107,8 @@ function TrackBtn({ type, id, slug, isTracking, onToggle }) {
     } catch { }
   };
   return (
-    <button onClick={track} className={isTracking ? 'btn-tracking btn btn-sm' : 'btn btn-outline btn-sm'} style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem', display: 'inline-flex', alignItems: 'center' }}>
-      <Star size={11} strokeWidth={2} fill={isTracking ? 'currentColor' : 'none'} />
+    <button onClick={track} className={isTracking ? 'btn-tracking btn btn-sm' : 'btn btn-outline btn-sm'} style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem', display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}>
+      <Star size={11} strokeWidth={2} fill={isTracking ? 'currentColor' : 'none'} />{isTracking ? 'Tracking' : 'Keep Track'}
     </button>
   );
 }

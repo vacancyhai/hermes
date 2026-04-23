@@ -71,10 +71,10 @@ export default function AdmitCards() {
                 <Link to={`/admit-cards/${card.slug}`} className="btn btn-outline btn-sm">View →</Link>
                 {tid && (token ? (
                   <button onClick={() => track(type, tid)} className={isTracking ? 'btn-tracking btn btn-sm' : 'btn btn-outline btn-sm'} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
-                    <Star size={12} strokeWidth={2} fill={isTracking ? 'currentColor' : 'none'} />
+                    <Star size={12} strokeWidth={2} fill={isTracking ? 'currentColor' : 'none'} />{isTracking ? 'Tracking' : 'Keep Track'}
                   </button>
                 ) : (
-                  <Link to={`/login?next=/admit-cards/${card.slug}`} className="btn btn-outline btn-sm" style={{ display: 'inline-flex', alignItems: 'center' }}><Star size={12} strokeWidth={2} /></Link>
+                  <Link to={`/login?next=/admit-cards/${card.slug}`} className="btn btn-outline btn-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}><Star size={12} strokeWidth={2} />Keep Track</Link>
                 ))}
               </div>
             </div>
