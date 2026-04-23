@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Landmark, Link2, BookOpen, Globe, Share2, CheckCircle, Star } from 'lucide-react';
+import { Landmark, Link2, BookOpen, Globe, Share2, CheckCircle, Bell } from 'lucide-react';
 import api from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
 import EligibilityBanner from '../components/EligibilityBanner';
@@ -78,7 +78,7 @@ export default function AdmissionDetail() {
 
       <div className="action-bar">
         <button onClick={toggleTrack} className="share-btn" style={tracking ? { background: '#fef3c7', color: '#92400e', borderColor: '#fde68a' } : { background: '#ede9fe', color: '#5b21b6', borderColor: '#ddd6fe' }}>
-          {tracking ? <><Star size={14} strokeWidth={2} fill="currentColor" /> Tracking — Remove</> : <><Star size={14} strokeWidth={2} /> Track for Reminders</>}
+          {tracking ? <><Bell size={14} strokeWidth={2} fill="currentColor" /> Tracking — Remove</> : <><Bell size={14} strokeWidth={2} /> Track for Reminders</>}
         </button>
         {admission.source_url && <a href={admission.source_url} target="_blank" rel="noopener noreferrer" className="share-btn" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}><Globe size={13} strokeWidth={2} />Official Website</a>}
         {admission.application_details?.application_link && <a href={admission.application_details.application_link} target="_blank" rel="noopener noreferrer" className="share-btn" style={{ background: '#7c3aed', color: '#fff', borderColor: '#7c3aed' }}>Apply Online →</a>}

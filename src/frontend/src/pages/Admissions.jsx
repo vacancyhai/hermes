@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Landmark, Clock, Star, SlidersHorizontal, X, GraduationCap, Users } from 'lucide-react';
+import { Landmark, Clock, Bell, SlidersHorizontal, X, GraduationCap, Users } from 'lucide-react';
 import api from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
 import OrgLogoCircle from '../components/OrgLogoCircle';
@@ -193,10 +193,10 @@ export default function Admissions() {
                   <div style={{ display: 'flex', gap: '0.4rem' }}>
                     {token ? (
                       <button onClick={(e) => { e.stopPropagation(); track(adm); }} className={isTracking ? 'btn-tracking btn btn-sm' : 'btn btn-outline btn-sm'} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
-                        {isTracking ? <><Star size={12} strokeWidth={2} fill="currentColor" />Tracking</> : <><Star size={12} strokeWidth={2} />Keep Track</>}
+                        {isTracking ? <><Bell size={12} strokeWidth={2} fill="currentColor" />Tracking</> : <><Bell size={12} strokeWidth={2} />Keep Track</>}
                       </button>
                     ) : (
-                      <Link to={`/login?next=/admissions/${adm.slug}`} onClick={(e) => e.stopPropagation()} className="btn btn-outline btn-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}><Star size={12} strokeWidth={2} />Keep Track</Link>
+                      <Link to={`/login?next=/admissions/${adm.slug}`} onClick={(e) => e.stopPropagation()} className="btn btn-outline btn-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}><Bell size={12} strokeWidth={2} />Keep Track</Link>
                     )}
                   </div>
                 </div>

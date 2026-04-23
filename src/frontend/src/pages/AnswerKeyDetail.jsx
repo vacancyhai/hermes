@@ -1,6 +1,6 @@
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Briefcase, GraduationCap, Download, Globe, Star, ClipboardList, FileText } from 'lucide-react';
+import { Briefcase, GraduationCap, Download, Globe, Bell, ClipboardList, FileText } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useDetailTrack } from '../hooks/useDetailTrack';
 import DetailSkeleton from '../components/DetailSkeleton';
@@ -37,7 +37,7 @@ export default function AnswerKeyDetail() {
       <div className="action-bar">
         {(key.job || key.admission) && (
           <button onClick={() => toggleTrack(`/login?next=/answer-keys/${slug}`)} className="share-btn" style={tracking ? { background: '#fef3c7', color: '#92400e', borderColor: '#fde68a' } : { background: '#fef9c3', color: '#854d0e', borderColor: '#fde68a' }}>
-            {tracking ? <><Star size={14} strokeWidth={2} fill="currentColor" /> Tracking — Remove</> : <><Star size={14} strokeWidth={2} /> Track for Reminders</>}
+            {tracking ? <><Bell size={14} strokeWidth={2} fill="currentColor" /> Tracking — Remove</> : <><Bell size={14} strokeWidth={2} /> Track for Reminders</>}
           </button>
         )}
         {key.download_url && <a href={key.download_url} target="_blank" rel="noopener noreferrer" className="share-btn" style={{ background: '#d97706', color: '#fff', borderColor: '#d97706', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}><Download size={13} strokeWidth={2} />Download</a>}

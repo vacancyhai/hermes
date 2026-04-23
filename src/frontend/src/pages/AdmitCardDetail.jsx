@@ -1,6 +1,6 @@
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Briefcase, GraduationCap, Download, Globe, Star, ClipboardList } from 'lucide-react';
+import { Briefcase, GraduationCap, Download, Globe, Bell, ClipboardList } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useDetailTrack } from '../hooks/useDetailTrack';
 import DetailSkeleton from '../components/DetailSkeleton';
@@ -37,7 +37,7 @@ export default function AdmitCardDetail() {
       <div className="action-bar">
         {(card.job || card.admission) && (
           <button onClick={() => toggleTrack(`/login?next=/admit-cards/${slug}`)} className="share-btn" style={tracking ? { background: '#fef3c7', color: '#92400e', borderColor: '#fde68a' } : { background: '#dbeafe', color: '#1e40af', borderColor: '#bfdbfe' }}>
-            {tracking ? <><Star size={14} strokeWidth={2} fill="currentColor" /> Tracking — Remove</> : <><Star size={14} strokeWidth={2} /> Track for Reminders</>}
+            {tracking ? <><Bell size={14} strokeWidth={2} fill="currentColor" /> Tracking — Remove</> : <><Bell size={14} strokeWidth={2} /> Track for Reminders</>}
           </button>
         )}
         {card.download_url && <a href={card.download_url} target="_blank" rel="noopener noreferrer" className="share-btn" style={{ background: '#2563eb', color: '#fff', borderColor: '#2563eb', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}><Download size={13} strokeWidth={2} />Download Admit Card</a>}
