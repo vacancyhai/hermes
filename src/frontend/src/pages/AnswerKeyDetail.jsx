@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Briefcase, GraduationCap, Download, Globe, Star, ClipboardList, FileText } from 'lucide-react';
-import api from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
+import { useDetailTrack } from '../hooks/useDetailTrack';
+import DetailSkeleton from '../components/DetailSkeleton';
 import ParentDetail from '../components/ParentDetail';
 
 const fadeUp = { hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0, transition: { duration: 0.3, ease: [0.16, 1, 0.3, 1] } } };
@@ -12,41 +12,9 @@ const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.08, delay
 export default function AnswerKeyDetail() {
   const { slug } = useParams();
   const { token } = useAuth();
-  const navigate = useNavigate();
-  const [key, setKey] = useState(null);
-  const [tracking, setTracking] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const { item: key, tracking, loading, toggleTrack } = useDetailTrack('answer-keys', slug, token);
 
-  useEffect(() => {
-    api.get(`/answer-keys/${slug}`).then((r) => {
-      setKey(r.data);
-      setLoading(false);
-      if (token) {
-        if (r.data.job?.id) api.get(`/jobs/${r.data.job.id}/track`).then((tr) => setTracking(tr.data.tracking)).catch(() => {});
-        else if (r.data.admission?.id) api.get(`/admissions/${r.data.admission.id}/track`).then((tr) => setTracking(tr.data.tracking)).catch(() => {});
-      }
-    }).catch(() => setLoading(false));
-  }, [slug, token]);
-
-  const toggleTrack = async () => {
-    if (!token) { navigate(`/login?next=/answer-keys/${slug}`); return; }
-    const type = key.job ? 'job' : 'admission';
-    const id = key.job?.id || key.admission?.id;
-    if (!id) return;
-    try {
-      if (tracking) await api.delete(`/${type}s/${id}/track`);
-      else await api.post(`/${type}s/${id}/track`);
-      setTracking(!tracking);
-    } catch { }
-  };
-
-  if (loading) return (
-    <div style={{ padding: '3rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-      <div className="skeleton" style={{ height: 180, borderRadius: 'var(--radius-2xl)' }} />
-      <div style={{ display: 'flex', gap: '0.5rem' }}>{[120, 90].map((w) => <div key={w} className="skeleton" style={{ height: 34, width: w, borderRadius: 'var(--radius)' }} />)}</div>
-      <div className="skeleton" style={{ height: 120, borderRadius: 'var(--radius-lg)' }} />
-    </div>
-  );
+  if (loading) return <DetailSkeleton />;
   if (!key) return (
     <div style={{ textAlign: 'center', padding: '3rem' }}>
       <h2 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '0.75rem' }}>Answer Key not found</h2>
@@ -68,7 +36,7 @@ export default function AnswerKeyDetail() {
 
       <div className="action-bar">
         {(key.job || key.admission) && (
-          <button onClick={toggleTrack} className="share-btn" style={tracking ? { background: '#fef3c7', color: '#92400e', borderColor: '#fde68a' } : { background: '#fef9c3', color: '#854d0e', borderColor: '#fde68a' }}>
+          <button onClick={() => toggleTrack(`/login?next=/answer-keys/${slug}`)} className="share-btn" style={tracking ? { background: '#fef3c7', color: '#92400e', borderColor: '#fde68a' } : { background: '#fef9c3', color: '#854d0e', borderColor: '#fde68a' }}>
             {tracking ? <><Star size={14} strokeWidth={2} fill="currentColor" /> Tracking — Remove</> : <><Star size={14} strokeWidth={2} /> Track for Reminders</>}
           </button>
         )}

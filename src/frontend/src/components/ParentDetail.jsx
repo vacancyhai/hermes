@@ -1,11 +1,11 @@
 import PropTypes from 'prop-types';
-import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   Landmark, Users, Link2, Download, BookOpen, Globe, CheckCircle,
-  Folder, GraduationCap, Briefcase,
+  GraduationCap, Briefcase,
 } from 'lucide-react';
+import PhaseDocTabs from './PhaseDocTabs';
 
 const fadeUp = { hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0, transition: { duration: 0.3, ease: [0.16, 1, 0.3, 1] } } };
 
@@ -42,14 +42,10 @@ function PhaseCard({ step }) {
 PhaseCard.propTypes = { step: PropTypes.oneOfType([PropTypes.object, PropTypes.string]).isRequired };
 
 function JobParent({ job, currentSlug, currentType }) {
-  const [docTab, setDocTab] = useState('admit');
   const feeLabels = { general: 'General / UR', obc: 'OBC-NCL', sc_st: 'SC / ST', ews: 'EWS', female: 'Female / PwBD' };
   const impLinks = job.application_details?.important_links || [];
   const vb = job.vacancy_breakdown || {};
   const vbPosts = vb.posts || [];
-  const hasAdmitCards = (job.admit_cards || []).length > 0;
-  const hasAnswerKeys = (job.answer_keys || []).length > 0;
-  const hasResults = (job.results || []).length > 0;
 
   return (
     <motion.div variants={fadeUp}>
@@ -179,14 +175,14 @@ function JobParent({ job, currentSlug, currentType }) {
               const url = typeof link === 'object' ? link.url : link;
               const text = typeof link === 'object' ? (link.text || url) : url;
               const ltype = typeof link === 'object' ? (link.type || '') : '';
-              const styles = {
+              const linkStyles = {
                 apply_online: { background: '#2563eb', color: '#fff', borderColor: '#2563eb' },
                 download_notification: { background: '#7c3aed', color: '#fff', borderColor: '#7c3aed' },
                 syllabus: { background: '#0891b2', color: '#fff', borderColor: '#0891b2' },
               };
               const icons = { apply_online: <BookOpen size={13} strokeWidth={2} />, download_notification: <Download size={13} strokeWidth={2} />, syllabus: <BookOpen size={13} strokeWidth={2} />, official_website: <Globe size={13} strokeWidth={2} /> };
               return (
-                <a key={url} href={url} target="_blank" rel="noopener noreferrer" className="share-btn" style={{ ...(styles[ltype] && { ...styles[ltype] }), display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                <a key={url} href={url} target="_blank" rel="noopener noreferrer" className="share-btn" style={{ ...(linkStyles[ltype] && { ...linkStyles[ltype] }), display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
                   {icons[ltype] || <Link2 size={13} strokeWidth={2} />} {text}
                 </a>
               );
@@ -195,60 +191,14 @@ function JobParent({ job, currentSlug, currentType }) {
         </div>
       )}
 
-      {(hasAdmitCards || hasAnswerKeys || hasResults) && (
-        <div className="detail-section">
-          <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Folder size={16} strokeWidth={2} />Phase Documents</h2>
-          <div className="doc-tabs-bar">
-            {hasAdmitCards && <button className={`doc-tab-btn${docTab === 'admit' ? ' active' : ''}`} onClick={() => setDocTab('admit')}>Admit Cards ({job.admit_cards.length})</button>}
-            {hasAnswerKeys && <button className={`doc-tab-btn${docTab === 'answer' ? ' active' : ''}`} onClick={() => setDocTab('answer')}>Answer Keys ({job.answer_keys.length})</button>}
-            {hasResults && <button className={`doc-tab-btn${docTab === 'result' ? ' active' : ''}`} onClick={() => setDocTab('result')}>Results ({job.results.length})</button>}
-          </div>
-          {docTab === 'admit' && hasAdmitCards && (
-            <div style={{ paddingTop: '0.85rem' }}>
-              {job.admit_cards.map((c) => (
-                <div key={c.id} style={{ border: '1px solid #bfdbfe', background: '#eff6ff', borderRadius: '0.5rem', padding: '0.8rem 1rem', marginBottom: '0.65rem', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
-                  <div><div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{c.title}</div>{(c.exam_start || c.exam_end) && <div style={{ fontSize: '0.8rem', color: '#b45309' }}>Exam: {c.exam_start || '?'} – {c.exam_end || '?'}</div>}</div>
-                  {c.slug !== currentSlug && <Link to={`/admit-cards/${c.slug}`} style={{ background: '#2563eb', color: '#fff', padding: '0.38rem 0.75rem', borderRadius: '0.5rem', fontSize: '0.78rem', fontWeight: 600, textDecoration: 'none' }}>View →</Link>}
-                  {c.slug === currentSlug && <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 600, padding: '0.38rem 0.75rem' }}>Current</span>}
-                </div>
-              ))}
-            </div>
-          )}
-          {docTab === 'answer' && hasAnswerKeys && (
-            <div style={{ paddingTop: '0.85rem' }}>
-              {job.answer_keys.map((k) => (
-                <div key={k.id} style={{ border: '1px solid #fde68a', background: '#fefce8', borderRadius: '0.5rem', padding: '0.8rem 1rem', marginBottom: '0.65rem', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
-                  <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{k.title}</div>
-                  {k.slug !== currentSlug && <Link to={`/answer-keys/${k.slug}`} style={{ background: '#d97706', color: '#fff', padding: '0.38rem 0.75rem', borderRadius: '0.5rem', fontSize: '0.78rem', fontWeight: 600, textDecoration: 'none' }}>View →</Link>}
-                  {k.slug === currentSlug && <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 600, padding: '0.38rem 0.75rem' }}>Current</span>}
-                </div>
-              ))}
-            </div>
-          )}
-          {docTab === 'result' && hasResults && (
-            <div style={{ paddingTop: '0.85rem' }}>
-              {job.results.map((r) => (
-                <div key={r.id} style={{ border: '1px solid #bbf7d0', background: '#f0fdf4', borderRadius: '0.5rem', padding: '0.8rem 1rem', marginBottom: '0.65rem', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
-                  <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{r.title}</div>
-                  {r.slug !== currentSlug && <Link to={`/results/${r.slug}`} style={{ background: '#16a34a', color: '#fff', padding: '0.38rem 0.75rem', borderRadius: '0.5rem', fontSize: '0.78rem', fontWeight: 600, textDecoration: 'none' }}>View →</Link>}
-                  {r.slug === currentSlug && <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 600, padding: '0.38rem 0.75rem' }}>Current</span>}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+      <PhaseDocTabs admitCards={job.admit_cards || []} answerKeys={job.answer_keys || []} results={job.results || []} currentSlug={currentSlug} />
     </motion.div>
   );
 }
 JobParent.propTypes = { job: PropTypes.object.isRequired, currentSlug: PropTypes.string.isRequired, currentType: PropTypes.string.isRequired };
 
 function AdmissionParent({ admission, currentSlug, currentType }) {
-  const [docTab, setDocTab] = useState('admit');
   const impLinks = admission.admission_details?.important_links || [];
-  const hasAdmitCards = (admission.admit_cards || []).length > 0;
-  const hasAnswerKeys = (admission.answer_keys || []).length > 0;
-  const hasResults = (admission.results || []).length > 0;
 
   return (
     <motion.div variants={fadeUp}>
@@ -325,49 +275,7 @@ function AdmissionParent({ admission, currentSlug, currentType }) {
         </div>
       )}
 
-      {(hasAdmitCards || hasAnswerKeys || hasResults) && (
-        <div className="detail-section">
-          <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Folder size={16} strokeWidth={2} />Phase Documents</h2>
-          <div className="doc-tabs-bar">
-            {hasAdmitCards && <button className={`doc-tab-btn${docTab === 'admit' ? ' active' : ''}`} onClick={() => setDocTab('admit')}>Admit Cards ({admission.admit_cards.length})</button>}
-            {hasAnswerKeys && <button className={`doc-tab-btn${docTab === 'answer' ? ' active' : ''}`} onClick={() => setDocTab('answer')}>Answer Keys ({admission.answer_keys.length})</button>}
-            {hasResults && <button className={`doc-tab-btn${docTab === 'result' ? ' active' : ''}`} onClick={() => setDocTab('result')}>Results ({admission.results.length})</button>}
-          </div>
-          {docTab === 'admit' && hasAdmitCards && (
-            <div style={{ paddingTop: '0.85rem' }}>
-              {admission.admit_cards.map((c) => (
-                <div key={c.id} style={{ border: '1px solid #bfdbfe', background: '#eff6ff', borderRadius: '0.5rem', padding: '0.8rem 1rem', marginBottom: '0.65rem', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
-                  <div><div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{c.title}</div>{(c.exam_start || c.exam_end) && <div style={{ fontSize: '0.8rem', color: '#b45309' }}>Exam: {c.exam_start || '?'} – {c.exam_end || '?'}</div>}</div>
-                  {c.slug !== currentSlug && <Link to={`/admit-cards/${c.slug}`} style={{ background: '#2563eb', color: '#fff', padding: '0.38rem 0.75rem', borderRadius: '0.5rem', fontSize: '0.78rem', fontWeight: 600, textDecoration: 'none' }}>View →</Link>}
-                  {c.slug === currentSlug && <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 600, padding: '0.38rem 0.75rem' }}>Current</span>}
-                </div>
-              ))}
-            </div>
-          )}
-          {docTab === 'answer' && hasAnswerKeys && (
-            <div style={{ paddingTop: '0.85rem' }}>
-              {admission.answer_keys.map((k) => (
-                <div key={k.id} style={{ border: '1px solid #fde68a', background: '#fefce8', borderRadius: '0.5rem', padding: '0.8rem 1rem', marginBottom: '0.65rem', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
-                  <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{k.title}</div>
-                  {k.slug !== currentSlug && <Link to={`/answer-keys/${k.slug}`} style={{ background: '#d97706', color: '#fff', padding: '0.38rem 0.75rem', borderRadius: '0.5rem', fontSize: '0.78rem', fontWeight: 600, textDecoration: 'none' }}>View →</Link>}
-                  {k.slug === currentSlug && <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 600, padding: '0.38rem 0.75rem' }}>Current</span>}
-                </div>
-              ))}
-            </div>
-          )}
-          {docTab === 'result' && hasResults && (
-            <div style={{ paddingTop: '0.85rem' }}>
-              {admission.results.map((r) => (
-                <div key={r.id} style={{ border: '1px solid #bbf7d0', background: '#f0fdf4', borderRadius: '0.5rem', padding: '0.8rem 1rem', marginBottom: '0.65rem', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
-                  <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{r.title}</div>
-                  {r.slug !== currentSlug && <Link to={`/results/${r.slug}`} style={{ background: '#16a34a', color: '#fff', padding: '0.38rem 0.75rem', borderRadius: '0.5rem', fontSize: '0.78rem', fontWeight: 600, textDecoration: 'none' }}>View →</Link>}
-                  {r.slug === currentSlug && <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 600, padding: '0.38rem 0.75rem' }}>Current</span>}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+      <PhaseDocTabs admitCards={admission.admit_cards || []} answerKeys={admission.answer_keys || []} results={admission.results || []} currentSlug={currentSlug} />
     </motion.div>
   );
 }

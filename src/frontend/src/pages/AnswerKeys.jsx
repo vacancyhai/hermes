@@ -1,8 +1,10 @@
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FileText, Star, Landmark, Briefcase, GraduationCap, CalendarDays, Clock } from 'lucide-react';
+import { FileText, Landmark, Briefcase, GraduationCap, CalendarDays, Clock } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTrackedItems } from '../hooks/useTrackedItems';
+import OrgLogoCircle from '../components/OrgLogoCircle';
+import TrackControl from '../components/TrackControl';
 
 const cardVariants = {
   hidden: { opacity: 0, y: 16 },
@@ -68,11 +70,7 @@ export default function AnswerKeys() {
             style={{ background: '#fff', border: '1px solid #e2e8f0', borderLeft: '3px solid #d97706', borderRadius: 'var(--radius-lg)', padding: '1rem 1.1rem', marginBottom: '0.65rem', boxShadow: 'var(--shadow-sm)', transition: 'border-color 0.15s', cursor: 'pointer' }}
           >
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
-              <div style={{ flexShrink: 0, width: 40, height: 40, borderRadius: '50%', overflow: 'hidden', border: '1.5px solid #e2e8f0', background: 'linear-gradient(135deg,#78350f,#d97706)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 1px 4px rgba(15,23,42,.1)' }}>
-                {key.parent_logo_url
-                  ? <img src={key.parent_logo_url} alt={key.parent_organization} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; }} />
-                  : <span style={{ color: '#fff', fontWeight: 800, fontSize: '0.95rem', lineHeight: 1 }}>{(key.parent_organization || key.title || '?')[0].toUpperCase()}</span>}
-              </div>
+              <OrgLogoCircle logoUrl={key.parent_logo_url} orgName={key.parent_organization} title={key.title} gradient="linear-gradient(135deg,#78350f,#d97706)" />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <h3 style={{ fontSize: '0.975rem', fontWeight: 700, lineHeight: 1.4, marginBottom: '0.15rem', color: '#0f172a' }}>
                   {key.title}
@@ -101,13 +99,7 @@ export default function AnswerKeys() {
                   </span>
                 )}
               </div>
-              {tid && (token ? (
-                <button onClick={(e) => { e.stopPropagation(); track(type, tid); }} className={isTracking ? 'btn-tracking btn btn-sm' : 'btn btn-outline btn-sm'} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
-                  <Star size={12} strokeWidth={2} fill={isTracking ? 'currentColor' : 'none'} />{isTracking ? 'Tracking' : 'Keep Track'}
-                </button>
-              ) : (
-                <Link to={`/login?next=/answer-keys/${key.slug}`} onClick={(e) => e.stopPropagation()} className="btn btn-outline btn-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}><Star size={12} strokeWidth={2} />Keep Track</Link>
-              ))}
+              {tid && <TrackControl token={token} isTracking={isTracking} onTrack={() => track(type, tid)} loginPath={`/login?next=/answer-keys/${key.slug}`} />}
             </div>
           </motion.div>
         );
