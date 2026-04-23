@@ -152,6 +152,13 @@ a:hover { text-decoration: underline; }
 .vacancy-cell { display: flex; flex-direction: column; gap: .2rem; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: .375rem; padding: .5rem; }
 .vacancy-cell label { font-size: .7rem; font-weight: 700; color: #6b7280; text-align: center; }
 .vacancy-cell input { text-align: center; border: 1px solid #d1d5db; border-radius: .25rem; padding: .3rem; font-size: .85rem; }
+.total-cell { background: #eff6ff; border-color: #bfdbfe; }
+.total-cell label { color: #1d4ed8; }
+.male-cell { background: #eff6ff; border-color: #bfdbfe; }
+.male-cell label { color: #1d4ed8; }
+.female-cell { background: #fdf2f8; border-color: #fbcfe8; }
+.female-cell label { color: #9d174d; }
+.subsection-label { font-size: .75rem; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: .06em; margin: .25rem 0 .5rem; }
 @media (max-width: 640px) { .fee-grid { grid-template-columns: 1fr 1fr 1fr; } .vacancy-grid { grid-template-columns: 1fr 1fr; } }
 
 /* ── Page header ── */
