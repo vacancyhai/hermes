@@ -130,11 +130,16 @@ export default function Admissions() {
         <div>
           {loading && Array.from({ length: 6 }).map((_, i) => (
             <div key={i} style={{ background: '#fff', border: '1px solid #e2e8f0', borderLeft: '3px solid #e2e8f0', borderRadius: '0.65rem', padding: '1rem 1.1rem', marginBottom: '0.6rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                <div className="skeleton" style={{ height: 16, width: '65%', borderRadius: '0.4rem' }} />
-                <div className="skeleton" style={{ height: 16, width: 52, borderRadius: '9999px' }} />
+              <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '0.5rem', alignItems: 'flex-start' }}>
+                <div className="skeleton" style={{ width: 40, height: 40, borderRadius: '50%', flexShrink: 0 }} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
+                    <div className="skeleton" style={{ height: 16, width: '65%', borderRadius: '0.4rem' }} />
+                    <div className="skeleton" style={{ height: 16, width: 52, borderRadius: '9999px' }} />
+                  </div>
+                  <div className="skeleton" style={{ height: 13, width: '45%', borderRadius: '0.4rem' }} />
+                </div>
               </div>
-              <div className="skeleton" style={{ height: 13, width: '45%', borderRadius: '0.4rem', marginBottom: '0.4rem' }} />
               <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.55rem' }}>
                 <div className="skeleton" style={{ height: 22, width: 48, borderRadius: '9999px' }} />
                 <div className="skeleton" style={{ height: 22, width: 80, borderRadius: '9999px' }} />
@@ -160,13 +165,23 @@ export default function Admissions() {
                 whileTap={{ scale: 0.99 }}
                 style={{ background: '#fff', border: '1px solid #e2e8f0', borderLeft: '3px solid #7c3aed', borderRadius: 'var(--radius-lg)', padding: '1rem 1.1rem', marginBottom: '0.65rem', boxShadow: 'var(--shadow-sm)', transition: 'border-color 0.15s' }}
               >
-                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.6rem', marginBottom: '0.3rem' }}>
-                  <h3 style={{ fontSize: '0.975rem', fontWeight: 700, lineHeight: 1.4, flex: 1, minWidth: 0 }}>
-                    <Link to={`/admissions/${adm.slug}`} style={{ color: '#0f172a', textDecoration: 'none' }}>{adm.admission_name}</Link>
-                  </h3>
-                  {(() => { const s = statusMap[adm.status]; return s ? <span style={{ background: s.bg, color: s.color, border: `1px solid ${s.border}`, fontSize: '0.65rem', fontWeight: 700, padding: '0.15rem 0.55rem', borderRadius: '9999px', whiteSpace: 'nowrap', flexShrink: 0, display: 'inline-flex', alignItems: 'center', lineHeight: 1.4 }}>{s.label}</span> : null; })()}
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', marginBottom: '0.3rem' }}>
+                  {/* Org logo circle */}
+                  <div style={{ flexShrink: 0, width: 40, height: 40, borderRadius: '50%', overflow: 'hidden', border: '1.5px solid #e2e8f0', background: 'linear-gradient(135deg,#4c1d95,#7c3aed)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 1px 4px rgba(15,23,42,.1)' }}>
+                    {adm.organization_logo_url
+                      ? <img src={adm.organization_logo_url} alt={adm.conducting_body} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; }} />
+                      : <span style={{ color: '#fff', fontWeight: 800, fontSize: '0.95rem', lineHeight: 1 }}>{(adm.conducting_body || '?')[0].toUpperCase()}</span>}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.5rem' }}>
+                      <h3 style={{ fontSize: '0.975rem', fontWeight: 700, lineHeight: 1.4, flex: 1, minWidth: 0, margin: 0 }}>
+                        <Link to={`/admissions/${adm.slug}`} style={{ color: '#0f172a', textDecoration: 'none' }}>{adm.admission_name}</Link>
+                      </h3>
+                      {(() => { const s = statusMap[adm.status]; return s ? <span style={{ background: s.bg, color: s.color, border: `1px solid ${s.border}`, fontSize: '0.65rem', fontWeight: 700, padding: '0.15rem 0.55rem', borderRadius: '9999px', whiteSpace: 'nowrap', flexShrink: 0, display: 'inline-flex', alignItems: 'center', lineHeight: 1.4 }}>{s.label}</span> : null; })()}
+                    </div>
+                    <div style={{ fontSize: '0.82rem', color: '#64748b', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.3rem', marginTop: '0.15rem' }}><Landmark size={12} strokeWidth={2} />{adm.conducting_body}</div>
+                  </div>
                 </div>
-                <div style={{ fontSize: '0.82rem', color: '#64748b', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.3rem', marginBottom: '0.35rem' }}><Landmark size={12} strokeWidth={2} />{adm.conducting_body}</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', marginBottom: '0.6rem' }}>
                   {adm.admission_type && <span style={{ background: '#ede9fe', color: '#5b21b6', border: '1px solid #ddd6fe', padding: '0.15rem 0.5rem', borderRadius: '9999px', fontSize: '0.72rem', fontWeight: 700 }}>{adm.admission_type.toUpperCase()}</span>}
                   {adm.stream && <span style={{ background: '#dbeafe', color: '#1e40af', border: '1px solid #bfdbfe', padding: '0.15rem 0.5rem', borderRadius: '9999px', fontSize: '0.72rem', fontWeight: 600 }}>{adm.stream}</span>}

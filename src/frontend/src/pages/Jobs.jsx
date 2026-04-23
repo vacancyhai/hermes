@@ -36,6 +36,7 @@ function JobCard({ job, trackedIds, onToggle }) {
   };
 
   const s = statusMap[job.status];
+  const initials = (job.organization || '?')[0].toUpperCase();
   return (
     <motion.div
       variants={cardVariants}
@@ -43,13 +44,23 @@ function JobCard({ job, trackedIds, onToggle }) {
       whileTap={{ scale: 0.99 }}
       style={{ background: '#fff', border: '1px solid #e2e8f0', borderLeft: '3px solid #1e3a5f', borderRadius: '0.75rem', padding: '1rem 1.1rem', marginBottom: '0.6rem', boxShadow: '0 1px 4px rgba(15,23,42,.05)', transition: 'border-color 0.15s' }}
     >
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.6rem', marginBottom: '0.3rem' }}>
-        <h3 style={{ fontSize: '0.975rem', fontWeight: 700, lineHeight: 1.4, flex: 1, minWidth: 0 }}>
-          <Link to={`/jobs/${job.slug}`} style={{ color: '#0f172a', textDecoration: 'none' }}>{job.job_title}</Link>
-        </h3>
-        {s && <span style={{ background: s.bg, color: s.color, border: `1px solid ${s.border}`, fontSize: '0.65rem', fontWeight: 700, padding: '0.15rem 0.55rem', borderRadius: '9999px', whiteSpace: 'nowrap', flexShrink: 0, display: 'inline-flex', alignItems: 'center', lineHeight: 1.4 }}>{s.label}</span>}
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', marginBottom: '0.3rem' }}>
+        {/* Org logo circle */}
+        <div style={{ flexShrink: 0, width: 40, height: 40, borderRadius: '50%', overflow: 'hidden', border: '1.5px solid #e2e8f0', background: 'linear-gradient(135deg,#1e3a5f,#3b82f6)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 1px 4px rgba(15,23,42,.1)' }}>
+          {job.organization_logo_url
+            ? <img src={job.organization_logo_url} alt={job.organization} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; e.target.parentNode.dataset.fallback = '1'; }} />
+            : <span style={{ color: '#fff', fontWeight: 800, fontSize: '0.95rem', lineHeight: 1 }}>{initials}</span>}
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.5rem' }}>
+            <h3 style={{ fontSize: '0.975rem', fontWeight: 700, lineHeight: 1.4, flex: 1, minWidth: 0, margin: 0 }}>
+              <Link to={`/jobs/${job.slug}`} style={{ color: '#0f172a', textDecoration: 'none' }}>{job.job_title}</Link>
+            </h3>
+            {s && <span style={{ background: s.bg, color: s.color, border: `1px solid ${s.border}`, fontSize: '0.65rem', fontWeight: 700, padding: '0.15rem 0.55rem', borderRadius: '9999px', whiteSpace: 'nowrap', flexShrink: 0, display: 'inline-flex', alignItems: 'center', lineHeight: 1.4 }}>{s.label}</span>}
+          </div>
+          <div style={{ fontSize: '0.82rem', color: '#64748b', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.3rem', marginTop: '0.15rem' }}><Landmark size={12} strokeWidth={2} />{job.organization}</div>
+        </div>
       </div>
-      <div style={{ fontSize: '0.82rem', color: '#64748b', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.3rem', marginBottom: '0.3rem' }}><Landmark size={12} strokeWidth={2} />{job.organization}</div>
       {job.short_description && <div style={{ fontSize: '0.845rem', color: '#475569', marginBottom: '0.35rem', lineHeight: 1.55, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{job.short_description}</div>}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', marginBottom: '0.6rem' }}>
         {job.total_vacancies && <span style={{ background: '#f1f5f9', color: '#334155', padding: '0.15rem 0.5rem', borderRadius: '9999px', fontSize: '0.72rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.25rem', border: '1px solid #e2e8f0' }}><Users size={11} strokeWidth={2} />{job.total_vacancies.toLocaleString()} posts</span>}
@@ -168,11 +179,16 @@ export default function Jobs() {
         <div>
           {loading && Array.from({ length: 6 }).map((_, i) => (
             <div key={i} style={{ background: '#fff', border: '1px solid #e2e8f0', borderLeft: '3px solid #e2e8f0', borderRadius: '0.65rem', padding: '1rem 1.1rem', marginBottom: '0.6rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                <div className="skeleton" style={{ height: 16, width: '60%', borderRadius: '0.4rem' }} />
-                <div className="skeleton" style={{ height: 16, width: 52, borderRadius: '9999px' }} />
+              <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '0.5rem', alignItems: 'flex-start' }}>
+                <div className="skeleton" style={{ width: 40, height: 40, borderRadius: '50%', flexShrink: 0 }} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
+                    <div className="skeleton" style={{ height: 16, width: '60%', borderRadius: '0.4rem' }} />
+                    <div className="skeleton" style={{ height: 16, width: 52, borderRadius: '9999px' }} />
+                  </div>
+                  <div className="skeleton" style={{ height: 13, width: '40%', borderRadius: '0.4rem' }} />
+                </div>
               </div>
-              <div className="skeleton" style={{ height: 13, width: '40%', borderRadius: '0.4rem', marginBottom: '0.4rem' }} />
               <div className="skeleton" style={{ height: 13, width: '80%', borderRadius: '0.4rem', marginBottom: '0.4rem' }} />
               <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.55rem' }}>
                 <div className="skeleton" style={{ height: 22, width: 80, borderRadius: '9999px' }} />

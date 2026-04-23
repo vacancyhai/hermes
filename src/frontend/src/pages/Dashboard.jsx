@@ -93,30 +93,10 @@ MiniCard.propTypes = {
   onClick: PropTypes.func.isRequired,
 };
 
-function OrgAvatar({ logoUrl, name, size = 20 }) {
-  const [err, setErr] = useState(false);
-  if (logoUrl && !err) {
-    return <img src={logoUrl} alt={name} onError={() => setErr(true)} style={{ width: size, height: size, borderRadius: '0.3rem', objectFit: 'cover', flexShrink: 0, border: '1px solid #e2e8f0' }} />;
-  }
-  return (
-    <span style={{ width: size, height: size, borderRadius: '0.3rem', background: 'linear-gradient(135deg,#1e3a5f,#3b82f6)', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: Math.floor(size * 0.45) + 'px', fontWeight: 800, flexShrink: 0 }}>
-      {name?.[0]?.toUpperCase() || '?'}
-    </span>
-  );
-}
-
-OrgAvatar.propTypes = { logoUrl: PropTypes.string, name: PropTypes.string, size: PropTypes.number };
-OrgAvatar.defaultProps = { logoUrl: null, name: '', size: 20 };
-
 function TrackBtn({ type, id, slug, isTracking, onToggle }) {
   const { token } = useAuth();
   if (!token) {
-    return (
-      <a href={`/login?next=/${type}s/${slug}`} onClick={(e) => { e.stopPropagation(); }}
-        style={{ fontSize: '0.68rem', padding: '0.2rem 0.55rem', borderRadius: 9999, border: '1px solid #bfdbfe', background: '#eff6ff', color: '#1d4ed8', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.22rem', fontWeight: 600, whiteSpace: 'nowrap' }}>
-        <Star size={10} strokeWidth={2} />Keep track
-      </a>
-    );
+    return <a href={`/login?next=/${type}s/${slug}`} onClick={(e) => { e.stopPropagation(); }} style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem', borderRadius: 9999, border: '1px solid #bfdbfe', background: '#eff6ff', color: '#1d4ed8', textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}><Star size={11} strokeWidth={2} /></a>;
   }
   const track = async (e) => {
     e.stopPropagation();
@@ -489,17 +469,21 @@ export default function Dashboard() {
             {!loading && data.jobs.map((job) => (
               <MiniCard key={job.id} color="#1e3a5f" accentBg="#f0f4ff" onClick={() => navigate(`/jobs/${job.slug}`)}>
                 <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.3rem', marginBottom: '0.2rem' }}>
-                    <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
-                      <div style={{ fontSize: '0.85rem', fontWeight: 700, lineHeight: 1.35, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{job.job_title}</div>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', marginBottom: '0.3rem' }}>
+                    <div style={{ flexShrink: 0, width: 32, height: 32, borderRadius: '50%', overflow: 'hidden', border: '1.5px solid #e2e8f0', background: 'linear-gradient(135deg,#1e3a5f,#3b82f6)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 1px 3px rgba(15,23,42,.1)' }}>
+                      {job.organization_logo_url
+                        ? <img src={job.organization_logo_url} alt={job.organization} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; }} />
+                        : <span style={{ color: '#fff', fontWeight: 800, fontSize: '0.75rem', lineHeight: 1 }}>{(job.organization || '?')[0].toUpperCase()}</span>}
                     </div>
-                    <MiniStatus status={job.status} />
-                  </div>
-                  <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.2rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                    {job.org_logo_url
-                      ? <OrgAvatar logoUrl={job.org_logo_url} name={job.organization} size={16} />
-                      : <Landmark size={11} strokeWidth={2} />}
-                    {job.organization}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.25rem' }}>
+                        <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
+                          <div style={{ fontSize: '0.85rem', fontWeight: 700, lineHeight: 1.35, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{job.job_title}</div>
+                        </div>
+                        <MiniStatus status={job.status} />
+                      </div>
+                      <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '0.15rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '0.2rem' }}><Landmark size={10} strokeWidth={2} />{job.organization}</div>
+                    </div>
                   </div>
                   {job.application_end && <div style={{ fontSize: '0.72rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '0.2rem' }}><Clock size={10} strokeWidth={2} />{job.application_end}</div>}
                   {job.total_vacancies && <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>{job.total_vacancies.toLocaleString()} vacancies</div>}
@@ -585,17 +569,21 @@ export default function Dashboard() {
             {!loading && data.admissions.map((adm) => (
               <MiniCard key={adm.id} color="#7c3aed" accentBg="#f5f3ff" onClick={() => navigate(`/admissions/${adm.slug}`)}>
                 <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.3rem', marginBottom: '0.2rem' }}>
-                    <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
-                      <div style={{ fontSize: '0.85rem', fontWeight: 700, lineHeight: 1.35, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{adm.admission_name}</div>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', marginBottom: '0.3rem' }}>
+                    <div style={{ flexShrink: 0, width: 32, height: 32, borderRadius: '50%', overflow: 'hidden', border: '1.5px solid #e2e8f0', background: 'linear-gradient(135deg,#4c1d95,#7c3aed)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 1px 3px rgba(15,23,42,.1)' }}>
+                      {adm.organization_logo_url
+                        ? <img src={adm.organization_logo_url} alt={adm.conducting_body} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; }} />
+                        : <span style={{ color: '#fff', fontWeight: 800, fontSize: '0.75rem', lineHeight: 1 }}>{(adm.conducting_body || '?')[0].toUpperCase()}</span>}
                     </div>
-                    <MiniStatus status={adm.status} />
-                  </div>
-                  <div style={{ fontSize: '0.75rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                    {adm.org_logo_url
-                      ? <OrgAvatar logoUrl={adm.org_logo_url} name={adm.conducting_body} size={16} />
-                      : <Landmark size={11} strokeWidth={2} />}
-                    {adm.conducting_body}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.25rem' }}>
+                        <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
+                          <div style={{ fontSize: '0.85rem', fontWeight: 700, lineHeight: 1.35, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{adm.admission_name}</div>
+                        </div>
+                        <MiniStatus status={adm.status} />
+                      </div>
+                      <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '0.15rem', display: 'flex', alignItems: 'center', gap: '0.2rem' }}><Landmark size={10} strokeWidth={2} />{adm.conducting_body}</div>
+                    </div>
                   </div>
                   {adm.application_end && <div style={{ fontSize: '0.72rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '0.2rem' }}><Clock size={10} strokeWidth={2} />{adm.application_end}</div>}
                   {adm.admission_type && <span style={{ background: '#ede9fe', color: '#5b21b6', border: '1px solid #ddd6fe', padding: '0.15rem 0.5rem', borderRadius: '9999px', fontSize: '0.6rem', fontWeight: 700, display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap', lineHeight: 1.4 }}>{adm.admission_type.toUpperCase()}</span>}
@@ -640,10 +628,17 @@ export default function Dashboard() {
                       onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,.08)'; }}
                       onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,.04)'; }}
                     >
-                      <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flex: 1, minWidth: 0 }}>
+                        <div style={{ flexShrink: 0, width: 36, height: 36, borderRadius: '50%', overflow: 'hidden', border: '1.5px solid #e2e8f0', background: 'linear-gradient(135deg,#1e3a5f,#3b82f6)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          {item.organization_logo_url
+                            ? <img src={item.organization_logo_url} alt={item.organization} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; }} />
+                            : <span style={{ color: '#fff', fontWeight: 800, fontSize: '0.8rem', lineHeight: 1 }}>{(item.organization || '?')[0].toUpperCase()}</span>}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
                         <h3 style={{ fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.15rem' }}><Link to={`/jobs/${item.slug}`} style={{ color: '#0f172a', textDecoration: 'none' }}>{item.job_title}</Link></h3>
                         <div style={{ color: '#64748b', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}><Landmark size={10} strokeWidth={2} />{item.organization}</div>
                         {item.application_end && <div style={{ fontSize: '0.73rem', color: '#b45309', fontWeight: 600, marginTop: '0.2rem', display: 'inline-flex', alignItems: 'center', gap: '0.2rem', background: '#fef3c7', padding: '0.1rem 0.4rem', borderRadius: '0.3rem' }}><Clock size={10} strokeWidth={2} />Deadline: {item.application_end}</div>}
+                        </div>
                       </div>
                       <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexShrink: 0 }}>
                         <Link to={`/jobs/${item.slug}`} className="btn btn-outline btn-sm">View</Link>
@@ -662,10 +657,17 @@ export default function Dashboard() {
                       onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,.08)'; }}
                       onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,.04)'; }}
                     >
-                      <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flex: 1, minWidth: 0 }}>
+                        <div style={{ flexShrink: 0, width: 36, height: 36, borderRadius: '50%', overflow: 'hidden', border: '1.5px solid #e2e8f0', background: 'linear-gradient(135deg,#4c1d95,#7c3aed)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          {item.organization_logo_url
+                            ? <img src={item.organization_logo_url} alt={item.conducting_body} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; }} />
+                            : <span style={{ color: '#fff', fontWeight: 800, fontSize: '0.8rem', lineHeight: 1 }}>{(item.conducting_body || '?')[0].toUpperCase()}</span>}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
                         <h3 style={{ fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.15rem' }}><Link to={`/admissions/${item.slug}`} style={{ color: '#0f172a', textDecoration: 'none' }}>{item.admission_name}</Link></h3>
                         <div style={{ color: '#64748b', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}><Landmark size={10} strokeWidth={2} />{item.conducting_body}</div>
                         {item.application_end && <div style={{ fontSize: '0.73rem', color: '#b45309', fontWeight: 600, marginTop: '0.2rem', display: 'inline-flex', alignItems: 'center', gap: '0.2rem', background: '#fef3c7', padding: '0.1rem 0.4rem', borderRadius: '0.3rem' }}><Clock size={10} strokeWidth={2} />Deadline: {item.application_end}</div>}
+                        </div>
                       </div>
                       <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexShrink: 0 }}>
                         <Link to={`/admissions/${item.slug}`} className="btn btn-outline btn-sm">View</Link>
@@ -678,9 +680,9 @@ export default function Dashboard() {
 
               {tracked.jobs.length === 0 && tracked.admissions.length === 0 && (
                 <div style={{ textAlign: 'center', padding: '2.5rem 1.5rem', color: '#64748b', background: '#fff', borderRadius: '0.85rem', border: '1.5px dashed #e2e8f0' }}>
-                  <div style={{ width: 56, height: 56, background: 'linear-gradient(135deg,#eff6ff,#dbeafe)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 0.75rem', border: '1px solid #bfdbfe' }}><Star size={24} strokeWidth={1.5} color="#2563eb" /></div>
-                  <p style={{ fontSize: '0.95rem', fontWeight: 700, color: '#0f172a', marginBottom: '0.35rem' }}>Keep track of what matters</p>
-                  <p style={{ fontSize: '0.85rem', color: '#64748b', maxWidth: 300, margin: '0 auto 1.25rem', lineHeight: 1.6 }}>Hit the <strong style={{ color: '#1d4ed8' }}>Keep track</strong> button on any job, admission, or organization to get deadline reminders and updates.</p>
+                  <div style={{ width: 56, height: 56, background: '#f1f5f9', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 0.75rem' }}><Users size={26} strokeWidth={1.5} color="#94a3b8" /></div>
+                  <p style={{ fontSize: '0.95rem', fontWeight: 700, color: '#0f172a', marginBottom: '0.35rem' }}>Nothing tracked yet</p>
+                  <p style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '1.25rem', maxWidth: 280, margin: '0 auto 1.25rem' }}>Track jobs and admissions to receive deadline reminders.</p>
                   <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap' }}>
                     <Link to="/jobs" className="btn btn-primary">Browse Jobs</Link>
                     <Link to="/admissions" className="btn btn-outline">Browse Admissions</Link>

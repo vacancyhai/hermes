@@ -106,6 +106,7 @@ class AdmissionListItem(BaseModel):
     organization_id: uuid.UUID | None = None
     slug: str
     admission_name: str
+    organization_logo_url: str | None = None
     conducting_body: str
     counselling_body: str | None
     admission_type: str

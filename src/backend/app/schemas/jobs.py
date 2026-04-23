@@ -143,6 +143,7 @@ class JobListItem(BaseModel):
     job_title: str
     slug: str
     organization: str
+    organization_logo_url: str | None = None
     department: str | None
     employment_type: str | None
     qualification_level: str | None

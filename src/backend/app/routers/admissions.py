@@ -23,6 +23,7 @@ from app.dependencies import get_current_user, get_db, require_admin, require_op
 from app.models.admission import Admission
 from app.models.admit_card import AdmitCard
 from app.models.answer_key import AnswerKey
+from app.models.organization import Organization
 from app.models.result import Result
 from app.models.user_profile import UserProfile
 from app.schemas.admissions import (
@@ -95,8 +96,25 @@ async def list_admissions(
     total = (await db.execute(count_query)).scalar()
     rows = (await db.execute(query.offset(offset).limit(limit))).scalars().all()
 
+    org_ids = [r.organization_id for r in rows if r.organization_id]
+    logo_map: dict = {}
+    if org_ids:
+        org_rows = await db.execute(
+            select(Organization.id, Organization.logo_url).where(
+                Organization.id.in_(org_ids)
+            )
+        )
+        logo_map = {str(row.id): row.logo_url for row in org_rows}
+
+    def _adm_item(r: Admission) -> dict:
+        d = AdmissionListItem.model_validate(r).model_dump()
+        d["organization_logo_url"] = (
+            logo_map.get(str(r.organization_id)) if r.organization_id else None
+        )
+        return d
+
     return {
-        "data": [AdmissionListItem.model_validate(r).model_dump() for r in rows],
+        "data": [_adm_item(r) for r in rows],
         "pagination": {
             "limit": limit,
             "offset": offset,
