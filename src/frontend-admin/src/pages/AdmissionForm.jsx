@@ -5,7 +5,13 @@ import client from '../api/client';
 import PhaseDocsPanel from '../components/PhaseDocsPanel';
 import ImportantLinksEditor from '../components/ImportantLinksEditor';
 import FeeGrid from '../components/FeeGrid';
-import { STATUSES, emptyFee, emptyLink, safeJson, validateJson, buildFeeObj, toDateInput, makeSlug } from '../lib/formUtils';
+import AdmissionExtrasEditor, {
+  eligibilityToState, eligibilityToPayload,
+  admDetailsToState, admDetailsToPayload,
+  seatsToState, seatsToPayload,
+  selectionToState, selectionToPayload,
+} from '../components/AdmissionExtrasEditor';
+import { STATUSES, emptyFee, emptyLink, buildFeeObj, toDateInput, makeSlug } from '../lib/formUtils';
 
 const fadeUp = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0, transition: { duration: 0.26, ease: [0.16, 1, 0.3, 1] } } };
 
@@ -49,15 +55,11 @@ export default function AdmissionForm() {
   /* ── links ── */
   const [links, setLinks] = useState([{ ...emptyLink }]);
 
-  /* ── JSON fields ── */
-  const [eligibilityJson, setEligibilityJson] = useState('{}');
-  const [eligibilityErr, setEligibilityErr] = useState('');
-  const [selectionJson, setSelectionJson] = useState('{}');
-  const [selectionErr, setSelectionErr] = useState('');
-  const [admDetailsJson, setAdmDetailsJson] = useState('{}');
-  const [admDetailsErr, setAdmDetailsErr] = useState('');
-  const [seatsJson, setSeatsJson] = useState('{}');
-  const [seatsErr, setSeatsErr] = useState('');
+  /* ── structured extras ── */
+  const [eligibility, setEligibility] = useState(eligibilityToState(null));
+  const [admDetails, setAdmDetails] = useState(admDetailsToState(null));
+  const [seats, setSeats] = useState(seatsToState(null));
+  const [phases, setPhases] = useState([]);
 
   useEffect(() => {
     client.get('/admin/organizations', { params: { limit: 200 } }).then((r) => setOrgs(r.data.data || [])).catch(() => {});
@@ -86,10 +88,10 @@ export default function AdmissionForm() {
     setFee({ general: f.general ?? '', obc: f.obc ?? '', sc_st: f.sc_st ?? '', ews: f.ews ?? '', female: f.female ?? '' });
     const appLinks = a.application_details?.important_links;
     setLinks(Array.isArray(appLinks) && appLinks.length ? appLinks : [{ ...emptyLink }]);
-    setEligibilityJson(safeJson(a.eligibility, '{}'));
-    setSelectionJson(safeJson(a.selection_process, '{}'));
-    setAdmDetailsJson(safeJson(a.admission_details, '{}'));
-    setSeatsJson(safeJson(a.seats_info, '{}'));
+    setEligibility(eligibilityToState(a.eligibility));
+    setAdmDetails(admDetailsToState(a.admission_details));
+    setSeats(seatsToState(a.seats_info));
+    setPhases(selectionToState(a.selection_process));
   }, []);
 
   useEffect(() => {
@@ -107,17 +109,14 @@ export default function AdmissionForm() {
   function addLink() { setLinks((l) => [...l, { ...emptyLink }]); }
   function removeLink(i) { setLinks((l) => l.filter((_, idx) => idx !== i)); }
 
-  const hasJsonErrors = () => eligibilityErr || selectionErr || admDetailsErr || seatsErr;
-
   async function handleSubmit(e) {
     e.preventDefault();
-    if (hasJsonErrors()) { setFlash({ type: 'error', msg: 'Fix JSON errors before saving.' }); return; }
     setSaving(true); setFlash(null);
 
-    let eligibility = {}; try { eligibility = JSON.parse(eligibilityJson); } catch {}
-    let selectionProcess = {}; try { selectionProcess = JSON.parse(selectionJson); } catch {}
-    let admissionDetails = {}; try { admissionDetails = JSON.parse(admDetailsJson); } catch {}
-    let seatsInfo = {}; try { seatsInfo = JSON.parse(seatsJson); } catch {}
+    const eligibilityPayload = eligibilityToPayload(eligibility);
+    const admissionDetails = admDetailsToPayload(admDetails);
+    const seatsInfo = seatsToPayload(seats);
+    const selectionProcess = selectionToPayload(phases);
 
     const feeObj = buildFeeObj(fee);
 
@@ -130,7 +129,7 @@ export default function AdmissionForm() {
       exam_start: examStart || null, exam_end: examEnd || null, result_date: resultDate || null,
       counselling_start: counsellingStart || null,
       fee: feeObj,
-      eligibility, selection_process: selectionProcess,
+      eligibility: eligibilityPayload, selection_process: selectionProcess,
       admission_details: admissionDetails, seats_info: seatsInfo,
     };
 
@@ -260,23 +259,16 @@ export default function AdmissionForm() {
 
         <ImportantLinksEditor prefix="alink" links={links} onUpdate={updateLink} onAdd={addLink} onRemove={removeLink} />
 
-        {/* JSON fields */}
-        {[
-          ['Eligibility Criteria (JSON)', eligibilityJson, setEligibilityJson, eligibilityErr, setEligibilityErr, 'section-header--green'],
-          ['Selection Process (JSON)', selectionJson, setSelectionJson, selectionErr, setSelectionErr, 'section-header--teal'],
-          ['Admission Details (JSON)', admDetailsJson, setAdmDetailsJson, admDetailsErr, setAdmDetailsErr, 'section-header--slate'],
-          ['Seats Info (JSON)', seatsJson, setSeatsJson, seatsErr, setSeatsErr, 'section-header--red'],
-        ].map(([label, val, setter, err, errSetter, colorClass]) => (
-          <div className="section-card" key={label}>
-            <div className={`section-header ${colorClass}`}>{label}</div>
-            <div className="section-body">
-              <textarea rows={5} value={val}
-                onChange={(e) => validateJson(e.target.value, setter, errSetter)}
-                style={{ width: '100%', fontFamily: 'monospace', fontSize: '.82rem', borderColor: err ? '#ef4444' : undefined }} />
-              {err && <p style={{ color: '#ef4444', fontSize: '.78rem', marginTop: '.25rem' }}>JSON error: {err}</p>}
-            </div>
-          </div>
-        ))}
+        <AdmissionExtrasEditor
+          eligibility={eligibility}
+          onEligibility={(k, v) => setEligibility((s) => ({ ...s, [k]: v }))}
+          admDetails={admDetails}
+          onAdmDetails={(k, v) => setAdmDetails((s) => ({ ...s, [k]: v }))}
+          seats={seats}
+          onSeats={(k, v) => setSeats((s) => ({ ...s, [k]: v }))}
+          phases={phases}
+          onPhases={setPhases}
+        />
       </form>
 
       {isEdit && <PhaseDocsPanel parentKey="admission_id" parentId={admissionId} onFlash={setFlash} />}
