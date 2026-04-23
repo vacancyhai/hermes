@@ -385,7 +385,7 @@ export default function Dashboard() {
                 <span style={{ width: 26, height: 26, background: 'rgba(255,255,255,.15)', borderRadius: '0.4rem', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(255,255,255,.12)' }}>
                   <CalendarDays size={13} strokeWidth={2.5} />
                 </span>
-                Upcoming Exams
+                {' '}Upcoming Exams
               </div>
               {!loading && data.exams.length > 0 && (
                 <span style={{ background: 'rgba(255,255,255,.18)', color: '#fff', fontSize: '0.65rem', fontWeight: 700, padding: '0.15rem 0.5rem', borderRadius: 9999, border: '1px solid rgba(255,255,255,.15)' }}>{data.exams.length}</span>

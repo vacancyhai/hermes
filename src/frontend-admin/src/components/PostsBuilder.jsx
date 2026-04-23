@@ -125,8 +125,8 @@ function VacancyTab({ v, onChange }) {
       </div>
       <p className="subsection-label" style={{ marginTop: '.75rem' }}>Gender-wise</p>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.5rem' }}>
-        <div className="vacancy-cell male-cell"><label>♂ Male</label><input type="number" min="0" value={v.male} onChange={(e) => onChange('male', e.target.value)} placeholder="0" /></div>
-        <div className="vacancy-cell female-cell"><label>♀ Female</label><input type="number" min="0" value={v.female} onChange={(e) => onChange('female', e.target.value)} placeholder="0" /></div>
+        <div className="vacancy-cell male-cell"><label htmlFor="vac-male">♂ Male</label><input id="vac-male" type="number" min="0" value={v.male} onChange={(e) => onChange('male', e.target.value)} placeholder="0" /></div>
+        <div className="vacancy-cell female-cell"><label htmlFor="vac-female">♀ Female</label><input id="vac-female" type="number" min="0" value={v.female} onChange={(e) => onChange('female', e.target.value)} placeholder="0" /></div>
       </div>
     </div>
   );
@@ -257,7 +257,7 @@ function PhaseDetail({ ph, onChange }) {
   }
 
   if (ph.type === 'physical_standard') {
-    const mg = (d.male || {}).general || {}; const ms = (d.male || {}).sc_st || {}; const fa = (d.female || {}).all || {};
+    const mg = d.male?.general ?? {}; const ms = d.male?.sc_st ?? {}; const fa = d.female?.all ?? {};
     const ug = (f, v) => upd('male', { ...d.male, general: { ...mg, [f]: v } });
     const us = (f, v) => upd('male', { ...d.male, sc_st: { ...ms, [f]: v } });
     const ua = (f, v) => upd('female', { ...d.female, all: { ...fa, [f]: v } });

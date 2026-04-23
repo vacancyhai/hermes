@@ -69,11 +69,11 @@ a:hover { text-decoration: underline; }
 .btn-outline { border: 1.5px solid #cbd5e1; background: var(--surface-card); color: #334155; box-shadow: var(--shadow-xs); }
 .btn-outline:hover { border-color: var(--blue); color: var(--blue); background: #eff6ff; box-shadow: var(--shadow-sm); }
 .btn-danger { background: linear-gradient(135deg, #dc2626, #b91c1c); color: #fff; box-shadow: 0 2px 8px rgba(220,38,38,.3); }
-.btn-danger:hover { background: linear-gradient(135deg, #ef4444, #dc2626); color: #fff; }
-.btn-success { background: linear-gradient(135deg, #16a34a, #15803d); color: #fff; box-shadow: 0 2px 8px rgba(22,163,74,.3); }
-.btn-success:hover { background: linear-gradient(135deg, #22c55e, #16a34a); color: #fff; }
+.btn-danger:hover { background: linear-gradient(135deg, #dc2626, #b91c1c); color: #fff; }
+.btn-success { background: linear-gradient(135deg, #15803d, #166534); color: #fff; box-shadow: 0 2px 8px rgba(22,163,74,.3); }
+.btn-success:hover { background: linear-gradient(135deg, #16a34a, #15803d); color: #fff; }
 .btn-warning { background: linear-gradient(135deg, #b45309, #92400e); color: #fff; }
-.btn-warning:hover { background: linear-gradient(135deg, #d97706, #b45309); color: #fff; }
+.btn-warning:hover { background: linear-gradient(135deg, #b45309, #92400e); color: #fff; }
 .btn-sm { padding: .28rem .6rem; font-size: .75rem; border-radius: var(--radius-sm); }
 
 /* ── Cards & Tables ── */
