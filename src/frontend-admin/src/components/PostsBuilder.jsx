@@ -12,9 +12,9 @@ const emptyElig = () => ({
 });
 const emptySalary = () => ({ min: '', max: '', pay_level: '' });
 const emptyFeePost = () => ({ general: '', obc: '', sc_st: '', ews: '', female: '' });
-const emptyPhase = () => ({ id: Math.random(), type: 'written_test', name: '', qualifying: false, details: {} });
+const emptyPhase = () => ({ id: crypto.randomUUID(), type: 'written_test', name: '', qualifying: false, details: {} });
 const emptyPost = () => ({
-  id: Math.random(),
+  id: crypto.randomUUID(),
   post_name: '',
   vacancy: emptyVacancy(),
   eligibility: emptyElig(),
@@ -39,7 +39,7 @@ export function postsToState(arr) {
     const fAgeL = female.age_limit ?? {};
     const fPhys = female.physical_standards?.all ?? {};
     return {
-      id: Math.random(),
+      id: crypto.randomUUID(),
       post_name: p.post_name || '',
       vacancy: {
         total: num(pv.total), ur: num(pv.UR ?? pv.ur), obc: num(pv.OBC ?? pv.obc),
@@ -59,7 +59,7 @@ export function postsToState(arr) {
         general: num(fee.general), obc: num(fee.obc), sc_st: num(fee.sc_st),
         ews: num(fee.ews), female: num(fee.female),
       },
-      phases: (p.selection_process || []).map((ph) => ({ id: Math.random(), type: ph.type || 'written_test', name: ph.name || '', qualifying: !!ph.qualifying, details: ph })),
+      phases: (p.selection_process || []).map((ph) => ({ id: crypto.randomUUID(), type: ph.type || 'written_test', name: ph.name || '', qualifying: !!ph.qualifying, details: ph })),
       activeTab: 'vacancy',
     };
   });

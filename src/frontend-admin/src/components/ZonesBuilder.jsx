@@ -1,14 +1,14 @@
 import PropTypes from 'prop-types';
 import { Globe, X } from 'lucide-react';
 
-const emptyZone = () => ({ id: Date.now() + Math.random(), zone: '', total: '', male: '', female: '', ur: '', obc: '', ews: '', sc: '', st: '' });
+const emptyZone = () => ({ id: crypto.randomUUID(), zone: '', total: '', male: '', female: '', ur: '', obc: '', ews: '', sc: '', st: '' });
 
 const NUM = (v) => v === '' || v === undefined || v === null ? '' : Number(v);
 
 export function zonesToState(arr) {
   if (!Array.isArray(arr) || !arr.length) return [];
   return arr.map((z) => ({
-    id: Math.random(),
+    id: crypto.randomUUID(),
     zone: z.zone || '',
     total: NUM(z.total),
     male: NUM(z.male),

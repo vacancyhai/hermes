@@ -94,7 +94,7 @@ const ADM_PHASE_TYPES = [
 ];
 
 const emptyPhase = () => ({
-  id: Math.random(),
+  id: crypto.randomUUID(),
   type: 'written_test',
   name: '',
   qualifying: false,
@@ -104,7 +104,7 @@ const emptyPhase = () => ({
 export function selectionToState(obj) {
   if (!obj) return [];
   const arr = Array.isArray(obj) ? obj : (obj.phases || []);
-  return arr.map((ph) => ({ id: Math.random(), type: ph.type || 'written_test', name: ph.name || '', qualifying: !!ph.qualifying, details: ph }));
+  return arr.map((ph) => ({ id: crypto.randomUUID(), type: ph.type || 'written_test', name: ph.name || '', qualifying: !!ph.qualifying, details: ph }));
 }
 export function selectionToPayload(phases) {
   return phases.map((ph, i) => {
