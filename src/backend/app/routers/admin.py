@@ -24,6 +24,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Annotated, Any
 
+import bcrypt as _admin_bcrypt
 from app.dependencies import get_db, require_admin, require_operator
 from app.models.admin_log import AdminLog
 from app.models.admin_user import AdminUser
@@ -44,7 +45,6 @@ from app.schemas.jobs import (
 )
 from app.utils import slugify
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from passlib.context import CryptContext
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -82,7 +82,12 @@ class AdminCreateRequest(BaseModel):
     department: str | None = None
 
 
-_admin_pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+class _AdminPwdContext:
+    def hash(self, plain: str) -> str:
+        return _admin_bcrypt.hashpw(plain.encode(), _admin_bcrypt.gensalt()).decode()
+
+
+_admin_pwd_context = _AdminPwdContext()
 
 
 def _collect_changes(obj, update_data: dict) -> dict:
