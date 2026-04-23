@@ -1,7 +1,10 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import client from '../api/client';
 import { makeSlug } from '../lib/formUtils';
+
+const fadeUp = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0, transition: { duration: 0.26, ease: [0.16, 1, 0.3, 1] } } };
 
 const ORG_TYPES = ['jobs', 'admissions', 'both'];
 
@@ -68,8 +71,8 @@ export default function OrgForm() {
   const saveBtnLabel = isEdit ? 'Update' : 'Create';
 
   return (
-    <div>
-      <div className="page-header">
+    <motion.div initial="hidden" animate="show" variants={{ hidden: {}, show: { transition: { staggerChildren: 0.07 } } }}>
+      <motion.div variants={fadeUp} className="page-header">
         <div>
           <Link to="/organizations" style={{ color: '#64748b', fontSize: '.82rem' }}>← Organizations</Link>
           <h1 style={{ marginTop: '.25rem' }}>{isEdit ? 'Edit Organization' : 'New Organization'}</h1>
@@ -80,7 +83,7 @@ export default function OrgForm() {
             {saving ? <><span className="spinner" />{' '}Saving…</> : saveBtnLabel}
           </button>
         </div>
-      </div>
+      </motion.div>
 
       {flash && <div className={flash.type === 'success' ? 'flash-success' : 'flash-error'}>{flash.msg}</div>}
 
@@ -125,6 +128,6 @@ export default function OrgForm() {
           </div>
         </div>
       </form>
-    </div>
+    </motion.div>
   );
 }

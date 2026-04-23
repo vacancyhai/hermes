@@ -1,10 +1,14 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import client from '../api/client';
+
 import PhaseDocsPanel from '../components/PhaseDocsPanel';
 import ImportantLinksEditor from '../components/ImportantLinksEditor';
 import FeeGrid from '../components/FeeGrid';
 import { STATUSES, emptyFee, emptyLink, safeJson, validateJson, buildFeeObj, toDateInput, makeSlug } from '../lib/formUtils';
+
+const fadeUp = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0, transition: { duration: 0.26, ease: [0.16, 1, 0.3, 1] } } };
 
 const QUALIFICATIONS = ['10th', '12th', 'Diploma', 'Graduation', 'Post Graduation', 'PhD', 'Any'];
 const emptyVacancy = { total: '', ur: '', obc: '', ews: '', sc: '', st: '', pwd: '', male: '', female: '' };
@@ -157,8 +161,8 @@ export default function JobForm() {
   const saveBtnLabel = isEdit ? 'Update Job' : 'Create Job';
 
   return (
-    <div>
-      <div className="page-header">
+    <motion.div initial="hidden" animate="show" variants={{ hidden: {}, show: { transition: { staggerChildren: 0.07 } } }}>
+      <motion.div variants={fadeUp} className="page-header">
         <div>
           <Link to="/jobs" style={{ color: '#64748b', fontSize: '.82rem' }}>← Jobs</Link>
           <h1 style={{ marginTop: '.25rem' }}>{isEdit ? 'Edit Job' : 'New Job'}</h1>
@@ -169,7 +173,7 @@ export default function JobForm() {
             {saving ? <><span className="spinner" />{' '}Saving…</> : saveBtnLabel}
           </button>
         </div>
-      </div>
+      </motion.div>
 
       {flash && <div className={flash.type === 'success' ? 'flash-success' : 'flash-error'}>{flash.msg}</div>}
 
@@ -298,6 +302,6 @@ export default function JobForm() {
       </form>
 
       {isEdit && <PhaseDocsPanel parentKey="job_id" parentId={jobId} onFlash={setFlash} />}
-    </div>
+    </motion.div>
   );
 }

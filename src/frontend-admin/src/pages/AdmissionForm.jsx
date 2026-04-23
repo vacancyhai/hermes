@@ -1,10 +1,13 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import client from '../api/client';
 import PhaseDocsPanel from '../components/PhaseDocsPanel';
 import ImportantLinksEditor from '../components/ImportantLinksEditor';
 import FeeGrid from '../components/FeeGrid';
 import { STATUSES, emptyFee, emptyLink, safeJson, validateJson, buildFeeObj, toDateInput, makeSlug } from '../lib/formUtils';
+
+const fadeUp = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0, transition: { duration: 0.26, ease: [0.16, 1, 0.3, 1] } } };
 
 const TYPES = ['undergraduate', 'postgraduate', 'diploma', 'phd', 'certificate', 'other'];
 const STREAMS = ['engineering', 'medical', 'law', 'management', 'arts', 'science', 'commerce', 'other'];
@@ -151,8 +154,8 @@ export default function AdmissionForm() {
   const saveBtnLabel = isEdit ? 'Update' : 'Create';
 
   return (
-    <div>
-      <div className="page-header">
+    <motion.div initial="hidden" animate="show" variants={{ hidden: {}, show: { transition: { staggerChildren: 0.07 } } }}>
+      <motion.div variants={fadeUp} className="page-header">
         <div>
           <Link to="/admissions" style={{ color: '#64748b', fontSize: '.82rem' }}>← Admissions</Link>
           <h1 style={{ marginTop: '.25rem' }}>{isEdit ? 'Edit Admission' : 'New Admission'}</h1>
@@ -163,7 +166,7 @@ export default function AdmissionForm() {
             {saving ? <><span className="spinner" />{' '}Saving…</> : saveBtnLabel}
           </button>
         </div>
-      </div>
+      </motion.div>
 
       {flash && <div className={flash.type === 'success' ? 'flash-success' : 'flash-error'}>{flash.msg}</div>}
 
@@ -277,6 +280,6 @@ export default function AdmissionForm() {
       </form>
 
       {isEdit && <PhaseDocsPanel parentKey="admission_id" parentId={admissionId} onFlash={setFlash} />}
-    </div>
+    </motion.div>
   );
 }

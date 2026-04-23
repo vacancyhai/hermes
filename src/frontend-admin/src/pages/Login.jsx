@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -40,8 +41,11 @@ export default function Login() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg,#1e3a5f 0%,#2563eb 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-      <div style={{ width: '100%', maxWidth: 420 }}>
+    <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg,#0f2440 0%,#1e3a5f 50%,#2563eb 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+      <motion.div
+        initial={{ opacity: 0, y: 24, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+        style={{ width: '100%', maxWidth: 420 }}
+      >
         {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: '1.75rem' }}>
           <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 60, height: 60, background: '#fff', borderRadius: '1rem', boxShadow: '0 4px 16px rgba(0,0,0,.25)', marginBottom: '.75rem' }}>
@@ -87,7 +91,7 @@ export default function Login() {
         <p style={{ textAlign: 'center', color: 'rgba(255,255,255,.5)', fontSize: '.75rem', marginTop: '1.25rem' }}>
           Unauthorised access is strictly prohibited.
         </p>
-      </div>
+      </motion.div>
     </div>
   );
 }

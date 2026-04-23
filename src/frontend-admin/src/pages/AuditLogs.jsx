@@ -1,6 +1,10 @@
 import { useEffect, useState, Fragment } from 'react';
+import { motion } from 'framer-motion';
 import AdminPagination from '../components/AdminPagination';
 import client from '../api/client';
+
+const fadeUp = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0, transition: { duration: 0.26, ease: [0.16, 1, 0.3, 1] } } };
+const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.07, delayChildren: 0.02 } } };
 
 const ACTION_COLORS = {
   create: 'badge-success', update: 'badge-info', delete: 'badge-danger',
@@ -35,10 +39,10 @@ export default function AuditLogs() {
   const totalPages = Math.ceil(total / PER);
 
   return (
-    <div>
-      <div className="page-header">
+    <motion.div variants={stagger} initial="hidden" animate="show">
+      <motion.div variants={fadeUp} className="page-header">
         <h1>Audit Logs <span style={{ fontWeight: 400, color: '#64748b', fontSize: '1rem' }}>({total})</span></h1>
-      </div>
+      </motion.div>
 
       <form className="filters" onSubmit={handleSearch}>
         <select value={actionFilter} onChange={(e) => { setActionFilter(e.target.value); setPage(1); }}>
@@ -120,6 +124,6 @@ export default function AuditLogs() {
       )}
 
       <AdminPagination page={page} totalPages={totalPages} onPage={setPage} />
-    </div>
+    </motion.div>
   );
 }

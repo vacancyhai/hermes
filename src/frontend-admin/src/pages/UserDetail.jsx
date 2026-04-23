@@ -1,8 +1,12 @@
 import PropTypes from 'prop-types';
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { CheckCircle, XCircle } from 'lucide-react';
 import client from '../api/client';
+
+const fadeUp = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0, transition: { duration: 0.26, ease: [0.16, 1, 0.3, 1] } } };
+const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.07, delayChildren: 0.02 } } };
 
 function Row({ label, value }) {
   return (
@@ -112,12 +116,20 @@ export default function UserDetail() {
     }
   }
 
-  if (loading) return <p style={{ color: '#64748b' }}>Loading…</p>;
+  if (loading) return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+      <div className="skeleton" style={{ height: 56, borderRadius: 'var(--radius-lg)' }} />
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+        <div className="skeleton" style={{ height: 320, borderRadius: 'var(--radius-xl)' }} />
+        <div className="skeleton" style={{ height: 320, borderRadius: 'var(--radius-xl)' }} />
+      </div>
+    </div>
+  );
   if (!user) return <p style={{ color: '#ef4444' }}>User not found.</p>;
 
   return (
-    <div>
-      <div className="page-header">
+    <motion.div variants={stagger} initial="hidden" animate="show">
+      <motion.div variants={fadeUp} className="page-header">
         <div>
           <Link to="/users" style={{ color: '#64748b', fontSize: '.82rem' }}>← Users</Link>
           <h1 style={{ marginTop: '.25rem' }}>{user.display_name || user.email || user.phone}</h1>
@@ -131,7 +143,7 @@ export default function UserDetail() {
           )}
           <button className="btn btn-danger" onClick={handleDelete} disabled={acting}>Delete User</button>
         </div>
-      </div>
+      </motion.div>
 
       {flash && <div className={flash.type === 'success' ? 'flash-success' : 'flash-error'}>{flash.msg}</div>}
 
@@ -205,6 +217,6 @@ export default function UserDetail() {
           </div>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }

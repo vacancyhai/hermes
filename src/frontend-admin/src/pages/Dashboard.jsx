@@ -1,12 +1,22 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import client from '../api/client';
 
+const fadeUp = { hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0, transition: { duration: 0.28, ease: [0.16, 1, 0.3, 1] } } };
+const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.06, delayChildren: 0.02 } } };
+
 const QUICK_LINKS = [
-  { to: '/jobs/new', label: '+ New Job', color: '#2563eb' },
-  { to: '/admissions/new', label: '+ New Admission', color: '#7c3aed' },
-  { to: '/organizations/new', label: '+ New Organization', color: '#059669' },
-  { to: '/logs', label: 'Audit Logs', color: '#d97706' },
+  { to: '/jobs/new', label: '+ New Job', bg: 'linear-gradient(135deg,#1e40af,#2563eb)', shadow: 'rgba(37,99,235,.35)' },
+  { to: '/admissions/new', label: '+ New Admission', bg: 'linear-gradient(135deg,#5b21b6,#7c3aed)', shadow: 'rgba(124,58,237,.35)' },
+  { to: '/organizations/new', label: '+ New Organization', bg: 'linear-gradient(135deg,#065f46,#059669)', shadow: 'rgba(5,150,105,.35)' },
+  { to: '/logs', label: 'View Audit Logs', bg: 'linear-gradient(135deg,#92400e,#d97706)', shadow: 'rgba(217,119,6,.35)' },
+];
+
+const STAT_COLORS = [
+  '#2563eb','#3b82f6','#7c3aed','#a78bfa',
+  '#059669','#10b981','#d97706','#f59e0b',
+  '#dc2626','#f87171',
 ];
 
 export default function Dashboard() {
@@ -40,21 +50,26 @@ export default function Dashboard() {
     : [];
 
   return (
-    <div>
-      <div className="page-header">
+    <motion.div variants={stagger} initial="hidden" animate="show">
+      <motion.div variants={fadeUp} className="page-header">
         <h1>Dashboard</h1>
-      </div>
+        <span style={{ fontSize: '.8rem', color: '#94a3b8', fontWeight: 500 }}>Overview &amp; Quick Actions</span>
+      </motion.div>
 
       {/* Quick links */}
-      <div style={{ display: 'flex', gap: '.75rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+      <motion.div variants={fadeUp} style={{ display: 'flex', gap: '.65rem', marginBottom: '1.75rem', flexWrap: 'wrap' }}>
         {QUICK_LINKS.map((ql) => (
-          <Link key={ql.to} to={ql.to} className="btn btn-primary" style={{ background: ql.color, borderColor: ql.color }}>
+          <Link key={ql.to} to={ql.to} style={{ display: 'inline-flex', alignItems: 'center', gap: '.35rem', background: ql.bg, color: '#fff', padding: '.5rem 1rem', borderRadius: 'var(--radius)', fontSize: '.82rem', fontWeight: 700, textDecoration: 'none', boxShadow: `0 4px 14px ${ql.shadow}`, transition: 'opacity .15s, transform .15s' }}
+            onMouseEnter={(e) => { e.currentTarget.style.opacity = '.88'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'translateY(0)'; }}
+          >
             {ql.label}
           </Link>
         ))}
-      </div>
+      </motion.div>
 
       {/* Stats */}
+      <motion.div variants={fadeUp}>
       {loading ? (
         <div className="stats-grid">
           {Array.from({ length: 10 }).map((_, i) => (
@@ -66,21 +81,22 @@ export default function Dashboard() {
         </div>
       ) : (
         <div className="stats-grid">
-          {statItems.map((s) => (
-            <div key={s.label} className="stat-card">
-              <div className="value">{s.value}</div>
+          {statItems.map((s, i) => (
+            <div key={s.label} className="stat-card" style={{ borderTop: `3px solid ${STAT_COLORS[i % STAT_COLORS.length]}` }}>
+              <div className="value" style={{ color: STAT_COLORS[i % STAT_COLORS.length] }}>{s.value}</div>
               <div className="label">{s.label}</div>
             </div>
           ))}
           {!stats && <p style={{ color: '#64748b', fontSize: '.875rem' }}>Stats not available</p>}
         </div>
       )}
+      </motion.div>
 
       {/* Recent audit logs */}
-      <div className="section-card">
-        <div className="section-header section-header--slate">
+      <motion.div variants={fadeUp} className="section-card">
+        <div className="section-header section-header--slate" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span>Recent Activity</span>
-          <Link to="/logs" style={{ color: '#fff', fontSize: '.75rem', opacity: .8 }}>View all →</Link>
+          <Link to="/logs" style={{ color: '#fff', fontSize: '.75rem', opacity: .8, background: 'rgba(255,255,255,.1)', padding: '.2rem .6rem', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(255,255,255,.15)' }}>View all →</Link>
         </div>
         <div style={{ padding: 0 }}>
           {loading ? (
@@ -124,7 +140,7 @@ export default function Dashboard() {
             </table>
           )}
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }

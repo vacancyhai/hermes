@@ -1,6 +1,10 @@
 import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import AdminPagination from '../components/AdminPagination';
 import { useAdminList } from '../hooks/useAdminList';
+
+const fadeUp = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0, transition: { duration: 0.26, ease: [0.16, 1, 0.3, 1] } } };
+const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.07, delayChildren: 0.02 } } };
 
 const STATUS_COLORS = { active: 'badge-active', upcoming: 'badge-upcoming', closed: 'badge-closed', inactive: 'badge-inactive' };
 
@@ -14,11 +18,11 @@ export default function Admissions() {
   const PER = 20;
 
   return (
-    <div>
-      <div className="page-header">
+    <motion.div variants={stagger} initial="hidden" animate="show">
+      <motion.div variants={fadeUp} className="page-header">
         <h1>Admissions <span style={{ fontWeight: 400, color: '#64748b', fontSize: '1rem' }}>({total})</span></h1>
         <Link to="/admissions/new" className="btn btn-primary">+ New Admission</Link>
-      </div>
+      </motion.div>
 
       {flash && <div className={flash.type === 'success' ? 'flash-success' : 'flash-error'}>{flash.msg}</div>}
 
@@ -104,6 +108,6 @@ export default function Admissions() {
       )}
 
       <AdminPagination page={page} totalPages={totalPages} onPage={setPage} />
-    </div>
+    </motion.div>
   );
 }
