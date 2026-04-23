@@ -1,6 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FileText, Star } from 'lucide-react';
+import { FileText, Star, Landmark, Briefcase, GraduationCap } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTrackedItems } from '../hooks/useTrackedItems';
 
@@ -64,14 +64,21 @@ export default function AnswerKeys() {
             whileTap={{ scale: 0.99 }}
             style={{ background: '#fff', border: '1px solid #e2e8f0', borderLeft: '3px solid #d97706', borderRadius: 'var(--radius-lg)', padding: '1rem 1.1rem', marginBottom: '0.65rem', boxShadow: 'var(--shadow-sm)', transition: 'border-color 0.15s', cursor: 'pointer' }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+              <div style={{ flexShrink: 0, width: 40, height: 40, borderRadius: '50%', overflow: 'hidden', border: '1.5px solid #e2e8f0', background: 'linear-gradient(135deg,#78350f,#d97706)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 1px 4px rgba(15,23,42,.1)' }}>
+                {key.parent_logo_url
+                  ? <img src={key.parent_logo_url} alt={key.parent_organization} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; }} />
+                  : <span style={{ color: '#fff', fontWeight: 800, fontSize: '0.95rem', lineHeight: 1 }}>{(key.parent_organization || key.title || '?')[0].toUpperCase()}</span>}
+              </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <h3 style={{ fontSize: '0.975rem', fontWeight: 700, lineHeight: 1.4, marginBottom: '0.3rem', color: '#0f172a' }}>
+                <h3 style={{ fontSize: '0.975rem', fontWeight: 700, lineHeight: 1.4, marginBottom: '0.15rem', color: '#0f172a' }}>
                   {key.title}
                 </h3>
+                {key.parent_title && <div style={{ fontSize: '0.82rem', color: '#64748b', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.3rem', marginBottom: '0.2rem' }}>{key.parent_type === 'job' ? <Briefcase size={11} strokeWidth={2} /> : <GraduationCap size={11} strokeWidth={2} />}{key.parent_title}</div>}
+                {key.parent_organization && <div style={{ fontSize: '0.78rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '0.25rem', marginBottom: '0.2rem' }}><Landmark size={10} strokeWidth={2} />{key.parent_organization}</div>}
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem' }}>
-                  {key.published_at && <span style={{ fontSize: '0.75rem', color: '#a16207', background: '#fef3c7', border: '1px solid #fde68a', padding: '0.12rem 0.45rem', borderRadius: '9999px' }}>Published: {key.published_at.slice(0, 10)}</span>}
-                  {(key.start_date || key.end_date) && <span style={{ fontSize: '0.75rem', color: '#92400e', background: '#fef3c7', border: '1px solid #fde68a', padding: '0.12rem 0.45rem', borderRadius: '9999px' }}>Challenge: {key.start_date || '?'} – {key.end_date || '?'}</span>}
+                  {key.published_at && <span style={{ fontSize: '0.72rem', color: '#a16207', background: '#fef3c7', border: '1px solid #fde68a', padding: '0.12rem 0.45rem', borderRadius: '9999px' }}>Published: {key.published_at.slice(0, 10)}</span>}
+                  {(key.start_date || key.end_date) && <span style={{ fontSize: '0.72rem', color: '#92400e', background: '#fef3c7', border: '1px solid #fde68a', padding: '0.12rem 0.45rem', borderRadius: '9999px' }}>Challenge: {key.start_date || '?'} – {key.end_date || '?'}</span>}
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexShrink: 0 }}>

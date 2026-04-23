@@ -1,6 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { CreditCard, Star } from 'lucide-react';
+import { CreditCard, Star, Landmark, Briefcase, GraduationCap } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTrackedItems } from '../hooks/useTrackedItems';
 
@@ -61,13 +61,23 @@ export default function AdmitCards() {
             whileTap={{ scale: 0.99 }}
             style={{ background: '#fff', border: '1px solid #e2e8f0', borderLeft: '3px solid #2563eb', borderRadius: 'var(--radius-lg)', padding: '1rem 1.1rem', marginBottom: '0.65rem', boxShadow: 'var(--shadow-sm)', transition: 'border-color 0.15s', cursor: 'pointer' }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+              {/* Org logo circle */}
+              <div style={{ flexShrink: 0, width: 40, height: 40, borderRadius: '50%', overflow: 'hidden', border: '1.5px solid #e2e8f0', background: 'linear-gradient(135deg,#1e3a5f,#3b82f6)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 1px 4px rgba(15,23,42,.1)' }}>
+                {card.parent_logo_url
+                  ? <img src={card.parent_logo_url} alt={card.parent_organization} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; }} />
+                  : <span style={{ color: '#fff', fontWeight: 800, fontSize: '0.95rem', lineHeight: 1 }}>{(card.parent_organization || card.title || '?')[0].toUpperCase()}</span>}
+              </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <h3 style={{ fontSize: '0.975rem', fontWeight: 700, lineHeight: 1.4, marginBottom: '0.3rem', color: '#0f172a' }}>
+                <h3 style={{ fontSize: '0.975rem', fontWeight: 700, lineHeight: 1.4, marginBottom: '0.15rem', color: '#0f172a' }}>
                   {card.title}
                 </h3>
-                {(card.exam_start || card.exam_end) && <div style={{ fontSize: '0.78rem', color: '#64748b', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', background: '#eff6ff', border: '1px solid #bfdbfe', padding: '0.15rem 0.5rem', borderRadius: '9999px', marginBottom: '0.25rem' }}>Exam: {card.exam_start || '?'} – {card.exam_end || 'ongoing'}</div>}
-                {card.published_at && <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Published: {card.published_at.slice(0, 10)}</div>}
+                {card.parent_title && <div style={{ fontSize: '0.82rem', color: '#64748b', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.3rem', marginBottom: '0.2rem' }}>{card.parent_type === 'job' ? <Briefcase size={11} strokeWidth={2} /> : <GraduationCap size={11} strokeWidth={2} />}{card.parent_title}</div>}
+                {card.parent_organization && <div style={{ fontSize: '0.78rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '0.25rem', marginBottom: '0.2rem' }}><Landmark size={10} strokeWidth={2} />{card.parent_organization}</div>}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem' }}>
+                  {(card.exam_start || card.exam_end) && <span style={{ fontSize: '0.72rem', color: '#64748b', background: '#eff6ff', border: '1px solid #bfdbfe', padding: '0.12rem 0.45rem', borderRadius: '9999px' }}>Exam: {card.exam_start || '?'} – {card.exam_end || 'ongoing'}</span>}
+                  {card.published_at && <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Published: {card.published_at.slice(0, 10)}</span>}
+                </div>
               </div>
               <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexShrink: 0 }}>
                 {tid && (token ? (

@@ -1,6 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Trophy, Star } from 'lucide-react';
+import { Trophy, Star, Landmark, Briefcase, GraduationCap } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTrackedItems } from '../hooks/useTrackedItems';
 
@@ -62,13 +62,22 @@ export default function Results() {
             whileTap={{ scale: 0.99 }}
             style={{ background: '#fff', border: '1px solid #e2e8f0', borderLeft: '3px solid #16a34a', borderRadius: 'var(--radius-lg)', padding: '1rem 1.1rem', marginBottom: '0.65rem', boxShadow: 'var(--shadow-sm)', transition: 'border-color 0.15s', cursor: 'pointer' }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+              <div style={{ flexShrink: 0, width: 40, height: 40, borderRadius: '50%', overflow: 'hidden', border: '1.5px solid #e2e8f0', background: 'linear-gradient(135deg,#052e16,#16a34a)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 1px 4px rgba(15,23,42,.1)' }}>
+                {res.parent_logo_url
+                  ? <img src={res.parent_logo_url} alt={res.parent_organization} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; }} />
+                  : <span style={{ color: '#fff', fontWeight: 800, fontSize: '0.95rem', lineHeight: 1 }}>{(res.parent_organization || res.title || '?')[0].toUpperCase()}</span>}
+              </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <h3 style={{ fontSize: '0.975rem', fontWeight: 700, lineHeight: 1.4, marginBottom: '0.3rem', color: '#0f172a' }}>
+                <h3 style={{ fontSize: '0.975rem', fontWeight: 700, lineHeight: 1.4, marginBottom: '0.15rem', color: '#0f172a' }}>
                   {res.title}
                 </h3>
-                {res.published_at && <span style={{ fontSize: '0.75rem', color: '#15803d', background: '#dcfce7', border: '1px solid #bbf7d0', padding: '0.12rem 0.45rem', borderRadius: '9999px', display: 'inline-block', marginBottom: '0.3rem' }}>Published: {res.published_at.slice(0, 10)}</span>}
-                {res.notes && <div style={{ fontSize: '0.845rem', color: '#475569', lineHeight: 1.55, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{res.notes}</div>}
+                {res.parent_title && <div style={{ fontSize: '0.82rem', color: '#64748b', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.3rem', marginBottom: '0.2rem' }}>{res.parent_type === 'job' ? <Briefcase size={11} strokeWidth={2} /> : <GraduationCap size={11} strokeWidth={2} />}{res.parent_title}</div>}
+                {res.parent_organization && <div style={{ fontSize: '0.78rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '0.25rem', marginBottom: '0.2rem' }}><Landmark size={10} strokeWidth={2} />{res.parent_organization}</div>}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem' }}>
+                  {res.published_at && <span style={{ fontSize: '0.72rem', color: '#15803d', background: '#dcfce7', border: '1px solid #bbf7d0', padding: '0.12rem 0.45rem', borderRadius: '9999px' }}>Published: {res.published_at.slice(0, 10)}</span>}
+                  {res.notes && <div style={{ fontSize: '0.845rem', color: '#475569', lineHeight: 1.55, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical' }}>{res.notes}</div>}
+                </div>
               </div>
               <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexShrink: 0 }}>
                 {tid && (token ? (

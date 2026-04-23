@@ -254,15 +254,52 @@ async def list_admit_cards(
     offset: Annotated[int, Query(ge=0)] = 0,
 ):
     """List all admit cards from admit_cards table, ordered by published_at."""
-    query = select(AdmitCard).order_by(
-        AdmitCard.published_at.desc().nulls_last(), AdmitCard.created_at.desc()
+    query = (
+        select(AdmitCard)
+        .options(
+            joinedload(AdmitCard.job).joinedload(Job.organization_ref),
+            joinedload(AdmitCard.admission),
+        )
+        .order_by(
+            AdmitCard.published_at.desc().nulls_last(), AdmitCard.created_at.desc()
+        )
     )
     count_query = select(func.count(AdmitCard.id))
-
     total = (await db.execute(count_query)).scalar()
-    result = await db.execute(query.offset(offset).limit(limit))
-    cards = result.scalars().all()
-    return _paginated_response(cards, AdmitCardResponse, limit, offset, total)
+    cards = (await db.execute(query.offset(offset).limit(limit))).scalars().all()
+
+    def _card_item(c: AdmitCard) -> dict:
+        d = AdmitCardResponse.model_validate(c).model_dump()
+        if c.job:
+            org_ref = getattr(c.job, "organization_ref", None)
+            d["parent_type"] = "job"
+            d["parent_title"] = c.job.job_title
+            d["parent_organization"] = c.job.organization
+            d["parent_slug"] = c.job.slug
+            d["parent_logo_url"] = org_ref.logo_url if org_ref else None
+        elif c.admission:
+            d["parent_type"] = "admission"
+            d["parent_title"] = c.admission.admission_name
+            d["parent_organization"] = c.admission.conducting_body
+            d["parent_slug"] = c.admission.slug
+            d["parent_logo_url"] = None
+        else:
+            d["parent_type"] = None
+            d["parent_title"] = None
+            d["parent_organization"] = None
+            d["parent_slug"] = None
+            d["parent_logo_url"] = None
+        return d
+
+    return {
+        "data": [_card_item(c) for c in cards],
+        "pagination": {
+            "limit": limit,
+            "offset": offset,
+            "total": total,
+            "has_more": (offset + limit) < total,
+        },
+    }
 
 
 @admit_cards_router.get("/{slug}")
@@ -300,15 +337,52 @@ async def list_answer_keys(
     offset: Annotated[int, Query(ge=0)] = 0,
 ):
     """List all answer keys from job_answer_keys table, ordered by published_at."""
-    query = select(AnswerKey).order_by(
-        AnswerKey.published_at.desc().nulls_last(), AnswerKey.created_at.desc()
+    query = (
+        select(AnswerKey)
+        .options(
+            joinedload(AnswerKey.job).joinedload(Job.organization_ref),
+            joinedload(AnswerKey.admission),
+        )
+        .order_by(
+            AnswerKey.published_at.desc().nulls_last(), AnswerKey.created_at.desc()
+        )
     )
     count_query = select(func.count(AnswerKey.id))
-
     total = (await db.execute(count_query)).scalar()
-    result = await db.execute(query.offset(offset).limit(limit))
-    keys = result.scalars().all()
-    return _paginated_response(keys, AnswerKeyResponse, limit, offset, total)
+    keys = (await db.execute(query.offset(offset).limit(limit))).scalars().all()
+
+    def _key_item(k: AnswerKey) -> dict:
+        d = AnswerKeyResponse.model_validate(k).model_dump()
+        if k.job:
+            org_ref = getattr(k.job, "organization_ref", None)
+            d["parent_type"] = "job"
+            d["parent_title"] = k.job.job_title
+            d["parent_organization"] = k.job.organization
+            d["parent_slug"] = k.job.slug
+            d["parent_logo_url"] = org_ref.logo_url if org_ref else None
+        elif k.admission:
+            d["parent_type"] = "admission"
+            d["parent_title"] = k.admission.admission_name
+            d["parent_organization"] = k.admission.conducting_body
+            d["parent_slug"] = k.admission.slug
+            d["parent_logo_url"] = None
+        else:
+            d["parent_type"] = None
+            d["parent_title"] = None
+            d["parent_organization"] = None
+            d["parent_slug"] = None
+            d["parent_logo_url"] = None
+        return d
+
+    return {
+        "data": [_key_item(k) for k in keys],
+        "pagination": {
+            "limit": limit,
+            "offset": offset,
+            "total": total,
+            "has_more": (offset + limit) < total,
+        },
+    }
 
 
 @answer_keys_router.get("/{slug}")
@@ -346,15 +420,50 @@ async def list_results(
     offset: Annotated[int, Query(ge=0)] = 0,
 ):
     """List all results from results table, ordered by published_at."""
-    query = select(Result).order_by(
-        Result.published_at.desc().nulls_last(), Result.created_at.desc()
+    query = (
+        select(Result)
+        .options(
+            joinedload(Result.job).joinedload(Job.organization_ref),
+            joinedload(Result.admission),
+        )
+        .order_by(Result.published_at.desc().nulls_last(), Result.created_at.desc())
     )
     count_query = select(func.count(Result.id))
-
     total = (await db.execute(count_query)).scalar()
-    result = await db.execute(query.offset(offset).limit(limit))
-    results_list = result.scalars().all()
-    return _paginated_response(results_list, ResultResponse, limit, offset, total)
+    results_list = (await db.execute(query.offset(offset).limit(limit))).scalars().all()
+
+    def _result_item(r: Result) -> dict:
+        d = ResultResponse.model_validate(r).model_dump()
+        if r.job:
+            org_ref = getattr(r.job, "organization_ref", None)
+            d["parent_type"] = "job"
+            d["parent_title"] = r.job.job_title
+            d["parent_organization"] = r.job.organization
+            d["parent_slug"] = r.job.slug
+            d["parent_logo_url"] = org_ref.logo_url if org_ref else None
+        elif r.admission:
+            d["parent_type"] = "admission"
+            d["parent_title"] = r.admission.admission_name
+            d["parent_organization"] = r.admission.conducting_body
+            d["parent_slug"] = r.admission.slug
+            d["parent_logo_url"] = None
+        else:
+            d["parent_type"] = None
+            d["parent_title"] = None
+            d["parent_organization"] = None
+            d["parent_slug"] = None
+            d["parent_logo_url"] = None
+        return d
+
+    return {
+        "data": [_result_item(r) for r in results_list],
+        "pagination": {
+            "limit": limit,
+            "offset": offset,
+            "total": total,
+            "has_more": (offset + limit) < total,
+        },
+    }
 
 
 @results_router.get("/{slug}")
