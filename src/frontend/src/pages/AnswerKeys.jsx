@@ -1,6 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FileText, Star, Landmark, Briefcase, GraduationCap } from 'lucide-react';
+import { FileText, Star, Landmark, Briefcase, GraduationCap, CalendarDays, Clock } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTrackedItems } from '../hooks/useTrackedItems';
 
@@ -75,21 +75,36 @@ export default function AnswerKeys() {
                   {key.title}
                 </h3>
                 {key.parent_title && <div style={{ fontSize: '0.82rem', color: '#64748b', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.3rem', marginBottom: '0.2rem' }}>{key.parent_type === 'job' ? <Briefcase size={11} strokeWidth={2} /> : <GraduationCap size={11} strokeWidth={2} />}{key.parent_title}</div>}
-                {key.parent_organization && <div style={{ fontSize: '0.78rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '0.25rem', marginBottom: '0.2rem' }}><Landmark size={10} strokeWidth={2} />{key.parent_organization}</div>}
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem' }}>
-                  {key.published_at && <span style={{ fontSize: '0.72rem', color: '#a16207', background: '#fef3c7', border: '1px solid #fde68a', padding: '0.12rem 0.45rem', borderRadius: '9999px' }}>Published: {key.published_at.slice(0, 10)}</span>}
-                  {(key.start_date || key.end_date) && <span style={{ fontSize: '0.72rem', color: '#92400e', background: '#fef3c7', border: '1px solid #fde68a', padding: '0.12rem 0.45rem', borderRadius: '9999px' }}>Challenge: {key.start_date || '?'} – {key.end_date || '?'}</span>}
-                </div>
+                {key.parent_organization && <div style={{ fontSize: '0.78rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '0.25rem' }}><Landmark size={10} strokeWidth={2} />{key.parent_organization}</div>}
               </div>
-              <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexShrink: 0 }}>
-                {tid && (token ? (
-                  <button onClick={(e) => { e.stopPropagation(); track(type, tid); }} className={isTracking ? 'btn-tracking btn btn-sm' : 'btn btn-outline btn-sm'} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
-                    <Star size={12} strokeWidth={2} fill={isTracking ? 'currentColor' : 'none'} />{isTracking ? 'Tracking' : 'Keep Track'}
-                  </button>
-                ) : (
-                  <Link to={`/login?next=/answer-keys/${key.slug}`} onClick={(e) => e.stopPropagation()} className="btn btn-outline btn-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}><Star size={12} strokeWidth={2} />Keep Track</Link>
-                ))}
+            </div>
+
+            {/* Date + track row */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginTop: '0.55rem', paddingTop: '0.5rem', borderTop: '1px solid #f1f5f9', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'center' }}>
+                {key.published_at && (
+                  <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: '0.25rem', background: '#f8fafc', border: '1px solid #e2e8f0', padding: '0.15rem 0.5rem', borderRadius: '9999px' }}>
+                    <CalendarDays size={10} strokeWidth={2} />Published: {key.published_at.slice(0, 10)}
+                  </span>
+                )}
+                {key.start_date && (
+                  <span style={{ fontSize: '0.72rem', color: '#0369a1', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.25rem', background: '#e0f2fe', border: '1px solid #bae6fd', padding: '0.15rem 0.5rem', borderRadius: '9999px' }}>
+                    <Clock size={10} strokeWidth={2} />Challenge From: {key.start_date}
+                  </span>
+                )}
+                {key.end_date && (
+                  <span style={{ fontSize: '0.72rem', color: '#b45309', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.25rem', background: '#fef3c7', border: '1px solid #fde68a', padding: '0.15rem 0.5rem', borderRadius: '9999px' }}>
+                    <Clock size={10} strokeWidth={2} />Challenge Till: {key.end_date}
+                  </span>
+                )}
               </div>
+              {tid && (token ? (
+                <button onClick={(e) => { e.stopPropagation(); track(type, tid); }} className={isTracking ? 'btn-tracking btn btn-sm' : 'btn btn-outline btn-sm'} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                  <Star size={12} strokeWidth={2} fill={isTracking ? 'currentColor' : 'none'} />{isTracking ? 'Tracking' : 'Keep Track'}
+                </button>
+              ) : (
+                <Link to={`/login?next=/answer-keys/${key.slug}`} onClick={(e) => e.stopPropagation()} className="btn btn-outline btn-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}><Star size={12} strokeWidth={2} />Keep Track</Link>
+              ))}
             </div>
           </motion.div>
         );
