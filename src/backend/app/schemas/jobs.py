@@ -149,6 +149,7 @@ class JobListItem(BaseModel):
     qualification_level: str | None
     total_vacancies: int | None
     short_description: str | None
+    application_start: date | None = None
     application_end: date | None
     notification_date: date | None = None
     exam_start: date | None = None

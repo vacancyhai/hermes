@@ -112,6 +112,7 @@ class AdmissionListItem(BaseModel):
     admission_type: str
     stream: str
     short_description: str | None
+    application_start: date | None = None
     application_end: date | None
     admission_date: date | None
     exam_start: date | None
