@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Briefcase, GraduationCap, Download, Link2, BookOpen, Globe, Star, ClipboardList } from 'lucide-react';
+import { Briefcase, GraduationCap, Download, Globe, Star, ClipboardList, Landmark, Users, Link2, BookOpen, Folder } from 'lucide-react';
 import api from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
+import ParentDetail from '../components/ParentDetail';
 
 const fadeUp = { hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0, transition: { duration: 0.3, ease: [0.16, 1, 0.3, 1] } } };
 const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.08, delayChildren: 0.05 } } };
@@ -42,7 +43,8 @@ export default function AdmitCardDetail() {
   if (loading) return (
     <div style={{ padding: '3rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
       <div className="skeleton" style={{ height: 180, borderRadius: 'var(--radius-2xl)' }} />
-      <div style={{ display: 'flex', gap: '0.5rem' }}>{[120,90].map((w,i) => <div key={i} className="skeleton" style={{ height: 34, width: w, borderRadius: 'var(--radius)' }} />)}</div>
+      <div style={{ display: 'flex', gap: '0.5rem' }}>{[120, 90].map((w, i) => <div key={i} className="skeleton" style={{ height: 34, width: w, borderRadius: 'var(--radius)' }} />)}</div>
+      <div className="skeleton" style={{ height: 120, borderRadius: 'var(--radius-lg)' }} />
     </div>
   );
   if (!card) return (
@@ -80,19 +82,12 @@ export default function AdmitCardDetail() {
         ))}
       </div>
 
-      {card.notes && <div className="detail-section"><h2 style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><ClipboardList size={16} strokeWidth={2} />Notes</h2><div style={{ fontSize: '0.9rem', color: '#334155', lineHeight: 1.65 }} dangerouslySetInnerHTML={{ __html: card.notes }} /></div>}
+      {card.notes && <motion.div variants={fadeUp} className="detail-section"><h2 style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><ClipboardList size={16} strokeWidth={2} />Notes</h2><div style={{ fontSize: '0.9rem', color: '#334155', lineHeight: 1.65 }} dangerouslySetInnerHTML={{ __html: card.notes }} /></motion.div>}
+      {card.instructions && <motion.div variants={fadeUp} className="detail-section"><h2 style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><ClipboardList size={16} strokeWidth={2} />Instructions</h2><div style={{ fontSize: '0.9rem', color: '#334155', lineHeight: 1.65 }} dangerouslySetInnerHTML={{ __html: card.instructions }} /></motion.div>}
 
-      {card.instructions && (
-        <div className="detail-section">
-          <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><ClipboardList size={16} strokeWidth={2} />Instructions</h2>
-          <div style={{ fontSize: '0.9rem', color: '#334155', lineHeight: 1.65 }} dangerouslySetInnerHTML={{ __html: card.instructions }} />
-        </div>
-      )}
-
-      <div style={{ marginTop: '1.5rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-        {card.job && <Link to={`/jobs/${card.job.slug || card.job.id}`} className="btn btn-outline">← View Job Details</Link>}
-        {card.admission && <Link to={`/admissions/${card.admission.slug || card.admission.id}`} className="btn btn-outline">← View Admission Details</Link>}
-      </div>
+      {/* Full parent job/admission inline */}
+      {card.job && <ParentDetail type="job" data={card.job} currentSlug={slug} currentType="admit-card" />}
+      {card.admission && <ParentDetail type="admission" data={card.admission} currentSlug={slug} currentType="admit-card" />}
     </motion.div>
   );
 }

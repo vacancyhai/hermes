@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Briefcase, GraduationCap, Download, Globe, Star, ClipboardList, FileText } from 'lucide-react';
 import api from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
+import ParentDetail from '../components/ParentDetail';
 
 const fadeUp = { hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0, transition: { duration: 0.3, ease: [0.16, 1, 0.3, 1] } } };
 const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.08, delayChildren: 0.05 } } };
@@ -42,7 +43,8 @@ export default function AnswerKeyDetail() {
   if (loading) return (
     <div style={{ padding: '3rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
       <div className="skeleton" style={{ height: 180, borderRadius: 'var(--radius-2xl)' }} />
-      <div style={{ display: 'flex', gap: '0.5rem' }}>{[120,90].map((w,i) => <div key={i} className="skeleton" style={{ height: 34, width: w, borderRadius: 'var(--radius)' }} />)}</div>
+      <div style={{ display: 'flex', gap: '0.5rem' }}>{[120, 90].map((w, i) => <div key={i} className="skeleton" style={{ height: 34, width: w, borderRadius: 'var(--radius)' }} />)}</div>
+      <div className="skeleton" style={{ height: 120, borderRadius: 'var(--radius-lg)' }} />
     </div>
   );
   if (!key) return (
@@ -67,7 +69,7 @@ export default function AnswerKeyDetail() {
       <div className="action-bar">
         {(key.job || key.admission) && (
           <button onClick={toggleTrack} className="share-btn" style={tracking ? { background: '#fef3c7', color: '#92400e', borderColor: '#fde68a' } : { background: '#fef9c3', color: '#854d0e', borderColor: '#fde68a' }}>
-            {tracking ? <><Star size={14} strokeWidth={2} fill="currentColor" /> Tracking — Remove</> : <><Star size={14} strokeWidth={2} /> Track Parent</>}
+            {tracking ? <><Star size={14} strokeWidth={2} fill="currentColor" /> Tracking — Remove</> : <><Star size={14} strokeWidth={2} /> Track for Reminders</>}
           </button>
         )}
         {key.download_url && <a href={key.download_url} target="_blank" rel="noopener noreferrer" className="share-btn" style={{ background: '#d97706', color: '#fff', borderColor: '#d97706', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}><Download size={13} strokeWidth={2} />Download</a>}
@@ -80,10 +82,10 @@ export default function AnswerKeyDetail() {
         ))}
       </div>
 
-      {key.notes && <div className="detail-section"><h2 style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><ClipboardList size={16} strokeWidth={2} />Notes</h2><div style={{ fontSize: '0.9rem', color: '#334155', lineHeight: 1.65 }} dangerouslySetInnerHTML={{ __html: key.notes }} /></div>}
+      {key.notes && <motion.div variants={fadeUp} className="detail-section"><h2 style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><ClipboardList size={16} strokeWidth={2} />Notes</h2><div style={{ fontSize: '0.9rem', color: '#334155', lineHeight: 1.65 }} dangerouslySetInnerHTML={{ __html: key.notes }} /></motion.div>}
 
       {key.sets?.length > 0 && (
-        <div className="detail-section">
+        <motion.div variants={fadeUp} className="detail-section">
           <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><FileText size={16} strokeWidth={2} />Answer Key Sets</h2>
           {key.sets.map((set) => (
             <div key={set.set_name || set.download_url} style={{ border: '1px solid #fde68a', background: '#fefce8', borderRadius: '0.5rem', padding: '0.8rem 1rem', marginBottom: '0.65rem', display: 'flex', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
@@ -94,13 +96,12 @@ export default function AnswerKeyDetail() {
               {set.download_url && <a href={set.download_url} target="_blank" rel="noopener noreferrer" style={{ background: '#d97706', color: '#fff', padding: '0.38rem 0.75rem', borderRadius: '0.5rem', fontSize: '0.78rem', fontWeight: 600, textDecoration: 'none' }}>Download →</a>}
             </div>
           ))}
-        </div>
+        </motion.div>
       )}
 
-      <div style={{ marginTop: '1.5rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-        {key.job && <Link to={`/jobs/${key.job.slug || key.job.id}`} className="btn btn-outline">← View Job Details</Link>}
-        {key.admission && <Link to={`/admissions/${key.admission.slug || key.admission.id}`} className="btn btn-outline">← View Admission Details</Link>}
-      </div>
+      {/* Full parent job/admission inline */}
+      {key.job && <ParentDetail type="job" data={key.job} currentSlug={slug} currentType="answer-key" />}
+      {key.admission && <ParentDetail type="admission" data={key.admission} currentSlug={slug} currentType="answer-key" />}
     </motion.div>
   );
 }
