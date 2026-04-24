@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Landmark, Link2, BookOpen, Globe, Share2, CheckCircle, Bell } from 'lucide-react';
+import { Landmark, Link2, BookOpen, Globe, Share2, CheckCircle, Bell, Banknote } from 'lucide-react';
 import api from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
 import EligibilityBanner from '../components/EligibilityBanner';
@@ -108,7 +108,7 @@ export default function AdmissionDetail() {
 
       {admission.fee && Object.keys(admission.fee).length > 0 && (
         <div className="detail-section">
-          <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Star size={16} strokeWidth={2} />Application Fee</h2>
+          <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Banknote size={16} strokeWidth={2} />Application Fee</h2>
           <table className="fee-table">
             <thead><tr><th>Category</th><th>Fee</th></tr></thead>
             <tbody>
