@@ -1,7 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import client from '../api/client';
 import AdminPagination from '../components/AdminPagination';
+
+const fadeUp = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0, transition: { duration: 0.26, ease: [0.16, 1, 0.3, 1] } } };
+const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.07, delayChildren: 0.02 } } };
 
 export default function Organizations() {
   const [orgs, setOrgs] = useState([]);
@@ -42,11 +46,11 @@ export default function Organizations() {
   const totalPages = Math.ceil(total / PER);
 
   return (
-    <div>
-      <div className="page-header">
+    <motion.div variants={stagger} initial="hidden" animate="show">
+      <motion.div variants={fadeUp} className="page-header">
         <h1>Organizations <span style={{ fontWeight: 400, color: '#64748b', fontSize: '1rem' }}>({total})</span></h1>
         <Link to="/organizations/new" className="btn btn-primary">+ New Organization</Link>
-      </div>
+      </motion.div>
 
       {flash && <div className={flash.type === 'success' ? 'flash-success' : 'flash-error'}>{flash.msg}</div>}
 
@@ -120,6 +124,6 @@ export default function Organizations() {
       )}
 
       <AdminPagination page={page} totalPages={totalPages} onPage={setPage} />
-    </div>
+    </motion.div>
   );
 }

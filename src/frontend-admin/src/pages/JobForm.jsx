@@ -1,10 +1,16 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import client from '../api/client';
+
 import PhaseDocsPanel from '../components/PhaseDocsPanel';
 import ImportantLinksEditor from '../components/ImportantLinksEditor';
 import FeeGrid from '../components/FeeGrid';
-import { STATUSES, emptyFee, emptyLink, safeJson, validateJson, buildFeeObj, toDateInput, makeSlug } from '../lib/formUtils';
+import PostsBuilder, { postsToState, postsToPayload } from '../components/PostsBuilder';
+import ZonesBuilder, { zonesToState, zonesToPayload } from '../components/ZonesBuilder';
+import { STATUSES, emptyFee, emptyLink, buildFeeObj, toDateInput, makeSlug } from '../lib/formUtils';
+
+const fadeUp = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0, transition: { duration: 0.26, ease: [0.16, 1, 0.3, 1] } } };
 
 const QUALIFICATIONS = ['10th', '12th', 'Diploma', 'Graduation', 'Post Graduation', 'PhD', 'Any'];
 const emptyVacancy = { total: '', ur: '', obc: '', ews: '', sc: '', st: '', pwd: '', male: '', female: '' };
@@ -45,13 +51,11 @@ export default function JobForm() {
   /* ── links ── */
   const [links, setLinks] = useState([{ ...emptyLink }]);
 
-  /* ── posts JSON ── */
-  const [postsJson, setPostsJson] = useState('[]');
-  const [postsJsonErr, setPostsJsonErr] = useState('');
+  /* ── posts builder ── */
+  const [posts, setPosts] = useState([]);
 
-  /* ── zone vacancies JSON ── */
-  const [zonesJson, setZonesJson] = useState('[]');
-  const [zonesJsonErr, setZonesJsonErr] = useState('');
+  /* ── zones builder ── */
+  const [zones, setZones] = useState([]);
 
   /* ── load data ── */
   useEffect(() => {
@@ -82,8 +86,8 @@ export default function JobForm() {
     setVacancy({ total: j.total_vacancies ?? '', ur: tv.ur ?? '', obc: tv.obc ?? '', ews: tv.ews ?? '', sc: tv.sc ?? '', st: tv.st ?? '', pwd: tv.pwd ?? '', male: tv.male ?? '', female: tv.female ?? '' });
     const appDetails = j.application_details || {};
     setLinks(Array.isArray(appDetails.important_links) && appDetails.important_links.length ? appDetails.important_links : [{ ...emptyLink }]);
-    setPostsJson(safeJson(vb.posts || [], '[]'));
-    setZonesJson(safeJson(vb.zonewise_vacancy || [], '[]'));
+    setPosts(postsToState(vb.posts || []));
+    setZones(zonesToState(vb.zonewise_vacancy || []));
   }, []);
 
   useEffect(() => {
@@ -106,11 +110,10 @@ export default function JobForm() {
   /* ── submit ── */
   async function handleSubmit(e) {
     e.preventDefault();
-    if (postsJsonErr || zonesJsonErr) { setFlash({ type: 'error', msg: 'Fix JSON errors before saving.' }); return; }
     setSaving(true); setFlash(null);
 
-    let parsedPosts = []; try { parsedPosts = JSON.parse(postsJson); } catch {}
-    let parsedZones = []; try { parsedZones = JSON.parse(zonesJson); } catch {}
+    const parsedPosts = postsToPayload(posts);
+    const parsedZones = zonesToPayload(zones);
 
     const feeObj = buildFeeObj(fee);
 
@@ -157,8 +160,8 @@ export default function JobForm() {
   const saveBtnLabel = isEdit ? 'Update Job' : 'Create Job';
 
   return (
-    <div>
-      <div className="page-header">
+    <motion.div initial="hidden" animate="show" variants={{ hidden: {}, show: { transition: { staggerChildren: 0.07 } } }}>
+      <motion.div variants={fadeUp} className="page-header">
         <div>
           <Link to="/jobs" style={{ color: '#64748b', fontSize: '.82rem' }}>← Jobs</Link>
           <h1 style={{ marginTop: '.25rem' }}>{isEdit ? 'Edit Job' : 'New Job'}</h1>
@@ -169,7 +172,7 @@ export default function JobForm() {
             {saving ? <><span className="spinner" />{' '}Saving…</> : saveBtnLabel}
           </button>
         </div>
-      </div>
+      </motion.div>
 
       {flash && <div className={flash.type === 'success' ? 'flash-success' : 'flash-error'}>{flash.msg}</div>}
 
@@ -270,34 +273,12 @@ export default function JobForm() {
 
         <ImportantLinksEditor prefix="link" links={links} onUpdate={updateLink} onAdd={addLink} onRemove={removeLink} />
 
-        {/* ── Posts JSON ── */}
-        <div className="section-card">
-          <div className="section-header section-header--teal">Posts (JSON Array)</div>
-          <div className="section-body">
-            <p style={{ fontSize: '.78rem', color: '#64748b', marginBottom: '.5rem' }}>
-              Array of post objects: <code>{`[{"post_name":"","vacancy":0,"eligibility":"","salary":"","selection_process":""}]`}</code>
-            </p>
-            <textarea rows={8} value={postsJson} onChange={(e) => validateJson(e.target.value, setPostsJson, setPostsJsonErr)}
-              style={{ width: '100%', fontFamily: 'monospace', fontSize: '.82rem', borderColor: postsJsonErr ? '#ef4444' : undefined }} />
-            {postsJsonErr && <p style={{ color: '#ef4444', fontSize: '.78rem', marginTop: '.25rem' }}>JSON error: {postsJsonErr}</p>}
-          </div>
-        </div>
+        <ZonesBuilder zones={zones} onChange={setZones} />
 
-        {/* ── Zone Vacancies JSON ── */}
-        <div className="section-card">
-          <div className="section-header section-header--slate">Zone-wise Vacancies (JSON Array)</div>
-          <div className="section-body">
-            <p style={{ fontSize: '.78rem', color: '#64748b', marginBottom: '.5rem' }}>
-              Array: <code>{`[{"zone":"","total":0,"ur":0,"obc":0,"sc":0,"st":0}]`}</code>
-            </p>
-            <textarea rows={5} value={zonesJson} onChange={(e) => validateJson(e.target.value, setZonesJson, setZonesJsonErr)}
-              style={{ width: '100%', fontFamily: 'monospace', fontSize: '.82rem', borderColor: zonesJsonErr ? '#ef4444' : undefined }} />
-            {zonesJsonErr && <p style={{ color: '#ef4444', fontSize: '.78rem', marginTop: '.25rem' }}>JSON error: {zonesJsonErr}</p>}
-          </div>
-        </div>
+        <PostsBuilder posts={posts} onChange={setPosts} />
       </form>
 
       {isEdit && <PhaseDocsPanel parentKey="job_id" parentId={jobId} onFlash={setFlash} />}
-    </div>
+    </motion.div>
   );
 }

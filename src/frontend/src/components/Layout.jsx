@@ -1,8 +1,15 @@
 import { useState, useEffect } from 'react';
 import { Outlet, NavLink, Link, useNavigate, useLocation } from 'react-router-dom';
+import { AnimatePresence, motion } from 'framer-motion';
 import { Home, Briefcase, CreditCard, FileText, Trophy, GraduationCap, Bell, User, LogOut, Menu, X, Landmark } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../api/client';
+
+const pageVariants = {
+  initial: { opacity: 0, y: 10 },
+  animate: { opacity: 1, y: 0, transition: { duration: 0.22, ease: [0.16, 1, 0.3, 1] } },
+  exit: { opacity: 0, y: -6, transition: { duration: 0.14, ease: 'easeIn' } },
+};
 
 function NotifBadge() {
   const [count, setCount] = useState(0);
@@ -59,39 +66,43 @@ export default function Layout() {
   };
 
   const navLinkStyle = (isActive) => ({
-    padding: '0.45rem 0.8rem',
+    padding: '0.45rem 0.85rem',
     textDecoration: 'none',
     fontSize: '0.82rem',
     fontWeight: isActive ? 700 : 500,
     display: 'inline-flex',
     alignItems: 'center',
-    gap: '0.3rem',
-    borderRadius: '0.375rem',
-    background: isActive ? 'rgba(255,255,255,.12)' : 'transparent',
-    color: isActive ? '#fff' : 'rgba(255,255,255,.72)',
-    transition: 'background 0.15s, color 0.15s',
+    gap: '0.32rem',
+    borderRadius: '0.5rem',
+    background: isActive ? 'rgba(255,255,255,.14)' : 'transparent',
+    color: isActive ? '#fff' : 'rgba(255,255,255,.68)',
+    boxShadow: isActive ? 'inset 0 1px 0 rgba(255,255,255,.1), 0 1px 3px rgba(0,0,0,.15)' : 'none',
+    transition: 'background 0.18s, color 0.18s, box-shadow 0.18s',
     whiteSpace: 'nowrap',
+    letterSpacing: '0.005em',
   });
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       {/* Header */}
       <header style={{
-        background: 'linear-gradient(90deg, #0f2440 0%, #1e3a5f 100%)',
+        background: 'linear-gradient(90deg, rgba(15,36,64,.97) 0%, rgba(30,58,95,.97) 100%)',
+        backdropFilter: 'blur(20px) saturate(180%)',
+        WebkitBackdropFilter: 'blur(20px) saturate(180%)',
         color: '#fff',
         position: 'sticky',
         top: 0,
         zIndex: 100,
-        boxShadow: '0 2px 12px rgba(0,0,0,.3)',
-        borderBottom: '1px solid rgba(255,255,255,.06)',
+        boxShadow: '0 1px 0 rgba(255,255,255,.06), 0 4px 24px rgba(0,0,0,.25)',
+        borderBottom: '1px solid rgba(255,255,255,.08)',
       }}>
-        <div style={{ maxWidth: 1280, margin: '0 auto', padding: '0 1.5rem', height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
+        <div style={{ maxWidth: 1280, margin: '0 auto', padding: '0 1.5rem', height: 60, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
           {/* Brand */}
-          <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 800, fontSize: '1.1rem', color: '#fff', flexShrink: 0, textDecoration: 'none', letterSpacing: '-0.02em' }}>
-            <span style={{ width: 32, height: 32, background: 'linear-gradient(135deg, #3b82f6, #2563eb)', borderRadius: '0.45rem', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(37,99,235,.5)' }}>
-              <Landmark size={16} strokeWidth={2.5} />
+          <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', fontWeight: 800, fontSize: '1.1rem', color: '#fff', flexShrink: 0, textDecoration: 'none', letterSpacing: '-0.025em' }}>
+            <span style={{ width: 34, height: 34, background: 'linear-gradient(135deg, #60a5fa, #2563eb, #1d4ed8)', borderRadius: '0.55rem', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 12px rgba(37,99,235,.55), inset 0 1px 0 rgba(255,255,255,.2)' }}>
+              <Landmark size={17} strokeWidth={2.5} />
             </span>
-            Vacancy Hai
+            <span style={{ background: 'linear-gradient(135deg, #ffffff, rgba(255,255,255,.85))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>Vacancy Hai</span>
           </Link>
 
           {/* Center nav — desktop only */}
@@ -169,16 +180,20 @@ export default function Layout() {
       </header>
 
       {/* Main content */}
-      <main style={{ flex: 1, padding: '1.5rem', background: '#f0f4f8' }}>
+      <main style={{ flex: 1, padding: 'var(--sp-6) 1.5rem', background: 'var(--surface)' }}>
         <div style={{ maxWidth: 1280, margin: '0 auto' }}>
-          <Outlet />
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div key={location.pathname} variants={pageVariants} initial="initial" animate="animate" exit="exit">
+              <Outlet />
+            </motion.div>
+          </AnimatePresence>
         </div>
       </main>
 
       {/* Footer */}
-      <footer style={{ background: '#fff', borderTop: '1px solid #e2e8f0', padding: '1.25rem 1.5rem' }}>
+      <footer style={{ background: 'linear-gradient(180deg, #fff 0%, #f8fafc 100%)', borderTop: '1px solid var(--slate-200)', padding: '1.25rem 1.5rem' }}>
         <div style={{ maxWidth: 1280, margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-          <p style={{ color: '#64748b', fontSize: '0.8rem' }}>© 2025 Vacancy Hai — Government Jobs &amp; Exam Tracker</p>
+          <p style={{ color: '#94a3b8', fontSize: '0.8rem', fontWeight: 500 }}>© 2025 Vacancy Hai — Government Jobs &amp; Exam Tracker</p>
           <div style={{ display: 'flex', gap: '1.25rem' }}>
             {[['Jobs', '/jobs'], ['Admissions', '/admissions'], ['Results', '/results'], ['Notifications', '/notifications']].map(([label, href]) => (
               <Link key={href} to={href} style={{ color: '#94a3b8', fontSize: '0.8rem', textDecoration: 'none', transition: 'color 0.15s' }}

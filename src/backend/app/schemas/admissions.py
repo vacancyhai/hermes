@@ -106,16 +106,19 @@ class AdmissionListItem(BaseModel):
     organization_id: uuid.UUID | None = None
     slug: str
     admission_name: str
+    organization_logo_url: str | None = None
     conducting_body: str
     counselling_body: str | None
     admission_type: str
     stream: str
     short_description: str | None
+    application_start: date | None = None
     application_end: date | None
     admission_date: date | None
     exam_start: date | None
     exam_end: date | None
     result_date: date | None
+    seats_info: dict | None = None
     fee: dict = Field(default_factory=dict)
     status: str
     created_at: datetime

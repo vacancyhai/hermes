@@ -1,6 +1,13 @@
 import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { Briefcase, GraduationCap, CreditCard, FileText, Trophy, Bell, Check, CheckCheck, Trash2 } from 'lucide-react';
 import api from '../api/client';
+
+const rowVariants = {
+  hidden: { opacity: 0, y: 12 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.24, ease: [0.16, 1, 0.3, 1] } },
+};
+const listVariants = { hidden: {}, show: { transition: { staggerChildren: 0.05, delayChildren: 0.04 } } };
 
 export default function Notifications() {
   const [notifications, setNotifications] = useState([]);
@@ -74,38 +81,57 @@ export default function Notifications() {
 
   return (
     <div style={{ maxWidth: 720, margin: '0 auto' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-          <h1 style={{ fontSize: '1.3rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Bell size={18} strokeWidth={2.5} />Notifications</h1>
-          {unreadCount > 0 && <span style={{ background: '#fee2e2', color: '#b91c1c', border: '1px solid #fecaca', padding: '0.15rem 0.6rem', borderRadius: '9999px', fontSize: '0.7rem', fontWeight: 700, display: 'inline-flex', alignItems: 'center', lineHeight: 1.4 }}>{unreadCount} unread</span>}
+      {/* Hero Header */}
+      <motion.div
+        initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+        style={{ background: 'linear-gradient(135deg, #0f2440 0%, #1e3a5f 50%, #2563eb 100%)', color: '#fff', padding: '1.5rem 1.75rem', borderRadius: 'var(--radius-2xl)', marginBottom: '1.5rem', position: 'relative', overflow: 'hidden', boxShadow: '0 16px 48px rgba(15,36,64,.4), 0 4px 12px rgba(15,36,64,.2)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}
+      >
+        <div style={{ position: 'absolute', top: -50, right: -30, width: 180, height: 180, background: 'rgba(255,255,255,.06)', borderRadius: '50%', pointerEvents: 'none' }} />
+        <div style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', gap: '0.9rem' }}>
+          <div style={{ width: 44, height: 44, background: 'rgba(255,255,255,.14)', backdropFilter: 'blur(8px)', borderRadius: 'var(--radius)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(255,255,255,.15)', flexShrink: 0 }}>
+            <Bell size={20} strokeWidth={2.5} />
+          </div>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem' }}>
+              <h1 style={{ fontSize: '1.3rem', fontWeight: 800, letterSpacing: '-0.02em' }}>Notifications</h1>
+              {unreadCount > 0 && <span style={{ background: 'rgba(239,68,68,.85)', color: '#fff', padding: '0.12rem 0.55rem', borderRadius: '9999px', fontSize: '0.68rem', fontWeight: 700, lineHeight: 1.4 }}>{unreadCount} unread</span>}
+            </div>
+            <p style={{ fontSize: '0.8rem', opacity: 0.72, marginTop: '0.1rem' }}>Alerts for tracked jobs, deadlines and results</p>
+          </div>
         </div>
         {unreadCount > 0 && (
-          <button onClick={markAllRead} className="btn btn-outline btn-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}><CheckCheck size={14} strokeWidth={2} />Mark all as read</button>
+          <motion.button whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }} onClick={markAllRead}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', background: 'rgba(255,255,255,.14)', color: '#fff', border: '1px solid rgba(255,255,255,.22)', borderRadius: 'var(--radius)', padding: '0.45rem 0.9rem', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer', backdropFilter: 'blur(4px)', position: 'relative', zIndex: 1 }}>
+            <CheckCheck size={14} strokeWidth={2} />Mark all read
+          </motion.button>
         )}
-      </div>
+      </motion.div>
 
       {notifications.length === 0 && (
-        <div style={{ textAlign: 'center', padding: '3rem', color: '#64748b', background: '#f8fafc', borderRadius: '0.75rem', border: '1px dashed #e2e8f0' }}>
-          <div style={{ marginBottom: '0.5rem' }}><Bell size={40} strokeWidth={1.5} color="#94a3b8" /></div>
-          <p style={{ fontWeight: 600, color: '#1e293b' }}>No notifications yet.</p>
-          <p style={{ fontSize: '0.875rem' }}>You'll receive alerts for tracked jobs and deadlines.</p>
-        </div>
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.15 }}
+          style={{ textAlign: 'center', padding: '3.5rem 2rem', color: '#64748b', background: '#f8fafc', borderRadius: 'var(--radius-xl)', border: '1px dashed #e2e8f0' }}
+        >
+          <div style={{ width: 64, height: 64, background: '#f1f5f9', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem' }}><Bell size={28} strokeWidth={1.5} color="#94a3b8" /></div>
+          <p style={{ fontWeight: 700, color: '#1e293b', marginBottom: '0.3rem', fontSize: '1rem' }}>No notifications yet.</p>
+          <p style={{ fontSize: '0.875rem' }}>You&apos;ll receive alerts for tracked jobs and deadlines.</p>
+        </motion.div>
       )}
 
+      <motion.div variants={listVariants} initial="hidden" animate="show">
       {notifications.map((notif) => {
         const typeConf = typeColors[notif.type] || typeColors.system;
         return (
-          <div key={notif.id} style={{
-            background: notif.is_read ? '#fff' : '#f0f7ff',
-            border: `1px solid ${notif.is_read ? '#e2e8f0' : '#bfdbfe'}`,
-            borderLeft: `3px solid ${notif.is_read ? '#cbd5e1' : '#2563eb'}`,
-            borderRadius: '0.65rem', padding: '0.85rem 1rem', marginBottom: '0.5rem',
-            display: 'flex', alignItems: 'flex-start', gap: '0.75rem',
-            boxShadow: '0 1px 3px rgba(0,0,0,.04)', transition: 'box-shadow .15s',
-          }}
-            onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,.07)'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,.04)'; }}
+          <motion.div key={notif.id}
+            variants={rowVariants}
+            whileHover={{ y: -2, boxShadow: '0 6px 18px rgba(15,23,42,.08)' }}
+            style={{
+              background: notif.is_read ? '#fff' : '#f0f7ff',
+              border: `1px solid ${notif.is_read ? '#e2e8f0' : '#bfdbfe'}`,
+              borderLeft: `3px solid ${notif.is_read ? '#cbd5e1' : '#2563eb'}`,
+              borderRadius: 'var(--radius-lg)', padding: '0.9rem 1rem', marginBottom: '0.55rem',
+              display: 'flex', alignItems: 'flex-start', gap: '0.75rem',
+              boxShadow: 'var(--shadow-sm)',
+            }}
           >
             {/* Icon */}
             <div style={{ background: typeConf.bg, color: typeConf.color, width: 36, height: 36, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -126,9 +152,10 @@ export default function Notifications() {
               )}
               <button onClick={() => deleteNotif(notif.id)} style={{ fontSize: '0.72rem', padding: '0.2rem 0.5rem', borderRadius: '0.35rem', background: '#fee2e2', color: '#991b1b', border: 'none', cursor: 'pointer', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}><Trash2 size={11} strokeWidth={2} />Delete</button>
             </div>
-          </div>
+          </motion.div>
         );
       })}
+      </motion.div>
 
       {pagination.has_more && (
         <div style={{ textAlign: 'center', padding: '1.5rem 0' }}>

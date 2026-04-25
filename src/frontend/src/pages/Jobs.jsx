@@ -1,16 +1,30 @@
 import PropTypes from 'prop-types';
 import { useState, useEffect, useCallback } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
-import { Landmark, Users, Clock, Star, SlidersHorizontal, X } from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { Landmark, Users, Clock, SlidersHorizontal, X } from 'lucide-react';
 import api from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
+import OrgLogoCircle from '../components/OrgLogoCircle';
+import TrackControl from '../components/TrackControl';
+import { LIST_STATUS_STYLES } from '../lib/listStatusStyles';
+
+const cardVariants = {
+  hidden: { opacity: 0, y: 16 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.28, ease: [0.16, 1, 0.3, 1] } },
+};
+
+const listVariants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.06, delayChildren: 0.04 } },
+};
 
 function JobCard({ job, trackedIds, onToggle }) {
   const { token } = useAuth();
+  const navigate = useNavigate();
   const isTracking = trackedIds.has(String(job.id));
 
-  const track = async (e) => {
-    e.preventDefault();
+  const track = async () => {
     try {
       if (isTracking) await api.delete(`/jobs/${job.id}/track`);
       else await api.post(`/jobs/${job.id}/track`);
@@ -18,46 +32,40 @@ function JobCard({ job, trackedIds, onToggle }) {
     } catch { }
   };
 
-  const statusMap = {
-    active:   { bg: '#dcfce7', color: '#15803d', border: '#bbf7d0', label: 'Active' },
-    upcoming: { bg: '#fef3c7', color: '#b45309', border: '#fde68a', label: 'Upcoming' },
-    closed:   { bg: '#fee2e2', color: '#b91c1c', border: '#fecaca', label: 'Closed' },
-  };
-
-  const s = statusMap[job.status];
+  const s = LIST_STATUS_STYLES[job.status];
   return (
-    <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderLeft: '3px solid #1e3a5f', borderRadius: '0.65rem', padding: '1rem 1.1rem', marginBottom: '0.6rem', boxShadow: '0 1px 3px rgba(0,0,0,.04)', transition: 'box-shadow .15s' }}
-      onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 4px 14px rgba(0,0,0,.08)'; }}
-      onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,.04)'; }}
+    <motion.div
+      variants={cardVariants}
+      onClick={() => navigate(`/jobs/${job.slug}`)}
+      whileHover={{ y: -3, boxShadow: '0 8px 24px rgba(15,23,42,.1), 0 2px 8px rgba(15,23,42,.06)', borderColor: '#93c5fd' }}
+      whileTap={{ scale: 0.99 }}
+      style={{ background: '#fff', border: '1px solid #e2e8f0', borderLeft: '3px solid #1e3a5f', borderRadius: '0.75rem', padding: '1rem 1.1rem', marginBottom: '0.6rem', boxShadow: '0 1px 4px rgba(15,23,42,.05)', transition: 'border-color 0.15s', cursor: 'pointer' }}
     >
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.6rem', marginBottom: '0.3rem' }}>
-        <h3 style={{ fontSize: '0.975rem', fontWeight: 700, lineHeight: 1.4, flex: 1, minWidth: 0 }}>
-          <Link to={`/jobs/${job.slug}`} style={{ color: '#0f172a', textDecoration: 'none' }}>{job.job_title}</Link>
-        </h3>
-        {s && <span style={{ background: s.bg, color: s.color, border: `1px solid ${s.border}`, fontSize: '0.65rem', fontWeight: 700, padding: '0.15rem 0.55rem', borderRadius: '9999px', whiteSpace: 'nowrap', flexShrink: 0, display: 'inline-flex', alignItems: 'center', lineHeight: 1.4 }}>{s.label}</span>}
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', marginBottom: '0.3rem' }}>
+        <OrgLogoCircle logoUrl={job.organization_logo_url} orgName={job.organization} gradient="linear-gradient(135deg,#1e3a5f,#3b82f6)" />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.5rem' }}>
+            <h3 style={{ fontSize: '0.975rem', fontWeight: 700, lineHeight: 1.4, flex: 1, minWidth: 0, margin: 0, color: '#0f172a' }}>
+              {job.job_title}
+            </h3>
+            {s && <span style={{ background: s.bg, color: s.color, border: `1px solid ${s.border}`, fontSize: '0.65rem', fontWeight: 700, padding: '0.15rem 0.55rem', borderRadius: '9999px', whiteSpace: 'nowrap', flexShrink: 0, display: 'inline-flex', alignItems: 'center', lineHeight: 1.4 }}>{s.label}</span>}
+          </div>
+          <div style={{ fontSize: '0.82rem', color: '#64748b', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.3rem', marginTop: '0.15rem' }}><Landmark size={12} strokeWidth={2} />{job.organization}</div>
+        </div>
       </div>
-      <div style={{ fontSize: '0.82rem', color: '#64748b', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.3rem', marginBottom: '0.3rem' }}><Landmark size={12} strokeWidth={2} />{job.organization}</div>
       {job.short_description && <div style={{ fontSize: '0.845rem', color: '#475569', marginBottom: '0.35rem', lineHeight: 1.55, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{job.short_description}</div>}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', marginBottom: '0.6rem' }}>
         {job.total_vacancies && <span style={{ background: '#f1f5f9', color: '#334155', padding: '0.15rem 0.5rem', borderRadius: '9999px', fontSize: '0.72rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.25rem', border: '1px solid #e2e8f0' }}><Users size={11} strokeWidth={2} />{job.total_vacancies.toLocaleString()} posts</span>}
         {job.qualification_level && <span style={{ background: '#dbeafe', color: '#1e40af', border: '1px solid #bfdbfe', padding: '0.15rem 0.5rem', borderRadius: '9999px', fontSize: '0.72rem', fontWeight: 600 }}>{job.qualification_level}</span>}
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '0.55rem', borderTop: '1px solid #f1f5f9', flexWrap: 'wrap', gap: '0.4rem' }}>
-        {job.application_end
-          ? <span style={{ fontSize: '0.75rem', color: '#b45309', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.25rem', background: '#fef3c7', border: '1px solid #fde68a', padding: '0.15rem 0.5rem', borderRadius: '9999px' }}><Clock size={11} strokeWidth={2} />Deadline: {job.application_end}</span>
-          : <span />}
-        <div style={{ display: 'flex', gap: '0.4rem' }}>
-          <Link to={`/jobs/${job.slug}`} className="btn btn-outline btn-sm">View Details →</Link>
-          {token ? (
-            <button onClick={track} className={isTracking ? 'btn-tracking btn btn-sm' : 'btn btn-outline btn-sm'} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
-              {isTracking ? <><Star size={12} strokeWidth={2} fill="currentColor" />Tracking</> : <><Star size={12} strokeWidth={2} />Track</>}
-            </button>
-          ) : (
-            <Link to={`/login?next=/jobs/${job.slug}`} className="btn btn-outline btn-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}><Star size={12} strokeWidth={2} />Track</Link>
-          )}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem' }}>
+          {job.application_start && <span style={{ fontSize: '0.75rem', color: '#0369a1', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.25rem', background: '#e0f2fe', border: '1px solid #bae6fd', padding: '0.15rem 0.5rem', borderRadius: '9999px' }}><Clock size={11} strokeWidth={2} />Start: {job.application_start}</span>}
+          {job.application_end && <span style={{ fontSize: '0.75rem', color: '#b45309', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.25rem', background: '#fef3c7', border: '1px solid #fde68a', padding: '0.15rem 0.5rem', borderRadius: '9999px' }}><Clock size={11} strokeWidth={2} />Deadline: {job.application_end}</span>}
         </div>
+        <TrackControl token={token} isTracking={isTracking} onTrack={track} loginPath={`/login?next=/jobs/${job.slug}`} />
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -155,11 +163,16 @@ export default function Jobs() {
         <div>
           {loading && Array.from({ length: 6 }).map((_, i) => (
             <div key={i} style={{ background: '#fff', border: '1px solid #e2e8f0', borderLeft: '3px solid #e2e8f0', borderRadius: '0.65rem', padding: '1rem 1.1rem', marginBottom: '0.6rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                <div className="skeleton" style={{ height: 16, width: '60%', borderRadius: '0.4rem' }} />
-                <div className="skeleton" style={{ height: 16, width: 52, borderRadius: '9999px' }} />
+              <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '0.5rem', alignItems: 'flex-start' }}>
+                <div className="skeleton" style={{ width: 40, height: 40, borderRadius: '50%', flexShrink: 0 }} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
+                    <div className="skeleton" style={{ height: 16, width: '60%', borderRadius: '0.4rem' }} />
+                    <div className="skeleton" style={{ height: 16, width: 52, borderRadius: '9999px' }} />
+                  </div>
+                  <div className="skeleton" style={{ height: 13, width: '40%', borderRadius: '0.4rem' }} />
+                </div>
               </div>
-              <div className="skeleton" style={{ height: 13, width: '40%', borderRadius: '0.4rem', marginBottom: '0.4rem' }} />
               <div className="skeleton" style={{ height: 13, width: '80%', borderRadius: '0.4rem', marginBottom: '0.4rem' }} />
               <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.55rem' }}>
                 <div className="skeleton" style={{ height: 22, width: 80, borderRadius: '9999px' }} />
@@ -175,7 +188,11 @@ export default function Jobs() {
             </div>
           ))}
           {!loading && jobs.length === 0 && <div style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>No jobs found. Try a different search.</div>}
-          {!loading && jobs.map((job) => <JobCard key={job.id} job={job} trackedIds={trackedIds} onToggle={toggleId} />)}
+          {!loading && (
+            <motion.div variants={listVariants} initial="hidden" animate="show">
+              {jobs.map((job) => <JobCard key={job.id} job={job} trackedIds={trackedIds} onToggle={toggleId} />)}
+            </motion.div>
+          )}
 
           {pagination.has_more && (
             <div style={{ textAlign: 'center', padding: '1.5rem 0' }}>

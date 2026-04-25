@@ -143,11 +143,13 @@ class JobListItem(BaseModel):
     job_title: str
     slug: str
     organization: str
+    organization_logo_url: str | None = None
     department: str | None
     employment_type: str | None
     qualification_level: str | None
     total_vacancies: int | None
     short_description: str | None
+    application_start: date | None = None
     application_end: date | None
     notification_date: date | None = None
     exam_start: date | None = None

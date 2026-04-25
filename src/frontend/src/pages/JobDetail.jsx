@@ -1,91 +1,16 @@
-import PropTypes from 'prop-types';
 import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Search, AlertTriangle, CheckCircle, XCircle, Landmark, Users, Link2, Download, BookOpen, Globe, Share2, Folder, Star } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Landmark, Users, Link2, Download, BookOpen, Globe, Share2, CheckCircle, Bell, Banknote } from 'lucide-react';
 import api from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
+import EligibilityBanner from '../components/EligibilityBanner';
+import PhaseCard from '../components/PhaseCard';
+import PhaseDocTabs from '../components/PhaseDocTabs';
+import DetailSkeleton from '../components/DetailSkeleton';
 
-function EligibilityBanner({ eligibility, profileComplete, token, slug }) {
-  if (!token) return (
-    <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '0.5rem', padding: '1rem 1.25rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-      <Search size={18} strokeWidth={2} />
-      <div style={{ flex: 1 }}><div style={{ fontWeight: 600, fontSize: '0.9rem' }}>Check Your Eligibility</div><div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.15rem' }}>Login and complete your profile to see if you qualify.</div></div>
-      <Link to={`/login?next=/jobs/${slug}`} className="btn btn-primary btn-sm">Login to Check</Link>
-    </div>
-  );
-  if (!profileComplete) return (
-    <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '0.5rem', padding: '1rem 1.25rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-      <AlertTriangle size={18} strokeWidth={2} color="#92400e" />
-      <div style={{ flex: 1 }}><div style={{ fontWeight: 600, fontSize: '0.9rem', color: '#92400e' }}>Profile Incomplete</div><div style={{ fontSize: '0.8rem', color: '#a16207', marginTop: '0.15rem' }}>Complete your profile to check eligibility.</div></div>
-      <Link to="/profile" className="btn btn-sm" style={{ background: '#fef3c7', color: '#92400e', border: '1px solid #fde68a' }}>Complete Profile</Link>
-    </div>
-  );
-  if (!eligibility) return null;
-  const s = eligibility.status;
-  const cfgs = {
-    eligible: { bg: '#f0fdf4', border: '#bbf7d0', Icon: CheckCircle, color: '#166534', label: 'You are Eligible' },
-    partially_eligible: { bg: '#fffbeb', border: '#fde68a', Icon: AlertTriangle, color: '#92400e', label: 'Partially Eligible' },
-    not_eligible: { bg: '#fef2f2', border: '#fecaca', Icon: XCircle, color: '#991b1b', label: 'Not Eligible' },
-  }[s];
-  if (!cfgs) return null;
-  return (
-    <div style={{ background: cfgs.bg, border: `1px solid ${cfgs.border}`, borderRadius: '0.5rem', padding: '1rem 1.25rem', marginBottom: '1rem' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: eligibility.reasons?.length ? '0.6rem' : 0 }}>
-        {(() => { const Icon = cfgs.Icon; return <Icon size={18} strokeWidth={2} color={cfgs.color} />; })()}
-        <span style={{ fontWeight: 700, fontSize: '0.95rem', color: cfgs.color }}>{cfgs.label}</span>
-      </div>
-      {eligibility.reasons?.length > 0 && <ul style={{ margin: 0, paddingLeft: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-        {eligibility.reasons.map((r) => <li key={r} style={{ fontSize: '0.82rem', color: cfgs.color }}>{r}</li>)}
-      </ul>}
-    </div>
-  );
-}
-
-EligibilityBanner.propTypes = {
-  eligibility: PropTypes.shape({
-    status: PropTypes.string,
-    reasons: PropTypes.arrayOf(PropTypes.string),
-  }),
-  profileComplete: PropTypes.bool.isRequired,
-  token: PropTypes.string,
-  slug: PropTypes.string.isRequired,
-};
-EligibilityBanner.defaultProps = { eligibility: null, token: null };
-
-function PhaseCard({ step }) {
-  if (typeof step !== 'object') return <div style={{ border: '1px solid #bfdbfe', background: '#eff6ff', borderRadius: '0.5rem', padding: '0.7rem 1rem', marginBottom: '0.85rem' }}><span style={{ fontWeight: 700, fontSize: '0.9rem' }}>{String(step)}</span></div>;
-  const stype = step.type || '';
-  const isDoc = stype === 'document';
-  return (
-    <div style={{ borderRadius: '0.5rem', marginBottom: '0.85rem', overflow: 'hidden', border: `1px solid ${isDoc ? '#bbf7d0' : '#bfdbfe'}`, background: isDoc ? '#f0fdf4' : '#eff6ff' }}>
-      <div style={{ padding: '0.7rem 1rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-          {step.phase && <span style={{ background: isDoc ? '#16a34a' : '#2563eb', color: '#fff', fontSize: '0.7rem', fontWeight: 700, padding: '0.15rem 0.55rem', borderRadius: 9999 }}>Phase {step.phase}</span>}
-          <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>{step.name || '—'}</span>
-          {step.qualifying && <span className="meta-pill pill-green" style={{ fontSize: '0.72rem' }}>Qualifying Only</span>}
-        </div>
-        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginTop: '0.3rem' }}>
-          {step.mode && <span className="meta-pill pill-blue">{step.mode}</span>}
-          {step.total_marks && <span className="meta-pill pill-purple">{step.total_marks} marks</span>}
-          {step.duration_minutes && <span className="meta-pill pill-amber">{step.duration_minutes} min</span>}
-          {step.negative_marking && <span className="meta-pill pill-red">–{step.negative_marking} per wrong</span>}
-        </div>
-      </div>
-      {step.subjects?.length > 0 && (
-        <table className="fee-table" style={{ marginTop: '0.6rem' }}>
-          <thead><tr><th>Subject</th><th style={{ textAlign: 'right' }}>Questions</th><th style={{ textAlign: 'right' }}>Marks</th></tr></thead>
-          <tbody>
-            {step.subjects.map((sub) => <tr key={sub.name || sub.questions}><td>{sub.name || '—'}</td><td style={{ textAlign: 'right' }}>{sub.questions || '—'}</td><td style={{ textAlign: 'right' }}>{sub.marks || '—'}</td></tr>)}
-          </tbody>
-        </table>
-      )}
-    </div>
-  );
-}
-
-PhaseCard.propTypes = {
-  step: PropTypes.oneOfType([PropTypes.object, PropTypes.string]).isRequired,
-};
+const fadeUp = { hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0, transition: { duration: 0.3, ease: [0.16, 1, 0.3, 1] } } };
+const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.08, delayChildren: 0.05 } } };
 
 export default function JobDetail() {
   const { slug } = useParams();
@@ -96,8 +21,6 @@ export default function JobDetail() {
   const [profileComplete, setProfileComplete] = useState(false);
   const [eligibility, setEligibility] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [docTab, setDocTab] = useState('admit');
-
   useEffect(() => {
     const fetchUserData = async (jobId) => {
       api.get(`/jobs/${jobId}/track`).then((tr) => setTracking(tr.data.tracking)).catch(() => {});
@@ -125,23 +48,27 @@ export default function JobDetail() {
     } catch { }
   };
 
-  if (loading) return <div style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>Loading...</div>;
-  if (!job) return <div style={{ textAlign: 'center', padding: '3rem' }}><h2>404 — Job not found</h2><Link to="/jobs" className="btn btn-primary" style={{ marginTop: '1rem', display: 'inline-flex' }}>Back to Jobs</Link></div>;
+  if (loading) return <DetailSkeleton skeletonWidths={[120, 90, 80]} />;
+  if (!job) return (
+    <div style={{ textAlign: 'center', padding: '3rem' }}>
+      <h2 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '0.75rem' }}>Job not found</h2>
+      <Link to="/jobs" className="btn btn-primary" style={{ display: 'inline-flex' }}>← Back to Jobs</Link>
+    </div>
+  );
 
   const feeLabels = { general: 'General / UR', obc: 'OBC-NCL', sc_st: 'SC / ST', ews: 'EWS', female: 'Female / PwBD' };
   const impLinks = job.application_details?.important_links || [];
   const vb = job.vacancy_breakdown || {};
   const vbPosts = vb.posts || [];
-  const hasAdmitCards = job.admit_cards?.length > 0;
-  const hasAnswerKeys = job.answer_keys?.length > 0;
-  const hasResults = job.results?.length > 0;
 
   return (
-    <div>
-      <Link to="/jobs" className="back-link">← Back to Jobs</Link>
+    <motion.div variants={stagger} initial="hidden" animate="show">
+      <motion.div variants={fadeUp}>
+        <Link to="/jobs" className="back-link">← Back to Jobs</Link>
+      </motion.div>
 
       {/* Hero */}
-      <div className="detail-hero hero-job">
+      <motion.div variants={fadeUp} className="detail-hero hero-job">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem', flexWrap: 'wrap' }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             {job.qualification_level && <span style={{ background: 'rgba(255,255,255,.2)', color: '#fff', padding: '0.15rem 0.55rem', borderRadius: 9999, fontSize: '0.75rem', fontWeight: 600, display: 'inline-block', marginBottom: '0.5rem' }}>{job.qualification_level}</span>}
@@ -153,12 +80,12 @@ export default function JobDetail() {
             {job.status && <span className={`status-pill status-${job.status}`}>{job.status.charAt(0).toUpperCase() + job.status.slice(1)}</span>}
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* Action bar */}
       <div className="action-bar">
         <button onClick={toggleTrack} className="share-btn" style={tracking ? { background: '#fef3c7', color: '#92400e', borderColor: '#fde68a' } : { background: '#dbeafe', color: '#1e40af', borderColor: '#bfdbfe' }}>
-          {tracking ? <><Star size={14} strokeWidth={2} fill="currentColor" /> Tracking — Remove</> : <><Star size={14} strokeWidth={2} /> Track for Reminders</>}
+          {tracking ? <><Bell size={14} strokeWidth={2} fill="currentColor" /> Tracking — Remove</> : <><Bell size={14} strokeWidth={2} /> Track for Reminders</>}
         </button>
         {job.source_url && <a href={job.source_url} target="_blank" rel="noopener noreferrer" className="share-btn" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}><Globe size={13} strokeWidth={2} />Official Website</a>}
         {job.application_details?.application_link && <a href={job.application_details.application_link} target="_blank" rel="noopener noreferrer" className="share-btn" style={{ background: '#2563eb', color: '#fff', borderColor: '#2563eb' }}>Apply Online →</a>}
@@ -166,7 +93,7 @@ export default function JobDetail() {
       </div>
 
       {/* Eligibility */}
-      <EligibilityBanner eligibility={eligibility} profileComplete={profileComplete} token={token} slug={slug} />
+      <EligibilityBanner eligibility={eligibility} profileComplete={profileComplete} token={token} slug={slug} loginPrefix="jobs" />
 
       {/* Key Dates */}
       <div className="detail-grid">
@@ -254,7 +181,7 @@ export default function JobDetail() {
       {/* Application Fee */}
       {job.fee && Object.keys(job.fee).length > 0 && (
         <div className="detail-section">
-          <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Star size={16} strokeWidth={2} />Application Fee</h2>
+          <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Banknote size={16} strokeWidth={2} />Application Fee</h2>
           <table className="fee-table">
             <thead><tr><th>Category</th><th>Fee</th></tr></thead>
             <tbody>
@@ -292,46 +219,7 @@ export default function JobDetail() {
       )}
 
       {/* Phase Documents */}
-      {(hasAdmitCards || hasAnswerKeys || hasResults) && (
-        <div className="detail-section">
-          <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Folder size={16} strokeWidth={2} />Phase Documents</h2>
-          <div className="doc-tabs-bar">
-            {hasAdmitCards && <button className={`doc-tab-btn${docTab === 'admit' ? ' active' : ''}`} onClick={() => setDocTab('admit')}>Admit Cards ({job.admit_cards.length})</button>}
-            {hasAnswerKeys && <button className={`doc-tab-btn${docTab === 'answer' ? ' active' : ''}`} onClick={() => setDocTab('answer')}>Answer Keys ({job.answer_keys.length})</button>}
-            {hasResults && <button className={`doc-tab-btn${docTab === 'result' ? ' active' : ''}`} onClick={() => setDocTab('result')}>Results ({job.results.length})</button>}
-          </div>
-          {docTab === 'admit' && hasAdmitCards && (
-            <div style={{ paddingTop: '0.85rem' }}>
-              {job.admit_cards.map((card) => (
-                <div key={card.id} style={{ border: '1px solid #bfdbfe', background: '#eff6ff', borderRadius: '0.5rem', padding: '0.8rem 1rem', marginBottom: '0.65rem', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
-                  <div><div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{card.title}</div>{(card.exam_start || card.exam_end) && <div style={{ fontSize: '0.8rem', color: '#b45309', fontWeight: 600 }}>Exam: {card.exam_start || '?'} – {card.exam_end || '?'}</div>}</div>
-                  <Link to={`/admit-cards/${card.slug}`} style={{ background: '#2563eb', color: '#fff', padding: '0.38rem 0.75rem', borderRadius: '0.5rem', fontSize: '0.78rem', fontWeight: 600, textDecoration: 'none' }}>View →</Link>
-                </div>
-              ))}
-            </div>
-          )}
-          {docTab === 'answer' && hasAnswerKeys && (
-            <div style={{ paddingTop: '0.85rem' }}>
-              {job.answer_keys.map((key) => (
-                <div key={key.id} style={{ border: '1px solid #fde68a', background: '#fefce8', borderRadius: '0.5rem', padding: '0.8rem 1rem', marginBottom: '0.65rem', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
-                  <div><div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{key.title}</div></div>
-                  <Link to={`/answer-keys/${key.slug}`} style={{ background: '#d97706', color: '#fff', padding: '0.38rem 0.75rem', borderRadius: '0.5rem', fontSize: '0.78rem', fontWeight: 600, textDecoration: 'none' }}>View →</Link>
-                </div>
-              ))}
-            </div>
-          )}
-          {docTab === 'result' && hasResults && (
-            <div style={{ paddingTop: '0.85rem' }}>
-              {job.results.map((res) => (
-                <div key={res.id} style={{ border: '1px solid #bbf7d0', background: '#f0fdf4', borderRadius: '0.5rem', padding: '0.8rem 1rem', marginBottom: '0.65rem', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
-                  <div><div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{res.title}</div></div>
-                  <Link to={`/results/${res.slug}`} style={{ background: '#16a34a', color: '#fff', padding: '0.38rem 0.75rem', borderRadius: '0.5rem', fontSize: '0.78rem', fontWeight: 600, textDecoration: 'none' }}>View →</Link>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
+      <PhaseDocTabs admitCards={job.admit_cards || []} answerKeys={job.answer_keys || []} results={job.results || []} currentSlug="" />
+    </motion.div>
   );
 }

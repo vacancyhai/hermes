@@ -36,6 +36,7 @@ from app.models.admit_card import AdmitCard
 from app.models.answer_key import AnswerKey
 from app.models.job import Job
 from app.models.result import Result
+from app.schemas.admissions import AdmissionResponse
 from app.schemas.jobs import (
     AdmitCardCreateRequest,
     AdmitCardResponse,
@@ -43,6 +44,7 @@ from app.schemas.jobs import (
     AnswerKeyCreateRequest,
     AnswerKeyResponse,
     AnswerKeyUpdateRequest,
+    JobResponse,
     ResultCreateRequest,
     ResultResponse,
     ResultUpdateRequest,
@@ -72,22 +74,98 @@ def _paginated_response(
     }
 
 
-def _enrich_with_parent(data: dict, obj) -> dict:
-    """Attach a minimal job or admission context dict to a document response."""
+async def _enrich_with_parent(data: dict, obj, db: AsyncSession) -> dict:
+    """Attach full job or admission data (with nested docs) to a document response."""
     if getattr(obj, "job", None):
-        data["job"] = {
-            "id": str(obj.job.id),
-            "slug": obj.job.slug,
-            "job_title": obj.job.job_title,
-            "organization": obj.job.organization,
-        }
+        job = obj.job
+        org_ref = getattr(job, "organization_ref", None)
+        job_data = JobResponse.model_validate(job).model_dump()
+        job_data["organization_logo_url"] = org_ref.logo_url if org_ref else None
+        # Fetch nested docs for the parent job
+        admit_cards = [
+            AdmitCardResponse.model_validate(c).model_dump()
+            for c in (
+                await db.execute(
+                    select(AdmitCard)
+                    .where(AdmitCard.job_id == job.id)
+                    .order_by(AdmitCard.published_at.desc())
+                )
+            )
+            .scalars()
+            .all()
+        ]
+        answer_keys = [
+            AnswerKeyResponse.model_validate(k).model_dump()
+            for k in (
+                await db.execute(
+                    select(AnswerKey)
+                    .where(AnswerKey.job_id == job.id)
+                    .order_by(AnswerKey.published_at.desc())
+                )
+            )
+            .scalars()
+            .all()
+        ]
+        results = [
+            ResultResponse.model_validate(r).model_dump()
+            for r in (
+                await db.execute(
+                    select(Result)
+                    .where(Result.job_id == job.id)
+                    .order_by(Result.published_at.desc())
+                )
+            )
+            .scalars()
+            .all()
+        ]
+        job_data["admit_cards"] = admit_cards
+        job_data["answer_keys"] = answer_keys
+        job_data["results"] = results
+        data["job"] = job_data
     elif getattr(obj, "admission", None):
-        data["admission"] = {
-            "id": str(obj.admission.id),
-            "slug": obj.admission.slug,
-            "admission_name": obj.admission.admission_name,
-            "conducting_body": obj.admission.conducting_body,
-        }
+        admission = obj.admission
+        adm_data = AdmissionResponse.model_validate(admission).model_dump()
+        # Fetch nested docs for the parent admission
+        admit_cards = [
+            AdmitCardResponse.model_validate(c).model_dump()
+            for c in (
+                await db.execute(
+                    select(AdmitCard)
+                    .where(AdmitCard.admission_id == admission.id)
+                    .order_by(AdmitCard.published_at.desc())
+                )
+            )
+            .scalars()
+            .all()
+        ]
+        answer_keys = [
+            AnswerKeyResponse.model_validate(k).model_dump()
+            for k in (
+                await db.execute(
+                    select(AnswerKey)
+                    .where(AnswerKey.admission_id == admission.id)
+                    .order_by(AnswerKey.published_at.desc())
+                )
+            )
+            .scalars()
+            .all()
+        ]
+        results = [
+            ResultResponse.model_validate(r).model_dump()
+            for r in (
+                await db.execute(
+                    select(Result)
+                    .where(Result.admission_id == admission.id)
+                    .order_by(Result.published_at.desc())
+                )
+            )
+            .scalars()
+            .all()
+        ]
+        adm_data["admit_cards"] = admit_cards
+        adm_data["answer_keys"] = answer_keys
+        adm_data["results"] = results
+        data["admission"] = adm_data
     return data
 
 
@@ -176,15 +254,52 @@ async def list_admit_cards(
     offset: Annotated[int, Query(ge=0)] = 0,
 ):
     """List all admit cards from admit_cards table, ordered by published_at."""
-    query = select(AdmitCard).order_by(
-        AdmitCard.published_at.desc().nulls_last(), AdmitCard.created_at.desc()
+    query = (
+        select(AdmitCard)
+        .options(
+            joinedload(AdmitCard.job).joinedload(Job.organization_ref),
+            joinedload(AdmitCard.admission),
+        )
+        .order_by(
+            AdmitCard.published_at.desc().nulls_last(), AdmitCard.created_at.desc()
+        )
     )
     count_query = select(func.count(AdmitCard.id))
-
     total = (await db.execute(count_query)).scalar()
-    result = await db.execute(query.offset(offset).limit(limit))
-    cards = result.scalars().all()
-    return _paginated_response(cards, AdmitCardResponse, limit, offset, total)
+    cards = (await db.execute(query.offset(offset).limit(limit))).scalars().all()
+
+    def _card_item(c: AdmitCard) -> dict:
+        d = AdmitCardResponse.model_validate(c).model_dump()
+        if c.job:
+            org_ref = getattr(c.job, "organization_ref", None)
+            d["parent_type"] = "job"
+            d["parent_title"] = c.job.job_title
+            d["parent_organization"] = c.job.organization
+            d["parent_slug"] = c.job.slug
+            d["parent_logo_url"] = org_ref.logo_url if org_ref else None
+        elif c.admission:
+            d["parent_type"] = "admission"
+            d["parent_title"] = c.admission.admission_name
+            d["parent_organization"] = c.admission.conducting_body
+            d["parent_slug"] = c.admission.slug
+            d["parent_logo_url"] = None
+        else:
+            d["parent_type"] = None
+            d["parent_title"] = None
+            d["parent_organization"] = None
+            d["parent_slug"] = None
+            d["parent_logo_url"] = None
+        return d
+
+    return {
+        "data": [_card_item(c) for c in cards],
+        "pagination": {
+            "limit": limit,
+            "offset": offset,
+            "total": total,
+            "has_more": (offset + limit) < total,
+        },
+    }
 
 
 @admit_cards_router.get("/{slug}")
@@ -195,7 +310,10 @@ async def get_admit_card(
     """Get single admit card by slug with related job/admission."""
     query = (
         select(AdmitCard)
-        .options(joinedload(AdmitCard.job), joinedload(AdmitCard.admission))
+        .options(
+            joinedload(AdmitCard.job).joinedload(Job.organization_ref),
+            joinedload(AdmitCard.admission),
+        )
         .where(AdmitCard.slug == slug)
     )
 
@@ -207,8 +325,8 @@ async def get_admit_card(
             status_code=status.HTTP_404_NOT_FOUND, detail=_ERR_ADMIT_CARD_NOT_FOUND
         )
 
-    return _enrich_with_parent(
-        AdmitCardResponse.model_validate(card).model_dump(), card
+    return await _enrich_with_parent(
+        AdmitCardResponse.model_validate(card).model_dump(), card, db
     )
 
 
@@ -219,15 +337,52 @@ async def list_answer_keys(
     offset: Annotated[int, Query(ge=0)] = 0,
 ):
     """List all answer keys from job_answer_keys table, ordered by published_at."""
-    query = select(AnswerKey).order_by(
-        AnswerKey.published_at.desc().nulls_last(), AnswerKey.created_at.desc()
+    query = (
+        select(AnswerKey)
+        .options(
+            joinedload(AnswerKey.job).joinedload(Job.organization_ref),
+            joinedload(AnswerKey.admission),
+        )
+        .order_by(
+            AnswerKey.published_at.desc().nulls_last(), AnswerKey.created_at.desc()
+        )
     )
     count_query = select(func.count(AnswerKey.id))
-
     total = (await db.execute(count_query)).scalar()
-    result = await db.execute(query.offset(offset).limit(limit))
-    keys = result.scalars().all()
-    return _paginated_response(keys, AnswerKeyResponse, limit, offset, total)
+    keys = (await db.execute(query.offset(offset).limit(limit))).scalars().all()
+
+    def _key_item(k: AnswerKey) -> dict:
+        d = AnswerKeyResponse.model_validate(k).model_dump()
+        if k.job:
+            org_ref = getattr(k.job, "organization_ref", None)
+            d["parent_type"] = "job"
+            d["parent_title"] = k.job.job_title
+            d["parent_organization"] = k.job.organization
+            d["parent_slug"] = k.job.slug
+            d["parent_logo_url"] = org_ref.logo_url if org_ref else None
+        elif k.admission:
+            d["parent_type"] = "admission"
+            d["parent_title"] = k.admission.admission_name
+            d["parent_organization"] = k.admission.conducting_body
+            d["parent_slug"] = k.admission.slug
+            d["parent_logo_url"] = None
+        else:
+            d["parent_type"] = None
+            d["parent_title"] = None
+            d["parent_organization"] = None
+            d["parent_slug"] = None
+            d["parent_logo_url"] = None
+        return d
+
+    return {
+        "data": [_key_item(k) for k in keys],
+        "pagination": {
+            "limit": limit,
+            "offset": offset,
+            "total": total,
+            "has_more": (offset + limit) < total,
+        },
+    }
 
 
 @answer_keys_router.get("/{slug}")
@@ -238,7 +393,10 @@ async def get_answer_key(
     """Get single answer key by slug with related job/admission."""
     query = (
         select(AnswerKey)
-        .options(joinedload(AnswerKey.job), joinedload(AnswerKey.admission))
+        .options(
+            joinedload(AnswerKey.job).joinedload(Job.organization_ref),
+            joinedload(AnswerKey.admission),
+        )
         .where(AnswerKey.slug == slug)
     )
 
@@ -250,7 +408,9 @@ async def get_answer_key(
             status_code=status.HTTP_404_NOT_FOUND, detail=_ERR_ANSWER_KEY_NOT_FOUND
         )
 
-    return _enrich_with_parent(AnswerKeyResponse.model_validate(key).model_dump(), key)
+    return await _enrich_with_parent(
+        AnswerKeyResponse.model_validate(key).model_dump(), key, db
+    )
 
 
 @results_router.get("")
@@ -260,15 +420,50 @@ async def list_results(
     offset: Annotated[int, Query(ge=0)] = 0,
 ):
     """List all results from results table, ordered by published_at."""
-    query = select(Result).order_by(
-        Result.published_at.desc().nulls_last(), Result.created_at.desc()
+    query = (
+        select(Result)
+        .options(
+            joinedload(Result.job).joinedload(Job.organization_ref),
+            joinedload(Result.admission),
+        )
+        .order_by(Result.published_at.desc().nulls_last(), Result.created_at.desc())
     )
     count_query = select(func.count(Result.id))
-
     total = (await db.execute(count_query)).scalar()
-    result = await db.execute(query.offset(offset).limit(limit))
-    results_list = result.scalars().all()
-    return _paginated_response(results_list, ResultResponse, limit, offset, total)
+    results_list = (await db.execute(query.offset(offset).limit(limit))).scalars().all()
+
+    def _result_item(r: Result) -> dict:
+        d = ResultResponse.model_validate(r).model_dump()
+        if r.job:
+            org_ref = getattr(r.job, "organization_ref", None)
+            d["parent_type"] = "job"
+            d["parent_title"] = r.job.job_title
+            d["parent_organization"] = r.job.organization
+            d["parent_slug"] = r.job.slug
+            d["parent_logo_url"] = org_ref.logo_url if org_ref else None
+        elif r.admission:
+            d["parent_type"] = "admission"
+            d["parent_title"] = r.admission.admission_name
+            d["parent_organization"] = r.admission.conducting_body
+            d["parent_slug"] = r.admission.slug
+            d["parent_logo_url"] = None
+        else:
+            d["parent_type"] = None
+            d["parent_title"] = None
+            d["parent_organization"] = None
+            d["parent_slug"] = None
+            d["parent_logo_url"] = None
+        return d
+
+    return {
+        "data": [_result_item(r) for r in results_list],
+        "pagination": {
+            "limit": limit,
+            "offset": offset,
+            "total": total,
+            "has_more": (offset + limit) < total,
+        },
+    }
 
 
 @results_router.get("/{slug}")
@@ -279,7 +474,10 @@ async def get_result(
     """Get single result by slug with related job/admission."""
     query = (
         select(Result)
-        .options(joinedload(Result.job), joinedload(Result.admission))
+        .options(
+            joinedload(Result.job).joinedload(Job.organization_ref),
+            joinedload(Result.admission),
+        )
         .where(Result.slug == slug)
     )
 
@@ -291,8 +489,8 @@ async def get_result(
             status_code=status.HTTP_404_NOT_FOUND, detail=_ERR_RESULT_NOT_FOUND
         )
 
-    return _enrich_with_parent(
-        ResultResponse.model_validate(result_obj).model_dump(), result_obj
+    return await _enrich_with_parent(
+        ResultResponse.model_validate(result_obj).model_dump(), result_obj, db
     )
 
 

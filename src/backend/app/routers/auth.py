@@ -28,10 +28,10 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from typing import Annotated, Any
 
+import bcrypt as _bcrypt
 import jwt
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from jinja2 import Environment, FileSystemLoader
-from passlib.context import CryptContext
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -68,8 +68,17 @@ _FIREBASE_NOT_CONFIGURED = "Firebase not configured"
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
+
 # Used only for admin auth (users authenticate via Firebase)
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+class _PwdContext:
+    def verify(self, plain: str, hashed: str) -> bool:
+        return _bcrypt.checkpw(plain.encode(), hashed.encode())
+
+    def hash(self, plain: str) -> str:
+        return _bcrypt.hashpw(plain.encode(), _bcrypt.gensalt()).decode()
+
+
+pwd_context = _PwdContext()
 
 
 async def _blocklist_jti(redis, jti: str | None, exp: int) -> None:

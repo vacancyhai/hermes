@@ -11,6 +11,7 @@ from app.dependencies import get_current_user, get_db
 from app.models.admit_card import AdmitCard
 from app.models.answer_key import AnswerKey
 from app.models.job import Job
+from app.models.organization import Organization
 from app.models.result import Result
 from app.models.user_profile import UserProfile
 from app.schemas.jobs import (
@@ -80,8 +81,26 @@ async def list_jobs(
     result = await db.execute(query)
     jobs = result.scalars().all()
 
+    # Fetch logo_urls for orgs referenced by these jobs in one query
+    org_ids = [j.organization_id for j in jobs if j.organization_id]
+    logo_map: dict = {}
+    if org_ids:
+        org_rows = await db.execute(
+            select(Organization.id, Organization.logo_url).where(
+                Organization.id.in_(org_ids)
+            )
+        )
+        logo_map = {str(row.id): row.logo_url for row in org_rows}
+
+    def _job_item(j: Job) -> dict:
+        d = JobListItem.model_validate(j).model_dump()
+        d["organization_logo_url"] = (
+            logo_map.get(str(j.organization_id)) if j.organization_id else None
+        )
+        return d
+
     return {
-        "data": [JobListItem.model_validate(j).model_dump() for j in jobs],
+        "data": [_job_item(j) for j in jobs],
         "pagination": {
             "limit": limit,
             "offset": offset,
