@@ -1,113 +1,355 @@
 import PropTypes from 'prop-types';
-import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
-  Landmark, Users, Link2, Download, BookOpen, Globe, CheckCircle,
-  GraduationCap, Briefcase,
+  Landmark,
+  Users,
+  Link2,
+  Download,
+  BookOpen,
+  Globe,
+  CheckCircle,
+  GraduationCap,
+  Briefcase,
 } from 'lucide-react';
 import PhaseDocTabs from './PhaseDocTabs';
 import PhaseCard from './PhaseCard';
 
-const fadeUp = { hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0, transition: { duration: 0.3, ease: [0.16, 1, 0.3, 1] } } };
+const fadeUp = {
+  hidden: { opacity: 0, y: 14 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.3, ease: [0.16, 1, 0.3, 1] } },
+};
 
-function JobParent({ job, currentSlug, currentType }) {
-  const feeLabels = { general: 'General / UR', obc: 'OBC-NCL', sc_st: 'SC / ST', ews: 'EWS', female: 'Female / PwBD' };
-  const impLinks = job.application_details?.important_links || [];
-  const vb = job.vacancy_breakdown || {};
-  const vbPosts = vb.posts || [];
+const JOB_FEE_LABELS = {
+  general: 'General / UR',
+  obc: 'OBC-NCL',
+  sc_st: 'SC / ST',
+  ews: 'EWS',
+  female: 'Female / PwBD',
+};
 
+const JOB_LINK_STYLES = {
+  apply_online: { background: '#2563eb', color: '#fff', borderColor: '#2563eb' },
+  download_notification: { background: '#7c3aed', color: '#fff', borderColor: '#7c3aed' },
+  syllabus: { background: '#0891b2', color: '#fff', borderColor: '#0891b2' },
+};
+
+const JOB_LINK_ICONS = {
+  apply_online: BookOpen,
+  download_notification: Download,
+  syllabus: BookOpen,
+  official_website: Globe,
+};
+
+function SectionDivider({ icon: Icon, label }) {
   return (
-    <motion.div variants={fadeUp}>
-      <div style={{ margin: '1.5rem 0 0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-        <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
-        <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'flex', alignItems: 'center', gap: '0.3rem', whiteSpace: 'nowrap' }}><Briefcase size={12} strokeWidth={2} />Related Job Details</span>
-        <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
-      </div>
+    <div style={{ margin: '1.5rem 0 0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+      <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
+      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'flex', alignItems: 'center', gap: '0.3rem', whiteSpace: 'nowrap' }}>
+        <Icon size={12} strokeWidth={2} />
+        {label}
+      </span>
+      <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
+    </div>
+  );
+}
 
-      <div className="detail-hero hero-job" style={{ marginBottom: '0.75rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem', flexWrap: 'wrap' }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            {job.qualification_level && <span style={{ background: 'rgba(255,255,255,.2)', color: '#fff', padding: '0.15rem 0.55rem', borderRadius: 9999, fontSize: '0.75rem', fontWeight: 600, display: 'inline-block', marginBottom: '0.5rem' }}>{job.qualification_level}</span>}
-            <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#fff', margin: 0 }}>{job.job_title}</h2>
-            <div style={{ fontSize: '0.875rem', opacity: 0.88, display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.25rem' }}>
-              <Landmark size={14} strokeWidth={2} />{job.organization}{job.department && job.department !== job.organization ? ` · ${job.department}` : ''}
-            </div>
-            {job.total_vacancies && <div style={{ marginTop: '0.35rem', fontSize: '0.875rem', opacity: 0.9 }}>{job.total_vacancies.toLocaleString()} vacancies</div>}
-          </div>
-          <div>
-            {job.status && <span className={`status-pill status-${job.status}`}>{job.status.charAt(0).toUpperCase() + job.status.slice(1)}</span>}
-          </div>
+SectionDivider.propTypes = {
+  icon: PropTypes.elementType.isRequired,
+  label: PropTypes.string.isRequired,
+};
+
+function HeroPanel({ className, badge, title, subtitle, note, status }) {
+  return (
+    <div className={className} style={{ marginBottom: '0.75rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem', flexWrap: 'wrap' }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          {badge && (
+            <span style={{ background: 'rgba(255,255,255,.2)', color: '#fff', padding: '0.15rem 0.55rem', borderRadius: 9999, fontSize: '0.75rem', fontWeight: 600, display: 'inline-block', marginBottom: '0.5rem' }}>
+              {badge}
+            </span>
+          )}
+          <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#fff', margin: 0 }}>{title}</h2>
+          {subtitle}
+          {note && <div style={{ marginTop: '0.35rem', fontSize: '0.875rem', opacity: 0.9 }}>{note}</div>}
         </div>
-      </div>
-
-      <div className="action-bar" style={{ marginBottom: '0.75rem' }}>
-        {job.source_url && <a href={job.source_url} target="_blank" rel="noopener noreferrer" className="share-btn" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}><Globe size={13} strokeWidth={2} />Official Website</a>}
-        {job.application_details?.application_link && <a href={job.application_details.application_link} target="_blank" rel="noopener noreferrer" className="share-btn" style={{ background: '#2563eb', color: '#fff', borderColor: '#2563eb' }}>Apply Online →</a>}
-      </div>
-
-      <div className="detail-grid">
-        {[['Notification Date', job.notification_date], ['Apply From', job.application_start], ['Last Date to Apply', job.application_end], ['Exam Start', job.exam_start], ['Exam End', job.exam_end], ['Result Date', job.result_date]].filter(([, v]) => v).map(([label, value]) => (
-          <div key={label} className="detail-item">
-            <div className="label">{label}</div>
-            <div className={`value${label === 'Last Date to Apply' && job.status === 'active' ? ' urgent' : ''}`}>{value}</div>
-          </div>
-        ))}
-        {job.salary_initial && (
-          <div className="detail-item">
-            <div className="label">Pay Scale</div>
-            <div className="value">₹{job.salary_initial.toLocaleString()}{job.salary_max ? ` – ₹${job.salary_max.toLocaleString()}` : ''}</div>
+        {status && (
+          <div>
+            <span className={`status-pill status-${status}`}>{status.charAt(0).toUpperCase() + status.slice(1)}</span>
           </div>
         )}
       </div>
+    </div>
+  );
+}
 
-      {job.description && <div className="detail-section"><h2 style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><BookOpen size={16} strokeWidth={2} />About This Recruitment</h2><div dangerouslySetInnerHTML={{ __html: job.description }} style={{ fontSize: '0.9rem', color: '#334155', lineHeight: 1.65 }} /></div>}
+HeroPanel.propTypes = {
+  className: PropTypes.string.isRequired,
+  badge: PropTypes.string,
+  title: PropTypes.string.isRequired,
+  subtitle: PropTypes.node,
+  note: PropTypes.string,
+  status: PropTypes.string,
+};
 
-      {job.eligibility && (job.eligibility.min_qualification || job.eligibility.age_limit || job.eligibility.qualification_details) && (
-        <div className="detail-section">
-          <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><CheckCircle size={16} strokeWidth={2} />Eligibility Criteria</h2>
-          {job.eligibility.min_qualification && <p><strong>Minimum Qualification:</strong> {job.eligibility.min_qualification}</p>}
-          {job.eligibility.age_limit && (() => { const a = job.eligibility.age_limit; return <p style={{ marginTop: '0.4rem' }}><strong>Age Limit:</strong> {a.min && a.max ? `${a.min} – ${a.max} years` : ''}{a.cutoff_date ? ` (as on ${a.cutoff_date})` : ''}</p>; })()}
-          {job.eligibility.qualification_details && <p style={{ marginTop: '0.4rem' }}>{job.eligibility.qualification_details}</p>}
-        </div>
+function ActionBar({ sourceUrl, applyUrl, applyStyle }) {
+  return (
+    <div className="action-bar" style={{ marginBottom: '0.75rem' }}>
+      {sourceUrl && (
+        <a href={sourceUrl} target="_blank" rel="noopener noreferrer" className="share-btn" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+          <Globe size={13} strokeWidth={2} />Official Website
+        </a>
       )}
+      {applyUrl && (
+        <a href={applyUrl} target="_blank" rel="noopener noreferrer" className="share-btn" style={applyStyle}>
+          Apply Online →
+        </a>
+      )}
+    </div>
+  );
+}
 
-      {(vb.total || vb.UR || vb.SC) && (
-        <div className="detail-section">
-          <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Users size={16} strokeWidth={2} />Vacancy Breakdown</h2>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginBottom: '0.5rem' }}>
-            {['total', 'UR', 'OBC', 'EWS', 'SC', 'ST', 'PWD', 'male', 'female'].filter((c) => vb[c]).map((cat) => (
-              <div key={cat} style={{ background: cat === 'total' ? '#dbeafe' : '#f1f5f9', borderRadius: '0.35rem', padding: '0.35rem 0.65rem', textAlign: 'center', minWidth: 54 }}>
-                <div style={{ fontSize: '0.9rem', fontWeight: 700 }}>{(vb[cat] || 0).toLocaleString()}</div>
-                <div style={{ fontSize: '0.66rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{cat}</div>
-              </div>
-            ))}
+ActionBar.propTypes = {
+  sourceUrl: PropTypes.string,
+  applyUrl: PropTypes.string,
+  applyStyle: PropTypes.object,
+};
+
+function DetailGrid({ rows, isActive }) {
+  const visibleRows = rows.filter(([, value]) => value);
+
+  return (
+    <div className="detail-grid">
+      {visibleRows.map(([label, value]) => (
+        <div key={label} className="detail-item">
+          <div className="label">{label}</div>
+          <div className={`value${label === 'Last Date to Apply' && isActive ? ' urgent' : ''}`}>{value}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+DetailGrid.propTypes = {
+  rows: PropTypes.arrayOf(PropTypes.array).isRequired,
+  isActive: PropTypes.bool.isRequired,
+};
+
+function HtmlDescriptionSection({ title, html }) {
+  if (!html) return null;
+
+  return (
+    <div className="detail-section">
+      <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+        <BookOpen size={16} strokeWidth={2} />
+        {title}
+      </h2>
+      <div dangerouslySetInnerHTML={{ __html: html }} style={{ fontSize: '0.9rem', color: '#334155', lineHeight: 1.65 }} />
+    </div>
+  );
+}
+
+HtmlDescriptionSection.propTypes = {
+  title: PropTypes.string.isRequired,
+  html: PropTypes.string,
+};
+
+function EligibilitySection({ eligibility }) {
+  if (!eligibility) return null;
+
+  const hasData = eligibility.min_qualification || eligibility.age_limit || eligibility.qualification_details;
+  if (!hasData) return null;
+
+  const age = eligibility.age_limit;
+
+  return (
+    <div className="detail-section">
+      <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+        <CheckCircle size={16} strokeWidth={2} />Eligibility Criteria
+      </h2>
+      {eligibility.min_qualification && <p><strong>Minimum Qualification:</strong> {eligibility.min_qualification}</p>}
+      {age && (
+        <p style={{ marginTop: '0.4rem' }}>
+          <strong>Age Limit:</strong>{' '}
+          {age.min && age.max ? `${age.min} – ${age.max} years` : ''}
+          {age.cutoff_date ? ` (as on ${age.cutoff_date})` : ''}
+        </p>
+      )}
+      {eligibility.qualification_details && <p style={{ marginTop: '0.4rem' }}>{eligibility.qualification_details}</p>}
+    </div>
+  );
+}
+
+EligibilitySection.propTypes = {
+  eligibility: PropTypes.object,
+};
+
+function CountBadges({ values, keys, emphasizeFirst = false }) {
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginBottom: '0.5rem' }}>
+      {keys.filter((key) => values[key]).map((key, index) => (
+        <div key={key} style={{ background: emphasizeFirst && index === 0 ? '#dbeafe' : '#f1f5f9', borderRadius: '0.35rem', padding: '0.35rem 0.65rem', textAlign: 'center', minWidth: 54 }}>
+          <div style={{ fontSize: '0.9rem', fontWeight: 700 }}>{Number(values[key]).toLocaleString()}</div>
+          <div style={{ fontSize: '0.66rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{key}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+CountBadges.propTypes = {
+  values: PropTypes.object.isRequired,
+  keys: PropTypes.arrayOf(PropTypes.string).isRequired,
+  emphasizeFirst: PropTypes.bool,
+};
+
+function FeeSection({ fee, labels }) {
+  if (!fee || Object.keys(fee).length === 0) return null;
+
+  const orderedKeys = labels ? ['general', 'obc', 'sc_st', 'ews', 'female'].filter((key) => key in fee) : Object.keys(fee);
+
+  return (
+    <div className="detail-section">
+      <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+        <CheckCircle size={16} strokeWidth={2} />Application Fee
+      </h2>
+      <table className="fee-table">
+        <thead>
+          <tr>
+            <th>Category</th>
+            <th>Fee</th>
+          </tr>
+        </thead>
+        <tbody>
+          {orderedKeys.map((key) => (
+            <tr key={key}>
+              <td>{labels?.[key] || key}</td>
+              <td>{fee[key] === 0 ? 'Free' : `₹${fee[key]}`}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+FeeSection.propTypes = {
+  fee: PropTypes.object,
+  labels: PropTypes.object,
+};
+
+function ImportantLinksSection({ links, styleMap = {}, iconMap = {} }) {
+  const validLinks = links.filter((link) => (typeof link === 'object' ? link.url : link));
+  if (validLinks.length === 0) return null;
+
+  return (
+    <div className="detail-section">
+      <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+        <Link2 size={16} strokeWidth={2} />Important Links
+      </h2>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+        {validLinks.map((link) => {
+          const url = typeof link === 'object' ? link.url : link;
+          const text = typeof link === 'object' ? (link.text || url) : url;
+          const type = typeof link === 'object' ? (link.type || '') : '';
+          const Icon = iconMap[type] || Link2;
+          return (
+            <a key={url} href={url} target="_blank" rel="noopener noreferrer" className="share-btn" style={{ ...(styleMap[type] || {}), display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+              <Icon size={13} strokeWidth={2} />
+              {text}
+            </a>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+ImportantLinksSection.propTypes = {
+  links: PropTypes.array.isRequired,
+  styleMap: PropTypes.object,
+  iconMap: PropTypes.object,
+};
+
+function JobParent({ job, currentSlug }) {
+  const importantLinks = job.application_details?.important_links || [];
+  const vacancyBreakdown = job.vacancy_breakdown || {};
+  const vacancyPosts = vacancyBreakdown.posts || [];
+
+  const detailRows = [
+    ['Notification Date', job.notification_date],
+    ['Apply From', job.application_start],
+    ['Last Date to Apply', job.application_end],
+    ['Exam Start', job.exam_start],
+    ['Exam End', job.exam_end],
+    ['Result Date', job.result_date],
+  ];
+
+  if (job.salary_initial) {
+    detailRows.push([
+      'Pay Scale',
+      `₹${job.salary_initial.toLocaleString()}${job.salary_max ? ` – ₹${job.salary_max.toLocaleString()}` : ''}`,
+    ]);
+  }
+
+  return (
+    <motion.div variants={fadeUp}>
+      <SectionDivider icon={Briefcase} label="Related Job Details" />
+
+      <HeroPanel
+        className="detail-hero hero-job"
+        badge={job.qualification_level}
+        title={job.job_title}
+        subtitle={(
+          <div style={{ fontSize: '0.875rem', opacity: 0.88, display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.25rem' }}>
+            <Landmark size={14} strokeWidth={2} />
+            {job.organization}
+            {job.department && job.department !== job.organization ? ` · ${job.department}` : ''}
           </div>
+        )}
+        note={job.total_vacancies ? `${job.total_vacancies.toLocaleString()} vacancies` : ''}
+        status={job.status}
+      />
+
+      <ActionBar
+        sourceUrl={job.source_url}
+        applyUrl={job.application_details?.application_link}
+        applyStyle={{ background: '#2563eb', color: '#fff', borderColor: '#2563eb' }}
+      />
+
+      <DetailGrid rows={detailRows} isActive={job.status === 'active'} />
+
+      <HtmlDescriptionSection title="About This Recruitment" html={job.description} />
+
+      <EligibilitySection eligibility={job.eligibility} />
+
+      {(vacancyBreakdown.total || vacancyBreakdown.UR || vacancyBreakdown.SC) && (
+        <div className="detail-section">
+          <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <Users size={16} strokeWidth={2} />Vacancy Breakdown
+          </h2>
+          <CountBadges values={vacancyBreakdown} keys={['total', 'UR', 'OBC', 'EWS', 'SC', 'ST', 'PWD', 'male', 'female']} emphasizeFirst />
         </div>
       )}
 
-      {vbPosts.length > 0 && vbPosts[0]?.post_name && (
+      {vacancyPosts.length > 0 && vacancyPosts[0]?.post_name && (
         <div className="detail-section">
-          <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Users size={16} strokeWidth={2} />Posts &amp; Vacancies</h2>
-          {vbPosts.map((post, i) => {
-            const pv = post.postwise_vacancy || {};
+          <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <Users size={16} strokeWidth={2} />Posts &amp; Vacancies
+          </h2>
+          {vacancyPosts.map((post, index) => {
+            const postVacancy = post.postwise_vacancy || {};
+
             return (
-              <div key={post.post_name || i} style={{ border: '1px solid #e2e8f0', borderRadius: '0.5rem', marginBottom: '0.85rem', overflow: 'hidden' }}>
+              <div key={post.post_name || index} style={{ border: '1px solid #e2e8f0', borderRadius: '0.5rem', marginBottom: '0.85rem', overflow: 'hidden' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.6rem 0.95rem', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', flexWrap: 'wrap', gap: '0.35rem' }}>
                   <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>{post.post_name}</span>
-                  {pv.total && <span style={{ background: '#dbeafe', color: '#1e40af', fontSize: '0.78rem', fontWeight: 700, padding: '0.15rem 0.55rem', borderRadius: 9999 }}>{pv.total.toLocaleString()} posts</span>}
+                  {postVacancy.total && <span style={{ background: '#dbeafe', color: '#1e40af', fontSize: '0.78rem', fontWeight: 700, padding: '0.15rem 0.55rem', borderRadius: 9999 }}>{postVacancy.total.toLocaleString()} posts</span>}
                 </div>
                 <div style={{ padding: '0.75rem 0.95rem' }}>
-                  {Object.keys(pv).length > 0 && (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginBottom: '0.35rem' }}>
-                      {['UR', 'OBC', 'EWS', 'SC', 'ST', 'PWD', 'male', 'female'].filter((c) => pv[c]).map((cat) => (
-                        <div key={cat} style={{ background: '#f1f5f9', borderRadius: '0.35rem', padding: '0.35rem 0.65rem', textAlign: 'center', minWidth: 54 }}>
-                          <div style={{ fontSize: '0.9rem', fontWeight: 700 }}>{pv[cat]}</div>
-                          <div style={{ fontSize: '0.66rem', color: '#64748b', textTransform: 'uppercase' }}>{cat}</div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {post.selection_process?.map((step, si) => <PhaseCard key={typeof step === 'object' ? (step.name || si) : si} step={step} />)}
+                  {Object.keys(postVacancy).length > 0 && <CountBadges values={postVacancy} keys={['UR', 'OBC', 'EWS', 'SC', 'ST', 'PWD', 'male', 'female']} />}
+                  {post.selection_process?.map((step, stepIndex) => (
+                    <PhaseCard key={typeof step === 'object' ? (step.name || stepIndex) : stepIndex} step={step} />
+                  ))}
                 </div>
               </div>
             );
@@ -115,144 +357,91 @@ function JobParent({ job, currentSlug, currentType }) {
         </div>
       )}
 
-      {vbPosts.length > 0 && !vbPosts[0]?.post_name && (
+      {vacancyPosts.length > 0 && !vacancyPosts[0]?.post_name && (
         <div className="detail-section">
-          <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><CheckCircle size={16} strokeWidth={2} />Selection Process</h2>
-          {vbPosts.map((step, si) => <PhaseCard key={typeof step === 'object' ? (step.name || si) : si} step={step} />)}
+          <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <CheckCircle size={16} strokeWidth={2} />Selection Process
+          </h2>
+          {vacancyPosts.map((step, stepIndex) => (
+            <PhaseCard key={typeof step === 'object' ? (step.name || stepIndex) : stepIndex} step={step} />
+          ))}
         </div>
       )}
 
-      {job.fee && Object.keys(job.fee).length > 0 && (
-        <div className="detail-section">
-          <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><CheckCircle size={16} strokeWidth={2} />Application Fee</h2>
-          <table className="fee-table">
-            <thead><tr><th>Category</th><th>Fee</th></tr></thead>
-            <tbody>
-              {['general', 'obc', 'sc_st', 'ews', 'female'].filter((k) => k in job.fee).map((k) => (
-                <tr key={k}><td>{feeLabels[k]}</td><td>{job.fee[k] === 0 ? 'Free' : `₹${job.fee[k]}`}</td></tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <FeeSection fee={job.fee} labels={JOB_FEE_LABELS} />
 
-      {impLinks.length > 0 && (
-        <div className="detail-section">
-          <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Link2 size={16} strokeWidth={2} />Important Links</h2>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-            {impLinks.filter((l) => (typeof l === 'object' ? l.url : l)).map((link) => {
-              const url = typeof link === 'object' ? link.url : link;
-              const text = typeof link === 'object' ? (link.text || url) : url;
-              const ltype = typeof link === 'object' ? (link.type || '') : '';
-              const linkStyles = {
-                apply_online: { background: '#2563eb', color: '#fff', borderColor: '#2563eb' },
-                download_notification: { background: '#7c3aed', color: '#fff', borderColor: '#7c3aed' },
-                syllabus: { background: '#0891b2', color: '#fff', borderColor: '#0891b2' },
-              };
-              const icons = { apply_online: <BookOpen size={13} strokeWidth={2} />, download_notification: <Download size={13} strokeWidth={2} />, syllabus: <BookOpen size={13} strokeWidth={2} />, official_website: <Globe size={13} strokeWidth={2} /> };
-              return (
-                <a key={url} href={url} target="_blank" rel="noopener noreferrer" className="share-btn" style={{ ...(linkStyles[ltype] && { ...linkStyles[ltype] }), display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
-                  {icons[ltype] || <Link2 size={13} strokeWidth={2} />} {text}
-                </a>
-              );
-            })}
-          </div>
-        </div>
-      )}
+      <ImportantLinksSection links={importantLinks} styleMap={JOB_LINK_STYLES} iconMap={JOB_LINK_ICONS} />
 
       <PhaseDocTabs admitCards={job.admit_cards || []} answerKeys={job.answer_keys || []} results={job.results || []} currentSlug={currentSlug} />
     </motion.div>
   );
 }
-JobParent.propTypes = { job: PropTypes.object.isRequired, currentSlug: PropTypes.string.isRequired, currentType: PropTypes.string.isRequired };
 
-function AdmissionParent({ admission, currentSlug, currentType }) {
-  const impLinks = admission.admission_details?.important_links || [];
+JobParent.propTypes = {
+  job: PropTypes.object.isRequired,
+  currentSlug: PropTypes.string.isRequired,
+};
+
+function AdmissionParent({ admission, currentSlug }) {
+  const importantLinks = admission.admission_details?.important_links || [];
+
+  const detailRows = [
+    ['Apply From', admission.application_start],
+    ['Last Date to Apply', admission.application_end],
+    ['Exam Start', admission.exam_start],
+    ['Exam End', admission.exam_end],
+    ['Counselling Start', admission.counselling_start],
+    ['Result Date', admission.result_date],
+  ];
 
   return (
     <motion.div variants={fadeUp}>
-      <div style={{ margin: '1.5rem 0 0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-        <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
-        <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'flex', alignItems: 'center', gap: '0.3rem', whiteSpace: 'nowrap' }}><GraduationCap size={12} strokeWidth={2} />Related Admission Details</span>
-        <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
-      </div>
+      <SectionDivider icon={GraduationCap} label="Related Admission Details" />
 
-      <div className="detail-hero hero-admission" style={{ marginBottom: '0.75rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem', flexWrap: 'wrap' }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            {admission.stream && <span style={{ background: 'rgba(255,255,255,.2)', color: '#fff', padding: '0.15rem 0.55rem', borderRadius: 9999, fontSize: '0.75rem', fontWeight: 600, display: 'inline-block', marginBottom: '0.5rem' }}>{admission.stream}</span>}
-            <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#fff', margin: 0 }}>{admission.admission_name}</h2>
-            <div style={{ fontSize: '0.875rem', opacity: 0.88, display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.25rem' }}>
-              <Landmark size={14} strokeWidth={2} />{admission.conducting_body}
-            </div>
+      <HeroPanel
+        className="detail-hero hero-admission"
+        badge={admission.stream}
+        title={admission.admission_name}
+        subtitle={(
+          <div style={{ fontSize: '0.875rem', opacity: 0.88, display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.25rem' }}>
+            <Landmark size={14} strokeWidth={2} />
+            {admission.conducting_body}
           </div>
-          <div>
-            {admission.status && <span className={`status-pill status-${admission.status}`}>{admission.status.charAt(0).toUpperCase() + admission.status.slice(1)}</span>}
-          </div>
-        </div>
-      </div>
+        )}
+        status={admission.status}
+      />
 
-      <div className="action-bar" style={{ marginBottom: '0.75rem' }}>
-        {admission.source_url && <a href={admission.source_url} target="_blank" rel="noopener noreferrer" className="share-btn" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}><Globe size={13} strokeWidth={2} />Official Website</a>}
-        {admission.admission_details?.application_link && <a href={admission.admission_details.application_link} target="_blank" rel="noopener noreferrer" className="share-btn" style={{ background: '#7c3aed', color: '#fff', borderColor: '#7c3aed' }}>Apply Online →</a>}
-      </div>
+      <ActionBar
+        sourceUrl={admission.source_url}
+        applyUrl={admission.admission_details?.application_link}
+        applyStyle={{ background: '#7c3aed', color: '#fff', borderColor: '#7c3aed' }}
+      />
 
-      <div className="detail-grid">
-        {[['Apply From', admission.application_start], ['Last Date to Apply', admission.application_end], ['Exam Start', admission.exam_start], ['Exam End', admission.exam_end], ['Counselling Start', admission.counselling_start], ['Result Date', admission.result_date]].filter(([, v]) => v).map(([label, value]) => (
-          <div key={label} className="detail-item">
-            <div className="label">{label}</div>
-            <div className={`value${label === 'Last Date to Apply' && admission.status === 'active' ? ' urgent' : ''}`}>{value}</div>
-          </div>
-        ))}
-      </div>
+      <DetailGrid rows={detailRows} isActive={admission.status === 'active'} />
 
-      {admission.description && <div className="detail-section"><h2 style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><BookOpen size={16} strokeWidth={2} />About This Admission</h2><div dangerouslySetInnerHTML={{ __html: admission.description }} style={{ fontSize: '0.9rem', color: '#334155', lineHeight: 1.65 }} /></div>}
+      <HtmlDescriptionSection title="About This Admission" html={admission.description} />
 
-      {admission.eligibility && Object.keys(admission.eligibility).length > 0 && (
-        <div className="detail-section">
-          <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><CheckCircle size={16} strokeWidth={2} />Eligibility Criteria</h2>
-          {admission.eligibility.min_qualification && <p><strong>Minimum Qualification:</strong> {admission.eligibility.min_qualification}</p>}
-          {admission.eligibility.age_limit && (() => { const a = admission.eligibility.age_limit; return <p style={{ marginTop: '0.4rem' }}><strong>Age Limit:</strong> {a.min && a.max ? `${a.min} – ${a.max} years` : ''}{a.cutoff_date ? ` (as on ${a.cutoff_date})` : ''}</p>; })()}
-          {admission.eligibility.qualification_details && <p style={{ marginTop: '0.4rem' }}>{admission.eligibility.qualification_details}</p>}
-        </div>
-      )}
+      <EligibilitySection eligibility={admission.eligibility} />
 
-      {admission.fee && Object.keys(admission.fee).length > 0 && (
-        <div className="detail-section">
-          <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><CheckCircle size={16} strokeWidth={2} />Application Fee</h2>
-          <table className="fee-table">
-            <thead><tr><th>Category</th><th>Fee</th></tr></thead>
-            <tbody>
-              {Object.entries(admission.fee).map(([k, v]) => (
-                <tr key={k}><td>{k}</td><td>{v === 0 ? 'Free' : `₹${v}`}</td></tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <FeeSection fee={admission.fee} />
 
-      {impLinks.length > 0 && (
-        <div className="detail-section">
-          <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Link2 size={16} strokeWidth={2} />Important Links</h2>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-            {impLinks.filter((l) => (typeof l === 'object' ? l.url : l)).map((link) => {
-              const url = typeof link === 'object' ? link.url : link;
-              const text = typeof link === 'object' ? (link.text || url) : url;
-              return <a key={url} href={url} target="_blank" rel="noopener noreferrer" className="share-btn" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}><Link2 size={13} strokeWidth={2} />{text}</a>;
-            })}
-          </div>
-        </div>
-      )}
+      <ImportantLinksSection links={importantLinks} />
 
       <PhaseDocTabs admitCards={admission.admit_cards || []} answerKeys={admission.answer_keys || []} results={admission.results || []} currentSlug={currentSlug} />
     </motion.div>
   );
 }
-AdmissionParent.propTypes = { admission: PropTypes.object.isRequired, currentSlug: PropTypes.string.isRequired, currentType: PropTypes.string.isRequired };
 
-export default function ParentDetail({ type, data, currentSlug, currentType }) {
-  if (type === 'job') return <JobParent job={data} currentSlug={currentSlug} currentType={currentType} />;
-  if (type === 'admission') return <AdmissionParent admission={data} currentSlug={currentSlug} currentType={currentType} />;
+AdmissionParent.propTypes = {
+  admission: PropTypes.object.isRequired,
+  currentSlug: PropTypes.string.isRequired,
+};
+
+export default function ParentDetail(props) {
+  const { type, data, currentSlug } = props;
+
+  if (type === 'job') return <JobParent job={data} currentSlug={currentSlug} />;
+  if (type === 'admission') return <AdmissionParent admission={data} currentSlug={currentSlug} />;
   return null;
 }
 

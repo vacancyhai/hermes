@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Landmark, Clock, Bell, SlidersHorizontal, X, GraduationCap, Users } from 'lucide-react';
+import { Landmark, Clock, SlidersHorizontal, X, GraduationCap, Users } from 'lucide-react';
 import api from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
 import OrgLogoCircle from '../components/OrgLogoCircle';
+import TrackControl from '../components/TrackControl';
+import { LIST_STATUS_STYLES } from '../lib/listStatusStyles';
 
 const cardVariants = {
   hidden: { opacity: 0, y: 16 },
@@ -69,12 +71,6 @@ export default function Admissions() {
 
   const [search, setSearch] = useState(q);
   const handleSearch = (e) => { e.preventDefault(); setSearchParams({ q: search, offset: 0 }); };
-
-  const statusMap = {
-    active:   { bg: '#dcfce7', color: '#15803d', border: '#bbf7d0', label: 'Active' },
-    upcoming: { bg: '#fef3c7', color: '#b45309', border: '#fde68a', label: 'Upcoming' },
-    closed:   { bg: '#fee2e2', color: '#b91c1c', border: '#fecaca', label: 'Closed' },
-  };
 
   return (
     <div>
@@ -175,7 +171,7 @@ export default function Admissions() {
                       <h3 style={{ fontSize: '0.975rem', fontWeight: 700, lineHeight: 1.4, flex: 1, minWidth: 0, margin: 0, color: '#0f172a' }}>
                         {adm.admission_name}
                       </h3>
-                      {(() => { const s = statusMap[adm.status]; return s ? <span style={{ background: s.bg, color: s.color, border: `1px solid ${s.border}`, fontSize: '0.65rem', fontWeight: 700, padding: '0.15rem 0.55rem', borderRadius: '9999px', whiteSpace: 'nowrap', flexShrink: 0, display: 'inline-flex', alignItems: 'center', lineHeight: 1.4 }}>{s.label}</span> : null; })()}
+                      {(() => { const s = LIST_STATUS_STYLES[adm.status]; return s ? <span style={{ background: s.bg, color: s.color, border: `1px solid ${s.border}`, fontSize: '0.65rem', fontWeight: 700, padding: '0.15rem 0.55rem', borderRadius: '9999px', whiteSpace: 'nowrap', flexShrink: 0, display: 'inline-flex', alignItems: 'center', lineHeight: 1.4 }}>{s.label}</span> : null; })()}
                     </div>
                     <div style={{ fontSize: '0.82rem', color: '#64748b', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.3rem', marginTop: '0.15rem' }}><Landmark size={12} strokeWidth={2} />{adm.conducting_body}</div>
                   </div>
@@ -190,15 +186,7 @@ export default function Admissions() {
                     {adm.application_start && <span style={{ fontSize: '0.75rem', color: '#0369a1', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.25rem', background: '#e0f2fe', border: '1px solid #bae6fd', padding: '0.15rem 0.5rem', borderRadius: '9999px' }}><Clock size={11} strokeWidth={2} />Start: {adm.application_start}</span>}
                     {adm.application_end && <span style={{ fontSize: '0.75rem', color: '#b45309', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.25rem', background: '#fef3c7', border: '1px solid #fde68a', padding: '0.15rem 0.5rem', borderRadius: '9999px' }}><Clock size={11} strokeWidth={2} />Deadline: {adm.application_end}</span>}
                   </div>
-                  <div style={{ display: 'flex', gap: '0.4rem' }}>
-                    {token ? (
-                      <button onClick={(e) => { e.stopPropagation(); track(adm); }} className={isTracking ? 'btn-tracking btn btn-sm' : 'btn btn-outline btn-sm'} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
-                        {isTracking ? <><Bell size={12} strokeWidth={2} fill="currentColor" />Tracking</> : <><Bell size={12} strokeWidth={2} />Keep Track</>}
-                      </button>
-                    ) : (
-                      <Link to={`/login?next=/admissions/${adm.slug}`} onClick={(e) => e.stopPropagation()} className="btn btn-outline btn-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}><Bell size={12} strokeWidth={2} />Keep Track</Link>
-                    )}
-                  </div>
+                  <TrackControl token={token} isTracking={isTracking} onTrack={() => track(adm)} loginPath={`/login?next=/admissions/${adm.slug}`} />
                 </div>
               </motion.div>
             );

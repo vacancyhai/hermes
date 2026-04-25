@@ -1,11 +1,13 @@
 import PropTypes from 'prop-types';
 import { useState, useEffect, useCallback } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Landmark, Users, Clock, Bell, SlidersHorizontal, X } from 'lucide-react';
+import { Landmark, Users, Clock, SlidersHorizontal, X } from 'lucide-react';
 import api from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
 import OrgLogoCircle from '../components/OrgLogoCircle';
+import TrackControl from '../components/TrackControl';
+import { LIST_STATUS_STYLES } from '../lib/listStatusStyles';
 
 const cardVariants = {
   hidden: { opacity: 0, y: 16 },
@@ -22,8 +24,7 @@ function JobCard({ job, trackedIds, onToggle }) {
   const navigate = useNavigate();
   const isTracking = trackedIds.has(String(job.id));
 
-  const track = async (e) => {
-    e.stopPropagation();
+  const track = async () => {
     try {
       if (isTracking) await api.delete(`/jobs/${job.id}/track`);
       else await api.post(`/jobs/${job.id}/track`);
@@ -31,13 +32,7 @@ function JobCard({ job, trackedIds, onToggle }) {
     } catch { }
   };
 
-  const statusMap = {
-    active:   { bg: '#dcfce7', color: '#15803d', border: '#bbf7d0', label: 'Active' },
-    upcoming: { bg: '#fef3c7', color: '#b45309', border: '#fde68a', label: 'Upcoming' },
-    closed:   { bg: '#fee2e2', color: '#b91c1c', border: '#fecaca', label: 'Closed' },
-  };
-
-  const s = statusMap[job.status];
+  const s = LIST_STATUS_STYLES[job.status];
   return (
     <motion.div
       variants={cardVariants}
@@ -68,15 +63,7 @@ function JobCard({ job, trackedIds, onToggle }) {
           {job.application_start && <span style={{ fontSize: '0.75rem', color: '#0369a1', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.25rem', background: '#e0f2fe', border: '1px solid #bae6fd', padding: '0.15rem 0.5rem', borderRadius: '9999px' }}><Clock size={11} strokeWidth={2} />Start: {job.application_start}</span>}
           {job.application_end && <span style={{ fontSize: '0.75rem', color: '#b45309', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.25rem', background: '#fef3c7', border: '1px solid #fde68a', padding: '0.15rem 0.5rem', borderRadius: '9999px' }}><Clock size={11} strokeWidth={2} />Deadline: {job.application_end}</span>}
         </div>
-        <div style={{ display: 'flex', gap: '0.4rem' }}>
-          {token ? (
-            <button onClick={track} className={isTracking ? 'btn-tracking btn btn-sm' : 'btn btn-outline btn-sm'} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
-              {isTracking ? <><Bell size={12} strokeWidth={2} fill="currentColor" />Tracking</> : <><Bell size={12} strokeWidth={2} />Keep Track</>}
-            </button>
-          ) : (
-            <Link to={`/login?next=/jobs/${job.slug}`} onClick={(e) => e.stopPropagation()} className="btn btn-outline btn-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}><Bell size={12} strokeWidth={2} />Keep Track</Link>
-          )}
-        </div>
+        <TrackControl token={token} isTracking={isTracking} onTrack={track} loginPath={`/login?next=/jobs/${job.slug}`} />
       </div>
     </motion.div>
   );
