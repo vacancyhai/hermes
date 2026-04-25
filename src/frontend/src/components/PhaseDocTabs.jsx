@@ -4,6 +4,8 @@ import { Link } from 'react-router-dom';
 import { Folder } from 'lucide-react';
 
 function DocItem({ item, currentSlug, linkPrefix, accentColor, borderColor, bgColor }) {
+  const isCurrent = item.slug === currentSlug;
+
   return (
     <div style={{ border: `1px solid ${borderColor}`, background: bgColor, borderRadius: '0.5rem', padding: '0.8rem 1rem', marginBottom: '0.65rem', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
       <div>
@@ -12,9 +14,9 @@ function DocItem({ item, currentSlug, linkPrefix, accentColor, borderColor, bgCo
           <div style={{ fontSize: '0.8rem', color: '#b45309' }}>Exam: {item.exam_start || '?'} – {item.exam_end || '?'}</div>
         )}
       </div>
-      {item.slug !== currentSlug
-        ? <Link to={`/${linkPrefix}/${item.slug}`} style={{ background: accentColor, color: '#fff', padding: '0.38rem 0.75rem', borderRadius: '0.5rem', fontSize: '0.78rem', fontWeight: 600, textDecoration: 'none' }}>View →</Link>
-        : <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 600, padding: '0.38rem 0.75rem' }}>Current</span>
+      {isCurrent
+        ? <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 600, padding: '0.38rem 0.75rem' }}>Current</span>
+        : <Link to={`/${linkPrefix}/${item.slug}`} style={{ background: accentColor, color: '#fff', padding: '0.38rem 0.75rem', borderRadius: '0.5rem', fontSize: '0.78rem', fontWeight: 600, textDecoration: 'none' }}>View →</Link>
       }
     </div>
   );

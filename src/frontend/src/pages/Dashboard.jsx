@@ -172,6 +172,7 @@ export default function Dashboard() {
   const [trackedOrgIds, setTrackedOrgIds] = useState(new Set());
   const [profileComplete, setProfileComplete] = useState(false);
   const [loading, setLoading] = useState(true);
+  const canCheckEligibility = Boolean(token && profileComplete);
 
   useEffect(() => {
     const params = { limit: 12, offset: 0 };
@@ -493,9 +494,9 @@ export default function Dashboard() {
                   {job.total_vacancies && <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>{job.total_vacancies.toLocaleString()} vacancies</div>}
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '0.4rem', flexWrap: 'wrap', gap: '0.3rem' }}>
-                  {!token || !profileComplete
-                    ? <Link to={!token ? `/login?next=/jobs/${job.slug}` : '/profile'} onClick={(e) => e.stopPropagation()} style={{ fontSize: '0.65rem', padding: '0.18rem 0.55rem', border: '1px solid #bfdbfe', borderRadius: '9999px', background: '#eff6ff', color: '#1d4ed8', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontWeight: 600 }}><HelpCircle size={10} strokeWidth={2.5} />Am I Eligible?</Link>
-                    : <span style={{ fontSize: '0.65rem', color: '#94a3b8' }}>checking…</span>}
+                  {canCheckEligibility
+                    ? <span style={{ fontSize: '0.65rem', color: '#94a3b8' }}>checking…</span>
+                    : <Link to={!token ? `/login?next=/jobs/${job.slug}` : '/profile'} onClick={(e) => e.stopPropagation()} style={{ fontSize: '0.65rem', padding: '0.18rem 0.55rem', border: '1px solid #bfdbfe', borderRadius: '9999px', background: '#eff6ff', color: '#1d4ed8', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontWeight: 600 }}><HelpCircle size={10} strokeWidth={2.5} />Am I Eligible?</Link>}
                   <TrackBtn type="job" id={job.id} slug={job.slug} isTracking={tracked.jobIds.has(String(job.id))} onToggle={toggleJobId} />
                 </div>
               </MiniCard>
@@ -593,9 +594,9 @@ export default function Dashboard() {
                   {adm.seats_info?.total && <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>{Number(adm.seats_info.total).toLocaleString()} seats</div>}
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '0.4rem', flexWrap: 'wrap', gap: '0.3rem' }}>
-                  {!token || !profileComplete
-                    ? <Link to={!token ? `/login?next=/admissions/${adm.slug}` : '/profile'} onClick={(e) => e.stopPropagation()} style={{ fontSize: '0.65rem', padding: '0.18rem 0.55rem', border: '1px solid #ddd6fe', borderRadius: '9999px', background: '#ede9fe', color: '#5b21b6', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontWeight: 600 }}><HelpCircle size={10} strokeWidth={2.5} />Am I Eligible?</Link>
-                    : <span style={{ fontSize: '0.65rem', color: '#94a3b8' }}>checking…</span>}
+                  {canCheckEligibility
+                    ? <span style={{ fontSize: '0.65rem', color: '#94a3b8' }}>checking…</span>
+                    : <Link to={!token ? `/login?next=/admissions/${adm.slug}` : '/profile'} onClick={(e) => e.stopPropagation()} style={{ fontSize: '0.65rem', padding: '0.18rem 0.55rem', border: '1px solid #ddd6fe', borderRadius: '9999px', background: '#ede9fe', color: '#5b21b6', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontWeight: 600 }}><HelpCircle size={10} strokeWidth={2.5} />Am I Eligible?</Link>}
                   <TrackBtn type="admission" id={adm.id} slug={adm.slug} isTracking={tracked.admissionIds.has(String(adm.id))} onToggle={toggleAdmId} />
                 </div>
               </MiniCard>

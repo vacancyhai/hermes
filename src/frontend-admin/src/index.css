@@ -67,7 +67,7 @@ a:hover { text-decoration: underline; }
 .btn-primary { background: linear-gradient(135deg, var(--blue), var(--blue-dark)); color: #fff; box-shadow: var(--shadow-blue); }
 .btn-primary:hover { background: linear-gradient(135deg, var(--blue-light), var(--blue)); color: #fff; box-shadow: 0 8px 24px rgba(37,99,235,.35); }
 .btn-outline { border: 1.5px solid #cbd5e1; background: var(--surface-card); color: #334155; box-shadow: var(--shadow-xs); }
-.btn-outline:hover { border-color: var(--blue); color: var(--blue); background: #eff6ff; box-shadow: var(--shadow-sm); }
+.btn-outline:hover { border-color: #1e3a8a; color: #1e3a8a; background: #eff6ff; box-shadow: var(--shadow-sm); }
 .btn-danger { background: linear-gradient(135deg, #dc2626, #b91c1c); color: #fff; box-shadow: 0 2px 8px rgba(220,38,38,.3); }
 .btn-danger:hover { background: linear-gradient(135deg, #dc2626, #b91c1c); color: #fff; }
 .btn-success { background: linear-gradient(135deg, #15803d, #166534); color: #fff; box-shadow: 0 2px 8px rgba(22,163,74,.3); }

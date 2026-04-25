@@ -252,8 +252,10 @@ function ImportantLinksSection({ links, styleMap = {}, iconMap = {} }) {
           const text = typeof link === 'object' ? (link.text || url) : url;
           const type = typeof link === 'object' ? (link.type || '') : '';
           const Icon = iconMap[type] || Link2;
+          const baseStyle = { display: 'inline-flex', alignItems: 'center', gap: '0.35rem' };
+          const linkStyle = styleMap[type] ? { ...styleMap[type], ...baseStyle } : baseStyle;
           return (
-            <a key={url} href={url} target="_blank" rel="noopener noreferrer" className="share-btn" style={{ ...(styleMap[type] || {}), display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+            <a key={url} href={url} target="_blank" rel="noopener noreferrer" className="share-btn" style={linkStyle}>
               <Icon size={13} strokeWidth={2} />
               {text}
             </a>
@@ -285,9 +287,11 @@ function JobParent({ job, currentSlug }) {
   ];
 
   if (job.salary_initial) {
+    const minSalary = `₹${job.salary_initial.toLocaleString()}`;
+    const maxSalary = job.salary_max ? ` – ₹${job.salary_max.toLocaleString()}` : '';
     detailRows.push([
       'Pay Scale',
-      `₹${job.salary_initial.toLocaleString()}${job.salary_max ? ` – ₹${job.salary_max.toLocaleString()}` : ''}`,
+      `${minSalary}${maxSalary}`,
     ]);
   }
 
@@ -449,5 +453,4 @@ ParentDetail.propTypes = {
   type: PropTypes.oneOf(['job', 'admission']).isRequired,
   data: PropTypes.object.isRequired,
   currentSlug: PropTypes.string.isRequired,
-  currentType: PropTypes.string.isRequired,
 };
