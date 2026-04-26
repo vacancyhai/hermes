@@ -311,7 +311,7 @@ def upgrade() -> None:
         sa.Column("attempted_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("delivered_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("NOW()")),
-        sa.CheckConstraint("channel IN ('in_app', 'push', 'email', 'whatsapp', 'telegram')", name="ck_delivery_channel"),
+        sa.CheckConstraint("channel IN ('in_app', 'push', 'email', 'whatsapp')", name="ck_delivery_channel"),
         sa.CheckConstraint("status IN ('pending', 'sent', 'delivered', 'failed')", name="ck_delivery_status"),
     )
     op.create_index("idx_delivery_log_notif", "notification_delivery_log", ["notification_id"])

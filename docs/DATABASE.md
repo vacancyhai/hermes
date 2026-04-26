@@ -9,6 +9,7 @@ Schema is managed with Alembic:
 | File | Description |
 |------|-------------|
 | `migrations/versions/0001_initial.py` | **Complete consolidated schema** — all 14 tables: `fee JSONB` on jobs+admissions, `created_at`+`updated_at` on all tables, `organizations` with `slug`+`org_type`+`updated_at`, `user_tracks` supporting `job`/`admission`/`organization` entity types |
+| `migrations/versions/0002_user_eligibility_tables.py` | Adds `job_eligibility` and `admission_eligibility` pre-computed eligibility tables |
 
 **Apply migrations:**
 ```bash
@@ -118,7 +119,7 @@ docker exec hermes_backend alembic -c /app/alembic.ini upgrade head
 
 ---
 
-## Tables (15 total)
+## Tables (16 total)
 
 ### 1. `users`
 Core user account table. Integrated with Firebase Auth.
@@ -316,7 +317,7 @@ Audit logs for staff actions. Auto-expire after 30 days.
 ---
 
 ### 8. `user_devices`
-Device registry — stores device metadata. **Push notifications read FCM tokens from `user_profiles.fcm_tokens`, not this table.** `user_devices` exists for future use (device-level fingerprint deduplication, device management UI) but is not populated by the current FCM token registration API.
+Device registry — stores device metadata. **Push notifications read FCM tokens from `user_devices` (via `NotificationService._send_push`), not `user_profiles.fcm_tokens`.** The FCM token registration API (`POST /users/me/fcm-token`) stores tokens in `user_profiles.fcm_tokens`. The `user_devices` table is populated separately (e.g. from device registration flows) and is what the notification service reads for push delivery — it queries `user_devices WHERE is_active=true AND fcm_token IS NOT NULL`, deduplicating by `device_fingerprint`.
 
 | Column | Type | Nullable | Description |
 |--------|------|----------|-------------|
@@ -343,7 +344,7 @@ Channel-level delivery tracking per notification attempt.
 | `id` | UUID (PK) | No | Auto-generated |
 | `notification_id` | UUID (FK → `notifications.id`) | No | Parent notification; CASCADE delete |
 | `user_id` | UUID (FK → `users.id`) | No | Target user; CASCADE delete |
-| `channel` | String(20) | No | `ck_delivery_channel`: `in_app` \| `push` \| `email` \| `whatsapp` \| `telegram` |
+| `channel` | String(20) | No | `ck_delivery_channel`: `in_app` \| `push` \| `email` \| `whatsapp` |
 | `status` | String(20) | No | `ck_delivery_status`: `pending` \| `sent` \| `delivered` \| `failed`; default `pending` |
 | `device_id` | UUID (FK → `user_devices.id`) | Yes | Targeted device (push only); SET NULL on delete |
 | `error_message` | Text | Yes | Failure reason (from OCI/FCM) |
@@ -426,7 +427,7 @@ Per-phase results. Polymorphic.
 
 ### 13. `admissions`
 Admissions (NEET, JEE, CLAT, CAT, GATE, CUET etc.) — separate from `jobs`.
-These are educational admissioninations, not government job recruitments.
+These are educational examinations leading to college/institution seats, not government job recruitments.
 
 | Column | Type | Nullable | Description |
 |--------|------|----------|-------------|
@@ -488,6 +489,38 @@ Polymorphic tracking table. Records which jobs, admissions, or organizations a u
 > UNIQUE constraint `uq_user_track` on `(user_id, entity_type, entity_id)`. Max 100 tracks per user (enforced in application layer).
 
 **Indexes:** `ix_user_tracks_user_id`, `ix_user_tracks_entity`
+
+---
+
+### 15. `job_eligibility`
+Pre-computed eligibility per (user, job) pair. Populated asynchronously by Celery (`recompute_eligibility_for_job`, `recompute_eligibility_for_user`). Eligibility endpoints read from this table first; fall back to live compute if a row is missing.
+
+| Column | Type | Nullable | Description |
+|--------|------|----------|-------------|
+| `id` | UUID (PK) | No | Auto-generated |
+| `user_id` | UUID (FK → `users.id`) | No | CASCADE delete; indexed |
+| `job_id` | UUID (FK → `jobs.id`) | No | CASCADE delete; indexed |
+| `status` | String(30) | No | `eligible` \| `partially_eligible` \| `not_eligible` \| `unknown` |
+| `reasons` | JSONB | No | List of human-readable reason strings; default `[]` |
+| `computed_at` | DateTime | No | When this row was last computed |
+
+> UNIQUE constraint `uq_job_elig_user_job` on `(user_id, job_id)`. Upsert uses `ON CONFLICT DO UPDATE`.
+
+---
+
+### 16. `admission_eligibility`
+Pre-computed eligibility per (user, admission) pair. Same structure as `job_eligibility`.
+
+| Column | Type | Nullable | Description |
+|--------|------|----------|-------------|
+| `id` | UUID (PK) | No | Auto-generated |
+| `user_id` | UUID (FK → `users.id`) | No | CASCADE delete; indexed |
+| `admission_id` | UUID (FK → `admissions.id`) | No | CASCADE delete; indexed |
+| `status` | String(30) | No | `eligible` \| `partially_eligible` \| `not_eligible` \| `unknown` |
+| `reasons` | JSONB | No | List of human-readable reason strings; default `[]` |
+| `computed_at` | DateTime | No | When this row was last computed |
+
+> UNIQUE constraint `uq_adm_elig_user_admission` on `(user_id, admission_id)`. Upsert uses `ON CONFLICT DO UPDATE`.
 
 ---
 

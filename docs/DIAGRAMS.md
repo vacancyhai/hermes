@@ -353,11 +353,10 @@ Admin/Operator → Admin Frontend SPA (port 4000)
 ┌──────────────────────┐
 │ Send notifications   │
 │ to trackers via      │
-│ smart_notify (5ch):  │
+│ smart_notify (4ch):  │
 │ - In-app (T+0)       │
 │ - Push (T+0)         │
 │ - Email (T+15min)    │
-│ - Telegram (T+15min) │
 │ - WhatsApp (T+1hr)   │
 └────┬─────────────────┘
      │
@@ -504,7 +503,6 @@ Admin/Operator → Admin Frontend SPA (port 4000)
           │ Check User Prefs:     │           │
           │ - Email enabled?      │           │
           │ - Push enabled?       │           │
-          │ - Telegram enabled?   │           │
           │ - WhatsApp enabled?   │           │
           └───────────┬───────────┘           │
                       │                       │
@@ -521,9 +519,6 @@ Admin/Operator → Admin Frontend SPA (port 4000)
             │ └──────────────┘ │              │
             │ ┌──────────────┐ │              │
             │ │ Email +15min │ │              │
-            │ └──────────────┘ │              │
-            │ ┌──────────────┐ │              │
-            │ │ Telegram+15m │ │              │
             │ └──────────────┘ │              │
             │ ┌──────────────┐ │              │
             │ │ WhatsApp +1h │ │              │
@@ -609,9 +604,9 @@ Admin/Operator → Admin Frontend SPA (port 4000)
      ▼
 ┌────────────────────────────────────┐
 │ User receives notification via     │
-│ smart_notify (5 channels):         │
+│ smart_notify (4 channels):         │
 │ in-app (T+0), push (T+0),          │
-│ email (T+15min), Telegram (T+15m), │
+│ email (T+15min),                   │
 │ WhatsApp (T+1hr) — per prefs      │
 └────┬───────────────────────────────┘
      │
@@ -683,7 +678,7 @@ Admin/Operator → Admin Frontend SPA (port 4000)
      │  ┌──────────────────────────┐  │
      │  │ smart_notify (instant):  │  │
      │  │ in-app + push + email +  │  │
-     │  │ Telegram + WhatsApp T+0  │  │
+     │  │ WhatsApp T+0             │  │
      │  │ (based on user prefs)    │  │
      │  └────────────┬─────────────┘  │
      │               │                │
@@ -892,9 +887,9 @@ EVENT-TRIGGERED TASKS:
   Triggered when job/admission is approved or updated → notifies all trackers
 
 • smart_notify(user_id, ...)
-  Unified delivery entry — instant or staggered, 5 channels
+  Unified delivery entry — instant or staggered, 4 channels (in-app, push, email, WhatsApp)
 
-• deliver_delayed_email / deliver_delayed_whatsapp / deliver_delayed_telegram
+• deliver_delayed_email / deliver_delayed_whatsapp
   Staggered delivery tasks fired after NOTIFY_*_DELAY seconds
 
 • send_email_notification(to, subject, template, context)

@@ -509,7 +509,6 @@
     |  In-app    | Instant   | T+0  (always on)               |
     |  Push/FCM  | Instant   | T+0  (needs PWA/mobile)        |
     |  Email     | Staggered | T+15 min (default)             |
-    |  Telegram  | Staggered | T+15 min (user sets chat_id)   |
     |  WhatsApp  | Staggered | T+1 hr   (placeholder only)    |
     +-----------------------------------------------------------+
 ```
@@ -569,7 +568,6 @@
               |  Notification Preferences:                       |
               |  [ Email   ON/OFF toggle ]                       |
               |  [ Push    ON/OFF toggle ]                       |
-              |  [ Telegram chat_id  (text input) ]              |
               |  [ WhatsApp number   (text input) ]              |
               |                                                  |
               |  [ Save Profile ]                                |

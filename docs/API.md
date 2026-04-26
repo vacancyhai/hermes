@@ -4,103 +4,139 @@ Base URL: `http://localhost:8000/api/v1`
 
 All list endpoints return: `{ "data": [...], "pagination": { "limit", "offset", "total", "has_more" } }`
 
+> **Docs URL:** Available only in `development` mode at `/api/v1/docs` (Swagger) and `/api/v1/redoc`. Disabled in production.
+
 ---
 
 ## Authentication
 
 ### User Auth (Firebase)
 
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| POST | `/auth/verify-token` | Public | Verify Firebase ID token → upsert user → internal JWT pair |
-| POST | `/auth/send-email-otp` | Public | Send OTP to email for registration (rate-limited: 3/min) |
-| POST | `/auth/verify-email-otp` | Public | Verify email OTP → returns short-lived verification token (5 min) |
-| POST | `/auth/complete-registration` | Public | Create Firebase user + send welcome email after OTP verification |
-| POST | `/auth/check-phone-availability` | Public | Check if phone number is already registered |
-| POST | `/auth/check-user-providers` | Public | Check which auth providers a Firebase user has (Google, password) |
-| POST | `/auth/add-password` | Public | Add password to an existing social-auth (Google) account (requires OTP verification token) |
-| POST | `/auth/logout` | User JWT | Revoke access + optional refresh token via Redis blocklist (returns 204) |
-| POST | `/auth/refresh` | Public | Rotate internal token pair (old refresh JTI is blocklisted) |
+| Method | Endpoint | Auth | Rate Limit | Description |
+|--------|----------|------|------------|-------------|
+| POST | `/auth/verify-token` | Public | 10/min | Verify Firebase ID token → upsert user → internal JWT pair |
+| POST | `/auth/send-email-otp` | Public | 3/min | Send OTP to email for registration |
+| POST | `/auth/resend-verification` | User JWT | 3/min | Resend OTP to authenticated user's email (only if not yet verified) |
+| POST | `/auth/verify-email-otp` | Public | 5/min | Verify email OTP → returns short-lived verification token (5 min) |
+| POST | `/auth/complete-registration` | Public | 5/min | Create Firebase user + send welcome email after OTP verification |
+| POST | `/auth/check-phone-availability` | Public | — | Check if a phone number is already registered and verified |
+| POST | `/auth/check-user-providers` | Public | 10/min | Check which Firebase auth providers a user has (Google, password) |
+| POST | `/auth/add-password` | Public | — | Add password to an existing Google-only account (requires OTP verification token) |
+| POST | `/auth/logout` | User JWT | — | Revoke access token + optional refresh token via Redis blocklist (returns 204) |
+| POST | `/auth/refresh` | Public | — | Rotate user token pair (old refresh JTI is blocklisted) |
 
-**Registration Methods:**
-- Email/Password: Send OTP → verify OTP → complete registration with password
-- Google OAuth: Handled client-side by Firebase JS SDK
-- Phone OTP: Handled client-side by Firebase JS SDK
+**Registration flow — email/password:**
+1. `POST /auth/send-email-otp` → 6-digit OTP stored in Redis with 5-minute TTL, emailed synchronously (not via Celery)
+2. `POST /auth/verify-email-otp` → validates OTP (one-time use), returns a short-lived JWT `verification_token` (5 min, purpose=`email_verified`)
+3. `POST /auth/complete-registration` → creates Firebase user server-side, sends welcome email via Celery, returns Firebase `custom_token` for client-side sign-in
+4. Client signs in with `custom_token`, gets Firebase ID token → `POST /auth/verify-token` → internal JWT pair
 
-**Password Requirements:**
-- Minimum 8 characters
-- At least 1 uppercase letter
-- At least 1 special character (!@#$%^&*(),.?":{}|<>)
+**Registration flow — Google OAuth / Phone:**
+- Handled entirely client-side by Firebase JS SDK
+- Client presents Firebase ID token → `POST /auth/verify-token` → internal JWT pair
+
+**`/auth/verify-token` upsert logic:**
+1. Find user by `firebase_uid` → return existing user
+2. Find user by `email` → link `firebase_uid`, set `migration_status = "migrated"`
+3. No match → create new user with `migration_status = "native"` + create empty `UserProfile`
+
+**Firebase verify-token body:**
+```json
+{ "id_token": "<Firebase-ID-token>", "full_name": "Optional Name" }
+```
+`full_name` is optional — only used when creating a new user.
 
 **Logout body (optional):**
 ```json
 { "refresh_token": "<refresh-JWT>" }
 ```
-If `refresh_token` is provided, its JTI is also added to the Redis blocklist so it cannot be used to generate new access tokens after logout. Without it, the refresh token remains valid until it expires.
+If `refresh_token` is provided, its JTI is also blocklisted. Without it, the refresh token remains valid until it expires.
+
+**JWT claims (issued by backend after Firebase verification):**
+- `sub`: UUID of the user/admin
+- `user_type`: `"user"` or `"admin"` — determines which table to look up
+- `type`: `"access"` or `"refresh"`
+- `role`: (admin tokens only) `"admin"` or `"operator"`
+- `jti`: unique token ID (stored in Redis as `hermes:blocklist:{jti}` on logout/refresh)
+
+**Token expiry (configurable via env):**
+- Access token: `JWT_ACCESS_TOKEN_EXPIRES` (default 900s = 15 minutes)
+- Refresh token: `JWT_REFRESH_TOKEN_EXPIRES` (default 604800s = 7 days)
 
 ### Admin Auth
 
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| POST | `/auth/admin/login` | Public | Admin/operator login → JWT |
-| POST | `/auth/admin/logout` | Admin JWT | Invalidate admin token |
-| POST | `/auth/admin/refresh` | Public | Rotate admin token pair |
+| Method | Endpoint | Auth | Rate Limit | Description |
+|--------|----------|------|------------|-------------|
+| POST | `/auth/admin/login` | Public | 5/min | Admin/operator login (email + bcrypt password) → JWT pair |
+| POST | `/auth/admin/logout` | Admin JWT | — | Invalidate admin token (logs action + blocklists JTI) |
+| POST | `/auth/admin/refresh` | Public | — | Rotate admin token pair (logs action) |
 
-**Internal JWT Claims** (issued by backend after Firebase verification):
-- `user_type`: `"user"` or `"admin"` — determines which table to look up
-- `role`: (admin tokens only) `"admin"` or `"operator"`
-- `sub`: UUID of the user/admin
-- `jti`: unique token ID (stored in Redis as `hermes:blocklist:{jti}` on logout/refresh)
-
-**Firebase verify-token upsert logic:**
-1. Find user by `firebase_uid` → return existing user
-2. Find user by `email` → link `firebase_uid`, set `migration_status = "migrated"`
-3. No match → create new user with `migration_status = "native"`
+Admin accounts use local bcrypt authentication, not Firebase.
 
 ---
 
 ## User Endpoints
 
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| GET | `/users/profile` | User | Get own profile + user data |
-| PUT | `/users/profile` | User | Update profile fields |
-| PUT | `/users/profile/phone` | User | Update phone number (marks as unverified) |
-| POST | `/users/me/send-phone-otp` | User | Send OTP to verify phone number |
-| POST | `/users/me/verify-phone-otp` | User | Verify phone number with OTP |
-| POST | `/users/me/set-password` | User | Set password for Google OAuth users |
-| POST | `/users/me/change-password` | User | Change password (requires re-authentication client-side before calling) |
-| POST | `/users/me/link-email-password` | User | Link email+password to phone-only account |
+All require a valid user JWT.
 
-**Profile preference fields** (used for eligibility checking):
-- `preferred_states` — JSON array of state names, e.g. `["Delhi", "Uttar Pradesh"]`
-- `preferred_categories` — JSON array of reservation categories the user wants to see, e.g. `["General", "OBC"]`
-- `category` — User's actual reservation category: `General`, `OBC`, `SC`, `ST`, `EWS`, or `EBC`. Used for per-job/admission eligibility checks.
-- `highest_qualification` — Enum: `10th`, `12th`, `diploma`, `graduate`, `postgraduate`, `phd`
-- `gender` — Enum: `Male`, `Female`, `Other`
-- `date_of_birth` — Used to compute age for age-range eligibility matching in per-job/admission eligibility checks
+| Method | Endpoint | Rate Limit | Description |
+|--------|----------|------------|-------------|
+| GET | `/users/profile` | — | Get own user data + profile |
+| PUT | `/users/profile` | — | Update profile fields; triggers async eligibility recompute |
+| PUT | `/users/profile/phone` | — | Update phone number on user record (marks as unverified); sends email notification if user has email |
+| POST | `/users/me/send-phone-otp` | 3/min | Initiate phone verification — instructs client to use Firebase phone auth |
+| POST | `/users/me/verify-phone-otp` | 5/min | Mark phone as verified after Firebase phone auth; validates phone in Firebase ID token matches stored phone |
+| POST | `/users/me/set-password` | 5/min | Set password for Google-only accounts (via Firebase Admin SDK) |
+| POST | `/users/me/change-password` | 5/min | Change existing password (client must re-authenticate first) |
+| POST | `/users/me/link-email-password` | 5/min | Link email+password to phone-only account (checks both PostgreSQL and Firebase for duplicates) |
+| POST | `/users/me/fcm-token` | — | Register FCM device token (max 10, stored in `user_profiles.fcm_tokens`) |
+| DELETE | `/users/me/fcm-token` | — | Unregister FCM device token |
+| PUT | `/users/me/notification-preferences` | — | Merge-update notification channel preferences |
+| DELETE | `/users/me/notification-preferences` | — | Reset notification preferences to `{}` (all channels re-enabled by app defaults) |
 
-**Note:** The profile response does not include `fcm_tokens` (sensitive device tokens). Register/unregister tokens via the FCM token endpoints.
+**Notes:**
+- `PUT /users/profile` triggers `recompute_eligibility_for_user.delay(user_id)` (async Celery task).
+- FCM tokens are stored as `[{"token": "...", "device_name": "...", "registered_at": "ISO8601"}]` in `user_profiles.fcm_tokens` (JSONB). Max 10 per user.
+- Push notifications read FCM tokens from `user_profiles.fcm_tokens` (not `user_devices` table). `user_devices` is populated separately.
+- Profile response does **not** include `fcm_tokens` (treated as sensitive).
+
+**Profile preference fields (used for eligibility checking):**
+- `highest_qualification` — one of: `10th`, `12th`, `diploma`, `graduate`, `postgraduate`, `phd`
+- `category` — one of: `general`, `obc`, `sc`, `st`, `ews`, `ebc` (lowercase in DB)
+- `date_of_birth` — used to compute age for eligibility
+- `state` — compared against `domicile_required` in job eligibility
+- `is_pwd` — triggers `PwBD`/`PwD_UR` age relaxation
+- `is_ex_serviceman` — triggers `Ex_Serviceman` age relaxation
+- `preferred_states` — JSONB array, used for future filtering (not currently applied in eligibility)
+- `preferred_categories` — JSONB array, for future filtering
 
 ---
 
-## Track Jobs & Admissions
+## Track Jobs & Admissions & Organizations
 
-Users can track specific jobs or admissions to receive automatic notifications.
+Users can track specific jobs, admissions, or organizations. Max 100 tracks per user (enforced in application layer). Uses the `user_tracks` table with polymorphic `entity_type` + `entity_id`.
+
+### Job Tracking
 
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
-| POST | `/jobs/{job_id}/track` | User | Track a job (idempotent, max 100) |
+| POST | `/jobs/{job_id}/track` | User | Track a job — idempotent; returns `{"tracking": true}` |
 | DELETE | `/jobs/{job_id}/track` | User | Untrack a job (404 if not tracking) |
-| POST | `/admissions/{admission_id}/track` | User | Track an admission (idempotent) |
-| DELETE | `/admissions/{admission_id}/track` | User | Untrack an admission |
-| GET | `/users/me/tracked` | User | List all tracked jobs + admissions |
+| GET | `/jobs/{job_id}/track` | User | Check tracking status for a job |
 
-**Automatic notifications triggered by tracking:**
-- `deadline_reminder_7d` — 7 days before `application_end`
-- `deadline_reminder_3d` — 3 days before `application_end`
-- `deadline_reminder_1d` — Last day to apply (high priority)
-- `tracked_item_updated` — When admin approves or updates the job/admission
+### Admission Tracking
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| POST | `/admissions/{admission_id}/track` | User | Track an admission — idempotent |
+| DELETE | `/admissions/{admission_id}/track` | User | Untrack an admission |
+| GET | `/admissions/{admission_id}/track` | User | Check tracking status for an admission |
+
+### Tracked List
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | `/users/me/tracked` | User | List all tracked jobs + admissions (sorted by `track.created_at DESC`) |
 
 **Response for `GET /users/me/tracked`:**
 ```json
@@ -111,141 +147,136 @@ Users can track specific jobs or admissions to receive automatic notifications.
 }
 ```
 
+**Automatic notifications triggered by tracking:**
+- `deadline_reminder_7d` — 7 days before `application_end`
+- `deadline_reminder_3d` — 3 days before `application_end`
+- `deadline_reminder_1d` — Last day to apply (high priority)
+- `tracked_item_updated` — When admin updates a tracked job/admission to `active` status
+
+**Note:** Tracking uses `entity_id` as UUID. Job track endpoints accept `job_id` UUID path param; admission endpoints accept `admission_id` UUID path param.
+
+---
+
+## Organizations
+
+### Public
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | `/organizations` | Public | List all organizations with active job + admission counts |
+| GET | `/organizations/tracked` | User | List organizations followed by current user |
+| GET | `/organizations/{org_id}` | Public | Organization detail + up to 20 recent jobs (all statuses) |
+
+**Query parameters for `GET /organizations`:**
+
+| Param | Type | Description |
+|-------|------|-------------|
+| `search` | string | Name partial match (ILIKE) |
+| `org_type` | string | `jobs` → orgs with type `jobs` or `both`; `admissions` → `admissions` or `both` |
+| `limit` | int | 1-100, default: 50 |
+| `offset` | int | Default: 0 |
+
+**Note:** `GET /organizations` returns `{"data": [...], "total": N, "limit": N, "offset": N}` (not the standard pagination wrapper — no `has_more`).
+
+### Organization Tracking
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| POST | `/organizations/{org_id}/track` | User | Follow an organization — idempotent |
+| DELETE | `/organizations/{org_id}/track` | User | Unfollow an organization |
+| GET | `/organizations/{org_id}/track` | User | Check follow status |
+
+When a user follows an organization and a new job is posted, `send_new_job_notifications` is triggered (if the org has an `organization_id`).
+
 ---
 
 ## Job Vacancies (Public)
 
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
-| GET | `/jobs` | Public | List active jobs (filtered, paginated, FTS) |
-| GET | `/jobs/eligibility/:slug` | User JWT | Per-job eligibility check against user profile |
-| GET | `/jobs/:slug` | Public | Job detail by slug |
+| GET | `/jobs` | Public | List jobs excluding `inactive` (filtered, paginated, FTS) |
+| GET | `/jobs/eligibility/{slug}` | User JWT | Per-job eligibility check against user profile |
+| GET | `/jobs/{slug}` | Public | Job detail by slug (includes admit cards, answer keys, results) |
 
 **Query Parameters for `GET /jobs`:**
 
 | Param | Type | Description |
 |-------|------|-------------|
-| `q` | string | Full-text search (uses PostgreSQL tsvector) |
-| `qualification_level` | string | `graduate`, `postgraduate`, etc. |
-| `organization` | string | Partial match (ILIKE) |
-| `department` | string | Partial match (ILIKE) |
-| `status` | string | Default: `active` |
+| `q` | string | Full-text search using PostgreSQL `tsvector` (`search_vector` column); results ordered by `ts_rank` |
+| `qualification_level` | string | Exact match: `10th`, `12th`, `diploma`, `graduate`, `postgraduate`, `phd` |
+| `organization` | string | Partial match (ILIKE) against `jobs.organization` free-text column |
+| `department` | string | Partial match (ILIKE) against `jobs.department` |
 | `limit` | int | 1-100, default: 20 |
 | `offset` | int | Default: 0 |
+
+Default ordering (no `q`): `created_at DESC`.
+
+**Note:** There is no `status` filter parameter on `GET /jobs` — the endpoint always excludes `inactive` jobs (`status != 'inactive'`).
+
+**Job list response includes `organization_logo_url`** fetched from `organizations` table via `organization_id`.
 
 ---
 
-## Admin Endpoints
+## Admissions (Public)
 
-All admin endpoints require an admin JWT token (`user_type: "admin"`).
-
-### Content Management
-
-Content is stored across four dedicated tables: `jobs`, `admit_cards`, `answer_keys`, `results`.
-
-#### Job Vacancies
-
-| Method | Endpoint | Role | Description |
+| Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
-| GET | `/admin/jobs` | Operator+ | List all job vacancies |
-| POST | `/admin/jobs` | Operator+ | Create job vacancy |
+| GET | `/admissions` | Public | List admissions excluding `inactive` (stream/admission_type/FTS filters) |
+| GET | `/admissions/eligibility/{slug}` | User JWT | Per-admission eligibility check against user profile |
+| GET | `/admissions/{slug}` | Public | Admission detail by slug (includes admit cards, answer keys, results) |
 
-#### Admit Cards
-
-| Method | Endpoint | Role | Description |
-|--------|----------|------|---------|
-| GET | `/admin/admit-cards` | Operator+ | List all admit cards |
-| POST | `/admin/admit-cards` | Operator+ | Create admit card (must specify `job_id` OR `admission_id`) |
-| PUT | `/admin/admit-cards/{id}` | Operator+ | Update admit card |
-| DELETE | `/admin/admit-cards/{id}` | Operator+ | Delete admit card |
-
-> **Admin UI:** Admit cards are managed from the parent job or admission edit page (`/jobs/<id>/edit#docs` or `/admissions/<id>/edit#docs`). There is no standalone `/admit-cards` management page.
-
-#### Answer Keys
-
-| Method | Endpoint | Role | Description |
-|--------|----------|------|---------|
-| GET | `/admin/answer-keys` | Operator+ | List all answer keys |
-| POST | `/admin/answer-keys` | Operator+ | Create answer key (must specify `job_id` OR `admission_id`) |
-| PUT | `/admin/answer-keys/{id}` | Operator+ | Update answer key |
-| DELETE | `/admin/answer-keys/{id}` | Operator+ | Delete answer key |
-
-> **Admin UI:** Answer keys are managed from the parent job or admission edit page. There is no standalone `/answer-keys` management page.
-
-#### Results
-
-| Method | Endpoint | Role | Description |
-|--------|----------|------|---------|
-| GET | `/admin/results` | Operator+ | List all results |
-| POST | `/admin/results` | Operator+ | Create result (must specify `job_id` OR `admission_id`) |
-| PUT | `/admin/results/{id}` | Operator+ | Update result |
-| DELETE | `/admin/results/{id}` | Operator+ | Delete result |
-
-> **Admin UI:** Results are managed from the parent job or admission edit page. There is no standalone `/results` management page.
-
-#### Common Job Operations
-
-| Method | Endpoint | Role | Description |
-|--------|----------|------|-------------|
-| GET | `/admin/jobs/:id` | Operator+ | Get single content detail |
-| PUT | `/admin/jobs/:id` | Operator+ | Update content |
-| DELETE | `/admin/jobs/:id` | Admin only | Hard-delete (cascade) |
-
-**Query Parameters for List Endpoints:**
+**Query Parameters for `GET /admissions`:**
 
 | Param | Type | Description |
 |-------|------|-------------|
-| `status` | string | Filter by status (`upcoming` / `active` / `inactive` / `closed`) |
+| `q` | string | Full-text search |
+| `stream` | string | `medical`, `engineering`, `law`, `management`, `arts_science`, `general` |
+| `admission_type` | string | `ug`, `pg`, `doctoral`, `lateral` |
 | `limit` | int | 1-100, default: 20 |
 | `offset` | int | Default: 0 |
 
-### User Management
+**Note:** There is no `status` filter on public listing. The endpoint excludes `inactive` (`status != 'inactive'`). Both `active` and `upcoming` admissions are returned to the public.
 
-| Method | Endpoint | Role | Description |
-|--------|----------|------|-------------|
-| GET | `/admin/users` | Operator+ | List users (search by name/email) |
-| GET | `/admin/users/:id` | Operator+ | User detail with profile |
-| PUT | `/admin/users/:id/status` | Admin only | Suspend or activate user |
+---
 
-### Admin Account Management
+## Admit Cards, Answer Keys, and Results (Public)
 
-| Method | Endpoint | Role | Description |
-|--------|----------|------|-------------|
-| POST | `/admin/admin-users` | Admin only | Create a new admin or operator account |
+These are top-level resources, each linked to either a job OR an admission via polymorphic FKs.
 
-**Request body:**
-```json
-{
-  "email": "operator@hermes.com",
-  "password": "Oper@123",  # pragma: allowlist secret
-  "full_name": "New Operator",
-  "role": "operator",
-  "phone": null,
-  "department": null
-}
-```
-The first admin account must be seeded directly in the database. All subsequent accounts can be created through this endpoint.
+### Admit Cards
 
-### Dashboard & Logs
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/admit-cards` | List all admit cards (paginated) |
+| GET | `/admit-cards/{id}` | Get single admit card by ID |
 
-| Method | Endpoint | Role | Description |
-|--------|----------|------|-------------|
-| GET | `/admin/stats` | Operator+ | Job/user counts by status (includes new_this_week) |
-| GET | `/admin/logs` | Admin only | Admin audit trail |
+### Answer Keys
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/answer-keys` | List all answer keys (paginated) |
+| GET | `/answer-keys/{id}` | Get single answer key by ID |
+
+### Results
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/results` | List all results (paginated) |
+| GET | `/results/{id}` | Get single result by ID |
 
 ---
 
 ## Notifications
 
-All notification endpoints require a user JWT.
+All require a user JWT.
 
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| GET | `/notifications` | User | List notifications (paginated, filterable) |
-| GET | `/notifications/count` | User | Unread notification count |
-| PUT | `/notifications/{id}/read` | User | Mark single notification as read |
-| PUT | `/notifications/read-all` | User | Mark all unread → read |
-| DELETE | `/notifications/{id}` | User | Delete notification (204) |
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/notifications` | List notifications (paginated, newest first) |
+| GET | `/notifications/count` | Unread notification count |
+| PUT | `/notifications/read-all` | Mark all unread as read |
+| PUT | `/notifications/{id}/read` | Mark single notification as read |
+| DELETE | `/notifications/{id}` | Delete a notification (204) |
 
 **Query Parameters for `GET /notifications`:**
 
@@ -256,11 +287,9 @@ All notification endpoints require a user JWT.
 | `limit` | int | 1-100, default: 20 |
 | `offset` | int | Default: 0 |
 
-**Notification Types:** `deadline_reminder_7d`, `deadline_reminder_3d`, `deadline_reminder_1d`, `new_job_from_followed_org`, `priority_job_update`, `welcome`
+**Notification Types in use:** `deadline_reminder_7d`, `deadline_reminder_3d`, `deadline_reminder_1d`, `tracked_item_updated`, `new_job_from_followed_org`
 
-**Email Notifications:** When creating in-app notifications, the system also queues email via Celery if the user's `notification_preferences.email` is not explicitly `false`. Email is sent via OCI Email Delivery (SMTP port 587, STARTTLS).
-
-**Push Notifications:** FCM push notification is sent if `FIREBASE_CREDENTIALS_PATH` is configured and the user has registered FCM tokens with `notification_preferences.push` not set to `false`.
+**Delivery channels:** in-app (always), FCM push, email, WhatsApp. Channel delivery is controlled by `notification_preferences`.
 
 ---
 
@@ -269,132 +298,179 @@ All notification endpoints require a user JWT.
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
 | POST | `/users/me/fcm-token` | User | Register FCM device token (max 10 per user) |
-| DELETE | `/users/me/fcm-token` | User | Unregister FCM token |
-| PUT | `/users/me/notification-preferences` | User | Update notification channel preferences |
+| DELETE | `/users/me/fcm-token` | User | Unregister FCM token by token value |
+| PUT | `/users/me/notification-preferences` | User | Merge-update preference fields |
+| DELETE | `/users/me/notification-preferences` | User | Reset preferences to `{}` |
 
-**Notification preferences fields:** `email` (bool), `push` (bool), `in_app` (bool), `whatsapp` (bool), `telegram` (bool). All default to enabled if unset. Send `false` to disable a channel.
-
-**Setting a Telegram chat_id** (required before Telegram messages can be delivered):
-```json
-PUT /api/v1/users/me/notification-preferences
-{ "telegram_chat_id": "123456789" }
-```
-Users must first message the bot on Telegram to get their chat_id. The chat_id is stored nested in `notification_preferences.telegram.chat_id`.
+**Notification preferences fields:**
+- `email` (bool) — default enabled if unset
+- `push` (bool) — default enabled if unset
+- `whatsapp` (bool) — default enabled if unset; WhatsApp is a placeholder (not yet active)
+- `in_app` — always delivered; there is no preference check for in-app
 
 **FCM token registration body:**
 ```json
 { "token": "<FCM-device-token>", "device_name": "Pixel 7" }
 ```
-Tokens are stored in `user_profiles.fcm_tokens` and read by the notification service at send time. Invalid/unregistered tokens are automatically removed.
+FCM tokens are stored in `user_profiles.fcm_tokens` JSONB. Max 10 per user. Duplicates are de-duplicated by token value.
 
 ---
 
 ## Smart Notification Routing
 
-All notifications are routed through `NotificationService` via the `smart_notify` Celery task.
+All notifications are routed through `NotificationService` (sync, runs inside Celery tasks) via the `smart_notify` Celery task.
 
 ### Two Delivery Modes
 
-| Mode | In-app + Push | Email | WhatsApp | Telegram | Use Case |
-|------|--------------|-------|----------|----------|---------|
-| **instant** | T+0 | T+0 | T+0 | T+0 | OTP, welcome, urgent alerts |
-| **staggered** | T+0 | T+15min* | T+1hr* | T+15min* | Job alerts, deadline reminders, admit cards |
+| Mode | In-app | Push | Email | WhatsApp | Use case |
+|------|--------|------|-------|----------|----------|
+| `instant` | T+0 | T+0 | T+0 | T+0 | OTP, welcome, urgent |
+| `staggered` | T+0 | T+0 | T+`NOTIFY_EMAIL_DELAY` (default 15 min) | T+`NOTIFY_WHATSAPP_DELAY` (default 1 hr) | Job alerts, deadline reminders |
 
-*Configurable via `NOTIFY_EMAIL_DELAY`, `NOTIFY_WHATSAPP_DELAY`, `NOTIFY_TELEGRAM_DELAY` env vars (in seconds).
+### Channel Delivery Details
 
-All channels always deliver — staggered just adds a time gap so the user isn't bombarded simultaneously.
+| Channel | Source | Notes |
+|---------|--------|-------|
+| In-app | Always inserted into `notifications` table | No preference check |
+| FCM Push | Reads from `user_devices` table (`is_active=true`, `fcm_token IS NOT NULL`) | De-duplicated by `device_fingerprint`. Skipped if no active devices |
+| Email | Reads email from `users` table | Subject to OCI 2700/day soft cap (tracked in Redis). Skipped if no email |
+| WhatsApp | Reads phone from `user_profiles` or `users.phone` | Placeholder — always returns `False`; no external API configured |
 
-### Channel Delivery
-
-| Channel | Delivery | Notes |
-|---------|----------|-------|
-| In-app | Always (persistent record in `notifications` table) | — |
-| FCM Push | All tokens in `user_profiles.fcm_tokens` | Tokens registered via `POST /users/me/fcm-token`; invalid tokens auto-removed on send failure |
-| Email | If user has `notification_preferences.email` not set to `false` | Subject to OCI 3 000/day soft limit |
-| WhatsApp | If user has `notification_preferences.whatsapp` not set to `false` | Placeholder until `WHATSAPP_API_TOKEN` is configured |
-| Telegram | If user has chat_id set in `notification_preferences.telegram.chat_id` and `notification_preferences.telegram.enabled` not `false` | Requires `TELEGRAM_BOT_TOKEN`; uses Bot API `sendMessage` with Markdown |}
-
-Every delivery attempt is logged in `notification_delivery_log` with status (`pending`, `sent`, `delivered`, `failed`). Status starts as `pending`, moves to `sent` on dispatch, `delivered` on confirmation, `failed` on error.
+Every delivery attempt is logged in `notification_delivery_log` with statuses: `pending`, `sent`, `delivered`, `failed`, `queued`, `skipped`.
 
 ---
 
-## Request/Response Examples
+## Admin Endpoints
 
-### Verify Firebase Token (unified login/register)
-```
-POST /api/v1/auth/verify-token
-{ "id_token": "<Firebase-ID-token>", "full_name": "Test User" }
-→ 200 { "access_token": "eyJ...", "refresh_token": "eyJ...", "token_type": "bearer" }
-```
+All admin endpoints require an admin JWT (`user_type: "admin"`).
 
-The `full_name` field is optional — only used when creating a new user. The Firebase ID token is obtained client-side via the Firebase JS SDK (email/password, Google popup, or phone OTP).
+### Content Management — Jobs
 
-### Create Job (Admin)
-```
-POST /api/v1/admin/jobs
-Authorization: Bearer <admin_token>
+| Method | Endpoint | Role | Description |
+|--------|----------|------|-------------|
+| GET | `/admin/jobs` | Operator+ | List all jobs (any status) |
+| POST | `/admin/jobs` | Operator+ | Create job |
+| GET | `/admin/jobs/{id}` | Operator+ | Get job by ID |
+| PUT | `/admin/jobs/{id}` | Operator+ | Update job |
+| DELETE | `/admin/jobs/{id}` | Admin only | Delete job (cascade) |
+
+### Content Management — Admissions
+
+| Method | Endpoint | Role | Description |
+|--------|----------|------|-------------|
+| GET | `/admin/admissions` | Operator+ | List all admissions (any status) |
+| POST | `/admin/admissions` | Operator+ | Create admission |
+| GET | `/admin/admissions/{id}` | Operator+ | Get admission by ID |
+| PUT | `/admin/admissions/{id}` | Operator+ | Update admission |
+| DELETE | `/admin/admissions/{id}` | Admin only | Delete admission (cascade) |
+
+### Content Management — Admit Cards
+
+| Method | Endpoint | Role | Description |
+|--------|----------|------|-------------|
+| GET | `/admin/admit-cards` | Operator+ | List all admit cards |
+| POST | `/admin/admit-cards` | Operator+ | Create admit card (specify `job_id` OR `admission_id`) |
+| PUT | `/admin/admit-cards/{id}` | Operator+ | Update admit card |
+| DELETE | `/admin/admit-cards/{id}` | Operator+ | Delete admit card |
+
+### Content Management — Answer Keys
+
+| Method | Endpoint | Role | Description |
+|--------|----------|------|-------------|
+| GET | `/admin/answer-keys` | Operator+ | List all answer keys |
+| POST | `/admin/answer-keys` | Operator+ | Create answer key (specify `job_id` OR `admission_id`) |
+| PUT | `/admin/answer-keys/{id}` | Operator+ | Update answer key |
+| DELETE | `/admin/answer-keys/{id}` | Operator+ | Delete answer key |
+
+### Content Management — Results
+
+| Method | Endpoint | Role | Description |
+|--------|----------|------|-------------|
+| GET | `/admin/results` | Operator+ | List all results |
+| POST | `/admin/results` | Operator+ | Create result (specify `job_id` OR `admission_id`) |
+| PUT | `/admin/results/{id}` | Operator+ | Update result |
+| DELETE | `/admin/results/{id}` | Operator+ | Delete result |
+
+### User Management
+
+| Method | Endpoint | Role | Description |
+|--------|----------|------|-------------|
+| GET | `/admin/users` | Operator+ | List users (search by name/email; filter by status) |
+| GET | `/admin/users/{id}` | Operator+ | User detail with partial profile |
+| PUT | `/admin/users/{id}/status` | Admin only | Suspend or activate user (also disables/enables Firebase account) |
+| DELETE | `/admin/users/{id}` | Admin only | Permanently delete user from PostgreSQL AND Firebase |
+
+### Admin Self
+
+| Method | Endpoint | Role | Description |
+|--------|----------|------|-------------|
+| GET | `/admin/me` | Operator+ | Get currently authenticated admin/operator profile |
+
+### Admin Account Management
+
+| Method | Endpoint | Role | Description |
+|--------|----------|------|-------------|
+| POST | `/admin/admin-users` | Admin only | Create a new admin or operator account |
+| GET | `/admin/admin-users` | Admin only | List all admin/operator accounts |
+| GET | `/admin/admin-users/{id}` | Admin only | Get a single admin/operator account |
+| PUT | `/admin/admin-users/{id}` | Admin only | Update admin/operator (name, phone, dept, role, status) |
+| DELETE | `/admin/admin-users/{id}` | Admin only | Delete admin account (cannot delete own account) |
+
+**Create admin user body:**
+```json
 {
-  "job_title": "SSC CGL 2026",
-  "organization": "Staff Selection Commission",
-  "qualification_level": "graduate",
-  "total_vacancies": 8000,
-  "description": "Combined Graduate Level recruitment...",
-  "application_end": "2026-07-15",
-  "status": "active"
+  "email": "operator@hermes.com",
+  "password": "Oper@123", <!-- pragma: allowlist secret -->
+  "full_name": "New Operator",
+  "role": "operator",
+  "phone": null,
+  "department": null
 }
-→ 201 { "id": "uuid", "slug": "ssc-cgl-2026", ... }
 ```
 
-### Search Jobs
-```
-GET /api/v1/jobs?q=SSC+CGL&qualification_level=graduate&limit=10
-→ 200 { "data": [...], "pagination": { "total": 1, "has_more": false, ... } }
+### Dashboard & Logs
+
+| Method | Endpoint | Role | Description |
+|--------|----------|------|-------------|
+| GET | `/admin/stats` | Operator+ | Counts for jobs, admissions, admit_cards, answer_keys, results, users |
+| GET | `/admin/logs` | Admin only | Admin audit trail (filterable by admin_id, action, resource_type, date_from, date_to) |
+
+### Organizations (Admin CRUD)
+
+| Method | Endpoint | Role | Description |
+|--------|----------|------|-------------|
+| GET | `/admin/organizations` | Operator+ | List all organizations |
+| POST | `/admin/organizations` | Operator+ | Create organization |
+| GET | `/admin/organizations/{id}` | Operator+ | Get organization by ID |
+| PUT | `/admin/organizations/{id}` | Operator+ | Update organization (name, slug, short_name, logo_url, website_url, org_type) |
+| DELETE | `/admin/organizations/{id}` | Admin only | Delete organization (linked jobs get `organization_id = NULL`) |
+
+**Stats response:**
+```json
+{
+  "jobs": { "total": 7, "active": 6 },
+  "admit_cards": { "total": 15 },
+  "answer_keys": { "total": 3 },
+  "results": { "total": 2 },
+  "admissions": { "total": 5, "active": 4 },
+  "users": { "total": 3, "active": 3, "new_this_week": 1 }
+}
 ```
 
-### Check Job Eligibility
-```
-GET /api/v1/jobs/eligibility/ssc-cgl-2026
-Authorization: Bearer <user_token>
-→ 200 {
-    "status": "eligible" | "partially_eligible" | "not_eligible" | "unknown",
-    "reasons": [
-      "Your qualification (graduate) meets the requirement (graduate)",
-      "Age 26 is within the eligible range",
-      "Your category (OBC) is eligible"
-    ]
-  }
-```
-`unknown` is returned when the user's profile has insufficient data — frontend prompts them to complete their profile.
+**Side effects on admin write operations:**
+- Creating/updating a job → triggers `recompute_eligibility_for_job.delay(job_id)`
+- Creating/updating a job to `active` → triggers `notify_trackers_on_update.delay("job", job_id)`
+- Creating a new job → triggers `send_new_job_notifications.delay(job_id)` (notifies org followers)
+- Creating/updating an admission → triggers `recompute_eligibility_for_admission.delay(admission_id)`
+- Creating/updating an admission to `active` → triggers `notify_trackers_on_update.delay("admission", admission_id)`
 
-### List Notifications
-```
-GET /api/v1/notifications?is_read=false&limit=10
-Authorization: Bearer <user_token>
-→ 200 { "data": [{ "id": "uuid", "type": "deadline_reminder_3d", "title": "3 days left: SSC CGL 2026", ... }], "pagination": { ... } }
-```
+---
 
-### Unread Count
-```
-GET /api/v1/notifications/count
-Authorization: Bearer <user_token>
-→ 200 { "count": 5 }
-```
+## Health Check
 
-### Register FCM Token
-```
-POST /api/v1/users/me/fcm-token
-Authorization: Bearer <user_token>
-{ "token": "fcm-device-token-string", "device_name": "Chrome" }
-→ 200 { "message": "FCM token registered", "fcm_tokens_count": 1 }
-```
-
-### Update Notification Preferences
-```
-PUT /api/v1/users/me/notification-preferences
-Authorization: Bearer <user_token>
-{ "email": true, "push": false }
-→ 200 { "message": "Preferences updated", "notification_preferences": { "email": true, "push": false } }
-```
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | `/health` | Public | Returns `{"status": "ok"}` |
 
 ---
 
@@ -414,355 +490,58 @@ All errors follow the structured format from `app/main.py`:
 }
 ```
 
-| Code | Meaning |
-|------|---------|
-| 400 | Bad request / validation error |
-| 401 | Unauthorized (invalid/expired/revoked token) |
-| 403 | Forbidden (wrong role or token scope) |
-| 404 | Resource not found |
-| 409 | Conflict (e.g., duplicate email, already tracking job) |
-| 422 | Validation error (Pydantic) |
+| HTTP Status | Error Code | Trigger |
+|-------------|-----------|---------|
+| 400 | `VALIDATION_EMAIL_EXISTS` | Email already registered |
+| 401 | `AUTH_INVALID_CREDENTIALS` | Invalid token or wrong type |
+| 401 | `AUTH_TOKEN_REVOKED` | Token in Redis blocklist |
+| 401 | `AUTH_TOKEN_EXPIRED` | Token past expiry |
+| 403 | `FORBIDDEN_PERMISSION_DENIED` | Wrong scope or role |
+| 403 | `FORBIDDEN_ADMIN_ONLY` | Non-admin accessing admin endpoint |
+| 404 | `NOT_FOUND_USER` | User not found |
+| 404 | `NOT_FOUND_JOB` | Job not found |
+| 404 | `NOT_FOUND_APPLICATION` | Application not found |
+| 422 | `VALIDATION_MISSING_FIELD` | Pydantic validation error (includes per-field details) |
+| 429 | `RATE_LIMIT_EXCEEDED` | Too many requests |
+| 500 | `SERVER_ERROR` | Unhandled exception |
+
+**Note:** 409 (conflict) responses are raised directly with `detail` strings, not the structured error format. The error format applies to HTTPException and RequestValidationError handlers only.
 
 ---
 
 ## Application Fee Fields
 
-Fees are stored in a single `fee` JSONB field on both `jobs` and `admissions`. Keys are optional — only include categories that apply.
+Fees are stored in a `fee` JSONB field on both `jobs` and `admissions`. Keys are optional.
 
 | Key | Description |
 |-----|-------------|
-| `general` | Fee for General / UR category |
-| `obc` | Fee for OBC-NCL category |
-| `sc_st` | Fee for SC / ST category |
-| `ews` | Fee for EWS category |
-| `female` | Fee for Female / PwBD candidates |
+| `general` | Fee for General / UR |
+| `obc` | Fee for OBC-NCL |
+| `sc_st` | Fee for SC / ST |
+| `ews` | Fee for EWS |
+| `female` | Fee for Female / PwBD |
 
-`fee` is included in `JobCreateRequest`, `JobUpdateRequest`, `JobResponse`, `JobListItem`, `AdmissionCreateRequest`, `AdmissionUpdateRequest`, `AdmissionResponse`, and `AdmissionListItem`.
-Value `0` means "Free". Omitting a key means fee not specified (hidden in UI).
-
-### Create Job with Fees
-```
-POST /api/v1/admin/jobs
-Authorization: Bearer <admin_token>
-{
-  "job_title": "SSC GD Constable 2026",
-  "organization": "Staff Selection Commission",
-  "fee": { "general": 100, "obc": 100, "sc_st": 0, "ews": 0, "female": 0 },
-  ...
-}
-```
+`0` = Free. Omitting a key means fee not specified.
 
 ---
 
-## Admin Dashboard Stats (enhanced)
+## Celery Beat Schedule
 
-```
-GET /api/v1/admin/stats
-Authorization: Bearer <admin_token>
-→ 200 {
-  "jobs": { "total": 7, "active": 6 },
-  "admit_cards": { "total": 15 },
-  "answer_keys": { "total": 3 },
-  "results": { "total": 2 },
-  "admissions": { "total": 5, "active": 4 },
-  "users": { "total": 3, "active": 3, "new_this_week": 1 }
-}
-```
-
-**Content Type Breakdown:**
-- `jobs` — Job vacancies (`jobs` table)
-- `admit_cards` — Admit card releases (`admit_cards` table)
-- `answer_keys` — Answer key publications (`answer_keys` table)
-- `results` — Exam results (`results` table)
-- `admissions` — Admission information (`admissions` table)
+| Task | Schedule | Description |
+|------|----------|-------------|
+| `send_deadline_reminders` | Daily 08:00 UTC | T-7, T-3, T-1 reminders for tracked jobs + admissions |
+| `purge_expired_notifications` | Daily 01:00 UTC | Delete notifications past `expires_at` |
+| `purge_expired_admin_logs` | Daily 01:30 UTC | Delete admin logs past `expires_at` |
+| `purge_soft_deleted_jobs` | Daily 02:00 UTC | Hard-delete soft-deleted jobs |
+| `close_expired_job_listings` | Daily 02:30 UTC | Auto-close jobs past `application_end` |
+| `update_admission_statuses` | Daily 02:35 UTC | Auto-update admission statuses |
+| `generate_sitemap` | Daily 04:00 UTC | Regenerate `sitemap.xml` with all active jobs |
 
 ---
 
 ## SEO
 
-### Sitemap
-- `hermes-scheduler` task `generate_sitemap` runs daily at 04:00 UTC
-- Generates `/sitemap.xml` with all active job URLs
-- Served via Nginx at `/sitemap.xml`
-
-### Meta Tags (job detail pages)
-- `<title>`: `{job_title} | {organization} | Hermes`
-- `<meta name="description">`: First 160 chars of description
-- Open Graph: `og:title`, `og:description`, `og:url`, `og:type`, `og:site_name`
-
-### JobPosting JSON-LD (job detail pages)
-- Embedded `<script type="application/ld+json">` on each job detail page
-- Fields: title, description, datePosted, validThrough, hiringOrganization, jobLocation, employmentType, educationRequirements, baseSalary
-
----
-
-## Share Button
-
-Every job card and detail page includes a single **Share** button using the Web Share API:
-- **Mobile (native share sheet):** `navigator.share({ title, url })` triggers the OS-level share dialog
-- **Desktop fallback:** `navigator.clipboard.writeText(url)` — button text changes to `✓ Copied` for 1.8 seconds
-- URL and title are passed via `data-url` and `data-title` HTML attributes to avoid Jinja2/JS context issues
-
-WhatsApp and Telegram share links have been removed.
-
----
-
-## Admit Cards, Answer Keys, and Results
-
-These are now top-level resources, independent of jobs and admissions. Each document can be linked to either a job OR an admission via polymorphic foreign keys.
-
-### Admit Cards
-
-#### Public Endpoints
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/admit-cards` | List all admit cards (paginated) |
-| GET | `/admit-cards/{id}` | Get single admit card by ID (includes job/admission context) |
-
-#### Admin Endpoints (operator+)
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/admin/admit-cards` | List all admit cards (any status) |
-| POST | `/admin/admit-cards` | Create admit card (must specify job_id OR admission_id) |
-| PUT | `/admin/admit-cards/{id}` | Update admit card |
-| DELETE | `/admin/admit-cards/{id}` | Delete admit card |
-
-### Answer Keys
-
-#### Public Endpoints
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/answer-keys` | List all answer keys (paginated) |
-| GET | `/answer-keys/{id}` | Get single answer key by ID (includes job/admission context) |
-
-#### Admin Endpoints (operator+)
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/admin/answer-keys` | List all answer keys (any status) |
-| POST | `/admin/answer-keys` | Create answer key (must specify job_id OR admission_id) |
-| PUT | `/admin/answer-keys/{id}` | Update answer key |
-| DELETE | `/admin/answer-keys/{id}` | Delete answer key |
-
-### Results
-
-#### Public Endpoints
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/results` | List all results (paginated) |
-| GET | `/results/{id}` | Get single result by ID (includes job/admission context) |
-
-#### Admin Endpoints (operator+)
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/admin/results` | List all results (any status) |
-| POST | `/admin/results` | Create result (must specify job_id OR admission_id) |
-| PUT | `/admin/results/{id}` | Update result |
-| DELETE | `/admin/results/{id}` | Delete result |
-
-### Document Creation
-
-When creating a document via the top-level admin endpoints, you must specify **either** `job_id` OR `admission_id` in the request body:
-
-```json
-// Create admit card for a job
-POST /api/v1/admin/admit-cards
-{
-  "job_id": "uuid-here",
-  "slug": "ssc-cgl-tier1-admit-card-2026",
-  "title": "SSC CGL Tier-1 Admit Card 2026",
-  "links": [{"label": "Download Admit Card", "url": "https://..."}],
-  "exam_start": "2026-04-01",
-  "exam_end": "2026-04-15"
-}
-
-// Create answer key for an admission
-POST /api/v1/admin/answer-keys
-{
-  "admission_id": "uuid-here",
-  "slug": "neet-ug-2026-answer-key",
-  "title": "NEET UG 2026 Provisional Answer Key",
-  "links": [{"label": "Set A", "url": "https://..."}, {"label": "Objection Portal", "url": "https://..."}],
-  "start_date": "2026-05-10",
-  "end_date": "2026-05-15"
-}
-
-// Create result for a job
-POST /api/v1/admin/results
-{
-  "job_id": "uuid-here",
-  "slug": "ssc-cgl-2026-result",
-  "title": "SSC CGL 2026 Final Result",
-  "links": [{"label": "View Result", "url": "https://..."}, {"label": "Download Scorecard", "url": "https://..."}],
-  "start_date": "2026-08-01",
-  "end_date": "2026-08-31"
-}
-```
-
-**Validation rules:**
-- Cannot specify both `job_id` and `admission_id`
-- Must specify at least one
-- Parent job/admission must exist in database
-- `slug` is required and must be unique
-
-**`links` field** is a JSONB array of labelled URLs (same pattern across admit cards, answer keys, and results):
-```json
-[{"label": "Download", "url": "https://..."}, {"label": "Notice PDF", "url": "https://..."}]
-```
-
----
-
-## PWA Support
-
-The user frontend supports Progressive Web App features:
-
-- **Web App Manifest** (`/static/manifest.json`): enables Add to Home Screen
-- **Service Worker** (`/static/sw.js`): caches homepage and offline page
-- **Offline Fallback** (`/offline`): shown when network unavailable during navigation
-- **Theme Color**: `#1e3a5f` (Hermes brand)
-- **Icons**: 192x192 and 512x512 PNG
-
----
-
-## Admissions
-
-Admissions (NEET, JEE, CLAT, CAT, GATE etc.) are stored in the `admissions` table, separate from `jobs`.
-They have admission-specific fields: `stream`, `admission_type`, `counselling_body`, `seats_info`, admission pattern.
-
-### Public (read-only, active admissions only)
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/admissions` | List active admissions (stream/admission_type/search filters) |
-| GET | `/admissions/{slug}` | Admission detail by slug (unique URL-friendly identifier) |
-| GET | `/admissions/{slug}/admit-cards` | Per-phase admit cards (admission status must not be `closed`) |
-| GET | `/admissions/{slug}/answer-keys` | Per-phase answer keys (admission status must not be `closed`) |
-| GET | `/admissions/{slug}/results` | Per-phase results (admission status must not be `closed`) |
-
-**Query Parameters for `GET /admissions`:**
-
-| Param | Type | Description |
-|-------|------|-------------|
-| `q` | string | Full-text search on admission name, conducting body, description |
-| `stream` | string | `medical`, `engineering`, `law`, `management`, `arts_science`, `general` |
-| `admission_type` | string | `ug`, `pg`, `doctoral`, `lateral` |
-| `limit` | int | 1-100, default: 20 |
-| `offset` | int | Default: 0 |
-
-**Note:** `status='upcoming'` admissions are excluded from public listing (only `status='active'` returned).
-
-### Admin CRUD (operator+)
-
-| Method | Endpoint | Description |
-|--------|----------|-----------|
-| GET | `/admin/admissions` | List all admissions (any status, filterable by stream/admission_type/status) |
-| GET | `/admin/admissions/{id}` | Get single admission detail by ID (any status) |
-| POST | `/admin/admissions` | Create admission |
-| PUT | `/admin/admissions/{id}` | Update admission |
-| DELETE | `/admin/admissions/{id}` | Delete admission (cascades to linked docs) |
-
-### Example — List Medical Admissions
-```
-GET /api/v1/admissions?stream=medical&limit=10
-→ 200 {
-  "data": [
-    {
-      "slug": "nta-neet-pg-2026",
-      "admission_name": "NTA NEET PG 2026 — Medical PG Admissionination",
-      "conducting_body": "National Testing Agency",
-      "counselling_body": "Medical Counselling Committee (MCC)",
-      "admission_type": "pg",
-      "stream": "medical",
-      "application_end": "2025-11-30",
-      "admission_date": "2026-03-09",
-      "fee": { "general": 4250, "obc": 4250, "sc_st": 2000 }
-    },
-    ...
-  ],
-  "pagination": { "total": 3, "has_more": false }
-}
-```
-
-### Admission JSON Field Structures
-
-**`admission_details`** — Exam pattern and paper structure:
-```json
-{
-  "mode": "Online",
-  "duration_minutes": 180,
-  "total_marks": 360,
-  "total_questions": 90,
-  "negative_marking": 1.0,
-  "language": ["Hindi", "English"],
-  "subjects": [
-    { "name": "Physics", "questions": 30, "marks": 120 },
-    { "name": "Chemistry", "questions": 30, "marks": 120 },
-    { "name": "Mathematics", "questions": 30, "marks": 120 }
-  ]
-}
-```
-
-**`eligibility`** — Candidate eligibility criteria:
-```json
-{
-  "qualification": "12th Pass with Physics, Chemistry, Mathematics from a recognised board",
-  "min_percentage": 75,
-  "age_limit": { "min": 17, "max": 25 },
-  "attempts_allowed": 2,
-  "notes": "SC/ST candidates: 65% aggregate. Age relaxation as per govt norms."
-}
-```
-
-**`seats_info`** — Category-wise seat breakdown:
-```json
-{
-  "total": 17385,
-  "UR": 7850,
-  "OBC": 4680,
-  "EWS": 1740,
-  "SC": 2610,
-  "ST": 505
-}
-```
-
-### Example — Create Admission (Admin)
-```
-POST /api/v1/admin/admissions
-Authorization: Bearer <admin_token>
-{
-  "admission_name": "JEE Advanced 2026",
-  "conducting_body": "IIT Bombay",
-  "counselling_body": "JoSAA",
-  "admission_type": "ug",
-  "stream": "engineering",
-  "eligibility": {
-    "qualification": "12th Pass with PCM",
-    "min_percentage": 75,
-    "age_limit": { "min": 17, "max": 25 },
-    "attempts_allowed": 2
-  },
-  "seats_info": { "total": 17385, "UR": 7850, "OBC": 4680, "EWS": 1740, "SC": 2610, "ST": 505 },
-  "admission_details": {
-    "mode": "Online",
-    "duration_minutes": 180,
-    "total_marks": 360,
-    "subjects": [
-      { "name": "Physics", "questions": 30, "marks": 120 },
-      { "name": "Chemistry", "questions": 30, "marks": 120 },
-      { "name": "Mathematics", "questions": 30, "marks": 120 }
-    ]
-  },
-  "admission_date": "2026-05-25",
-  "fee": { "general": 3200, "sc_st": 1600 },
-  "status": "active"
-}
-→ 201 { "id": "uuid", "slug": "jee-advanced-2026", ... }
-```
+- Sitemap generated daily at 04:00 UTC via `tasks/seo.py`; saved to `SITEMAP_PATH` (default `/app/sitemap.xml`); served via Nginx
 
 ---
 
@@ -770,16 +549,19 @@ Authorization: Bearer <admin_token>
 
 | Table | Description |
 |-------|-------------|
-| `users` | Regular user accounts |
-| `admin_users` | Admin/operator accounts (role, department, permissions) |
-| `user_profiles` | Extended user profile (education, category, location, followed_organizations) |
+| `users` | Regular user accounts (Firebase-linked) |
+| `admin_users` | Admin/operator accounts (bcrypt, role-based) |
+| `user_profiles` | Extended profile (education, category, location, FCM tokens, notification preferences) |
+| `user_devices` | Device registry (FCM token, fingerprint — used for push de-duplication) |
+| `user_tracks` | Polymorphic tracking: `entity_type` ∈ `{job, admission, organization}` |
+| `job_eligibility` | Pre-computed eligibility per (user, job) — populated by Celery |
+| `admission_eligibility` | Pre-computed eligibility per (user, admission) — populated by Celery |
+| `organizations` | Organization registry (slug, org_type, logo_url) |
 | `jobs` | Job vacancy postings with FTS vector |
 | `admissions` | Admissions (NEET, JEE, CLAT, CAT, GATE etc.) |
-| `notifications` | User notifications |
-| `notification_delivery_log` | Per-channel delivery tracking (push/email/whatsapp/telegram) |
-| `user_devices` | Device registry (FCM token, fingerprint de-duplication) |
-| `admin_logs` | Admin audit trail |
-| `user_tracks` | Jobs and admissions a user is tracking (for notifications) |
-| `admit_cards` | Admit cards linked to job OR admission — `slug`, `links` JSONB, `exam_start`/`exam_end` |
-| `answer_keys` | Answer keys linked to job OR admission — `slug`, `links` JSONB, `start_date`/`end_date` |
-| `results` | Results linked to job OR admission — `slug`, `links` JSONB, `start_date`/`end_date` |
+| `admit_cards` | Admit cards linked to job OR admission (polymorphic) |
+| `answer_keys` | Answer keys linked to job OR admission (polymorphic) |
+| `results` | Results linked to job OR admission (polymorphic) |
+| `notifications` | User notification records |
+| `notification_delivery_log` | Per-channel delivery tracking |
+| `admin_logs` | Admin audit trail (auto-expire 30 days) |

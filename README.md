@@ -7,8 +7,8 @@ multi-channel notifications, and an admin panel.
 
 > **Status:** Phases 1–7 + 10 + 11 + UI/Content phase complete.
 > Auth (Firebase — Email/Password, Google OAuth, Phone OTP), job CRUD, full-text search, user profiles,
-> per-job/admission eligibility checking, org follow, track-based deadline reminders (user_tracks),
-> user dashboard, smart multi-channel notifications (in-app + FCM push + email + WhatsApp placeholder + Telegram),
+> per-job/admission eligibility checking (pre-computed via Celery), org follow, track-based deadline reminders (user_tracks),
+> user dashboard, smart multi-channel notifications (in-app + FCM push + email + WhatsApp placeholder),
 > full admin frontend (dashboard, job/user management, audit logs), SEO (sitemap, meta, JSON-LD),
 > CSRF protection,
 > PWA (manifest, service worker, offline fallback), security audit.
@@ -17,7 +17,7 @@ multi-channel notifications, and an admin panel.
 > decoupled from `jobs`; polymorphic document tables (`admit_cards`, `answer_keys`, `results`) now
 > support both jobs and admissions via `job_id`/`admission_id` FK; 5-section frontend navigation
 > (Jobs / Admit Cards / Answer Keys / Results / Admissions); type-aware gradient detail pages with shared
-> CSS design system; single Web Share API button replacing WhatsApp/Telegram share links; 9 admission seed
+> CSS design system; single Web Share API button replacing third-party share links; 9 admission seed
 > entries with full metadata and 32 linked phase documents; fixed frontend detail pages to correctly render
 > nested JSON fields (`admission_details`, `eligibility`, `seats_info`, `vacancy_breakdown`, `selection_process`);
 > removed standalone admit-cards/answer-keys/results management pages from admin frontend — all phase
@@ -66,9 +66,9 @@ PostgreSQL and Redis are isolated inside Docker networks — never exposed to th
 
 ## Features
 
-- **Job Matching** — Scores jobs against user profile: reservation category eligibility (+4), state preference (+3), preferred categories (+2), education level (+2), age eligibility vs. `age_min`/`age_max` in job eligibility (+2), and recency bonus (+1); scoring engine in `services/matching.py`. The candidate pool is capped at the 500 most-recent active jobs (a known trade-off documented in the code).
+- **Eligibility Matching** — Determines if a user is eligible for a job/admission based on education, age (with category-specific relaxation), category (from vacancy_breakdown), and domicile. Results are pre-computed asynchronously by Celery tasks (`recompute_eligibility_for_user/job/admission`) into `job_eligibility` and `admission_eligibility` tables. Eligibility endpoints read from cache first, fall back to live compute if no cached row exists.
 - **Track Jobs & Admissions** — Users track specific jobs or admissions (`user_tracks` table, max 100 per user) to receive automatic deadline reminders and update notifications.
-- **Multi-Channel Notifications** — In-app, FCM push (tokens stored in `user_profiles.fcm_tokens`), email (OCI Email Delivery), **WhatsApp** (infrastructure ready, pending `WHATSAPP_API_TOKEN` + `WHATSAPP_PHONE_NUMBER_ID`), and **Telegram** (Bot API `sendMessage`; activated when `TELEGRAM_BOT_TOKEN` is set, user stores `telegram_chat_id` via preferences API); instant mode for OTP/auth, staggered mode for job alerts with configurable delays per channel.
+- **Multi-Channel Notifications** — In-app, FCM push (reads from `user_devices` table; registration API stores to `user_profiles.fcm_tokens`), email (OCI Email Delivery), and **WhatsApp** (infrastructure ready, pending `WHATSAPP_API_TOKEN` + `WHATSAPP_PHONE_NUMBER_ID` — currently a no-op placeholder); instant mode for OTP/auth, staggered mode for job alerts with configurable delays per channel.
 - **Deadline Reminders** — Celery task `send_deadline_reminders` fires automatic alerts at T-7, T-3, and T-1 days before `application_end` for all trackers of a job or admission. Scheduled daily at 08:00 UTC via `hermes-scheduler` (`celery_app.py` beat_schedule).
 - **Full-Text Search** — PostgreSQL tsvector/GIN-indexed ranked search on job titles, organisations, and descriptions (no Elasticsearch needed).
 - **SEO Optimized** — Dynamic sitemap, meta tags, and Google JobPosting JSON-LD structured data for organic traffic.
@@ -77,7 +77,7 @@ PostgreSQL and Redis are isolated inside Docker networks — never exposed to th
 - **Firebase Auth** — Email/password (OTP-verified), Google OAuth (popup), and Phone OTP login via Firebase JS SDK; backend verifies Firebase ID tokens and issues internal JWTs; auto-links existing accounts by email; supports legacy user migration. On logout, both the access token and (if provided) the refresh token are revoked in Redis so neither can be reused.
 - **Admin Account Management** — New admin/operator accounts are created via `POST /api/v1/admin/admin-users` (admin role only). The first admin must be seeded directly in the DB (see Development Quick Start below).
 - **Two-Tier RBAC** — Regular users (`users` table, user frontend port 3000) and Operator/Admin (`admin_users` table with role column, admin frontend port 4000); JWT `user_type` claim (`"user"` | `"admin"`) enforces strict scope isolation — admin tokens are rejected by user endpoints and vice versa.
-- **Organisation Follow** — Follow SSC, UPSC, Railway, etc. (stored in `user_profiles.followed_organizations`) to get notified on every new vacancy from that organisation.
+- **Organisation Follow** — Follow SSC, UPSC, Railway, etc. via dedicated endpoints (`POST/DELETE/GET /api/v1/organizations/{org_id}/track`). Follows stored in `user_tracks` with `entity_type='organization'`. When a new active job is posted, followers are notified via `send_new_job_notifications`. The `user_profiles.followed_organizations` JSONB field is deprecated.
 - **Admissions** — Separate `admissions` table for NEET, JEE, CLAT, CAT, CUET, GATE etc.; distinct from government job vacancies with exam-specific fields: `stream`, `admission_type`, `counselling_body`, `seats_info`, eligibility, exam pattern.
 - **Polymorphic Document Tables** — `admit_cards`, `answer_keys`, `results` each link to either a job (`job_id`) or admission (`admission_id`) via DB CHECK constraint — exactly one parent per row.
 - **5-Section Navigation** — Jobs, Admit Cards, Answer Keys, Results, Admissions — each with its own section page, search, and type-matching gradient hero color.
@@ -89,11 +89,12 @@ PostgreSQL and Redis are isolated inside Docker networks — never exposed to th
 
 | Document | Description |
 | -------- | ----------- |
-| [docs/DESIGN.md](docs/DESIGN.md) | System design: architecture, auth, Celery tasks, SEO, notifications, CI/CD, security, deployment |
-| [docs/DATABASE.md](docs/DATABASE.md) | Full database schema: ERD, all 14 tables, column definitions, indexes, CHECK constraints |
+| [docs/DESIGN.md](docs/DESIGN.md) | System design: architecture, auth, Celery tasks, SEO, notifications, security, deployment |
+| [docs/DATABASE.md](docs/DATABASE.md) | Full database schema: ERD, all 16 tables, column definitions, indexes, CHECK constraints |
 | [docs/NOTIFICATIONS.md](docs/NOTIFICATIONS.md) | Email templates, notification channels, OTP flow, delivery modes |
 | [docs/API.md](docs/API.md) | Complete API endpoint reference with request/response examples |
 | [docs/DIAGRAMS.md](docs/DIAGRAMS.md) | ASCII workflow diagrams for all major user and system flows |
+| [docs/MATCHING.md](docs/MATCHING.md) | Eligibility matching engine: criteria, age relaxation, pre-computation tasks |
 | [docs/hermes.postman_collection.json](docs/hermes.postman_collection.json) | Postman collection for all API endpoints |
 
 ## Development Quick Start
@@ -110,7 +111,7 @@ docker compose up -d --build
 
 # 3. Run database migrations
 docker exec hermes_backend alembic -c /app/alembic.ini upgrade head
-# Migrations: 0001_initial (consolidated schema — single migration covers all tables)
+# Migrations: 0001_initial (all core tables), 0002_user_eligibility_tables
 
 # 4. Create the first admin account (required — no self-registration for admins)
 docker exec hermes_backend python -c "
@@ -197,13 +198,14 @@ hermes/
 │   │   │   │   ├── content.py        # /api/v1/admit-cards, /answer-keys, /results
 │   │   │   │   ├── admissions.py # /api/v1/admissions/* + /api/v1/admin/admissions/*
 │   │   │   │   └── health.py         # /api/v1/health
-│   │   │   ├── models/           # SQLAlchemy 2.0 Mapped models (14 tables, see DATABASE.md)
+│   │   │   ├── models/           # SQLAlchemy 2.0 Mapped models (16 tables, see DATABASE.md)
 │   │   │   ├── schemas/          # Pydantic v2 request/response models
 │   │   │   ├── services/
-│   │   │   │   ├── matching.py       # Job scoring engine (category +4, state +3, education +2…)
-│   │   │   │   └── notifications.py  # NotificationService — 5-channel smart routing
+│   │   │   │   ├── matching.py       # Eligibility engine: check_job_eligibility, check_admission_eligibility
+│   │   │   │   └── notifications.py  # NotificationService — 4-channel smart routing (in-app, push, email, WhatsApp)
 │   │   │   └── tasks/            # Celery tasks
-│   │   │       ├── notifications.py  # smart_notify, deadline reminders, job alerts
+│   │   │       ├── notifications.py  # smart_notify, deadline reminders, org-follow alerts
+│   │   │       ├── eligibility.py    # recompute_eligibility_for_user/job/admission
 │   │   │       ├── cleanup.py        # Purge expired notifications + logs
 │   │   │       ├── jobs.py           # Close expired listings, admission status update
 │   │   │       └── seo.py            # Generate sitemap.xml

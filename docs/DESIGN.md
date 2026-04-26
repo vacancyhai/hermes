@@ -1,10 +1,10 @@
 # Hermes — System Design Document
 
 > **Status:** Core platform complete. Auth (Email/OTP, Google OAuth, Phone OTP), job & admission CRUD, full-text search,
-> user profiles, job matching, org follow, tracking, notifications (email, push, in-app, Telegram),
+> user profiles, eligibility matching (pre-computed via Celery), org follow, tracking, notifications (email, push, in-app),
 > admin panel, SEO, PWA, security audit,
 > admissions, polymorphic document tables (admit cards, answer keys, results), audit log — all implemented.
-> **Pending:** `send_new_job_notifications` implementation, WhatsApp delivery integration, OCI deployment.
+> **Pending:** WhatsApp delivery integration (placeholder only), OCI deployment.
 
 ---
 
@@ -156,12 +156,12 @@ The PWA provides a native-like experience on Android and limited support on iOS 
 
 ## Database Schema
 
-See **[DATABASE.md](DATABASE.md)** for the complete schema — ERD, all 14 tables, column definitions, indexes, and CHECK constraints.
+See **[DATABASE.md](DATABASE.md)** for the complete schema — ERD, all 16 tables, column definitions, indexes, and CHECK constraints.
 
-**4 Alembic migrations (`0001` → `0004`). Tables:**
-`users`, `admin_users`, `user_profiles`, `user_devices`, `jobs`,
-`notifications`, `notification_delivery_log`, `admin_logs`, `user_tracks`,
-`admit_cards`, `answer_keys`, `results`, `admissions`.
+**2 Alembic migrations (`0001` → `0002`). Tables:**
+`users`, `admin_users`, `user_profiles`, `user_devices`, `organizations`, `jobs`, `admissions`,
+`notifications`, `notification_delivery_log`, `admin_logs`, `user_tracks`, `job_eligibility`, `admission_eligibility`,
+`admit_cards`, `answer_keys`, `results`.
 
 **Polymorphic document tables:** `admit_cards`, `answer_keys`, `results` each
 link to either a `jobs` row (`job_id`) or an `admissions` row (`admission_id`)
@@ -177,14 +177,15 @@ All endpoints versioned under `/api/v1/`. List responses: `{ "data": [...], "pag
 
 | Router | Prefix | Description |
 |--------|--------|-------------|
-| `auth.py` | `/api/v1/auth` | Firebase verify-token, logout, refresh; admin login/logout/refresh; email OTP registration |
-| `users.py` | `/api/v1/users` | Profile CRUD, FCM tokens, phone, password management |
+| `auth.py` | `/api/v1/auth` | Firebase verify-token, logout, refresh; admin login/logout/refresh; email OTP registration; resend-verification |
+| `users.py` | `/api/v1/users` | Profile CRUD, FCM tokens, phone, password management, notification preferences |
 | `jobs.py` | `/api/v1/jobs` | Public listing (FTS + filters), per-job eligibility check, detail by slug |
-| `tracks.py` | `/api/v1/jobs/{id}/track`, `/api/v1/admissions/{id}/track` | Track/untrack jobs and admissions; list tracked |
+| `tracks.py` | `/api/v1/jobs/{id}/track`, `/api/v1/admissions/{id}/track`, `/api/v1/users/me/tracked` | Track/untrack jobs and admissions; list tracked |
+| `admissions.py` | `/api/v1/admissions`, `/api/v1/admin/admissions` | Public admission listing + detail; admin admission CRUD |
+| `organizations.py` | `/api/v1/organizations` | Public org listing, org detail; follow/unfollow |
 | `notifications.py` | `/api/v1/notifications` | List, count, mark read, delete |
-| `admin.py` | `/api/v1/admin` | Job CRUD + approve, user mgmt, stats, audit logs, admin-user creation |
 | `content.py` | `/api/v1/admit-cards`, `/api/v1/answer-keys`, `/api/v1/results` | Public + admin CRUD for admit cards, answer keys, results |
-| `admissions.py` | `/api/v1/admissions`, `/api/v1/admin/admissions` | Public admission listing + detail; admin admission CRUD + per-admission docs |
+| `admin.py` | `/api/v1/admin` | Job CRUD, user management, admin-user CRUD, org CRUD, stats, audit logs |
 | `health.py` | `/api/v1/health` | Service health check |
 
 ---
@@ -313,25 +314,25 @@ For email/password and Google login, create a test user via the Firebase Console
 
 | Task                            | Schedule        | Description                            |
 | ------------------------------- | --------------- | -------------------------------------- |
-| `send-deadline-reminders`       | Daily 08:00 UTC | T-7, T-3, T-1 reminders → delegates to `smart_notify` |
+| `send-deadline-reminders`       | Daily 08:00 UTC | T-7, T-3, T-1 reminders for tracked jobs + admissions → delegates to `smart_notify` |
 | `purge-expired-notifications`   | Daily 01:00 UTC | Delete notifications past `expires_at` |
 | `purge-expired-admin-logs`      | Daily 01:30 UTC | Delete admin logs past `expires_at`    |
-| `purge-soft-deleted-jobs`       | Daily 02:00 UTC | Hard-delete inactive jobs older than 90 days |
-| `close-expired-job-listings`    | Daily 02:30 UTC | Set `status='closed'` on jobs past `application_end` |
-| `update-admission-statuses`     | Daily 02:35 UTC | Set `status='closed'` on admissions past `admission_date` |
-| `generate-sitemap`              | Daily 04:00 UTC | Regenerate `/sitemap.xml` — active jobs, active/upcoming admissions, all 5 section pages |
+| `purge-soft-deleted-jobs`       | Daily 02:00 UTC | Hard-delete soft-deleted jobs |
+| `close-expired-job-listings`    | Daily 02:30 UTC | Auto-close jobs past `application_end` |
+| `update-admission-statuses`     | Daily 02:35 UTC | Auto-update admission statuses |
+| `generate-sitemap`              | Daily 04:00 UTC | Regenerate `/sitemap.xml` with all active jobs + admissions |
 
 ### hermes-worker (Event-Triggered Tasks)
 
-| Trigger                       | Task                           | Description                            |
-| ----------------------------- | ------------------------------ | -------------------------------------- |
-| Any notification needed       | `smart_notify`                 | Unified entry — instant or staggered delivery to all 5 channels |
-| Job/admission approved or updated  | `notify_trackers_on_update`    | Notify all users tracking that job/admission via `smart_notify(staggered)` |
-| Staggered email delivery      | `deliver_delayed_email`        | Fires after `NOTIFY_EMAIL_DELAY` — sends the email |
-| Staggered WhatsApp            | `deliver_delayed_whatsapp`     | Fires after `NOTIFY_WHATSAPP_DELAY` — sends the WhatsApp |
-| Staggered Telegram            | `deliver_delayed_telegram`     | Fires after `NOTIFY_TELEGRAM_DELAY` — sends the Telegram message |
+| Trigger | Task | Description |
+| ------- | ---- | ----------- |
+| Any notification needed | `smart_notify` | Unified entry — instant or staggered delivery to in-app, push, email, WhatsApp |
+| Job/admission updated to active | `notify_trackers_on_update` | Notify all users tracking that job/admission via `smart_notify(staggered)` |
+| New job posted by an org | `send_new_job_notifications` | Notify all users following that organization via `smart_notify(staggered)` |
+| Staggered email delivery | `deliver_delayed_email` | Fires after `NOTIFY_EMAIL_DELAY` (default 15 min) — sends the email |
+| Staggered WhatsApp | `deliver_delayed_whatsapp` | Fires after `NOTIFY_WHATSAPP_DELAY` (default 1 hr) — placeholder; always no-ops |
+| Profile or job/admission updated | `recompute_eligibility_for_user/job/admission` | Pre-compute and upsert eligibility rows in DB |
 
-> **Note:** `send_new_job_notifications` (org-follow alerts) and `notify_priority_subscribers` (priority-tracker alerts) are registered Celery tasks but are currently **no-op stubs** (`pass` body). The infrastructure is in place but the matching/dispatch logic is not yet implemented.
 
 ---
 
@@ -407,58 +408,46 @@ This costs zero infrastructure — only React component changes.
 
 ### Notification Channels
 
-| Channel    | Technology          | Instant Mode (T+0) | Staggered Mode                          | Status      |
-| ---------- | ------------------- | ------------------- | --------------------------------------- | ----------- |
-| In-app     | PostgreSQL row      | T+0                 | T+0                                     | Implemented |
-| Push (FCM) | Firebase FCM        | T+0                 | T+0 (tokens from `user_profiles.fcm_tokens`) | Implemented |
-| Email      | OCI Email Delivery  | T+0                 | T+`NOTIFY_EMAIL_DELAY` (default 15min)  | Implemented |
-| WhatsApp   | WhatsApp Cloud API  | T+0                 | T+`NOTIFY_WHATSAPP_DELAY` (default 1hr) | Placeholder (API token not yet set) |
-| Telegram   | Telegram Bot API    | T+0                 | T+`NOTIFY_TELEGRAM_DELAY` (default 15min) | Implemented |
+| Channel | Technology | Instant Mode | Staggered Mode | Status |
+| ------- | ---------- | ------------ | -------------- | ------ |
+| In-app | PostgreSQL row | T+0 | T+0 | Implemented |
+| Push (FCM) | Firebase FCM | T+0 | T+0 | Implemented (reads from `user_devices` table) |
+| Email | OCI Email Delivery | T+0 | T+`NOTIFY_EMAIL_DELAY` (default 15 min) | Implemented |
+| WhatsApp | WhatsApp Cloud API | T+0 | T+`NOTIFY_WHATSAPP_DELAY` (default 1 hr) | **Placeholder** — `_send_whatsapp_message` always returns False |
+
 
 **Two delivery modes** via `smart_notify(delivery_mode="instant"|"staggered")`:
-- **instant** — all 5 channels at T+0 (welcome message, urgent alerts)
-- **staggered** — in-app + push at T+0, email + Telegram T+15min, WhatsApp T+1hr
+- **instant** — all 4 channels at T+0 (OTP, welcome, urgent alerts)
+- **staggered** — in-app + push at T+0, email T+`NOTIFY_EMAIL_DELAY`, WhatsApp T+`NOTIFY_WHATSAPP_DELAY`
 
-Delays are configurable via env vars (`NOTIFY_EMAIL_DELAY`, `NOTIFY_WHATSAPP_DELAY`, `NOTIFY_TELEGRAM_DELAY`).
-All channels always attempt delivery — staggered just adds a time gap to avoid bombarding simultaneously.
-User preferences (`notification_preferences` JSONB) control per-channel opt-out.
+Delays configurable via env vars (`NOTIFY_EMAIL_DELAY`, `NOTIFY_WHATSAPP_DELAY`).
+User preferences (`notification_preferences` JSONB on `user_profiles`) control per-channel opt-out.
 
-**Telegram setup** (user-driven):
-1. User messages the Hermes bot on Telegram (bot token set via `TELEGRAM_BOT_TOKEN`)
-2. User retrieves their `chat_id` (e.g. via `@userinfobot`) and saves it:
-   ```
-   PUT /api/v1/users/me/notification-preferences
-   { "telegram_chat_id": "123456789" }
-   ```
-3. Bot sends messages via `https://api.telegram.org/bot{token}/sendMessage` with Markdown formatting.
-   Free — no per-message cost.
-
-**WhatsApp** uses the WhatsApp Cloud API and remains a placeholder until
-`WHATSAPP_API_TOKEN` + `WHATSAPP_PHONE_NUMBER_ID` are configured.
-
-Both channels store their config in `notification_preferences`:
-
+Preferences structure:
 ```json
 {
   "email": true,
   "push": true,
-  "telegram": { "enabled": true, "chat_id": "123456789" },
   "whatsapp": { "enabled": true, "phone": "+919876543210" }
 }
 ```
 
-The `sent_via` array on each notification row tracks which channels were used
-(e.g., `['email', 'telegram']`).
+The `sent_via` array on each notification row tracks which channels were used (e.g. `['in_app', 'push', 'email']`).
 
 ### Organization Follow
 
 Users can follow specific organizations (SSC, UPSC, Railway, etc.) to get
-notified whenever that org posts *any* job — regardless of profile match.
+notified whenever that org posts a new job.
 
-Followed organizations are stored in `user_profiles.followed_organizations` (JSONB array, added by migration 0002).
-Users manage this list by updating their profile via `PUT /api/v1/users/profile` — there are no dedicated follow/unfollow endpoints.
+Follow/unfollow is managed via dedicated endpoints in `organizations.py`:
+- `POST /api/v1/organizations/{org_id}/track` — follow
+- `DELETE /api/v1/organizations/{org_id}/track` — unfollow
+- `GET /api/v1/organizations/{org_id}/track` — check status
+- `GET /api/v1/organizations/tracked` — list followed orgs
 
-> **Note:** Dedicated org-follow endpoints (`/organizations/{name}/follow`) and new-job alert dispatch (`send_new_job_notifications`) are **not yet implemented**. The `followed_organizations` field is stored and displayed, but tracker notifications for new org jobs are a no-op stub.
+Follows are stored in `user_tracks` with `entity_type='organization'`. The `user_profiles.followed_organizations` JSONB field is deprecated (legacy). New follows always go through `user_tracks`.
+
+When a new job is created with `status='active'`, `send_new_job_notifications.delay(job_id)` is called, which notifies all users who follow the job's `organization_id` via `smart_notify(staggered)`.
 
 ### Share Button (Web Share API)
 
@@ -490,8 +479,8 @@ page includes a single **Share** button using the Web Share API.
 - **Desktop fallback**: copies URL to clipboard, button text changes to `✓ Copied` for 1.8 s
 - URL and title passed directly from React component props
 
-**WhatsApp and Telegram share links have been removed.** The Web Share API is
-more universal — it lets users choose their preferred app (WhatsApp, Telegram,
+**WhatsApp and other platform-specific share links have been removed.** The Web Share API is
+more universal — it lets users choose their preferred app (WhatsApp,
 Copy, SMS, Email, etc.) from the OS-level dialog without the frontend
 hard-coding specific platforms.
 
