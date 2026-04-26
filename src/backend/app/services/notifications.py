@@ -371,12 +371,59 @@ class NotificationService:
             countdown=settings.NOTIFY_WHATSAPP_DELAY,
         )
 
-    def _send_whatsapp_message(
-        self, phone: str, title: str, _message: str = ""
-    ) -> bool:
-        """Send via WhatsApp Cloud API. Placeholder until configured."""
-        logger.info("whatsapp_not_configured", phone=phone[:6] + "***", title=title)
-        return False
+    def _send_whatsapp_message(self, phone: str, title: str, message: str = "") -> bool:
+        """Send via WhatsApp Cloud API (Meta). Returns True on success."""
+        if not settings.WHATSAPP_ENABLED or not settings.WHATSAPP_TOKEN:
+            logger.info(
+                "whatsapp_skipped", reason="not_configured", phone=phone[:6] + "***"
+            )
+            return False
+
+        import httpx
+
+        url = (
+            f"https://graph.facebook.com/{settings.WHATSAPP_API_VERSION}"
+            f"/{settings.WHATSAPP_PHONE_NUMBER_ID}/messages"
+        )
+        headers = {
+            "Authorization": f"Bearer {settings.WHATSAPP_TOKEN}",
+            "Content-Type": "application/json",
+        }
+        normalized_phone = phone.lstrip("+").replace(" ", "").replace("-", "")
+        if settings.WHATSAPP_USE_TEMPLATE:
+            payload = {
+                "messaging_product": "whatsapp",
+                "to": normalized_phone,
+                "type": "template",
+                "template": {
+                    "name": settings.WHATSAPP_TEMPLATE_NAME,
+                    "language": {"code": settings.WHATSAPP_TEMPLATE_LANG},
+                },
+            }
+        else:
+            body_text = f"{title}\n\n{message}".strip() if message else title
+            payload = {
+                "messaging_product": "whatsapp",
+                "to": normalized_phone,
+                "type": "text",
+                "text": {"body": body_text},
+            }
+
+        try:
+            resp = httpx.post(url, headers=headers, json=payload, timeout=10)
+            if resp.status_code == 200:
+                logger.info("whatsapp_sent", phone=phone[:6] + "***", title=title)
+                return True
+            logger.error(
+                "whatsapp_failed",
+                phone=phone[:6] + "***",
+                status=resp.status_code,
+                response=resp.text[:200],
+            )
+            return False
+        except Exception as exc:
+            logger.error("whatsapp_error", phone=phone[:6] + "***", error=str(exc))
+            return False
 
     # ─── Helpers ───────────────────────────────────────────────────────
 

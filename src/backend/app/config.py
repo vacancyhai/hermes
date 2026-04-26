@@ -57,6 +57,16 @@ class Settings(BaseSettings):
     SITE_URL: str = _DEFAULT_LOCAL_URL
     SITEMAP_PATH: str = "/app/sitemap.xml"
 
+    # WhatsApp Cloud API (Meta)
+    WHATSAPP_ENABLED: bool = False
+    WHATSAPP_TOKEN: str = ""
+    WHATSAPP_PHONE_NUMBER_ID: str = ""
+    WHATSAPP_BUSINESS_ACCOUNT_ID: str = ""
+    WHATSAPP_API_VERSION: str = "v25.0"
+    WHATSAPP_USE_TEMPLATE: bool = False
+    WHATSAPP_TEMPLATE_NAME: str = "hello_world"
+    WHATSAPP_TEMPLATE_LANG: str = "en_US"
+
     # Notification delivery delays (staggered mode, in seconds)
     NOTIFY_EMAIL_DELAY: int = 900  # 15 minutes
     NOTIFY_WHATSAPP_DELAY: int = 3600  # 1 hour
