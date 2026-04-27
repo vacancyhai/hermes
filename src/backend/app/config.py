@@ -79,6 +79,10 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def validate_production_secrets(self) -> "Settings":
         if self.APP_ENV == "production":
+            if self.SECRET_KEY.startswith("change-me"):
+                raise ValueError(
+                    "SECRET_KEY must not use the default value in production"
+                )
             if self.JWT_SECRET_KEY.startswith("change-me"):
                 raise ValueError(
                     "JWT_SECRET_KEY must not use the default value in production"

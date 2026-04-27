@@ -30,7 +30,13 @@ import uuid
 from datetime import date
 from typing import Annotated, Any
 
-from app.dependencies import get_db, get_redis, require_admin, require_operator
+from app.dependencies import (
+    get_current_user,
+    get_db,
+    get_redis,
+    require_admin,
+    require_operator,
+)
 from app.models.admission import Admission
 from app.models.admit_card import AdmitCard
 from app.models.answer_key import AnswerKey
@@ -855,6 +861,7 @@ _EXAM_REMINDERS_TTL = 300  # 5 minutes
 
 @exam_reminders_router.get("")
 async def list_exam_reminders(
+    current_user: Annotated[Any, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
     redis: Annotated[Any, Depends(get_redis)],
 ):
@@ -864,6 +871,7 @@ async def list_exam_reminders(
     - Jobs/Admissions with no linked admit cards → use their own exam dates.
     - Admit cards → always shown individually (covers parent exam dates).
     """
+    _ = current_user
     cached = await redis.get(_EXAM_REMINDERS_CACHE_KEY)
     if cached:
         return json.loads(cached)

@@ -339,8 +339,10 @@ class NotificationService:
             return
 
         prefs, phone = row
-        wa_config = (prefs or {}).get("whatsapp", {})
-        wa_phone = wa_config.get("phone") or phone
+        wa_pref = (prefs or {}).get("whatsapp")
+        wa_phone = phone
+        if isinstance(wa_pref, dict):
+            wa_phone = wa_pref.get("phone") or phone
 
         if not wa_phone:
             self._log_delivery(
